@@ -1,7 +1,7 @@
 """Pytest configuration and fixtures."""
 
-import os
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -9,7 +9,7 @@ import pytest
 from app import app
 
 # Add parent directory to path
-sys.path.insert(0, os.path.resolve(os.path.parent(__file__) / ".."))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 @pytest.fixture
