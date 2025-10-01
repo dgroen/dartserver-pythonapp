@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darts Game Board</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Darts Game</h1>
+            <div class="game-info">
+                <span id="game-type">301</span>
+                <span id="game-status">Not Started</span>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Players Display -->
+            <div class="players-container" id="players-container">
+                <!-- Players will be dynamically added here -->
+            </div>
+
+            <!-- Message Display -->
+            <div class="message-container">
+                <div id="big-message" class="big-message"></div>
+                <div id="alert-message" class="alert-message"></div>
+            </div>
+
+            <!-- Current Throw Info -->
+            <div class="throw-info">
+                <span>Throw: <span id="current-throw">1</span> / 3</span>
+            </div>
+        </div>
+
+        <!-- Video/Animation Container -->
+        <div id="video-container" class="video-container hidden">
+            <video id="effect-video" autoplay></video>
+        </div>
+
+        <!-- Control Panel Link -->
+        <div class="control-link">
+            <a href="/control" target="_blank">Open Control Panel</a>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darts Game Control Panel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/control.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Darts Game Control Panel</h1>
+        </header>
+
+        <div class="control-sections">
+            <!-- Game Setup -->
+            <section class="control-section">
+                <h2>Game Setup</h2>
+                <div class="form-group">
+                    <label for="game-type">Game Type:</label>
+                    <select id="game-type">
+                        <option value="301">301</option>
+                        <option value="401">401</option>
+                        <option value="501">501</option>
+                        <option value="cricket">Cricket</option>
+                    </select>
+                </div>
+                <button id="new-game-btn" class="btn btn-primary">Start New Game</button>
+            </section>
+
+            <!-- Player Management -->
+            <section class="control-section">
+                <h2>Players</h2>
+                <div id="players-list">
+                    <!-- Players will be dynamically added here -->
+                </div>
+                <div class="player-controls">
+                    <input type="text" id="player-name" placeholder="Player Name">
+                    <button id="add-player-btn" class="btn btn-success">Add Player</button>
+                </div>
+            </section>
+
+            <!-- Game Controls -->
+            <section class="control-section">
+                <h2>Game Controls</h2>
+                <button id="next-player-btn" class="btn btn-secondary">Next Player</button>
+                <button id="pause-btn" class="btn btn-warning">Pause/Resume</button>
+            </section>
+
+            <!-- Manual Score Entry -->
+            <section class="control-section">
+                <h2>Manual Score Entry</h2>
+                <div class="form-group">
+                    <label for="score-value">Score:</label>
+                    <input type="number" id="score-value" min="0" max="60" value="20">
+                </div>
+                <div class="form-group">
+                    <label for="multiplier">Multiplier:</label>
+                    <select id="multiplier">
+                        <option value="SINGLE">Single</option>
+                        <option value="DOUBLE">Double</option>
+                        <option value="TRIPLE">Triple</option>
+                        <option value="BULL">Bull</option>
+                        <option value="DBLBULL">Double Bull</option>
+                    </select>
+                </div>
+                <button id="submit-score-btn" class="btn btn-primary">Submit Score</button>
+            </section>
+
+            <!-- Game State Display -->
+            <section class="control-section">
+                <h2>Game State</h2>
+                <div id="game-state-display">
+                    <pre id="game-state-json"></pre>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/control.js') }}"></script>
+</body>
+</html>
