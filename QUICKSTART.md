@@ -5,7 +5,6 @@
 The easiest way to get started is using Docker Compose, which will set up both RabbitMQ and the application:
 
 ```bash
-cd python_app
 docker-compose up
 ```
 

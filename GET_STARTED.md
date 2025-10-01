@@ -28,7 +28,6 @@ That's it! The application will start with RabbitMQ included.
 **Prerequisites:** Python 3.8+, RabbitMQ installed
 
 ```bash
-cd python_app
 ./run.sh
 ```
 
@@ -44,8 +43,6 @@ The script will:
 **Prerequisites:** Python 3.8+, RabbitMQ installed
 
 ```bash
-cd python_app
-
 # Create virtual environment
 python3 -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
@@ -66,7 +63,6 @@ python app.py
 ## ✅ Verify Installation
 
 ```bash
-cd python_app
 python verify_installation.py
 ```
 
@@ -94,7 +90,6 @@ Navigate to: http://localhost:5000/control
 **Option A: Use the test script**
 ```bash
 # In a new terminal
-cd python_app
 python test_rabbitmq.py
 # Choose option 2 (send single random score)
 ```
@@ -161,7 +156,6 @@ You'll see:
 ### Test RabbitMQ Integration
 
 ```bash
-cd python_app
 python test_rabbitmq.py
 ```
 

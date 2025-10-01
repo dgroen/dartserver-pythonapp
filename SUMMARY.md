@@ -64,7 +64,6 @@ docker-compose up
 
 ### Option 2: Manual
 ```bash
-cd python_app
 ./run.sh
 ```
 
