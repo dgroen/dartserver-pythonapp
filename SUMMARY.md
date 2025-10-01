@@ -16,7 +16,7 @@ A complete Python web application for managing darts games with the following fe
 ### 📁 Project Structure
 
 ```
-python_app/
+dartserver-pythonapp/
 ├── app.py                      # Main Flask application
 ├── game_manager.py             # Game logic coordinator
 ├── rabbitmq_consumer.py        # RabbitMQ message consumer
@@ -45,14 +45,9 @@ python_app/
 │       ├── main.js           # Game board JavaScript
 │       └── control.js        # Control panel JavaScript
 │
-├── examples/                  # Usage examples
-│   ├── api_examples.py       # REST API examples
-│   └── websocket_client.py   # WebSocket examples
-│
-└── docs/
-    ├── README.md             # Full documentation
-    ├── QUICKSTART.md         # Quick start guide
-    └── SUMMARY.md            # This file
+└── examples/                  # Usage examples
+    ├── api_examples.py       # REST API examples
+    └── websocket_client.py   # WebSocket examples
 ```
 
 ## 🚀 Quick Start

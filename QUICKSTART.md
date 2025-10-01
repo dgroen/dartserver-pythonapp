@@ -164,7 +164,7 @@ void sendScore(int score, String multiplier) {
 - Check firewall settings
 
 ### Application won't start
-- Ensure Python 3.8+ is installed: `python --version`
+- Ensure Python 3.10+ is installed: `python --version`
 - Check all dependencies are installed: `pip list`
 - Look for error messages in console
 

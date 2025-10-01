@@ -367,7 +367,7 @@ Single instance can handle:
 
 ## Technology Stack
 
-- **Backend:** Python 3.8+, Flask, Flask-SocketIO
+- **Backend:** Python 3.10+, Flask, Flask-SocketIO
 - **Message Queue:** RabbitMQ (AMQP)
 - **WebSocket:** Socket.IO
 - **Frontend:** HTML5, CSS3, JavaScript

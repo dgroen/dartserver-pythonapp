@@ -170,7 +170,7 @@ dartserver-pythonapp/
 ├── templates/              # Web interface
 ├── static/                 # CSS/JS
 ├── examples/               # Usage examples
-└── docs/                   # Documentation
+└── *.md                    # Documentation files
 ```
 
 ## 🎨 Customization

@@ -25,7 +25,7 @@ That's it! The application will start with RabbitMQ included.
 
 ### Option 2: Quick Start Script
 
-**Prerequisites:** Python 3.8+, RabbitMQ installed
+**Prerequisites:** Python 3.10+, RabbitMQ installed
 
 ```bash
 ./run.sh
@@ -40,7 +40,7 @@ The script will:
 
 ### Option 3: Manual Setup
 
-**Prerequisites:** Python 3.8+, RabbitMQ installed
+**Prerequisites:** Python 3.10+, RabbitMQ installed
 
 ```bash
 # Create virtual environment
@@ -130,7 +130,7 @@ You'll see:
    ```bash
    # REST API examples
    python examples/api_examples.py
-   
+
    # WebSocket examples
    python examples/websocket_client.py
    ```

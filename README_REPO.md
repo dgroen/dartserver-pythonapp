@@ -229,16 +229,9 @@ dartserver-pythonapp/
 │   ├── css/                   # Stylesheets
 │   └── js/                    # JavaScript
 │
-├── examples/                   # Usage examples
-│   ├── api_examples.py        # REST API examples
-│   └── websocket_client.py    # WebSocket examples
-│
-└── docs/                       # Documentation
-    ├── GET_STARTED.md
-    ├── QUICKSTART.md
-    ├── SUMMARY.md
-    ├── ARCHITECTURE.md
-    └── INDEX.md
+└── examples/                   # Usage examples
+    ├── api_examples.py        # REST API examples
+    └── websocket_client.py    # WebSocket examples
 ```
 
 ## 🐛 Troubleshooting
