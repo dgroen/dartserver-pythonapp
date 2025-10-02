@@ -40,13 +40,14 @@ class GameManager:
         ]
         self.turn_sounds = ["ThrowDarts", "fireAway", "showMe", "yerTurn", "yerUp", "letErFly"]
 
-    def new_game(self, game_type="301", player_names=None):
+    def new_game(self, game_type="301", player_names=None, double_out=False):
         """
         Start a new game
 
         Args:
             game_type: Type of game ('301', '401', '501', 'cricket')
             player_names: List of player names
+            double_out: Whether to require double-out to finish (only for 301/401/501)
         """
         self.game_type = game_type.lower()
 
@@ -69,7 +70,7 @@ class GameManager:
                 start_score = 401
             elif self.game_type == "501":
                 start_score = 501
-            self.game = Game301(self.players, start_score)
+            self.game = Game301(self.players, start_score, double_out)
 
         # Reset game state
         self.current_player = 0
@@ -83,7 +84,10 @@ class GameManager:
         self._emit_sound("intro")
         self._emit_message(f"{self.players[self.current_player]['name']}, Throw Darts")
 
-        print(f"New {self.game_type} game started with {len(self.players)} players")
+        print(
+            f"New {self.game_type} game started with {len(self.players)} \
+            players (double-out: {double_out})",
+        )
 
     def add_player(self, name=None):
         """Add a new player"""

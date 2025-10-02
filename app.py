@@ -62,8 +62,9 @@ def new_game():
     data = request.json
     game_type = data.get("game_type", "301")
     player_names = data.get("players", ["Player 1", "Player 2"])
+    double_out = data.get("double_out", False)
 
-    game_manager.new_game(game_type, player_names)
+    game_manager.new_game(game_type, player_names, double_out)
     return jsonify({"status": "success", "message": "New game started"})
 
 
@@ -108,7 +109,8 @@ def handle_new_game(data):
     """Handle new game request"""
     game_type = data.get("game_type", "301")
     player_names = data.get("players", ["Player 1", "Player 2"])
-    game_manager.new_game(game_type, player_names)
+    double_out = data.get("double_out", False)
+    game_manager.new_game(game_type, player_names, double_out)
 
 
 @socketio.on("add_player")

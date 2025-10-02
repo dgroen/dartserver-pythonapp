@@ -3,6 +3,7 @@ const socket = io();
 
 // DOM Elements
 const gameTypeSelect = document.getElementById('game-type');
+const doubleOutCheckbox = document.getElementById('double-out');
 const newGameBtn = document.getElementById('new-game-btn');
 const playersList = document.getElementById('players-list');
 const playerNameInput = document.getElementById('player-name');
@@ -35,14 +36,15 @@ socket.on('game_state', (state) => {
 // Event Listeners
 newGameBtn.addEventListener('click', () => {
     const gameType = gameTypeSelect.value;
+    const doubleOut = doubleOutCheckbox.checked;
     const playerNames = [];
     
-    // Get player names from the list
-    const playerItems = playersList.querySelectorAll('.player-item');
-    playerItems.forEach(item => {
-        const name = item.querySelector('.player-info').textContent.split(':')[1].trim();
-        playerNames.push(name);
-    });
+    // Get player names from current game state
+    if (currentGameState && currentGameState.players && currentGameState.players.length > 0) {
+        currentGameState.players.forEach(player => {
+            playerNames.push(player.name);
+        });
+    }
     
     // If no players, use defaults
     if (playerNames.length === 0) {
@@ -51,7 +53,8 @@ newGameBtn.addEventListener('click', () => {
     
     socket.emit('new_game', {
         game_type: gameType,
-        players: playerNames
+        players: playerNames,
+        double_out: doubleOut
     });
 });
 
@@ -60,8 +63,6 @@ addPlayerBtn.addEventListener('click', () => {
     if (name) {
         socket.emit('add_player', { name: name });
         playerNameInput.value = '';
-    } else {
-        socket.emit('add_player', {});
     }
 });
 
@@ -110,6 +111,11 @@ function updateDisplay(state) {
     
     // Update game state JSON
     gameStateJson.textContent = JSON.stringify(state, null, 2);
+    
+    // Update double-out checkbox if game is started
+    if (state.game_data && state.game_data.double_out !== undefined) {
+        doubleOutCheckbox.checked = state.game_data.double_out;
+    }
 }
 
 function updatePlayersList(state) {

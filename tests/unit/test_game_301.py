@@ -171,3 +171,74 @@ class TestGame301:
         assert result["score"] == 0
         assert result["new_total"] == initial_score
         assert game.players[0]["score"] == initial_score
+
+    def test_double_out_enabled(self, sample_players):
+        """Test game initialization with double-out enabled."""
+        game = Game301(sample_players, start_score=301, double_out=True)
+        assert game.double_out is True
+        state = game.get_state()
+        assert state["double_out"] is True
+
+    def test_double_out_win_with_double(self, sample_players):
+        """Test winning with double when double-out is enabled."""
+        game = Game301(sample_players, start_score=301, double_out=True)
+        # Set score to exactly double 20
+        game.players[0]["score"] = 40
+        result = game.process_throw(0, 20, 2, "DOUBLE")
+        assert result["winner"] is True
+        assert result["new_total"] == 0
+        assert game.players[0]["score"] == 0
+
+    def test_double_out_bust_with_single(self, sample_players):
+        """Test bust when finishing with single when double-out is enabled."""
+        game = Game301(sample_players, start_score=301, double_out=True)
+        # Set score to 20
+        game.players[0]["score"] = 20
+        # Try to finish with single 20 (should bust)
+        result = game.process_throw(0, 20, 1, "SINGLE")
+        assert result["bust"] is True
+        assert result["new_total"] == 20  # Score should remain unchanged
+        assert game.players[0]["score"] == 20
+
+    def test_double_out_bust_with_triple(self, sample_players):
+        """Test bust when finishing with triple when double-out is enabled."""
+        game = Game301(sample_players, start_score=301, double_out=True)
+        # Set score to 60
+        game.players[0]["score"] = 60
+        # Try to finish with triple 20 (should bust)
+        result = game.process_throw(0, 20, 3, "TRIPLE")
+        assert result["bust"] is True
+        assert result["new_total"] == 60  # Score should remain unchanged
+        assert game.players[0]["score"] == 60
+
+    def test_double_out_win_with_double_bull(self, sample_players):
+        """Test winning with double bull when double-out is enabled."""
+        game = Game301(sample_players, start_score=301, double_out=True)
+        # Set score to 50 (double bull)
+        game.players[0]["score"] = 50
+        result = game.process_throw(0, 25, 2, "DBLBULL")
+        assert result["winner"] is True
+        assert result["new_total"] == 0
+        assert game.players[0]["score"] == 0
+
+    def test_double_out_disabled_win_with_single(self, sample_players):
+        """Test winning with single when double-out is disabled."""
+        game = Game301(sample_players, start_score=301, double_out=False)
+        # Set score to 20
+        game.players[0]["score"] = 20
+        # Finish with single 20 (should win)
+        result = game.process_throw(0, 20, 1, "SINGLE")
+        assert result["winner"] is True
+        assert result["new_total"] == 0
+        assert game.players[0]["score"] == 0
+
+    def test_double_out_bust_on_score_one(self, sample_players):
+        """Test bust when score goes to 1 (impossible to finish with double)."""
+        game = Game301(sample_players, start_score=301, double_out=True)
+        # Set score to 3
+        game.players[0]["score"] = 3
+        # Throw 2 (would go to 1, which is impossible to finish)
+        result = game.process_throw(0, 2, 1, "SINGLE")
+        assert result["bust"] is True
+        assert result["new_total"] == 3  # Score should remain unchanged
+        assert game.players[0]["score"] == 3

@@ -20,6 +20,7 @@ def example_1_start_301_game():
         json={
             "game_type": "301",
             "players": ["Alice", "Bob", "Charlie"],
+            "double_out": False,
         },
     )
 
@@ -181,6 +182,24 @@ def example_8_full_game_workflow():
     print("   - Or use WebSocket events")
 
 
+def example_9_double_out_game():
+    """Example 9: Start a 501 game with double-out"""
+    print("\n=== Example 9: 501 Game with Double-Out ===")
+
+    response = requests.post(
+        f"{BASE_URL}/api/game/new",
+        json={
+            "game_type": "501",
+            "players": ["Player 1", "Player 2"],
+            "double_out": True,
+        },
+    )
+
+    print(f"Status: {response.status_code}")
+    print(f"Response: {response.json()}")
+    print("Note: Players must finish with a double to win!")
+
+
 def main():
     """Run all examples"""
     print("=" * 60)
@@ -214,6 +233,9 @@ def main():
         time.sleep(1)
 
         example_8_full_game_workflow()
+        time.sleep(1)
+
+        example_9_double_out_game()
 
         print("\n" + "=" * 60)
         print("All examples completed!")
