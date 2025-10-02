@@ -2,26 +2,28 @@
 Darts Game Web Application
 Receives scores through RabbitMQ and manages 301 and Cricket games
 """
+
 import os
-import json
 import threading
-from flask import Flask, render_template, jsonify, request
-from flask_socketio import SocketIO, emit
-from flask_cors import CORS
+
 from dotenv import load_dotenv
-from rabbitmq_consumer import RabbitMQConsumer
+from flask import Flask, jsonify, render_template, request
+from flask_cors import CORS
+from flask_socketio import SocketIO, emit
+
 from game_manager import GameManager
+from rabbitmq_consumer import RabbitMQConsumer
 
 # Load environment variables
 load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key")
 CORS(app)
 
 # Initialize SocketIO
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
 # Initialize Game Manager
 game_manager = GameManager(socketio)
@@ -36,109 +38,109 @@ def on_score_received(score_data):
     game_manager.process_score(score_data)
 
 
-@app.route('/')
+@app.route("/")
 def index():
     """Main game board page"""
-    return render_template('index.html')
+    return render_template("index.html")
 
 
-@app.route('/control')
+@app.route("/control")
 def control():
     """Game control panel"""
-    return render_template('control.html')
+    return render_template("control.html")
 
 
-@app.route('/api/game/state', methods=['GET'])
+@app.route("/api/game/state", methods=["GET"])
 def get_game_state():
     """Get current game state"""
     return jsonify(game_manager.get_game_state())
 
 
-@app.route('/api/game/new', methods=['POST'])
+@app.route("/api/game/new", methods=["POST"])
 def new_game():
     """Start a new game"""
     data = request.json
-    game_type = data.get('game_type', '301')
-    player_names = data.get('players', ['Player 1', 'Player 2'])
-    
+    game_type = data.get("game_type", "301")
+    player_names = data.get("players", ["Player 1", "Player 2"])
+
     game_manager.new_game(game_type, player_names)
-    return jsonify({'status': 'success', 'message': 'New game started'})
+    return jsonify({"status": "success", "message": "New game started"})
 
 
-@app.route('/api/players', methods=['GET'])
+@app.route("/api/players", methods=["GET"])
 def get_players():
     """Get all players"""
     return jsonify(game_manager.get_players())
 
 
-@app.route('/api/players', methods=['POST'])
+@app.route("/api/players", methods=["POST"])
 def add_player():
     """Add a new player"""
     data = request.json
-    player_name = data.get('name', f'Player {len(game_manager.players) + 1}')
+    player_name = data.get("name", f"Player {len(game_manager.players) + 1}")
     game_manager.add_player(player_name)
-    return jsonify({'status': 'success', 'message': 'Player added'})
+    return jsonify({"status": "success", "message": "Player added"})
 
 
-@app.route('/api/players/<int:player_id>', methods=['DELETE'])
+@app.route("/api/players/<int:player_id>", methods=["DELETE"])
 def remove_player(player_id):
     """Remove a player"""
     game_manager.remove_player(player_id)
-    return jsonify({'status': 'success', 'message': 'Player removed'})
+    return jsonify({"status": "success", "message": "Player removed"})
 
 
 # SocketIO Events
-@socketio.on('connect')
+@socketio.on("connect")
 def handle_connect():
     """Handle client connection"""
-    print('Client connected')
-    emit('game_state', game_manager.get_game_state())
+    print("Client connected")
+    emit("game_state", game_manager.get_game_state())
 
 
-@socketio.on('disconnect')
+@socketio.on("disconnect")
 def handle_disconnect():
     """Handle client disconnection"""
-    print('Client disconnected')
+    print("Client disconnected")
 
 
-@socketio.on('new_game')
+@socketio.on("new_game")
 def handle_new_game(data):
     """Handle new game request"""
-    game_type = data.get('game_type', '301')
-    player_names = data.get('players', ['Player 1', 'Player 2'])
+    game_type = data.get("game_type", "301")
+    player_names = data.get("players", ["Player 1", "Player 2"])
     game_manager.new_game(game_type, player_names)
 
 
-@socketio.on('add_player')
+@socketio.on("add_player")
 def handle_add_player(data):
     """Handle add player request"""
-    player_name = data.get('name', f'Player {len(game_manager.players) + 1}')
+    player_name = data.get("name", f"Player {len(game_manager.players) + 1}")
     game_manager.add_player(player_name)
 
 
-@socketio.on('remove_player')
+@socketio.on("remove_player")
 def handle_remove_player(data):
     """Handle remove player request"""
-    player_id = data.get('player_id')
+    player_id = data.get("player_id")
     if player_id is not None:
         game_manager.remove_player(player_id)
 
 
-@socketio.on('next_player')
+@socketio.on("next_player")
 def handle_next_player():
     """Handle next player request"""
     game_manager.next_player()
 
 
-@socketio.on('skip_to_player')
+@socketio.on("skip_to_player")
 def handle_skip_to_player(data):
     """Handle skip to specific player"""
-    player_id = data.get('player_id')
+    player_id = data.get("player_id")
     if player_id is not None:
         game_manager.skip_to_player(player_id)
 
 
-@socketio.on('manual_score')
+@socketio.on("manual_score")
 def handle_manual_score(data):
     """Handle manual score entry"""
     game_manager.process_score(data)
@@ -147,17 +149,17 @@ def handle_manual_score(data):
 def start_rabbitmq_consumer():
     """Start RabbitMQ consumer in a separate thread"""
     global rabbitmq_consumer
-    
+
     rabbitmq_config = {
-        'host': os.getenv('RABBITMQ_HOST', 'localhost'),
-        'port': int(os.getenv('RABBITMQ_PORT', 5672)),
-        'user': os.getenv('RABBITMQ_USER', 'guest'),
-        'password': os.getenv('RABBITMQ_PASSWORD', 'guest'),
-        'vhost': os.getenv('RABBITMQ_VHOST', '/'),
-        'exchange': os.getenv('RABBITMQ_EXCHANGE', 'darts_exchange'),
-        'topic': os.getenv('RABBITMQ_TOPIC', 'darts.scores.#')
+        "host": os.getenv("RABBITMQ_HOST", "localhost"),
+        "port": int(os.getenv("RABBITMQ_PORT", 5672)),
+        "user": os.getenv("RABBITMQ_USER", "guest"),
+        "password": os.getenv("RABBITMQ_PASSWORD", "guest"),
+        "vhost": os.getenv("RABBITMQ_VHOST", "/"),
+        "exchange": os.getenv("RABBITMQ_EXCHANGE", "darts_exchange"),
+        "topic": os.getenv("RABBITMQ_TOPIC", "darts.scores.#"),
     }
-    
+
     try:
         rabbitmq_consumer = RabbitMQConsumer(rabbitmq_config, on_score_received)
         consumer_thread = threading.Thread(target=rabbitmq_consumer.start, daemon=True)
@@ -168,14 +170,14 @@ def start_rabbitmq_consumer():
         print("Application will continue without RabbitMQ integration")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Start RabbitMQ consumer
     start_rabbitmq_consumer()
-    
+
     # Start Flask app
-    host = os.getenv('FLASK_HOST', '0.0.0.0')
-    port = int(os.getenv('FLASK_PORT', 5000))
-    debug = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
-    
+    host = os.getenv("FLASK_HOST", "0.0.0.0")
+    port = int(os.getenv("FLASK_PORT", 5000))
+    debug = os.getenv("FLASK_DEBUG", "True").lower() == "true"
+
     print(f"Starting Darts Game Server on {host}:{port}")
     socketio.run(app, host=host, port=port, debug=debug)
