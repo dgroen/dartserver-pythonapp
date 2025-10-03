@@ -5,11 +5,13 @@ A Python web application for managing darts games (301 and Cricket) with RabbitM
 ## Features
 
 - **Multiple Game Modes**: 301, 401, 501, and Cricket
-- **Multi-Player Support**: Support for 2-6 players (Cricket max 4)
+- **Single & Multi-Player Support**: Support for 1-6 players (Cricket max 4)
 - **RabbitMQ Integration**: Receives dart scores through RabbitMQ topic subscription
 - **Real-time Updates**: WebSocket-based real-time game state updates
+- **Automatic UI Refresh**: All connected clients automatically refresh when scores are sent/received
 - **Web Interface**: Clean, responsive web interface for game display and control
 - **Manual Score Entry**: Control panel for manual score entry and game management
+- **REST API**: Full REST API for game control and score submission
 
 ## Installation
 
@@ -64,6 +66,7 @@ python app.py
 2. **Access the web interface**:
    - Main game board: http://localhost:5000/
    - Control panel: http://localhost:5000/control
+   - Auto-refresh test page: http://localhost:5000/test-refresh
 
 3. **Send scores via RabbitMQ**:
 
@@ -109,7 +112,15 @@ The application listens for messages on the configured RabbitMQ exchange and top
   ```json
   {
     "game_type": "301",
-    "players": ["Player 1", "Player 2"]
+    "players": ["Player 1", "Player 2"],
+    "double_out": false
+  }
+  ```
+- `POST /api/score` - Submit a score (triggers automatic UI refresh)
+  ```json
+  {
+    "score": 20,
+    "multiplier": "TRIPLE"
   }
   ```
 - `GET /api/players` - Get all players
@@ -120,6 +131,8 @@ The application listens for messages on the configured RabbitMQ exchange and top
   }
   ```
 - `DELETE /api/players/<player_id>` - Remove a player
+
+**Note**: All API endpoints that modify game state automatically trigger UI refresh for all connected clients via WebSocket.
 
 ### WebSocket Events
 
@@ -138,7 +151,33 @@ The application listens for messages on the configured RabbitMQ exchange and top
 - `message` - Display a message
 - `big_message` - Display a big message
 
-## Testing RabbitMQ Integration
+## Testing
+
+### Test Automatic UI Refresh
+
+**Method 1: Interactive Test Page**
+```bash
+# Start the application
+python app.py
+
+# Open in browser: http://localhost:5000/test-refresh
+# Click the test buttons and watch the UI update automatically!
+```
+
+**Method 2: Automated Test Script**
+```bash
+# Start the application in one terminal
+python app.py
+
+# Open the game UI in a browser: http://localhost:5000
+
+# Run the test script in another terminal
+python examples/test_auto_refresh.py
+
+# Watch the UI update automatically as the script makes API calls!
+```
+
+### Test RabbitMQ Integration
 
 Use the included test script to send test scores:
 
@@ -172,7 +211,12 @@ dartserver-pythonapp/
 │   └── game_cricket.py    # Cricket game logic
 ├── templates/
 │   ├── index.html         # Main game board
-│   └── control.html       # Control panel
+│   ├── control.html       # Control panel
+│   └── test_refresh.html  # Auto-refresh test page
+├── examples/
+│   ├── api_examples.py    # API usage examples
+│   ├── test_auto_refresh.py # Auto-refresh test script
+│   └── websocket_client.py # WebSocket client example
 └── static/
     ├── css/
     │   ├── style.css      # Main styles
@@ -190,7 +234,23 @@ This Python application can work alongside your existing Node.js darts applicati
 2. Bridge the Node.js app to send scores to RabbitMQ
 3. Use the Python app's REST API to integrate with other systems
 
+## Automatic UI Refresh
+
+The application features **automatic UI refresh** - all connected clients automatically update when:
+- Scores are submitted (via API, RabbitMQ, or WebSocket)
+- New games are started
+- Players are added or removed
+- Game state changes
+
+This is implemented using WebSocket (Socket.IO) technology. See [docs/AUTO_REFRESH.md](docs/AUTO_REFRESH.md) for detailed documentation.
+
 ## Troubleshooting
+
+**UI Not Automatically Refreshing?**:
+- Check browser console for WebSocket connection errors
+- Verify Socket.IO client library is loaded
+- Visit http://localhost:5000/test-refresh to test the connection
+- See [docs/AUTO_REFRESH.md](docs/AUTO_REFRESH.md) for detailed troubleshooting
 
 **RabbitMQ Connection Issues**:
 - Ensure RabbitMQ is running: `sudo systemctl status rabbitmq-server`
@@ -210,7 +270,3 @@ This Python application can work alongside your existing Node.js darts applicati
 ## License
 
 See LICENSE file in the root directory.
-
-## Credits
-
-Built for the DigiDarts project - a rich media darts experience.

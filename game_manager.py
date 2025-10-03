@@ -111,8 +111,9 @@ class GameManager:
 
     def remove_player(self, player_id):
         """Remove a player"""
-        if len(self.players) <= 2:
-            print("Cannot remove player: minimum 2 players required")
+        # Allow single player games - no minimum restriction
+        if len(self.players) <= 1:
+            print("Cannot remove player: at least 1 player required")
             return
 
         if 0 <= player_id < len(self.players):

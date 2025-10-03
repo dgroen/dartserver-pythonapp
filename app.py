@@ -50,6 +50,12 @@ def control():
     return render_template("control.html")
 
 
+@app.route("/test-refresh")
+def test_refresh():
+    """Test page for automatic refresh functionality"""
+    return render_template("test_refresh.html")
+
+
 @app.route("/api/game/state", methods=["GET"])
 def get_game_state():
     """Get current game state"""
@@ -65,6 +71,7 @@ def new_game():
     double_out = data.get("double_out", False)
 
     game_manager.new_game(game_type, player_names, double_out)
+    # Game state is automatically emitted by game_manager.new_game()
     return jsonify({"status": "success", "message": "New game started"})
 
 
@@ -80,6 +87,7 @@ def add_player():
     data = request.json
     player_name = data.get("name", f"Player {len(game_manager.players) + 1}")
     game_manager.add_player(player_name)
+    # Game state is automatically emitted by game_manager.add_player()
     return jsonify({"status": "success", "message": "Player added"})
 
 
@@ -87,7 +95,22 @@ def add_player():
 def remove_player(player_id):
     """Remove a player"""
     game_manager.remove_player(player_id)
+    # Game state is automatically emitted by game_manager.remove_player()
     return jsonify({"status": "success", "message": "Player removed"})
+
+
+@app.route("/api/score", methods=["POST"])
+def submit_score():
+    """Submit a score via API"""
+    data = request.json
+    score = data.get("score", 0)
+    multiplier = data.get("multiplier", "SINGLE")
+
+    # Process the score
+    game_manager.process_score({"score": score, "multiplier": multiplier})
+    # Game state is automatically emitted by game_manager.process_score()
+
+    return jsonify({"status": "success", "message": "Score submitted"})
 
 
 # SocketIO Events
