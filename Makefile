@@ -46,7 +46,7 @@ test-integration: ## Run integration tests only
 
 test-cov: ## Run tests with coverage report
 	@echo "$(BLUE)Running tests with coverage...$(NC)"
-	pytest tests/ --cov=. --cov-report=term-missing --cov-report=html
+	pytest tests/ --cov=. --cov-report=term-missing --cov-report=html:build/coverage/html --cov-report=xml:build/coverage/coverage.xml --cov-report=json:build/coverage/coverage.json --junit-xml=build/reports/junit.xml
 
 test-watch: ## Run tests in watch mode
 	@echo "$(BLUE)Running tests in watch mode...$(NC)"
@@ -96,12 +96,20 @@ coverage: ## Generate coverage report
 	@echo "$(BLUE)Generating coverage report...$(NC)"
 	coverage run -m pytest tests/
 	coverage report
-	coverage html
-	@echo "$(GREEN)✓ Coverage report generated in htmlcov/$(NC)"
+	coverage html -d build/coverage/html
+	coverage xml -o build/coverage/coverage.xml
+	coverage json -o build/coverage/coverage.json
+	@echo "$(GREEN)✓ Coverage report generated in build/coverage/$(NC)"
 
 coverage-report: ## Show coverage report
 	@echo "$(BLUE)Coverage Report:$(NC)"
 	coverage report
+
+# Documentation targets
+docs: ## Build documentation
+	@echo "$(BLUE)Building documentation...$(NC)"
+	tox -e docs
+	@echo "$(GREEN)✓ Documentation built in docs/build/html/$(NC)"
 
 # Tox targets
 tox: ## Run tox for all environments
@@ -151,17 +159,16 @@ setup-hooks: ## Setup custom git hooks
 # Cleanup targets
 clean: ## Clean up build artifacts and cache
 	@echo "$(BLUE)Cleaning up...$(NC)"
-	rm -rf build/
+	find build/coverage -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
+	find build/reports -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
+	rm -rf build/lib/
+	rm -rf build/bdist.*/
 	rm -rf dist/
 	rm -rf *.egg-info
 	rm -rf .pytest_cache/
 	rm -rf .mypy_cache/
 	rm -rf .ruff_cache/
 	rm -rf .tox/
-	rm -rf htmlcov/
-	rm -rf .coverage
-	rm -rf coverage*.xml
-	rm -rf junit*.xml
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete
 	@echo "$(GREEN)✓ Cleanup complete$(NC)"

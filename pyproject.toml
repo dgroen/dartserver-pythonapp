@@ -191,6 +191,7 @@ show_error_context = true
 exclude = [
     "build/",
     "dist/",
+    "docs/",
     ".tox/",
     ".venv/",
     "venv/",
@@ -250,10 +251,12 @@ addopts = [
     "--tb=short",
     "--cov=.",
     "--cov-report=term-missing",
-    "--cov-report=html",
-    "--cov-report=xml",
+    "--cov-report=html:build/coverage/html",
+    "--cov-report=xml:build/coverage/coverage.xml",
+    "--cov-report=json:build/coverage/coverage.json",
     "--cov-branch",
     "--cov-fail-under=90",
+    "--junit-xml=build/reports/junit.xml",
 ]
 markers = [
     "unit: Unit tests",
@@ -279,11 +282,14 @@ omit = [
     "*/.venv/*",
     "*/.tox/*",
     "*/examples/*",
+    "*/build/*",
+    "*/docs/*",
     "verify_installation.py",
     "test_rabbitmq.py",
 ]
 branch = true
 parallel = true
+data_file = "build/coverage/.coverage"
 
 [tool.coverage.report]
 precision = 2
@@ -301,10 +307,13 @@ exclude_lines = [
 ]
 
 [tool.coverage.html]
-directory = "htmlcov"
+directory = "build/coverage/html"
 
 [tool.coverage.xml]
-output = "coverage.xml"
+output = "build/coverage/coverage.xml"
+
+[tool.coverage.json]
+output = "build/coverage/coverage.json"
 
 [tool.bandit]
 exclude_dirs = ["tests", "examples", ".tox", ".venv"]

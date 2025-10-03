@@ -1,0 +1,30 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"sqltools.connections": [
+			{
+				"connectionTimeout": 15,
+				"mssqlOptions": {
+					"appName": "SQLTools",
+					"useUTC": true,
+					"encrypt": true,
+					"trustServerCertificate": true
+				},
+				"previewLimit": 50,
+				"server": "localhost",
+				"port": 1433,
+				"driver": "MSSQL",
+				"name": "Dartserver",
+				"group": "Darts",
+				"username": "sa",
+				"password": "MyPassword1sStrong",
+				"database": "dartserver"
+			}
+		],
+		"git.ignoreLimitWarning": true
+	}
+}
