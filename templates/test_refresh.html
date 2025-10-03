@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Auto Refresh - Darts Game</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            padding: 5px;
+            margin: 2px 0;
+            border-left: 3px solid #007bff;
+            padding-left: 10px;
+        }
+        .log-entry.event {
+            border-left-color: #28a745;
+        }
+        .log-entry.error {
+            border-left-color: #dc3545;
+        }
+        .game-state {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .game-state pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-warning {
+            background-color: #ffc107;
+            color: black;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .timestamp {
+            color: #6c757d;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Darts Game - Auto Refresh Test Page</h1>
+        
+        <div id="connection-status" class="status disconnected">
+            ⚠️ Disconnected from server
+        </div>
+
+        <h2>Test Actions</h2>
+        <p>Click these buttons to trigger actions and watch the game state update automatically:</p>
+        <div class="test-buttons">
+            <button class="btn btn-primary" onclick="startNewGame()">Start New 301 Game</button>
+            <button class="btn btn-primary" onclick="startCricketGame()">Start Cricket Game</button>
+            <button class="btn btn-success" onclick="addPlayer()">Add Player</button>
+            <button class="btn btn-warning" onclick="submitScore()">Submit Score (Triple 20)</button>
+            <button class="btn btn-warning" onclick="submitRandomScore()">Submit Random Score</button>
+            <button class="btn btn-danger" onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <h2>Event Log</h2>
+        <div id="event-log" class="log">
+            <div class="log-entry">Waiting for connection...</div>
+        </div>
+
+        <h2>Current Game State</h2>
+        <div class="game-state">
+            <pre id="game-state">No game state yet...</pre>
+        </div>
+    </div>
+
+    <script>
+        // Connect to SocketIO
+        const socket = io();
+        const eventLog = document.getElementById('event-log');
+        const gameStateDisplay = document.getElementById('game-state');
+        const connectionStatus = document.getElementById('connection-status');
+
+        let updateCount = 0;
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+            eventLog.appendChild(entry);
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+
+        function clearLog() {
+            eventLog.innerHTML = '';
+            addLog('Log cleared');
+        }
+
+        // Connection events
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            connectionStatus.className = 'status connected';
+            connectionStatus.innerHTML = '✓ Connected to server';
+            addLog('✓ Connected to WebSocket server', 'event');
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            connectionStatus.className = 'status disconnected';
+            connectionStatus.innerHTML = '⚠️ Disconnected from server';
+            addLog('⚠️ Disconnected from server', 'error');
+        });
+
+        // Game state update - THIS IS THE KEY EVENT FOR AUTO REFRESH
+        socket.on('game_state', (state) => {
+            updateCount++;
+            console.log('Game state update received:', state);
+            addLog(`🔄 Game state updated (Update #${updateCount})`, 'event');
+            
+            // Update the display
+            gameStateDisplay.textContent = JSON.stringify(state, null, 2);
+            
+            // Log key information
+            if (state.game_type) {
+                addLog(`   Game Type: ${state.game_type.toUpperCase()}`);
+            }
+            if (state.players && state.players.length > 0) {
+                addLog(`   Players: ${state.players.map(p => p.name).join(', ')}`);
+            }
+            if (state.current_player !== undefined) {
+                addLog(`   Current Player: ${state.players[state.current_player]?.name || 'N/A'}`);
+            }
+        });
+
+        // Other events
+        socket.on('message', (data) => {
+            addLog(`💬 Message: ${data.text}`, 'event');
+        });
+
+        socket.on('big_message', (data) => {
+            addLog(`📢 Big Message: ${data.text}`, 'event');
+        });
+
+        socket.on('play_sound', (data) => {
+            addLog(`🔊 Sound: ${data.sound}`, 'event');
+        });
+
+        socket.on('play_video', (data) => {
+            addLog(`🎬 Video: ${data.video} (angle: ${data.angle}°)`, 'event');
+        });
+
+        // Test functions
+        function startNewGame() {
+            addLog('Starting new 301 game...');
+            fetch('/api/game/new', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    game_type: '301',
+                    players: ['Alice', 'Bob'],
+                    double_out: false
+                })
+            })
+            .then(r => r.json())
+            .then(data => addLog(`✓ ${data.message}`, 'event'))
+            .catch(err => addLog(`❌ Error: ${err}`, 'error'));
+        }
+
+        function startCricketGame() {
+            addLog('Starting new Cricket game...');
+            fetch('/api/game/new', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    game_type: 'cricket',
+                    players: ['Player 1', 'Player 2']
+                })
+            })
+            .then(r => r.json())
+            .then(data => addLog(`✓ ${data.message}`, 'event'))
+            .catch(err => addLog(`❌ Error: ${err}`, 'error'));
+        }
+
+        function addPlayer() {
+            const playerName = `Player ${Math.floor(Math.random() * 1000)}`;
+            addLog(`Adding player: ${playerName}...`);
+            fetch('/api/players', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: playerName })
+            })
+            .then(r => r.json())
+            .then(data => addLog(`✓ ${data.message}`, 'event'))
+            .catch(err => addLog(`❌ Error: ${err}`, 'error'));
+        }
+
+        function submitScore() {
+            addLog('Submitting score: Triple 20 (60 points)...');
+            fetch('/api/score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    score: 20,
+                    multiplier: 'TRIPLE'
+                })
+            })
+            .then(r => r.json())
+            .then(data => addLog(`✓ ${data.message}`, 'event'))
+            .catch(err => addLog(`❌ Error: ${err}`, 'error'));
+        }
+
+        function submitRandomScore() {
+            const scores = [15, 16, 17, 18, 19, 20];
+            const multipliers = ['SINGLE', 'DOUBLE', 'TRIPLE'];
+            const score = scores[Math.floor(Math.random() * scores.length)];
+            const multiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
+            
+            const mult = multiplier === 'TRIPLE' ? 3 : multiplier === 'DOUBLE' ? 2 : 1;
+            addLog(`Submitting score: ${multiplier} ${score} (${score * mult} points)...`);
+            
+            fetch('/api/score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ score, multiplier })
+            })
+            .then(r => r.json())
+            .then(data => addLog(`✓ ${data.message}`, 'event'))
+            .catch(err => addLog(`❌ Error: ${err}`, 'error'));
+        }
+
+        // Initial log
+        addLog('Page loaded. Connecting to server...');
+    </script>
+</body>
+</html>
