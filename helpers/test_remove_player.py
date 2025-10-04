@@ -13,16 +13,19 @@ sio = socketio.Client()
 
 @sio.on("connect")
 def on_connect():
+    """Handle connection event."""
     print("✓ Connected to server")
 
 
 @sio.on("disconnect")
 def on_disconnect():
+    """Handle disconnection event."""
     print("✗ Disconnected from server")
 
 
 @sio.on("game_state")
 def on_game_state(data):
+    """Handle game state update event."""
     print("\n📊 Game State Update:")
     print(f'  Players: {[p["name"] for p in data.get("players", [])]}')
     print(f'  Current Player: {data.get("current_player")}')
@@ -31,6 +34,7 @@ def on_game_state(data):
 
 @sio.on("message")
 def on_message(data):
+    """Handle message event."""
     print(f'💬 Message: {data.get("text")}')
 
 

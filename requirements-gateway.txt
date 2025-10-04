@@ -1,0 +1,11 @@
+# API Gateway Requirements
+# Core dependencies from main requirements
+flask==3.0.0
+flask-cors==4.0.0
+pika==1.3.2
+python-dotenv==1.0.0
+
+# Additional dependencies for API Gateway
+PyJWT==2.8.0
+cryptography==41.0.7
+requests==2.31.0

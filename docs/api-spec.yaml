@@ -1,0 +1,388 @@
+openapi: 3.0.3
+info:
+  title: Darts Game API
+  description: |
+    REST API for the Darts Game System. This API allows electronic dartboards, 
+    mobile apps, and other clients to submit scores, manage games, and interact 
+    with the darts game system.
+    
+    ## Authentication
+    All endpoints (except /health) require OAuth2 authentication via WSO2 Identity Server.
+    Include the access token in the Authorization header:
+    ```
+    Authorization: Bearer <access_token>
+    ```
+    
+    ## Rate Limiting
+    - Score submission: 100 requests/minute
+    - Game management: 10 requests/minute
+    - Player management: 20 requests/minute
+    
+  version: 1.0.0
+  contact:
+    name: Darts Game System
+    email: support@dartsgame.example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.dartsgame.example.com/api/v1
+    description: Production server
+  - url: http://localhost:8080/api/v1
+    description: Development server
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Scores
+    description: Score submission and management
+  - name: Games
+    description: Game creation and management
+  - name: Players
+    description: Player management
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Check if the API Gateway is healthy and operational
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  service:
+                    type: string
+                    example: darts-api-gateway
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: '2024-01-01T12:00:00.000000'
+
+  /scores:
+    post:
+      tags:
+        - Scores
+      summary: Submit a score
+      description: |
+        Submit a dart score to the game system. The score will be published to 
+        RabbitMQ and processed by the game logic.
+      operationId: submitScore
+      security:
+        - oauth2:
+            - score:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScoreSubmission'
+            examples:
+              triple20:
+                summary: Triple 20
+                value:
+                  score: 20
+                  multiplier: TRIPLE
+                  player_id: player-123
+                  game_id: game-456
+              single15:
+                summary: Single 15
+                value:
+                  score: 15
+                  multiplier: SINGLE
+                  player_id: player-123
+                  game_id: game-456
+              miss:
+                summary: Miss
+                value:
+                  score: 0
+                  multiplier: SINGLE
+                  player_id: player-123
+                  game_id: game-456
+      responses:
+        '201':
+          description: Score submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /games:
+    post:
+      tags:
+        - Games
+      summary: Create a new game
+      description: |
+        Create a new darts game. Supported game types are 301, 401, 501, and cricket.
+      operationId: createGame
+      security:
+        - oauth2:
+            - game:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameCreation'
+            examples:
+              game301:
+                summary: 301 Game
+                value:
+                  game_type: '301'
+                  players:
+                    - Player 1
+                    - Player 2
+                  double_out: false
+              cricket:
+                summary: Cricket Game
+                value:
+                  game_type: cricket
+                  players:
+                    - Alice
+                    - Bob
+                    - Charlie
+                  double_out: false
+      responses:
+        '201':
+          description: Game created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /players:
+    post:
+      tags:
+        - Players
+      summary: Add a player
+      description: Add a new player to the current game
+      operationId: addPlayer
+      security:
+        - oauth2:
+            - player:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlayerAddition'
+            examples:
+              newPlayer:
+                summary: Add new player
+                value:
+                  name: Player 3
+      responses:
+        '201':
+          description: Player added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      description: OAuth2 authentication via WSO2 Identity Server
+      flows:
+        clientCredentials:
+          tokenUrl: https://wso2is:9443/oauth2/token
+          scopes:
+            score:write: Submit scores
+            score:read: Read score information
+            game:write: Create and manage games
+            game:read: Read game information
+            player:write: Add and manage players
+            player:read: Read player information
+        password:
+          tokenUrl: https://wso2is:9443/oauth2/token
+          scopes:
+            score:write: Submit scores
+            score:read: Read score information
+            game:write: Create and manage games
+            game:read: Read game information
+            player:write: Add and manage players
+            player:read: Read player information
+
+  schemas:
+    ScoreSubmission:
+      type: object
+      required:
+        - score
+        - multiplier
+      properties:
+        score:
+          type: integer
+          minimum: 0
+          maximum: 60
+          description: The score value (0-60)
+          example: 20
+        multiplier:
+          type: string
+          enum:
+            - SINGLE
+            - DOUBLE
+            - TRIPLE
+          description: The multiplier type
+          example: TRIPLE
+        player_id:
+          type: string
+          description: Optional player identifier
+          example: player-123
+        game_id:
+          type: string
+          description: Optional game identifier
+          example: game-456
+
+    GameCreation:
+      type: object
+      required:
+        - game_type
+        - players
+      properties:
+        game_type:
+          type: string
+          enum:
+            - '301'
+            - '401'
+            - '501'
+            - cricket
+          description: The type of game to create
+          example: '301'
+        players:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: List of player names
+          example:
+            - Player 1
+            - Player 2
+        double_out:
+          type: boolean
+          description: Whether double-out rule is enabled
+          default: false
+          example: false
+
+    PlayerAddition:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: The player's name
+          example: Player 3
+
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: Operation completed successfully
+        data:
+          type: object
+          description: Response data (varies by endpoint)
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type
+          example: Invalid request
+        message:
+          type: string
+          description: Detailed error message
+          example: Score must be an integer between 0 and 60
+
+security:
+  - oauth2: []

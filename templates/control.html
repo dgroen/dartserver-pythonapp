@@ -11,6 +11,19 @@
     <div class="container">
         <header>
             <h1>🎯 Darts Game Control Panel</h1>
+            <div class="user-info">
+                {% if user_claims %}
+                <span class="username">👤 {{ user_claims.get('username', user_claims.get('sub', 'User')) }}</span>
+                {% if user_roles %}
+                <span class="user-roles">
+                    {% for role in user_roles %}
+                    <span class="role-badge role-{{ role }}">{{ role }}</span>
+                    {% endfor %}
+                </span>
+                {% endif %}
+                <a href="/logout" class="logout-btn">Logout</a>
+                {% endif %}
+            </div>
         </header>
 
         <div class="control-sections">
