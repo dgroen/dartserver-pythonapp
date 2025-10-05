@@ -7,6 +7,7 @@ import os
 import threading
 
 from dotenv import load_dotenv
+from flasgger import Swagger
 from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
@@ -20,7 +21,47 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key")
+_dsas = os.getenv("DARTBOARD_SENDS_ACTUAL_SCORE", "false")
+app.config["DARTBOARD_SENDS_ACTUAL_SCORE"] = _dsas.lower() == "true"
 CORS(app)
+
+# Initialize Swagger
+swagger_config = {
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": "apispec",
+            "route": "/apispec.json",
+        },
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/api/docs/",
+}
+
+swagger_template = {
+    "swagger": "2.0",
+    "info": {
+        "title": "Darts Game API",
+        "description": "API for managing darts games (301, 401, 501, Cricket) \
+        with real-time score tracking",
+        "version": "1.0.0",
+        "contact": {
+            "name": "Darts Game Server",
+        },
+    },
+    "host": os.getenv("SWAGGER_HOST", "localhost:5000"),
+    "basePath": "/",
+    "schemes": ["http", "https"],
+    "tags": [
+        {"name": "Game", "description": "Game management endpoints"},
+        {"name": "Players", "description": "Player management endpoints"},
+        {"name": "Score", "description": "Score submission endpoints"},
+        {"name": "UI", "description": "User interface endpoints"},
+    ],
+}
+
+swagger = Swagger(app, config=swagger_config, template=swagger_template)
 
 # Initialize SocketIO
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
@@ -40,31 +81,158 @@ def on_score_received(score_data):
 
 @app.route("/")
 def index():
-    """Main game board page"""
+    """Main game board page
+    ---
+    tags:
+      - UI
+    summary: Main game board page
+    description: Renders the main game board interface for displaying the darts game
+    responses:
+      200:
+        description: HTML page rendered successfully
+        content:
+          text/html:
+            schema:
+              type: string
+    """
     return render_template("index.html")
 
 
 @app.route("/control")
 def control():
-    """Game control panel"""
+    """Game control panel
+    ---
+    tags:
+      - UI
+    summary: Game control panel
+    description: Renders the control panel interface for managing the game
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
     return render_template("control.html")
 
 
 @app.route("/test-refresh")
 def test_refresh():
-    """Test page for automatic refresh functionality"""
+    """Test page for automatic refresh functionality
+    ---
+    tags:
+      - UI
+    summary: Test page for automatic refresh
+    description: Test page for verifying automatic refresh functionality
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
     return render_template("test_refresh.html")
 
 
 @app.route("/api/game/state", methods=["GET"])
 def get_game_state():
-    """Get current game state"""
+    """Get current game state
+    ---
+    tags:
+      - Game
+    summary: Get current game state
+    description: Returns the complete current state of the game including players,
+    scores, and game type
+    responses:
+      200:
+        description: Current game state
+        schema:
+          type: object
+          properties:
+            players:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Player ID
+                  name:
+                    type: string
+                    description: Player name
+                  score:
+                    type: integer
+                    description: Current score (for 301/401/501 games)
+                  is_turn:
+                    type: boolean
+                    description: Whether it's this player's turn
+            current_player:
+              type: integer
+              description: Index of the current player
+            game_type:
+              type: string
+              description: Type of game (301, 401, 501, cricket)
+              enum: ['301', '401', '501', 'cricket']
+            is_started:
+              type: boolean
+              description: Whether the game has started
+            is_paused:
+              type: boolean
+              description: Whether the game is paused
+            is_winner:
+              type: boolean
+              description: Whether there is a winner
+            current_throw:
+              type: integer
+              description: Current throw number (1-3)
+            game_data:
+              type: object
+              description: Game-specific data
+    """
     return jsonify(game_manager.get_game_state())
 
 
 @app.route("/api/game/new", methods=["POST"])
 def new_game():
-    """Start a new game"""
+    """Start a new game
+    ---
+    tags:
+      - Game
+    summary: Start a new game
+    description: Initializes a new darts game with specified type and players
+    parameters:
+      - in: body
+        name: body
+        description: Game configuration
+        required: true
+        schema:
+          type: object
+          properties:
+            game_type:
+              type: string
+              description: Type of game to start
+              enum: ['301', '401', '501', 'cricket']
+              default: '301'
+              example: '301'
+            players:
+              type: array
+              description: List of player names
+              items:
+                type: string
+              default: ['Player 1', 'Player 2']
+              example: ['Alice', 'Bob']
+            double_out:
+              type: boolean
+              description: Whether to require double-out to finish (only for 301/401/501)
+              default: false
+              example: false
+    responses:
+      200:
+        description: Game started successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: New game started
+    """
     data = request.json
     game_type = data.get("game_type", "301")
     player_names = data.get("players", ["Player 1", "Player 2"])
@@ -77,13 +245,65 @@ def new_game():
 
 @app.route("/api/players", methods=["GET"])
 def get_players():
-    """Get all players"""
+    """Get all players
+    ---
+    tags:
+      - Players
+    summary: Get all players
+    description: Returns a list of all players in the current game
+    responses:
+      200:
+        description: List of players
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Player ID
+                example: 0
+              name:
+                type: string
+                description: Player name
+                example: Alice
+    """
     return jsonify(game_manager.get_players())
 
 
 @app.route("/api/players", methods=["POST"])
 def add_player():
-    """Add a new player"""
+    """Add a new player
+    ---
+    tags:
+      - Players
+    summary: Add a new player
+    description: Adds a new player to the current game
+    parameters:
+      - in: body
+        name: body
+        description: Player information
+        required: true
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Player name
+              example: Charlie
+    responses:
+      200:
+        description: Player added successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: Player added
+    """
     data = request.json
     player_name = data.get("name", f"Player {len(game_manager.players) + 1}")
     game_manager.add_player(player_name)
@@ -93,15 +313,84 @@ def add_player():
 
 @app.route("/api/players/<int:player_id>", methods=["DELETE"])
 def remove_player(player_id):
-    """Remove a player"""
+    """Remove a player
+    ---
+    tags:
+      - Players
+    summary: Remove a player
+    description: Removes a player from the current game by player ID
+    parameters:
+      - in: path
+        name: player_id
+        type: integer
+        required: true
+        description: ID of the player to remove
+        example: 1
+    responses:
+      200:
+        description: Player removed successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: Player removed
+    """
     game_manager.remove_player(player_id)
     # Game state is automatically emitted by game_manager.remove_player()
     return jsonify({"status": "success", "message": "Player removed"})
 
 
-@app.route("/api/score", methods=["POST"])
+@app.route("/api/Throw", methods=["POST"])
 def submit_score():
-    """Submit a score via API"""
+    """Submit a score via API
+    ---
+    tags:
+      - Score
+    summary: Submit a dart score
+    description: Submits a dart throw score for the current player
+    parameters:
+      - in: body
+        name: body
+        description: Score information
+        required: true
+        schema:
+          type: object
+          required:
+            - score
+            - multiplier
+          properties:
+            score:
+              type: integer
+              description: Base score value (0-20 for regular segments, 25 for bull)
+              example: 20
+              minimum: 0
+              maximum: 25
+            multiplier:
+              type: string
+              description: Score multiplier type
+              enum: ['SINGLE', 'DOUBLE', 'TRIPLE', 'BULL', 'DBLBULL']
+              example: TRIPLE
+            user:
+              type: string
+              description: Optional player name (for future use)
+              example: Alice
+    responses:
+      200:
+        description: Score submitted successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: Score submitted
+    """
     data = request.json
     score = data.get("score", 0)
     multiplier = data.get("multiplier", "SINGLE")

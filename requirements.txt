@@ -5,3 +5,4 @@ pika==1.3.2
 python-socketio==5.10.0
 eventlet==0.35.2
 python-dotenv==1.0.0
+flasgger==0.9.7.1
