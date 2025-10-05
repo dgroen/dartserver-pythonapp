@@ -135,70 +135,55 @@ class GameManager:
             print(f"Player removed: {removed_player['name']}")
 
     def process_score(self, score_data):
-        """
-        Process a dart score
-
-        Args:
-            score_data: Dictionary with score information
-                {
-                    'score': int (base score value),
-                    'multiplier': str ('SINGLE', 'DOUBLE', 'TRIPLE', 'BULL', 'DBLBULL'),
-                    'user': str (optional player name)
-                }
-        """
         if not self.is_started or self.is_paused:
             print("Game not active, ignoring score")
             return
 
-        # Parse score data
-        base_score = score_data.get("score", 0)
-        multiplier = score_data.get("multiplier", "SINGLE").upper()
-
-        # Calculate actual score
-        if multiplier == "TRIPLE":
-            actual_score = base_score * 3
-            mult_value = 3
-        elif multiplier in ["DOUBLE", "DBLBULL"]:
-            actual_score = base_score * 2
-            mult_value = 2
-        else:
-            actual_score = base_score
-            mult_value = 1
-
-        # Store start score for bust detection
-        if self.current_throw == 1:
-            self.start_score = self.game.get_player_score(self.current_player)  # type: ignore[union-attr]
-
-        # Process the throw
-        result = self.game.process_throw(  # type: ignore[union-attr]
-            self.current_player,
-            base_score,
-            mult_value,
-            multiplier,
-        )
-
-        # Emit sound and video effects
-        self._emit_throw_effects(multiplier, base_score, actual_score)
-
-        # Check for bust
-        if result.get("bust"):
-            self._handle_bust(result)
+        if not isinstance(score_data, dict):
+            print("Invalid score_data: must be a dictionary, ignoring score")
             return
 
-        # Check for winner
-        if result.get("winner"):
-            self._handle_winner(self.current_player)
+        base_score, multiplier = self._parse_score_data(score_data)
+
+        if not self._is_valid_score(base_score):
             return
 
-        # Increment throw counter
-        self.current_throw += 1
+        if self.game:
+            self.game.process_score(base_score, multiplier)
 
-        # Check if turn is over
-        if self.current_throw > self.throws_per_turn:
-            self._end_turn()
-
-        # Emit updated game state
         self._emit_game_state()
+        self._emit_sound("processScore")
+        print(f"Score processed: {base_score} {multiplier}")
+
+    def _parse_score_data(self, score_data):
+        base_score_raw = score_data.get("score")
+        if base_score_raw is None:
+            base_score = 0
+        else:
+            try:
+                base_score = int(base_score_raw)
+            except (TypeError, ValueError) as e:
+                print(f"Invalid score value '{base_score_raw}': {e}, defaulting to 0")
+                base_score = 0
+
+        multiplier_raw = score_data.get("multiplier", "SINGLE")
+        multiplier = self._get_valid_multiplier(multiplier_raw)
+
+        return base_score, multiplier
+
+    def _get_valid_multiplier(self, multiplier_raw):
+        multiplier = multiplier_raw.upper()
+        valid_multipliers = {"SINGLE", "DOUBLE", "TRIPLE", "BULL", "DBLBULL"}
+        if multiplier not in valid_multipliers:
+            print(f"Invalid multiplier '{multiplier}', defaulting to SINGLE")
+            multiplier = "SINGLE"
+        return multiplier
+
+    def _is_valid_score(self, base_score):
+        if base_score < 0:
+            print(f"Invalid score value '{base_score}', ignoring score")
+            return False
+        return True
 
     def next_player(self):
         """Move to the next player"""
