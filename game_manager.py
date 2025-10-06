@@ -2,6 +2,7 @@
 Game Manager for handling game logic
 """
 
+import base64
 import os
 
 from games.game_301 import Game301
@@ -377,7 +378,19 @@ class GameManager:
 
         # Use TTS if text is provided
         if text and self.tts.is_enabled():
-            self.tts.speak(text)
+            # Generate audio data for client-side playback
+            audio_data = self.tts.speak(text, generate_audio=True)
+            if audio_data:
+                # Encode audio data as base64 for transmission
+                audio_base64 = base64.b64encode(audio_data).decode("utf-8")
+                self.socketio.emit(
+                    "play_tts",
+                    {
+                        "audio": audio_base64,
+                        "text": text,
+                    },
+                    namespace="/",
+                )
 
     def _emit_video(self, video, angle):
         """Emit video event"""

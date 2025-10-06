@@ -91,20 +91,27 @@ class TTSService:
         else:
             logger.info("gTTS engine ready")
 
-    def speak(self, text: str) -> bool:
+    def speak(self, text: str, generate_audio: bool = False) -> bool | bytes | None:
         """
-        Speak the given text
+        Speak the given text or generate audio data
 
         Args:
             text: Text to speak
+            generate_audio: If True, return audio data instead of playing locally
 
         Returns:
-            True if successful, False otherwise
+            If generate_audio is True: audio bytes or None
+            If generate_audio is False: True if successful, False otherwise
         """
         if not self.enabled or not text:
-            return False
+            return None if generate_audio else False
 
         try:
+            if generate_audio:
+                # Generate audio data for client-side playback
+                return self.generate_audio_data(text)
+
+            # Server-side playback (legacy behavior)
             if self.engine_name == "pyttsx3" and self.engine:
                 self.engine.say(text)
                 self.engine.runAndWait()
@@ -116,9 +123,9 @@ class TTSService:
                 return True
         except Exception:
             logger.exception("TTS speak error")
-            return False
+            return None if generate_audio else False
 
-        return False
+        return None if generate_audio else False
 
     def generate_audio_data(self, text: str, lang: str = "en") -> bytes | None:
         """

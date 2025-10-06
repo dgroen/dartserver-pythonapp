@@ -2,9 +2,6 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": "../dartserver"
 		}
 	],
 	"settings": {
@@ -28,6 +25,35 @@
 				"database": "dartserver"
 			}
 		],
-		"git.ignoreLimitWarning": true
+		"git.ignoreLimitWarning": true,
+		"zencoder.mcpServers": {
+			"playwright": {
+				"command": "npx",
+				"args": [
+					"-y",
+					"@playwright/mcp@latest",
+					"--isolated",
+					"--headless",
+					"--browser",
+					"firefox",
+					"--user-agent",
+					"\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.112 Safari/537.3\""
+				]
+			},
+			"github": {
+				"command": "docker",
+				"args": [
+					"run",
+					"-i",
+					"--rm",
+					"-e",
+					"GITHUB_PERSONAL_ACCESS_TOKEN",
+					"ghcr.io/github/github-mcp-server"
+				],
+				"env": {
+					"GITHUB_PERSONAL_ACCESS_TOKEN": "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"
+				}
+			}
+		}
 	}
 }

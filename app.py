@@ -589,6 +589,80 @@ def test_tts():
     return jsonify({"status": "error", "message": "TTS test failed"}), 500
 
 
+@app.route("/api/tts/generate", methods=["POST"])
+def generate_tts_audio():
+    """Generate TTS audio data
+    ---
+    tags:
+      - TTS
+    summary: Generate TTS audio
+    description: Generates audio data for the provided text using the current TTS configuration
+    parameters:
+      - in: body
+        name: body
+        description: Text to convert to speech
+        required: true
+        schema:
+          type: object
+          required:
+            - text
+          properties:
+            text:
+              type: string
+              description: Text to convert to speech
+              example: Hello, this is a test
+            lang:
+              type: string
+              description: Language code (for gTTS)
+              example: en
+              default: en
+    responses:
+      200:
+        description: Audio data generated successfully
+        content:
+          audio/mpeg:
+            schema:
+              type: string
+              format: binary
+      400:
+        description: Bad request
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: error
+            message:
+              type: string
+              example: Text is required
+      500:
+        description: TTS generation failed
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: error
+            message:
+              type: string
+              example: Failed to generate audio
+    """
+    from flask import Response
+
+    data = request.json
+    text = data.get("text")
+    lang = data.get("lang", "en")
+
+    if not text:
+        return jsonify({"status": "error", "message": "Text is required"}), 400
+
+    audio_data = game_manager.tts.generate_audio_data(text, lang)
+
+    if audio_data:
+        return Response(audio_data, mimetype="audio/mpeg")
+    return jsonify({"status": "error", "message": "Failed to generate audio"}), 500
+
+
 # SocketIO Events
 @socketio.on("connect", namespace="/")
 def handle_connect():
