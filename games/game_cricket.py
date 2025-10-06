@@ -71,6 +71,36 @@ class GameCricket:
             for i, player in enumerate(self.players):
                 player["id"] = i
 
+    def process_score(self, base_score, multiplier_type):
+        """
+        Process a score (wrapper for process_throw)
+
+        Args:
+            base_score: Base score value
+            multiplier_type: Type of multiplier (SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL)
+
+        Returns:
+            Dictionary with result information
+        """
+        # Find current player
+        current_player_id = 0
+        for i, player in enumerate(self.players):
+            if player.get("is_turn", False):
+                current_player_id = i
+                break
+
+        # Convert multiplier type to numeric value
+        multiplier_map = {
+            "SINGLE": 1,
+            "DOUBLE": 2,
+            "TRIPLE": 3,
+            "BULL": 1,
+            "DBLBULL": 2,
+        }
+        multiplier = multiplier_map.get(multiplier_type, 1)
+
+        return self.process_throw(current_player_id, base_score, multiplier, multiplier_type)
+
     def process_throw(self, player_id, base_score, multiplier, _multiplier_type):
         """
         Process a dart throw
@@ -146,6 +176,11 @@ class GameCricket:
         """Close a target for all players"""
         for player in self.players:
             player["targets"][target]["status"] = 2
+
+    def set_current_player(self, player_id):
+        """Set the current player"""
+        for i, player in enumerate(self.players):
+            player["is_turn"] = i == player_id
 
     def _check_winner(self, player_id):
         """

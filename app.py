@@ -57,6 +57,7 @@ swagger_template = {
         {"name": "Game", "description": "Game management endpoints"},
         {"name": "Players", "description": "Player management endpoints"},
         {"name": "Score", "description": "Score submission endpoints"},
+        {"name": "TTS", "description": "Text-to-Speech configuration endpoints"},
         {"name": "UI", "description": "User interface endpoints"},
     ],
 }
@@ -402,21 +403,281 @@ def submit_score():
     return jsonify({"status": "success", "message": "Score submitted"})
 
 
+@app.route("/api/tts/config", methods=["GET"])
+def get_tts_config():
+    """Get TTS configuration
+    ---
+    tags:
+      - TTS
+    summary: Get TTS configuration
+    description: Returns the current TTS configuration including speed, voice, and enabled status
+    responses:
+      200:
+        description: TTS configuration
+        schema:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+              description: Whether TTS is enabled
+            engine:
+              type: string
+              description: TTS engine name
+            speed:
+              type: integer
+              description: Speech speed (words per minute)
+            volume:
+              type: number
+              description: Volume level (0.0 to 1.0)
+            voice:
+              type: string
+              description: Current voice type
+    """
+    return jsonify(
+        {
+            "enabled": game_manager.tts.is_enabled(),
+            "engine": game_manager.tts.engine_name,
+            "speed": game_manager.tts.speed,
+            "volume": game_manager.tts.volume,
+            "voice": game_manager.tts.voice_type,
+        },
+    )
+
+
+@app.route("/api/tts/config", methods=["POST"])
+def update_tts_config():
+    """Update TTS configuration
+    ---
+    tags:
+      - TTS
+    summary: Update TTS configuration
+    description: Updates TTS settings such as speed, voice, and enabled status
+    parameters:
+      - in: body
+        name: body
+        description: TTS configuration
+        required: true
+        schema:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+              description: Enable or disable TTS
+              example: true
+            speed:
+              type: integer
+              description: Speech speed (words per minute, typically 100-200)
+              example: 150
+            volume:
+              type: number
+              description: Volume level (0.0 to 1.0)
+              example: 1.0
+            voice:
+              type: string
+              description: Voice type identifier
+              example: default
+    responses:
+      200:
+        description: Configuration updated successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: TTS configuration updated
+    """
+    data = request.json
+
+    if "enabled" in data:
+        if data["enabled"]:
+            game_manager.tts.enable()
+        else:
+            game_manager.tts.disable()
+
+    if "speed" in data:
+        game_manager.tts.set_speed(int(data["speed"]))
+
+    if "volume" in data:
+        game_manager.tts.set_volume(float(data["volume"]))
+
+    if "voice" in data:
+        game_manager.tts.set_voice(data["voice"])
+
+    return jsonify({"status": "success", "message": "TTS configuration updated"})
+
+
+@app.route("/api/tts/voices", methods=["GET"])
+def get_tts_voices():
+    """Get available TTS voices
+    ---
+    tags:
+      - TTS
+    summary: Get available TTS voices
+    description: Returns a list of available voices for the current TTS engine
+    responses:
+      200:
+        description: List of available voices
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: Voice ID
+              name:
+                type: string
+                description: Voice name
+              languages:
+                type: array
+                items:
+                  type: string
+                description: Supported languages
+              gender:
+                type: string
+                description: Voice gender
+    """
+    voices = game_manager.tts.get_available_voices()
+    return jsonify(voices)
+
+
+@app.route("/api/tts/test", methods=["POST"])
+def test_tts():
+    """Test TTS with custom text
+    ---
+    tags:
+      - TTS
+    summary: Test TTS
+    description: Speaks the provided text using the current TTS configuration
+    parameters:
+      - in: body
+        name: body
+        description: Text to speak
+        required: true
+        schema:
+          type: object
+          required:
+            - text
+          properties:
+            text:
+              type: string
+              description: Text to speak
+              example: Hello, this is a test
+    responses:
+      200:
+        description: TTS test completed
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: TTS test completed
+    """
+    data = request.json
+    text = data.get("text", "This is a test")
+
+    success = game_manager.tts.speak(text)
+
+    if success:
+        return jsonify({"status": "success", "message": "TTS test completed"})
+    return jsonify({"status": "error", "message": "TTS test failed"}), 500
+
+
+@app.route("/api/tts/generate", methods=["POST"])
+def generate_tts_audio():
+    """Generate TTS audio data
+    ---
+    tags:
+      - TTS
+    summary: Generate TTS audio
+    description: Generates audio data for the provided text using the current TTS configuration
+    parameters:
+      - in: body
+        name: body
+        description: Text to convert to speech
+        required: true
+        schema:
+          type: object
+          required:
+            - text
+          properties:
+            text:
+              type: string
+              description: Text to convert to speech
+              example: Hello, this is a test
+            lang:
+              type: string
+              description: Language code (for gTTS)
+              example: en
+              default: en
+    responses:
+      200:
+        description: Audio data generated successfully
+        content:
+          audio/mpeg:
+            schema:
+              type: string
+              format: binary
+      400:
+        description: Bad request
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: error
+            message:
+              type: string
+              example: Text is required
+      500:
+        description: TTS generation failed
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: error
+            message:
+              type: string
+              example: Failed to generate audio
+    """
+    from flask import Response
+
+    data = request.json
+    text = data.get("text")
+    lang = data.get("lang", "en")
+
+    if not text:
+        return jsonify({"status": "error", "message": "Text is required"}), 400
+
+    audio_data = game_manager.tts.generate_audio_data(text, lang)
+
+    if audio_data:
+        return Response(audio_data, mimetype="audio/mpeg")
+    return jsonify({"status": "error", "message": "Failed to generate audio"}), 500
+
+
 # SocketIO Events
-@socketio.on("connect")
+@socketio.on("connect", namespace="/")
 def handle_connect():
     """Handle client connection"""
     print("Client connected")
-    emit("game_state", game_manager.get_game_state())
+    emit("game_state", game_manager.get_game_state(), namespace="/")
 
 
-@socketio.on("disconnect")
+@socketio.on("disconnect", namespace="/")
 def handle_disconnect():
     """Handle client disconnection"""
     print("Client disconnected")
 
 
-@socketio.on("new_game")
+@socketio.on("new_game", namespace="/")
 def handle_new_game(data):
     """Handle new game request"""
     game_type = data.get("game_type", "301")
@@ -425,14 +686,14 @@ def handle_new_game(data):
     game_manager.new_game(game_type, player_names, double_out)
 
 
-@socketio.on("add_player")
+@socketio.on("add_player", namespace="/")
 def handle_add_player(data):
     """Handle add player request"""
     player_name = data.get("name", f"Player {len(game_manager.players) + 1}")
     game_manager.add_player(player_name)
 
 
-@socketio.on("remove_player")
+@socketio.on("remove_player", namespace="/")
 def handle_remove_player(data):
     """Handle remove player request"""
     player_id = data.get("player_id")
@@ -440,13 +701,13 @@ def handle_remove_player(data):
         game_manager.remove_player(player_id)
 
 
-@socketio.on("next_player")
+@socketio.on("next_player", namespace="/")
 def handle_next_player():
     """Handle next player request"""
     game_manager.next_player()
 
 
-@socketio.on("skip_to_player")
+@socketio.on("skip_to_player", namespace="/")
 def handle_skip_to_player(data):
     """Handle skip to specific player"""
     player_id = data.get("player_id")
@@ -454,7 +715,7 @@ def handle_skip_to_player(data):
         game_manager.skip_to_player(player_id)
 
 
-@socketio.on("manual_score")
+@socketio.on("manual_score", namespace="/")
 def handle_manual_score(data):
     """Handle manual score entry"""
     game_manager.process_score(data)

@@ -1,10 +1,14 @@
 """Pytest configuration and fixtures."""
 
+import os
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+
+# Disable TTS during tests to avoid timing issues
+os.environ["TTS_ENABLED"] = "false"
 
 from app import app
 

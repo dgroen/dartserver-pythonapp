@@ -78,7 +78,10 @@ class TestGameManager:
         manager = GameManager(mock_socketio)
         manager.new_game("301", ["Alice", "Bob"])
         manager.remove_player(0)
-        assert len(manager.players) == 2  # Should not remove
+        assert len(manager.players) == 1  # Should allow single player
+        # Try to remove the last player
+        manager.remove_player(0)
+        assert len(manager.players) == 1  # Should not remove last player
 
     def test_process_score_single(self, mock_socketio):
         """Test processing a single score."""
@@ -182,19 +185,23 @@ class TestGameManager:
         """Test emitting sound."""
         manager = GameManager(mock_socketio)
         manager._emit_sound("test_sound")
-        mock_socketio.emit.assert_called_with("play_sound", {"sound": "test_sound"})
+        mock_socketio.emit.assert_called_with("play_sound", {"sound": "test_sound"}, namespace="/")
 
     def test_emit_video(self, mock_socketio):
         """Test emitting video."""
         manager = GameManager(mock_socketio)
         manager._emit_video("test.mp4", 90)
-        mock_socketio.emit.assert_called_with("play_video", {"video": "test.mp4", "angle": 90})
+        mock_socketio.emit.assert_called_with(
+            "play_video",
+            {"video": "test.mp4", "angle": 90},
+            namespace="/",
+        )
 
     def test_emit_message(self, mock_socketio):
         """Test emitting message."""
         manager = GameManager(mock_socketio)
         manager._emit_message("Test message")
-        mock_socketio.emit.assert_called_with("message", {"text": "Test message"})
+        mock_socketio.emit.assert_called_with("message", {"text": "Test message"}, namespace="/")
 
     def test_get_angle(self, mock_socketio):
         """Test getting angle for score."""

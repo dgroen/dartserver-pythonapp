@@ -246,7 +246,7 @@ class TestGameManagerEdgeCases:
         game_manager._emit_sound("test_sound")
 
         # Should emit play_sound event
-        socketio.emit.assert_called_with("play_sound", {"sound": "test_sound"})
+        socketio.emit.assert_called_with("play_sound", {"sound": "test_sound"}, namespace="/")
 
     def test_emit_video(self, game_manager, socketio):
         """Test _emit_video method."""
@@ -254,7 +254,11 @@ class TestGameManagerEdgeCases:
         game_manager._emit_video("test_video.mp4", 45)
 
         # Should emit play_video event
-        socketio.emit.assert_called_with("play_video", {"video": "test_video.mp4", "angle": 45})
+        socketio.emit.assert_called_with(
+            "play_video",
+            {"video": "test_video.mp4", "angle": 45},
+            namespace="/",
+        )
 
     def test_emit_message(self, game_manager, socketio):
         """Test _emit_message method."""
@@ -262,7 +266,7 @@ class TestGameManagerEdgeCases:
         game_manager._emit_message("Test message")
 
         # Should emit message event
-        socketio.emit.assert_called_with("message", {"text": "Test message"})
+        socketio.emit.assert_called_with("message", {"text": "Test message"}, namespace="/")
 
     def test_emit_big_message(self, game_manager, socketio):
         """Test _emit_big_message method."""
@@ -270,7 +274,7 @@ class TestGameManagerEdgeCases:
         game_manager._emit_big_message("Big test message")
 
         # Should emit big_message event
-        socketio.emit.assert_called_with("big_message", {"text": "Big test message"})
+        socketio.emit.assert_called_with("big_message", {"text": "Big test message"}, namespace="/")
 
     def test_new_game_401(self, game_manager):
         """Test starting a 401 game."""

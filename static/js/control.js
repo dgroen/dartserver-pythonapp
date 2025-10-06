@@ -33,6 +33,12 @@ socket.on('game_state', (state) => {
     updateDisplay(state);
 });
 
+// TTS audio event
+socket.on('play_tts', (data) => {
+    console.log('Play TTS:', data.text);
+    playTTSAudio(data.audio, data.text);
+});
+
 // Event Listeners
 newGameBtn.addEventListener('click', () => {
     const gameType = gameTypeSelect.value;
@@ -199,4 +205,44 @@ quickScores.forEach(score => {
 const manualScoreSection = document.querySelector('.control-section:nth-child(4)');
 if (manualScoreSection) {
     manualScoreSection.appendChild(quickScoresContainer);
+}
+
+// TTS Audio playback function
+function playTTSAudio(audioBase64, text) {
+    try {
+        // Decode base64 audio data
+        const binaryString = atob(audioBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Create blob from audio data
+        const blob = new Blob([bytes], { type: 'audio/mpeg' });
+        const audioUrl = URL.createObjectURL(blob);
+        
+        // Create and play audio element
+        const audio = new Audio(audioUrl);
+        
+        // Clean up the object URL after playing
+        audio.onended = () => {
+            URL.revokeObjectURL(audioUrl);
+        };
+        
+        // Handle errors
+        audio.onerror = (e) => {
+            console.error('TTS audio playback error:', e);
+            URL.revokeObjectURL(audioUrl);
+        };
+        
+        // Play the audio
+        audio.play().catch(e => {
+            console.error('TTS audio play failed:', e);
+            URL.revokeObjectURL(audioUrl);
+        });
+        
+        console.log(`Playing TTS audio: "${text}"`);
+    } catch (error) {
+        console.error('Error processing TTS audio:', error);
+    }
 }
