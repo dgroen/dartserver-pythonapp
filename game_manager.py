@@ -2,8 +2,11 @@
 Game Manager for handling game logic
 """
 
+import os
+
 from games.game_301 import Game301
 from games.game_cricket import GameCricket
+from tts_service import TTSService
 
 
 class GameManager:
@@ -39,6 +42,23 @@ class GameManager:
             "ha-ha",
         ]
         self.turn_sounds = ["ThrowDarts", "fireAway", "showMe", "yerTurn", "yerUp", "letErFly"]
+
+        # Initialize TTS service
+        tts_enabled = os.getenv("TTS_ENABLED", "true").lower() == "true"
+        tts_engine = os.getenv("TTS_ENGINE", "pyttsx3")
+        tts_speed = int(os.getenv("TTS_SPEED", "150"))
+        tts_volume = float(os.getenv("TTS_VOLUME", "0.9"))
+        tts_voice = os.getenv("TTS_VOICE", "default")
+
+        self.tts = TTSService(
+            engine=tts_engine,
+            voice_type=tts_voice,
+            speed=tts_speed,
+            volume=tts_volume,
+        )
+
+        if not tts_enabled:
+            self.tts.disable()
 
     def new_game(self, game_type="301", player_names=None, double_out=False):
         """
@@ -81,8 +101,10 @@ class GameManager:
 
         # Emit game state
         self._emit_game_state()
-        self._emit_sound("intro")
-        self._emit_message(f"{self.players[self.current_player]['name']}, Throw Darts")
+        self._emit_sound("intro", "Welcome to the game")
+        message = f"{self.players[self.current_player]['name']}, Throw Darts"
+        self._emit_message(message)
+        self._emit_sound("yerTurn", message)
 
         print(
             f"New {self.game_type} game started with {len(self.players)} \
@@ -106,7 +128,7 @@ class GameManager:
             self.game.add_player({"name": name, "id": player_id})
 
         self._emit_game_state()
-        self._emit_sound("addPlayer")
+        self._emit_sound("addPlayer", f"Player {name} added")
         print(f"Player added: {name}")
 
     def remove_player(self, player_id):
@@ -131,7 +153,7 @@ class GameManager:
                 self.game.remove_player(player_id)
 
             self._emit_game_state()
-            self._emit_sound("removePlayer")
+            self._emit_sound("removePlayer", f"Player {removed_player['name']} removed")
             print(f"Player removed: {removed_player['name']}")
 
     def process_score(self, score_data):
@@ -148,11 +170,40 @@ class GameManager:
         if not self._is_valid_score(base_score):
             return
 
+        result = None
         if self.game:
-            self.game.process_score(base_score, multiplier)
+            result = self.game.process_score(base_score, multiplier)
+
+        # Handle game events
+        if result:
+            # Convert multiplier string to numeric for effects
+            multiplier_map = {
+                "SINGLE": 1,
+                "DOUBLE": 2,
+                "TRIPLE": 3,
+                "BULL": 1,
+                "DBLBULL": 2,
+            }
+            multiplier_value = multiplier_map.get(multiplier, 1)
+            actual_score = base_score * multiplier_value
+
+            # Emit throw effects
+            self._emit_throw_effects(multiplier, base_score, actual_score)
+
+            # Check for bust
+            if result.get("bust"):
+                self._handle_bust(result)
+            # Check for winner
+            elif result.get("winner"):
+                self._handle_winner(result.get("player_id", self.current_player))
+            # Check if turn is complete (after incrementing)
+            else:
+                # Increment throw counter
+                self.current_throw += 1
+                if self.current_throw > self.throws_per_turn:
+                    self._end_turn()
 
         self._emit_game_state()
-        self._emit_sound("processScore")
         print(f"Score processed: {base_score} {multiplier}")
 
     def _parse_score_data(self, score_data):
@@ -194,9 +245,14 @@ class GameManager:
         self.current_throw = 1
         self.is_paused = False
 
+        # Update current player in game object
+        if self.game:
+            self.game.set_current_player(self.current_player)
+
         self._emit_game_state()
-        self._emit_sound(f"Player{self.current_player + 1}")
-        self._emit_message(f"{self.players[self.current_player]['name']}, Throw Darts")
+        message = f"{self.players[self.current_player]['name']}, Throw Darts"
+        self._emit_sound(f"Player{self.current_player + 1}", message)
+        self._emit_message(message)
 
     def skip_to_player(self, player_id):
         """Skip to a specific player"""
@@ -207,9 +263,14 @@ class GameManager:
         self.current_throw = 1
         self.is_paused = False
 
+        # Update current player in game object
+        if self.game:
+            self.game.set_current_player(self.current_player)
+
         self._emit_game_state()
-        self._emit_sound(f"Player{self.current_player + 1}")
-        self._emit_message(f"{self.players[self.current_player]['name']}, Throw Darts")
+        message = f"{self.players[self.current_player]['name']}, Throw Darts"
+        self._emit_sound(f"Player{self.current_player + 1}", message)
+        self._emit_message(message)
 
     def get_game_state(self):
         """Get current game state"""
@@ -237,8 +298,9 @@ class GameManager:
         self.is_paused = True
         self.current_throw = self.throws_per_turn + 1
 
-        self._emit_message("BUST! Remove Darts, Press Button to Continue")
-        self._emit_sound("Bust")
+        message = "BUST! Remove Darts, Press Button to Continue"
+        self._emit_message(message)
+        self._emit_sound("Bust", "Bust!")
         self._emit_video("bust.mp4", 0)
         self._emit_game_state()
 
@@ -248,8 +310,9 @@ class GameManager:
         self.is_paused = True
 
         winner_name = self.players[player_id]["name"]
-        self._emit_message(f"🎉 {winner_name} WINS! 🎉")
-        self._emit_sound("WeHaveAWinner")
+        message = f"{winner_name} WINS!"
+        self._emit_message(f"🎉 {message} 🎉")
+        self._emit_sound("WeHaveAWinner", f"We have a winner! {winner_name} wins!")
         self._emit_video("winner.mp4", 0)
         self._emit_game_state()
 
@@ -258,32 +321,35 @@ class GameManager:
     def _end_turn(self):
         """End the current turn"""
         self.is_paused = True
-        self._emit_message("Remove Darts, Press Button to Continue")
-        self._emit_sound("RemoveDarts")
+        message = "Remove Darts, Press Button to Continue"
+        self._emit_message(message)
+        self._emit_sound("RemoveDarts", "Remove darts")
 
     def _emit_throw_effects(self, multiplier, base_score, actual_score):
         """Emit sound and video effects for a throw"""
         self._emit_sound("Plink")
 
         if multiplier == "TRIPLE":
-            self._emit_sound("Triple")
+            self._emit_sound("Triple", f"Triple {base_score}! {actual_score} points")
             self._emit_video("triple.mp4", self._get_angle(base_score))
             message = f"TRIPLE! 3 x {base_score} = {actual_score}"
         elif multiplier == "DOUBLE":
-            self._emit_sound("Dbl")
+            self._emit_sound("Dbl", f"Double {base_score}! {actual_score} points")
             self._emit_video("double.mp4", self._get_angle(base_score))
             message = f"DOUBLE! 2 x {base_score} = {actual_score}"
         elif multiplier == "BULL":
-            self._emit_sound("Bullseye")
+            self._emit_sound("Bullseye", f"Bullseye! {actual_score} points")
             self._emit_video("bullseye.mp4", 0)
             message = f"BULLSEYE! {actual_score}"
         elif multiplier == "DBLBULL":
-            self._emit_sound("DblBullseye")
+            self._emit_sound("DblBullseye", f"Double Bullseye! {actual_score} points")
             self._emit_video("bullseye.mp4", 0)
             message = f"DOUBLE BULL! 2 x {base_score} = {actual_score}"
         else:
             self._emit_video("single.mp4", self._get_angle(base_score))
             message = str(actual_score)
+            if actual_score > 0:
+                self._emit_sound("score", f"{actual_score} points")
 
         self._emit_big_message(message)
 
@@ -297,20 +363,30 @@ class GameManager:
 
     def _emit_game_state(self):
         """Emit game state to all clients"""
-        self.socketio.emit("game_state", self.get_game_state())
+        self.socketio.emit("game_state", self.get_game_state(), namespace="/")
 
-    def _emit_sound(self, sound):
-        """Emit sound event"""
-        self.socketio.emit("play_sound", {"sound": sound})
+    def _emit_sound(self, sound, text=None):
+        """
+        Emit sound event and optionally speak text via TTS
+
+        Args:
+            sound: Sound identifier
+            text: Optional text to speak via TTS
+        """
+        self.socketio.emit("play_sound", {"sound": sound}, namespace="/")
+
+        # Use TTS if text is provided
+        if text and self.tts.is_enabled():
+            self.tts.speak(text)
 
     def _emit_video(self, video, angle):
         """Emit video event"""
-        self.socketio.emit("play_video", {"video": video, "angle": angle})
+        self.socketio.emit("play_video", {"video": video, "angle": angle}, namespace="/")
 
     def _emit_message(self, message):
         """Emit message event"""
-        self.socketio.emit("message", {"text": message})
+        self.socketio.emit("message", {"text": message}, namespace="/")
 
     def _emit_big_message(self, message):
         """Emit big message event"""
-        self.socketio.emit("big_message", {"text": message})
+        self.socketio.emit("big_message", {"text": message}, namespace="/")
