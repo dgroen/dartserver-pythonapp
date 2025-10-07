@@ -178,6 +178,29 @@ class GameManager:
         if not self._is_valid_score(base_score):
             return
 
+        # Convert multiplier string to numeric value
+        multiplier_map = {
+            "SINGLE": 1,
+            "DOUBLE": 2,
+            "TRIPLE": 3,
+            "BULL": 1,
+            "DBLBULL": 2,
+        }
+        multiplier_value = multiplier_map.get(multiplier, 1)
+
+        # Handle dartboard configuration
+        from app import app  # Import here to avoid circular dependency
+
+        if app.config["DARTBOARD_SENDS_ACTUAL_SCORE"]:
+            # Dartboard sent the actual score (e.g., 60 for triple 20)
+            # Convert to base score for game logic
+            actual_score = base_score
+            base_score = int(base_score / multiplier_value)
+        else:
+            # Dartboard sent base score (e.g., 20 for triple 20)
+            # Calculate actual score for display
+            actual_score = base_score * multiplier_value
+
         # Track this throw before processing
         throw_data = {
             "base_score": base_score,
@@ -192,22 +215,6 @@ class GameManager:
 
         # Handle game events
         if result:
-            # Convert multiplier string to numeric for effects
-            multiplier_map = {
-                "SINGLE": 1,
-                "DOUBLE": 2,
-                "TRIPLE": 3,
-                "BULL": 1,
-                "DBLBULL": 2,
-            }
-            multiplier_value = multiplier_map.get(multiplier, 1)
-            from app import app  # Import here to avoid circular dependency
-
-            if app.config["DARTBOARD_SENDS_ACTUAL_SCORE"]:
-                actual_score = base_score
-                base_score = int(base_score / multiplier_value)
-            else:
-                actual_score = base_score * multiplier_value
 
             # Emit throw effects
             self._emit_throw_effects(multiplier, base_score, actual_score)
