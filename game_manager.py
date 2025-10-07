@@ -1,6 +1,4 @@
-"""
-Game Manager for handling game logic
-"""
+"""Game Manager for handling game logic."""
 
 import base64
 import os
@@ -186,7 +184,13 @@ class GameManager:
                 "DBLBULL": 2,
             }
             multiplier_value = multiplier_map.get(multiplier, 1)
-            actual_score = base_score * multiplier_value
+            from app import app  # Import here to avoid circular dependency
+
+            if app.config["DARTBOARD_SENDS_ACTUAL_SCORE"]:
+                actual_score = base_score
+                base_score = int(base_score / multiplier_value)
+            else:
+                actual_score = base_score * multiplier_value
 
             # Emit throw effects
             self._emit_throw_effects(multiplier, base_score, actual_score)
