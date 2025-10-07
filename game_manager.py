@@ -30,6 +30,10 @@ class GameManager:
         self.start_score = 0
         self.is_winner = False
 
+        # Turn tracking for undo on bust
+        self.turn_throws = []  # List of throws in current turn
+        self.turn_start_state = None  # Game state at start of turn
+
         # Sound arrays
         self.miss_sounds = [
             "doh",
@@ -97,6 +101,11 @@ class GameManager:
         self.is_paused = False
         self.current_throw = 1
         self.is_winner = False
+
+        # Reset turn tracking
+        self.turn_throws = []
+        self.turn_start_state = None
+        self._save_turn_start_state()
 
         # Emit game state
         self._emit_game_state()
@@ -168,6 +177,14 @@ class GameManager:
 
         if not self._is_valid_score(base_score):
             return
+
+        # Track this throw before processing
+        throw_data = {
+            "base_score": base_score,
+            "multiplier": multiplier,
+            "throw_number": self.current_throw,
+        }
+        self.turn_throws.append(throw_data)
 
         result = None
         if self.game:
@@ -254,6 +271,10 @@ class GameManager:
         if self.game:
             self.game.set_current_player(self.current_player)
 
+        # Reset turn tracking for new player
+        self.turn_throws = []
+        self._save_turn_start_state()
+
         self._emit_game_state()
         message = f"{self.players[self.current_player]['name']}, Throw Darts"
         self._emit_sound(f"Player{self.current_player + 1}", message)
@@ -271,6 +292,10 @@ class GameManager:
         # Update current player in game object
         if self.game:
             self.game.set_current_player(self.current_player)
+
+        # Reset turn tracking for new player
+        self.turn_throws = []
+        self._save_turn_start_state()
 
         self._emit_game_state()
         message = f"{self.players[self.current_player]['name']}, Throw Darts"
@@ -299,7 +324,10 @@ class GameManager:
         return self.players
 
     def _handle_bust(self, _result):
-        """Handle a bust"""
+        """Handle a bust - undo all throws in the turn"""
+        # Restore game state to beginning of turn
+        self._restore_turn_start_state()
+
         self.is_paused = True
         self.current_throw = self.throws_per_turn + 1
 
@@ -308,6 +336,8 @@ class GameManager:
         self._emit_sound("Bust", "Bust!")
         self._emit_video("bust.mp4", 0)
         self._emit_game_state()
+
+        print(f"Bust! Undid {len(self.turn_throws)} throw(s) in this turn")
 
     def _handle_winner(self, player_id):
         """Handle a winner"""
@@ -407,3 +437,38 @@ class GameManager:
     def _emit_big_message(self, message):
         """Emit big message event"""
         self.socketio.emit("big_message", {"text": message}, namespace="/")
+
+    def _save_turn_start_state(self):
+        """Save the game state at the start of a turn for potential undo"""
+        if self.game:
+            import copy
+
+            # Deep copy the game state to preserve it
+            self.turn_start_state = copy.deepcopy(self.game.get_state())
+            print(f"Saved turn start state for player {self.current_player}")
+
+    def _restore_turn_start_state(self):
+        """Restore the game state to the beginning of the turn (undo all throws)"""
+        if not self.turn_start_state or not self.game:
+            print("No turn start state to restore")
+            return
+
+        import copy
+
+        # Restore the saved state
+        saved_state = copy.deepcopy(self.turn_start_state)
+
+        # Restore player data based on game type
+        if self.game_type == "cricket":
+            # Restore cricket game state
+            for i, player_data in enumerate(saved_state["players"]):
+                if i < len(self.game.players):
+                    self.game.players[i]["score"] = player_data["score"]
+                    self.game.players[i]["targets"] = copy.deepcopy(player_data["targets"])
+        else:
+            # Restore 301/401/501 game state
+            for i, player_data in enumerate(saved_state["players"]):
+                if i < len(self.game.players):
+                    self.game.players[i]["score"] = player_data["score"]
+
+        print(f"Restored turn start state, undid {len(self.turn_throws)} throw(s)")

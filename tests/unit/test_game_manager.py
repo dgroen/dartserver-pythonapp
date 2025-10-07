@@ -251,3 +251,151 @@ class TestGameManager:
         # Should detect winner
         assert manager.is_winner is True
         assert manager.is_paused is True
+
+    def test_turn_tracking_initialization(self, mock_socketio):
+        """Test turn tracking is initialized."""
+        manager = GameManager(mock_socketio)
+        assert manager.turn_throws == []
+        assert manager.turn_start_state is None
+
+    def test_turn_tracking_on_new_game(self, mock_socketio):
+        """Test turn tracking is set up on new game."""
+        manager = GameManager(mock_socketio)
+        manager.new_game("301", ["Alice", "Bob"])
+        assert manager.turn_throws == []
+        assert manager.turn_start_state is not None
+
+    def test_turn_tracking_records_throws(self, mock_socketio):
+        """Test that throws are recorded during a turn."""
+        manager = GameManager(mock_socketio)
+        manager.new_game("301", ["Alice", "Bob"])
+
+        # Make first throw
+        score_data = {"score": 20, "multiplier": "SINGLE"}
+        manager.process_score(score_data)
+        assert len(manager.turn_throws) == 1
+        assert manager.turn_throws[0]["base_score"] == 20
+        assert manager.turn_throws[0]["multiplier"] == "SINGLE"
+
+        # Make second throw
+        score_data = {"score": 15, "multiplier": "DOUBLE"}
+        manager.process_score(score_data)
+        assert len(manager.turn_throws) == 2
+        assert manager.turn_throws[1]["base_score"] == 15
+        assert manager.turn_throws[1]["multiplier"] == "DOUBLE"
+
+    def test_turn_tracking_resets_on_next_player(self, mock_socketio):
+        """Test turn tracking resets when moving to next player."""
+        manager = GameManager(mock_socketio)
+        manager.new_game("301", ["Alice", "Bob"])
+
+        # Make some throws
+        score_data = {"score": 20, "multiplier": "SINGLE"}
+        manager.process_score(score_data)
+        assert len(manager.turn_throws) == 1
+
+        # Move to next player
+        manager.next_player()
+        assert len(manager.turn_throws) == 0
+        assert manager.turn_start_state is not None
+
+    def test_bust_undoes_all_throws_in_turn_301(self, mock_socketio):
+        """Test that bust undoes all throws in the turn for 301 game."""
+        manager = GameManager(mock_socketio)
+        manager.new_game("301", ["Alice", "Bob"])
+
+        # Get initial score
+        initial_score = manager.game.players[0]["score"]
+
+        # Make first throw (valid)
+        score_data = {"score": 20, "multiplier": "SINGLE"}
+        manager.process_score(score_data)
+        score_after_first = manager.game.players[0]["score"]
+        assert score_after_first == initial_score - 20
+
+        # Make second throw (valid)
+        score_data = {"score": 15, "multiplier": "SINGLE"}
+        manager.process_score(score_data)
+        score_after_second = manager.game.players[0]["score"]
+        assert score_after_second == initial_score - 35
+
+        # Make third throw that causes bust
+        score_data = {"score": 300, "multiplier": "SINGLE"}
+        manager.process_score(score_data)
+
+        # Score should be restored to initial (all throws undone)
+        assert manager.game.players[0]["score"] == initial_score
+        assert manager.is_paused is True
+
+    def test_bust_undoes_all_throws_in_turn_cricket(self, mock_socketio):
+        """Test that bust handling works for cricket (though cricket doesn't have busts)."""
+        manager = GameManager(mock_socketio)
+        manager.new_game("cricket", ["Alice", "Bob"])
+
+        # Make some throws
+        score_data = {"score": 20, "multiplier": "TRIPLE"}
+        manager.process_score(score_data)
+
+        # Verify turn tracking works
+        assert len(manager.turn_throws) == 1
+        assert manager.turn_start_state is not None
+
+    def test_save_and_restore_turn_state_301(self, mock_socketio):
+        """Test saving and restoring turn state for 301 game."""
+        manager = GameManager(mock_socketio)
+        manager.new_game("301", ["Alice", "Bob"])
+
+        initial_score = manager.game.players[0]["score"]
+
+        # Save state
+        manager._save_turn_start_state()
+
+        # Make changes
+        manager.game.players[0]["score"] = 100
+
+        # Restore state
+        manager._restore_turn_start_state()
+
+        # Should be back to initial
+        assert manager.game.players[0]["score"] == initial_score
+
+    def test_save_and_restore_turn_state_cricket(self, mock_socketio):
+        """Test saving and restoring turn state for cricket game."""
+        manager = GameManager(mock_socketio)
+        manager.new_game("cricket", ["Alice", "Bob"])
+
+        # Save initial state
+        manager._save_turn_start_state()
+
+        # Make changes
+        manager.game.players[0]["score"] = 100
+        manager.game.players[0]["targets"][20]["hits"] = 3
+
+        # Restore state
+        manager._restore_turn_start_state()
+
+        # Should be back to initial
+        assert manager.game.players[0]["score"] == 0
+        assert manager.game.players[0]["targets"][20]["hits"] == 0
+
+    def test_multiple_throws_then_bust(self, mock_socketio):
+        """Test multiple valid throws followed by a bust."""
+        manager = GameManager(mock_socketio)
+        manager.new_game("301", ["Alice", "Bob"])
+
+        initial_score = manager.game.players[0]["score"]
+
+        # Throw 1: 20 points
+        manager.process_score({"score": 20, "multiplier": "SINGLE"})
+        assert len(manager.turn_throws) == 1
+
+        # Throw 2: 30 points (triple 10)
+        manager.process_score({"score": 10, "multiplier": "TRIPLE"})
+        assert len(manager.turn_throws) == 2
+
+        # Throw 3: Bust (too much)
+        manager.process_score({"score": 300, "multiplier": "SINGLE"})
+
+        # All throws should be undone
+        assert manager.game.players[0]["score"] == initial_score
+        assert manager.is_paused is True
