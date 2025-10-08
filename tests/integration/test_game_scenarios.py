@@ -42,15 +42,15 @@ class TestGame301Scenarios:
         # Next turn: score 71 more (121 - 71 = 50)
         manager.next_player()  # Move to Bob
         manager.next_player()  # Back to Alice
-        manager.process_score({"score": 20, "multiplier": "TRIPLE"})  # 60
+        manager.process_score({"score": 60, "multiplier": "TRIPLE"})  # 60
         manager.process_score({"score": 11, "multiplier": "SINGLE"})  # 11
         assert manager.game.players[0]["score"] == 50
 
-        # Start new turn and try to score 60 (bust - would go negative)
-        manager.process_score({"score": 20, "multiplier": "TRIPLE"})  # This should bust
+        # Third throw in same turn - try to score 60 (bust - would go negative)
+        manager.process_score({"score": 60, "multiplier": "TRIPLE"})  # This should bust
 
-        # Score should remain 50 (bust undoes the turn)
-        assert manager.game.players[0]["score"] == 50
+        # Score should be restored to start of turn (121) because bust undoes entire turn
+        assert manager.game.players[0]["score"] == 121
         assert manager.is_paused is True
 
     def test_301_exact_finish(self, mock_socketio, mock_database_service):

@@ -6,9 +6,9 @@ This script provides convenient commands for managing the database,
 including migrations, seeding initial data, and viewing database status.
 """
 
+import datetime
 import os
 import sys
-from datetime import datetime
 from pathlib import Path
 
 # Add current directory to path
@@ -197,7 +197,6 @@ Examples:
   python db_manage.py status
   python db_manage.py seed
 For migration commands, use Alembic directly:
-  alembic upgrade head      # Apply all migrations
   alembic current           # Show current migration
   alembic history           # Show migration history
 

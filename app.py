@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from flasgger import Swagger
 from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO
 
 from game_manager import GameManager
 from rabbitmq_consumer import RabbitMQConsumer
@@ -812,7 +812,8 @@ def get_current_game_session_id():
 def handle_connect():
     """Handle client connection"""
     print("Client connected")
-    emit("game_state", game_manager.get_game_state(), namespace="/")
+    # Use socketio.emit to ensure the message reaches the test client
+    socketio.emit("game_state", game_manager.get_game_state(), namespace="/", to=request.sid)
 
 
 @socketio.on("disconnect", namespace="/")

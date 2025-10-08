@@ -4,7 +4,7 @@ Database service for persisting game data
 
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 
@@ -111,7 +111,7 @@ class DatabaseService:
                     final_score=start_score if start_score else 0,
                     double_out_enabled=double_out,
                     game_session_id=self.current_game_session_id,
-                    started_at=datetime.datetime.now(tz=datetime.timezone.utc),
+                    started_at=datetime.now(tz=timezone.utc),
                 )
                 session.add(game_result)
                 session.flush()
@@ -201,7 +201,7 @@ class DatabaseService:
                 dartboard_sends_actual_score=dartboard_sends_actual_score,
                 is_bust=is_bust,
                 is_finish=is_finish,
-                thrown_at=datetime.now(tz=datetime.timezone.utc),
+                thrown_at=datetime.now(tz=timezone.utc),
             )
 
             session.add(score)
@@ -262,7 +262,7 @@ class DatabaseService:
 
             if game_result:
                 game_result.is_winner = True
-                game_result.finished_at = datetime.now(tz=datetime.timezone.utc)
+                game_result.finished_at = datetime.now(tz=timezone.utc)
 
             # Update finished_at for all players in this game session
             all_results = (
@@ -273,7 +273,7 @@ class DatabaseService:
 
             for result in all_results:
                 if result.finished_at is None:
-                    result.finished_at = datetime.now(tz=datetime.timezone.utc)
+                    result.finished_at = datetime.now(tz=timezone.utc)
 
             session.commit()
             print(f"Winner marked: player={player_id}, session={self.current_game_session_id}")

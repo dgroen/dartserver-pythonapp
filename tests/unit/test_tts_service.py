@@ -134,6 +134,9 @@ class TestTTSService:
         mock_engine.getProperty.return_value = [mock_voice]
         mock_pyttsx3.init.return_value = mock_engine
 
+        # Create TTSService instance to trigger initialization
+        TTSService(engine="pyttsx3", voice_type="English Female")
+
         # Voice should be set during initialization
         assert mock_engine.setProperty.call_count >= 2  # rate, volume, and possibly voice
 
