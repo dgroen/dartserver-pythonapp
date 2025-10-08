@@ -9,10 +9,23 @@ from app import app as flask_app
 
 
 @pytest.fixture
-def app():
+def mock_auth():
+    """Mock authentication decorators."""
+    # Mock validate_token to return valid claims
+    with patch("auth.validate_token") as mock_validate:
+        mock_validate.return_value = {
+            "sub": "test-user",
+            "username": "testuser",
+            "groups": ["admin"],  # Admin role has all permissions
+            "roles": ["admin"],
+        }
+        yield mock_validate
+
+
+@pytest.fixture
+def app(mock_auth):
     """Create Flask app for testing."""
     with patch("app.start_rabbitmq_consumer"):
-
         flask_app.config["TESTING"] = True
         yield flask_app
 
@@ -20,7 +33,12 @@ def app():
 @pytest.fixture
 def client(app):
     """Create test client."""
-    return app.test_client()
+    client = app.test_client()
+    # Set up session with access token for authenticated requests
+    with client.session_transaction() as sess:
+        sess["access_token"] = "test-token"
+        sess["user_info"] = {"username": "testuser", "sub": "test-user"}
+    return client
 
 
 class TestAppEndpoints:

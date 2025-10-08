@@ -1,0 +1,463 @@
+"""Unit tests for authentication and authorization module."""
+
+import json
+from unittest.mock import Mock, patch
+
+import jwt
+from flask import Flask, jsonify
+
+from auth import (
+    get_user_roles,
+    has_permission,
+    login_required,
+    permission_required,
+    role_required,
+    validate_token,
+)
+
+
+class TestValidateToken:
+    """Test token validation functions."""
+
+    @patch("auth.JWT_VALIDATION_MODE", "jwks")
+    @patch("auth.jwks_client")
+    def test_validate_token_jwks_success(self, mock_jwks_client):
+        """Test successful token validation using JWKS."""
+        # Mock signing key
+        mock_signing_key = Mock()
+        mock_signing_key.key = "test-key"
+        mock_jwks_client.get_signing_key_from_jwt.return_value = mock_signing_key
+
+        # Mock jwt.decode
+        expected_claims = {
+            "sub": "test-user",
+            "username": "testuser",
+            "groups": ["admin"],
+        }
+
+        with patch("auth.jwt.decode", return_value=expected_claims):
+            result = validate_token("test-token")
+            assert result == expected_claims
+
+    @patch("auth.JWT_VALIDATION_MODE", "jwks")
+    @patch("auth.jwks_client")
+    def test_validate_token_jwks_expired(self, mock_jwks_client):
+        """Test token validation with expired token."""
+        mock_signing_key = Mock()
+        mock_signing_key.key = "test-key"
+        mock_jwks_client.get_signing_key_from_jwt.return_value = mock_signing_key
+
+        with patch("auth.jwt.decode", side_effect=jwt.ExpiredSignatureError):
+            result = validate_token("expired-token")
+            assert result is None
+
+    @patch("auth.JWT_VALIDATION_MODE", "jwks")
+    @patch("auth.jwks_client")
+    def test_validate_token_jwks_invalid(self, mock_jwks_client):
+        """Test token validation with invalid token."""
+        mock_signing_key = Mock()
+        mock_signing_key.key = "test-key"
+        mock_jwks_client.get_signing_key_from_jwt.return_value = mock_signing_key
+
+        with patch("auth.jwt.decode", side_effect=jwt.InvalidTokenError("Invalid")):
+            result = validate_token("invalid-token")
+            assert result is None
+
+    @patch("auth.JWT_VALIDATION_MODE", "jwks")
+    @patch("auth.jwks_client")
+    def test_validate_token_jwks_exception(self, mock_jwks_client):
+        """Test token validation with unexpected exception."""
+        mock_signing_key = Mock()
+        mock_signing_key.key = "test-key"
+        mock_jwks_client.get_signing_key_from_jwt.return_value = mock_signing_key
+
+        with patch("auth.jwt.decode", side_effect=Exception("Unexpected error")):
+            result = validate_token("test-token")
+            assert result is None
+
+    @patch("auth.JWT_VALIDATION_MODE", "introspection")
+    @patch("auth.requests.post")
+    def test_validate_token_introspection_success(self, mock_post):
+        """Test successful token validation using introspection."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "active": True,
+            "sub": "test-user",
+            "username": "testuser",
+            "groups": ["player"],
+        }
+        mock_post.return_value = mock_response
+
+        result = validate_token("test-token")
+        assert result["sub"] == "test-user"
+        assert result["username"] == "testuser"
+        assert result["groups"] == ["player"]
+
+    @patch("auth.JWT_VALIDATION_MODE", "introspection")
+    @patch("auth.requests.post")
+    def test_validate_token_introspection_inactive(self, mock_post):
+        """Test token validation with inactive token."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"active": False}
+        mock_post.return_value = mock_response
+
+        result = validate_token("inactive-token")
+        assert result is None
+
+    @patch("auth.JWT_VALIDATION_MODE", "introspection")
+    @patch("auth.requests.post")
+    def test_validate_token_introspection_error(self, mock_post):
+        """Test token validation with introspection error."""
+        mock_response = Mock()
+        mock_response.status_code = 500
+        mock_post.return_value = mock_response
+
+        result = validate_token("test-token")
+        assert result is None
+
+    @patch("auth.JWT_VALIDATION_MODE", "introspection")
+    @patch("auth.requests.post")
+    def test_validate_token_introspection_exception(self, mock_post):
+        """Test token validation with request exception."""
+        mock_post.side_effect = Exception("Connection error")
+
+        result = validate_token("test-token")
+        assert result is None
+
+
+class TestGetUserRoles:
+    """Test user role extraction."""
+
+    def test_get_user_roles_from_groups_list(self):
+        """Test extracting roles from groups claim as list."""
+        claims = {"groups": ["admin", "player"]}
+        roles = get_user_roles(claims)
+        assert "admin" in roles
+        assert "player" in roles
+
+    def test_get_user_roles_from_groups_string(self):
+        """Test extracting roles from groups claim as string."""
+        claims = {"groups": "admin"}
+        roles = get_user_roles(claims)
+        assert "admin" in roles
+
+    def test_get_user_roles_from_roles_list(self):
+        """Test extracting roles from roles claim as list."""
+        claims = {"roles": ["gamemaster", "player"]}
+        roles = get_user_roles(claims)
+        assert "gamemaster" in roles
+        assert "player" in roles
+
+    def test_get_user_roles_from_roles_string(self):
+        """Test extracting roles from roles claim as string."""
+        claims = {"roles": "player"}
+        roles = get_user_roles(claims)
+        assert "player" in roles
+
+    def test_get_user_roles_from_both_claims(self):
+        """Test extracting roles from both groups and roles claims."""
+        claims = {"groups": ["admin"], "roles": ["player"]}
+        roles = get_user_roles(claims)
+        assert "admin" in roles
+        assert "player" in roles
+
+    def test_get_user_roles_normalize_with_prefix(self):
+        """Test role normalization with domain prefix."""
+        claims = {"groups": ["Internal/admin", "Application/player"]}
+        roles = get_user_roles(claims)
+        assert "admin" in roles
+        assert "player" in roles
+
+    def test_get_user_roles_empty_claims(self):
+        """Test extracting roles from empty claims."""
+        claims = {}
+        roles = get_user_roles(claims)
+        assert roles == []
+
+    def test_get_user_roles_case_normalization(self):
+        """Test role name case normalization."""
+        claims = {"groups": ["ADMIN", "Player"]}
+        roles = get_user_roles(claims)
+        assert "admin" in roles
+        assert "player" in roles
+
+
+class TestHasPermission:
+    """Test permission checking."""
+
+    def test_has_permission_admin_wildcard(self):
+        """Test admin has all permissions."""
+        assert has_permission(["admin"], "any:permission")
+        assert has_permission(["admin"], "game:create")
+        assert has_permission(["admin"], "player:delete")
+
+    def test_has_permission_gamemaster_allowed(self):
+        """Test gamemaster has allowed permissions."""
+        assert has_permission(["gamemaster"], "game:create")
+        assert has_permission(["gamemaster"], "game:manage")
+        assert has_permission(["gamemaster"], "player:add")
+
+    def test_has_permission_gamemaster_denied(self):
+        """Test gamemaster doesn't have admin permissions."""
+        assert not has_permission(["gamemaster"], "system:admin")
+
+    def test_has_permission_player_allowed(self):
+        """Test player has allowed permissions."""
+        assert has_permission(["player"], "game:view")
+        assert has_permission(["player"], "score:submit")
+
+    def test_has_permission_player_denied(self):
+        """Test player doesn't have management permissions."""
+        assert not has_permission(["player"], "game:create")
+        assert not has_permission(["player"], "player:remove")
+
+    def test_has_permission_multiple_roles(self):
+        """Test permission check with multiple roles."""
+        assert has_permission(["player", "gamemaster"], "game:create")
+        assert has_permission(["player", "gamemaster"], "score:submit")
+
+    def test_has_permission_no_roles(self):
+        """Test permission check with no roles."""
+        assert not has_permission([], "game:view")
+
+    def test_has_permission_unknown_role(self):
+        """Test permission check with unknown role."""
+        assert not has_permission(["unknown"], "game:view")
+
+
+class TestLoginRequired:
+    """Test login_required decorator."""
+
+    def test_login_required_with_valid_token(self):
+        """Test login_required allows access with valid token."""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret"
+
+        @app.route("/protected")
+        @login_required
+        def protected_route():
+            return jsonify({"message": "success"})
+
+        with app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["access_token"] = "test-token"
+
+            with patch("auth.validate_token") as mock_validate:
+                mock_validate.return_value = {
+                    "sub": "test-user",
+                    "username": "testuser",
+                    "groups": ["player"],
+                }
+
+                response = client.get("/protected")
+                assert response.status_code == 200
+                data = json.loads(response.data)
+                assert data["message"] == "success"
+
+    def test_login_required_without_token(self):
+        """Test login_required redirects without token."""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret"
+
+        @app.route("/login")
+        def login():
+            return jsonify({"message": "login page"})
+
+        @app.route("/protected")
+        @login_required
+        def protected_route():
+            return jsonify({"message": "success"})
+
+        with app.test_client() as client:
+            response = client.get("/protected")
+            assert response.status_code == 302
+            assert "/login" in response.location
+
+    def test_login_required_with_invalid_token(self):
+        """Test login_required redirects with invalid token."""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret"
+
+        @app.route("/login")
+        def login():
+            return jsonify({"message": "login page"})
+
+        @app.route("/protected")
+        @login_required
+        def protected_route():
+            return jsonify({"message": "success"})
+
+        with app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["access_token"] = "invalid-token"
+
+            with patch("auth.validate_token", return_value=None):
+                response = client.get("/protected")
+                assert response.status_code == 302
+                assert "/login" in response.location
+
+
+class TestRoleRequired:
+    """Test role_required decorator."""
+
+    def test_role_required_with_correct_role(self):
+        """Test role_required allows access with correct role."""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret"
+
+        @app.route("/admin")
+        @role_required("admin")
+        def admin_route():
+            return jsonify({"message": "admin access"})
+
+        with app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["access_token"] = "test-token"
+
+            with patch("auth.validate_token") as mock_validate:
+                mock_validate.return_value = {
+                    "sub": "test-user",
+                    "username": "testuser",
+                    "groups": ["admin"],
+                }
+
+                response = client.get("/admin")
+                assert response.status_code == 200
+                data = json.loads(response.data)
+                assert data["message"] == "admin access"
+
+    def test_role_required_with_wrong_role(self):
+        """Test role_required denies access with wrong role."""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret"
+
+        @app.route("/admin")
+        @role_required("admin")
+        def admin_route():
+            return jsonify({"message": "admin access"})
+
+        with app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["access_token"] = "test-token"
+
+            with patch("auth.validate_token") as mock_validate:
+                mock_validate.return_value = {
+                    "sub": "test-user",
+                    "username": "testuser",
+                    "groups": ["player"],
+                }
+
+                response = client.get("/admin")
+                assert response.status_code == 403
+                data = json.loads(response.data)
+                assert "error" in data
+
+    def test_role_required_multiple_roles(self):
+        """Test role_required with multiple allowed roles."""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret"
+
+        @app.route("/manage")
+        @role_required("admin", "gamemaster")
+        def manage_route():
+            return jsonify({"message": "management access"})
+
+        with app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["access_token"] = "test-token"
+
+            with patch("auth.validate_token") as mock_validate:
+                mock_validate.return_value = {
+                    "sub": "test-user",
+                    "username": "testuser",
+                    "groups": ["gamemaster"],
+                }
+
+                response = client.get("/manage")
+                assert response.status_code == 200
+                data = json.loads(response.data)
+                assert data["message"] == "management access"
+
+
+class TestPermissionRequired:
+    """Test permission_required decorator."""
+
+    def test_permission_required_with_permission(self):
+        """Test permission_required allows access with permission."""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret"
+
+        @app.route("/create-game")
+        @permission_required("game:create")
+        def create_game():
+            return jsonify({"message": "game created"})
+
+        with app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["access_token"] = "test-token"
+
+            with patch("auth.validate_token") as mock_validate:
+                mock_validate.return_value = {
+                    "sub": "test-user",
+                    "username": "testuser",
+                    "groups": ["gamemaster"],
+                }
+
+                response = client.get("/create-game")
+                assert response.status_code == 200
+                data = json.loads(response.data)
+                assert data["message"] == "game created"
+
+    def test_permission_required_without_permission(self):
+        """Test permission_required denies access without permission."""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret"
+
+        @app.route("/create-game")
+        @permission_required("game:create")
+        def create_game():
+            return jsonify({"message": "game created"})
+
+        with app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["access_token"] = "test-token"
+
+            with patch("auth.validate_token") as mock_validate:
+                mock_validate.return_value = {
+                    "sub": "test-user",
+                    "username": "testuser",
+                    "groups": ["player"],
+                }
+
+                response = client.get("/create-game")
+                assert response.status_code == 403
+                data = json.loads(response.data)
+                assert "error" in data
+
+    def test_permission_required_admin_wildcard(self):
+        """Test permission_required allows admin with wildcard."""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret"
+
+        @app.route("/any-action")
+        @permission_required("any:permission")
+        def any_action():
+            return jsonify({"message": "action performed"})
+
+        with app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["access_token"] = "test-token"
+
+            with patch("auth.validate_token") as mock_validate:
+                mock_validate.return_value = {
+                    "sub": "test-user",
+                    "username": "testuser",
+                    "groups": ["admin"],
+                }
+
+                response = client.get("/any-action")
+                assert response.status_code == 200
+                data = json.loads(response.data)
+                assert data["message"] == "action performed"
