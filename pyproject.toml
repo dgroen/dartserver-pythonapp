@@ -286,8 +286,14 @@ omit = [
     "*/examples/*",
     "*/build/*",
     "*/docs/*",
+    "*/alembic/*",
     "verify_installation.py",
+    "verify_tts_integration.py",
     "test_rabbitmq.py",
+    "test_tts*.py",
+    "db_manage.py",
+    "setup.py",
+    "bridge_nodejs_to_rabbitmq.js",
 ]
 branch = true
 parallel = true

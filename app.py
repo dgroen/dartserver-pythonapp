@@ -664,6 +664,150 @@ def generate_tts_audio():
 
 
 # SocketIO Events
+@app.route("/api/game/history", methods=["GET"])
+def get_game_history():
+    """Get recent game history
+    ---
+    tags:
+      - Game
+    summary: Get recent game history
+    description: Returns a list of recent games with basic information
+    parameters:
+      - in: query
+        name: limit
+        type: integer
+        description: Maximum number of games to return
+        default: 10
+        example: 10
+    responses:
+      200:
+        description: List of recent games
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            games:
+              type: array
+              items:
+                type: object
+                properties:
+                  game_session_id:
+                    type: string
+                    description: Unique game session ID
+                  game_type:
+                    type: string
+                    description: Type of game
+                  player_count:
+                    type: integer
+                    description: Number of players
+                  winner:
+                    type: string
+                    description: Winner name
+                  started_at:
+                    type: string
+                    description: Game start timestamp
+                  finished_at:
+                    type: string
+                    description: Game finish timestamp
+    """
+    limit = request.args.get("limit", 10, type=int)
+    try:
+        games = game_manager.db_service.get_recent_games(limit=limit)
+        return jsonify({"status": "success", "games": games})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/game/replay/<game_session_id>", methods=["GET"])
+def get_game_replay(game_session_id):
+    """Get game replay data
+    ---
+    tags:
+      - Game
+    summary: Get complete game replay data
+    description: Returns all data needed to replay a specific game including all throws in sequence
+    parameters:
+      - in: path
+        name: game_session_id
+        type: string
+        required: true
+        description: Game session ID
+    responses:
+      200:
+        description: Complete game replay data
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            game_data:
+              type: object
+              properties:
+                game_session_id:
+                  type: string
+                  description: Game session ID
+                game_type:
+                  type: string
+                  description: Type of game
+                double_out_enabled:
+                  type: boolean
+                  description: Whether double-out was enabled
+                started_at:
+                  type: string
+                  description: Game start timestamp
+                finished_at:
+                  type: string
+                  description: Game finish timestamp
+                players:
+                  type: array
+                  description: Player information
+                throws:
+                  type: array
+                  description: All throws in chronological order
+      404:
+        description: Game not found
+    """
+    try:
+        game_data = game_manager.db_service.get_game_replay_data(game_session_id)
+        if game_data:
+            return jsonify({"status": "success", "game_data": game_data})
+        return jsonify({"status": "error", "message": "Game not found"}), 404
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/game/current/session_id", methods=["GET"])
+def get_current_game_session_id():
+    """Get current game session ID
+    ---
+    tags:
+      - Game
+    summary: Get current game session ID
+    description: Returns the session ID of the currently active game
+    responses:
+      200:
+        description: Current game session ID
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            game_session_id:
+              type: string
+              description: Current game session ID (null if no active game)
+    """
+    return jsonify(
+        {
+            "status": "success",
+            "game_session_id": game_manager.db_service.current_game_session_id,
+        },
+    )
+
+
 @socketio.on("connect", namespace="/")
 def handle_connect():
     """Handle client connection"""

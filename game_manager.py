@@ -3,6 +3,7 @@
 import base64
 import os
 
+from database_service import DatabaseService
 from games.game_301 import Game301
 from games.game_cricket import GameCricket
 from tts_service import TTSService
@@ -29,10 +30,19 @@ class GameManager:
         self.throws_per_turn = 3
         self.start_score = 0
         self.is_winner = False
+        self.double_out = False
 
         # Turn tracking for undo on bust
         self.turn_throws = []  # List of throws in current turn
         self.turn_start_state = None  # Game state at start of turn
+        self.turn_number = {}  # Track turn number per player
+
+        # Initialize database service
+        self.db_service = DatabaseService()
+        try:
+            self.db_service.initialize_database()
+        except Exception as e:
+            print(f"Warning: Could not initialize database: {e}")
 
         # Sound arrays
         self.miss_sounds = [
@@ -73,6 +83,7 @@ class GameManager:
             double_out: Whether to require double-out to finish (only for 301/401/501)
         """
         self.game_type = game_type.lower()
+        self.double_out = double_out
 
         # Initialize players
         if player_names:
@@ -86,6 +97,7 @@ class GameManager:
         # Create appropriate game instance
         if self.game_type == "cricket":
             self.game = GameCricket(self.players)
+            self.start_score = 0
         else:
             # Default to 301, but support 401, 501
             start_score = 301
@@ -93,6 +105,7 @@ class GameManager:
                 start_score = 401
             elif self.game_type == "501":
                 start_score = 501
+            self.start_score = start_score
             self.game = Game301(self.players, start_score, double_out)
 
         # Reset game state
@@ -105,7 +118,21 @@ class GameManager:
         # Reset turn tracking
         self.turn_throws = []
         self.turn_start_state = None
+        self.turn_number = dict.fromkeys(range(len(self.players)), 1)
         self._save_turn_start_state()
+
+        # Start new game in database
+        try:
+            player_name_list = [p["name"] for p in self.players]
+            self.db_service.start_new_game(
+                game_type_name=self.game_type,
+                player_names=player_name_list,
+                start_score=self.start_score if self.game_type != "cricket" else None,
+                double_out=double_out,
+            )
+            print(f"Game started in database: session_id={self.db_service.current_game_session_id}")
+        except Exception as e:
+            print(f"Warning: Could not start game in database: {e}")
 
         # Emit game state
         self._emit_game_state()
@@ -201,17 +228,26 @@ class GameManager:
             # Calculate actual score for display
             actual_score = base_score * multiplier_value
 
+        # Get score before throw
+        score_before = self._get_player_current_score(self.current_player)
+
         # Track this throw before processing
         throw_data = {
             "base_score": base_score,
             "multiplier": multiplier,
+            "multiplier_value": multiplier_value,
+            "actual_score": actual_score,
             "throw_number": self.current_throw,
+            "score_before": score_before,
         }
         self.turn_throws.append(throw_data)
 
         result = None
         if self.game:
             result = self.game.process_score(base_score, multiplier)
+
+        # Get score after throw
+        score_after = self._get_player_current_score(self.current_player)
 
         # Handle game events
         if result:
@@ -227,6 +263,18 @@ class GameManager:
                 self._handle_winner(result.get("player_id", self.current_player))
             # Check if turn is complete (after incrementing)
             else:
+                # Record throw in database (not a bust)
+                self._record_throw_in_db(
+                    base_score,
+                    multiplier,
+                    multiplier_value,
+                    actual_score,
+                    score_before,
+                    score_after,
+                    is_bust=False,
+                    is_finish=False,
+                )
+
                 # Increment throw counter
                 self.current_throw += 1
                 if self.current_throw > self.throws_per_turn:
@@ -332,6 +380,28 @@ class GameManager:
 
     def _handle_bust(self, _result):
         """Handle a bust - undo all throws in the turn"""
+        # Record the bust throw in database before undoing
+        if self.turn_throws:
+            last_throw = self.turn_throws[-1]
+            self._record_throw_in_db(
+                last_throw["base_score"],
+                last_throw["multiplier"],
+                last_throw["multiplier_value"],
+                last_throw["actual_score"],
+                last_throw["score_before"],
+                last_throw["score_before"],  # Score stays the same on bust
+                is_bust=True,
+                is_finish=False,
+            )
+
+        # Undo throws in database (except the bust throw which we just recorded)
+        throw_count = len(self.turn_throws) - 1
+        if throw_count > 0:
+            try:
+                self.db_service.undo_throws_for_bust(self.current_player, throw_count)
+            except Exception as e:
+                print(f"Warning: Could not undo throws in database: {e}")
+
         # Restore game state to beginning of turn
         self._restore_turn_start_state()
 
@@ -348,6 +418,26 @@ class GameManager:
 
     def _handle_winner(self, player_id):
         """Handle a winner"""
+        # Record the winning throw in database
+        if self.turn_throws:
+            last_throw = self.turn_throws[-1]
+            self._record_throw_in_db(
+                last_throw["base_score"],
+                last_throw["multiplier"],
+                last_throw["multiplier_value"],
+                last_throw["actual_score"],
+                last_throw["score_before"],
+                0,  # Final score is 0 for 301/401/501 games
+                is_bust=False,
+                is_finish=True,
+            )
+
+        # Mark winner in database
+        try:
+            self.db_service.mark_winner(player_id)
+        except Exception as e:
+            print(f"Warning: Could not mark winner in database: {e}")
+
         self.is_winner = True
         self.is_paused = True
 
@@ -362,6 +452,17 @@ class GameManager:
 
     def _end_turn(self):
         """End the current turn"""
+        # Update player score in database after turn completes
+        try:
+            current_score = self._get_player_current_score(self.current_player)
+            self.db_service.update_player_score(self.current_player, current_score)
+        except Exception as e:
+            print(f"Warning: Could not update player score in database: {e}")
+
+        # Increment turn number for next turn
+        if self.current_player in self.turn_number:
+            self.turn_number[self.current_player] += 1
+
         self.is_paused = True
         message = "Remove Darts, Press Button to Continue"
         self._emit_message(message)
@@ -479,3 +580,67 @@ class GameManager:
                     self.game.players[i]["score"] = player_data["score"]
 
         print(f"Restored turn start state, undid {len(self.turn_throws)} throw(s)")
+
+    def _get_player_current_score(self, player_id):
+        """
+        Get the current score for a player
+
+        Args:
+            player_id: Player ID (0-based index)
+
+        Returns:
+            Current score
+        """
+        if self.game and 0 <= player_id < len(self.game.players):
+            return self.game.players[player_id].get("score", 0)
+        return 0
+
+    def _record_throw_in_db(
+        self,
+        base_score,
+        multiplier,
+        multiplier_value,
+        actual_score,
+        score_before,
+        score_after,
+        is_bust=False,
+        is_finish=False,
+    ):
+        """
+        Record a throw in the database
+
+        Args:
+            base_score: Base score value
+            multiplier: Multiplier type string
+            multiplier_value: Numeric multiplier value
+            actual_score: Calculated actual score
+            score_before: Score before this throw
+            score_after: Score after this throw
+            is_bust: Whether this throw resulted in a bust
+            is_finish: Whether this throw won the game
+        """
+        try:
+            # Get dartboard configuration
+            from app import app  # Import here to avoid circular dependency
+
+            dartboard_sends_actual_score = app.config.get("DARTBOARD_SENDS_ACTUAL_SCORE", False)
+
+            # Get current turn number
+            turn_num = self.turn_number.get(self.current_player, 1)
+
+            self.db_service.record_throw(
+                player_id=self.current_player,
+                base_score=base_score,
+                multiplier=multiplier,
+                multiplier_value=multiplier_value,
+                actual_score=actual_score,
+                score_before=score_before,
+                score_after=score_after,
+                turn_number=turn_num,
+                throw_in_turn=self.current_throw,
+                dartboard_sends_actual_score=dartboard_sends_actual_score,
+                is_bust=is_bust,
+                is_finish=is_finish,
+            )
+        except Exception as e:
+            print(f"Warning: Could not record throw in database: {e}")

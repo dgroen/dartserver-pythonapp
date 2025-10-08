@@ -12,7 +12,7 @@ from app import socketio
 @pytest.fixture
 def app():
     """Create Flask app for testing."""
-    with patch("app.start_rabbitmq_consumer"):
+    with patch("app.start_rabbitmq_consumer"), patch("game_manager.DatabaseService"):
         flask_app.config["TESTING"] = True
         yield flask_app
 
@@ -22,7 +22,7 @@ def socketio_client(app):
     """Create SocketIO test client."""
     client = socketio.test_client(app, flask_test_client=app.test_client(), namespace="/")
     # Give the client time to connect and receive initial messages
-    time.sleep(0.2)
+    time.sleep(0.3)
     return client
 
 
