@@ -142,6 +142,11 @@ def login():
     # Generate state for CSRF protection
     state = secrets.token_urlsafe(32)
     session["oauth_state"] = state
+    session.permanent = True  # Make session persistent across requests
+
+    # Debug logging
+    app.logger.info(f"Login - Generated state: {state}")
+    app.logger.info(f"Login - Session ID: {session.get('_id', 'No session ID')}")
 
     # Get authorization URL
     auth_url = get_authorization_url(state)
@@ -155,7 +160,15 @@ def callback():
     """OAuth2 callback endpoint"""
     # Verify state to prevent CSRF
     state = request.args.get("state")
-    if state != session.get("oauth_state"):
+    stored_state = session.get("oauth_state")
+
+    # Debug logging
+    app.logger.info(f"Callback received - State from request: {state}")
+    app.logger.info(f"Callback received - State from session: {stored_state}")
+    app.logger.info(f"Session ID: {session.get('_id', 'No session ID')}")
+
+    if state != stored_state:
+        app.logger.error(f"State mismatch! Request: {state}, Session: {stored_state}")
         return redirect(url_for("login", error="Invalid state parameter"))
 
     # Get authorization code

@@ -29,6 +29,10 @@ WSO2_IS_INTROSPECT_URL = f"{WSO2_IS_URL}/oauth2/introspect"
 WSO2_CLIENT_ID = os.getenv("WSO2_CLIENT_ID", "")
 WSO2_CLIENT_SECRET = os.getenv("WSO2_CLIENT_SECRET", "")
 WSO2_REDIRECT_URI = os.getenv("WSO2_REDIRECT_URI", "http://localhost:5000/callback")
+WSO2_POST_LOGOUT_REDIRECT_URI = os.getenv(
+    "WSO2_POST_LOGOUT_REDIRECT_URI",
+    os.getenv("WSO2_REDIRECT_URI", "http://localhost:5000/callback").replace("/callback", "/"),
+)
 
 # Introspection credentials
 WSO2_IS_INTROSPECT_USER = os.getenv("WSO2_IS_INTROSPECT_USER", "admin")
@@ -36,6 +40,9 @@ WSO2_IS_INTROSPECT_PASSWORD = os.getenv("WSO2_IS_INTROSPECT_PASSWORD", "admin")
 
 # JWT validation mode
 JWT_VALIDATION_MODE = os.getenv("JWT_VALIDATION_MODE", "introspection")
+
+# SSL verification configuration
+WSO2_IS_VERIFY_SSL = os.getenv("WSO2_IS_VERIFY_SSL", "False").lower() == "true"
 
 # Initialize JWKS client
 jwks_client = None
@@ -104,7 +111,7 @@ def validate_token(token: str) -> dict[str, Any] | None:  # noqa: PLR0911
                 WSO2_IS_INTROSPECT_URL,
                 auth=(WSO2_IS_INTROSPECT_USER, WSO2_IS_INTROSPECT_PASSWORD),
                 data={"token": token},
-                verify=True,  # Set to True in production with proper certificates
+                verify=WSO2_IS_VERIFY_SSL,
                 timeout=5,
             )
             if response.status_code == 200:
@@ -129,11 +136,16 @@ def validate_token(token: str) -> dict[str, Any] | None:  # noqa: PLR0911
         return None
 
 
-def get_user_roles(token_claims: dict) -> list[str]:
+def get_user_roles(token_claims: dict, access_token: str | None = None) -> list[str]:
     """
     Extract user roles from token claims
     WSO2 IS stores roles in 'groups' or 'roles' claim
+    If not found in token claims, try fetching from userinfo endpoint
     """
+    # Debug: Log all token claims to see what's available
+    print(f"[DEBUG] Token claims for role extraction: {token_claims}")
+    logger.info(f"Token claims for role extraction: {token_claims}")
+
     roles = []
 
     # Check for roles in different claim formats
@@ -151,6 +163,33 @@ def get_user_roles(token_claims: dict) -> list[str]:
         elif isinstance(token_roles, str):
             roles.append(token_roles)
 
+    # If no roles found in token claims and we have an access token, try userinfo endpoint
+    if not roles and access_token:
+        print("[DEBUG] No roles in token claims, trying userinfo endpoint...")
+        logger.info("No roles in token claims, trying userinfo endpoint")
+        try:
+            userinfo = get_user_info(access_token)
+            if userinfo:
+                print(f"[DEBUG] UserInfo response: {userinfo}")
+                logger.info(f"UserInfo response: {userinfo}")
+
+                # Check for roles in userinfo
+                if "groups" in userinfo:
+                    groups = userinfo["groups"]
+                    if isinstance(groups, list):
+                        roles.extend(groups)
+                    elif isinstance(groups, str):
+                        roles.append(groups)
+
+                if "roles" in userinfo:
+                    userinfo_roles = userinfo["roles"]
+                    if isinstance(userinfo_roles, list):
+                        roles.extend(userinfo_roles)
+                    elif isinstance(userinfo_roles, str):
+                        roles.append(userinfo_roles)
+        except Exception as e:
+            logger.warning(f"Failed to fetch roles from userinfo: {e}")
+
     # Normalize role names (remove domain prefixes if present)
     normalized_roles = []
     for role in roles:
@@ -158,6 +197,8 @@ def get_user_roles(token_claims: dict) -> list[str]:
         normalized_role = role.split("/")[-1] if "/" in role else role
         normalized_roles.append(normalized_role.lower())
 
+    print(f"[DEBUG] Extracted and normalized roles: {normalized_roles}")
+    logger.info(f"Extracted and normalized roles: {normalized_roles}")
     return normalized_roles
 
 
@@ -201,7 +242,7 @@ def login_required(f):
 
         # Store user info in request context
         request.user_claims = claims
-        request.user_roles = get_user_roles(claims)
+        request.user_roles = get_user_roles(claims, access_token=token)
 
         return f(*args, **kwargs)
 
@@ -220,13 +261,23 @@ def role_required(*required_roles):
         def decorated_function(*args, **kwargs):
             user_roles = getattr(request, "user_roles", [])
 
+            # Debug: Log role check
+            logger.info(f"Role check - User roles: {user_roles}, Required roles: {required_roles}")
+
             # Check if user has any of the required roles
             if not any(role in user_roles for role in required_roles):
+                logger.warning(
+                    f"""
+                    Access denied - User roles {user_roles} do not match
+                    required roles {required_roles}
+                    """,
+                )
                 return (
                     jsonify(
                         {
                             "error": "Forbidden",
                             "message": f"Required role: {', '.join(required_roles)}",
+                            "user_roles": user_roles,
                         },
                     ),
                     403,
@@ -277,7 +328,7 @@ def get_authorization_url(state: str | None = None) -> str:
         "response_type": "code",
         "client_id": WSO2_CLIENT_ID,
         "redirect_uri": WSO2_REDIRECT_URI,
-        "scope": "openid profile email",
+        "scope": "openid profile email groups",
     }
 
     if state:
@@ -301,7 +352,7 @@ def exchange_code_for_token(code: str) -> dict | None:
                 "client_id": WSO2_CLIENT_ID,
                 "client_secret": WSO2_CLIENT_SECRET,
             },
-            verify=True,  # Set to True in production
+            verify=WSO2_IS_VERIFY_SSL,
             timeout=10,
         )
 
@@ -324,7 +375,7 @@ def get_user_info(access_token: str) -> dict | None:
         response = requests.get(
             WSO2_IS_USERINFO_URL,
             headers={"Authorization": f"Bearer {access_token}"},
-            verify=True,  # Set to True in production
+            verify=WSO2_IS_VERIFY_SSL,
             timeout=5,
         )
 
@@ -344,7 +395,7 @@ def logout_user(id_token: str | None = None) -> str:
     Generate logout URL for WSO2 IS
     """
     params = {
-        "post_logout_redirect_uri": WSO2_REDIRECT_URI.replace("/callback", "/"),
+        "post_logout_redirect_uri": WSO2_POST_LOGOUT_REDIRECT_URI,
     }
 
     if id_token:

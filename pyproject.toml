@@ -164,6 +164,7 @@ ignore = [
     "PLC0415", # Import should be at top-level (OK for optional imports)
     "TRY300",  # Consider moving statement to else block
     "PTH110",  # os.path.exists should be Path.exists (not critical)
+    "PLR0912", # Too many branches
 ]
 
 [tool.ruff.lint.per-file-ignores]
