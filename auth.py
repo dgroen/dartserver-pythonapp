@@ -8,6 +8,7 @@ import logging
 import os
 from functools import wraps
 from typing import Any
+from urllib.parse import urlencode
 
 import jwt
 import requests
@@ -334,8 +335,17 @@ def get_authorization_url(state: str | None = None) -> str:
     if state:
         params["state"] = state
 
-    query_string = "&".join([f"{k}={v}" for k, v in params.items()])
-    return f"{WSO2_IS_AUTHORIZE_URL}?{query_string}"
+    # Debug logging
+    logger.info(f"Generating authorization URL with params: {params}")
+    logger.info(f"WSO2_CLIENT_ID value: '{WSO2_CLIENT_ID}'")
+    logger.info(f"WSO2_REDIRECT_URI value: '{WSO2_REDIRECT_URI}'")
+
+    query_string = urlencode(params)
+    auth_url = f"{WSO2_IS_AUTHORIZE_URL}?{query_string}"
+
+    logger.info(f"Generated authorization URL: {auth_url}")
+
+    return auth_url
 
 
 def exchange_code_for_token(code: str) -> dict | None:
