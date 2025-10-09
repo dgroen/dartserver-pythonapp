@@ -253,8 +253,7 @@ def get_game_state():
     tags:
       - Game
     summary: Get current game state
-    description: Returns the complete current state of the game including players,
-    scores, and game type
+    description: Returns the complete current state including players, scores, and game type
     responses:
       200:
         description: Current game state
