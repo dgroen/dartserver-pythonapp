@@ -57,3 +57,5 @@ docs/build/
 docs/source/*
 !docs/source/.gitkeep
 dartserver-pythonapp.code-workspace
+.env_bu
+.zencoder/rules/repo.md
