@@ -25,6 +25,7 @@ from auth import (
 )
 from game_manager import GameManager
 from rabbitmq_consumer import RabbitMQConsumer
+from src.mobile_service import MobileService
 
 # Load environment variables
 load_dotenv()
@@ -168,7 +169,7 @@ def callback():
     app.logger.info(f"Session ID: {session.get('_id', 'No session ID')}")
 
     if state != stored_state:
-        app.logger.error(f"State mismatch! Request: {state}, Session: {stored_state}")
+        app.logging.exception(f"State mismatch! Request: {state}, Session: {stored_state}")
         return redirect(url_for("login", error="Invalid state parameter"))
 
     # Get authorization code
@@ -931,6 +932,765 @@ def get_current_game_session_id():
             "game_session_id": game_manager.db_service.current_game_session_id,
         },
     )
+
+
+# ============================================================================
+# Mobile App API Endpoints
+# ============================================================================
+
+
+def get_mobile_service():
+    """Helper function to get MobileService instance with database session"""
+    db_session = game_manager.db_service.db_manager.get_session()
+    return MobileService(db_session)
+
+
+def api_key_required(f):
+    """Decorator to require API key authentication"""
+    from functools import wraps
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        api_key = request.headers.get("X-API-Key")
+        if not api_key:
+            return jsonify({"success": False, "error": "API key required"}), 401
+
+        mobile_service = get_mobile_service()
+        player_info = mobile_service.validate_api_key(api_key)
+
+        if not player_info:
+            return jsonify({"success": False, "error": "Invalid API key"}), 401
+
+        # Add player info to request context
+        request.player_info = player_info
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+@app.route("/mobile")
+# @login_required
+def mobile_app():
+    """Mobile app main page
+    ---
+    tags:
+      - UI
+    summary: Mobile app interface
+    description: Mobile-optimized PWA interface for dartboard management
+    responses:
+      200:
+        description: Mobile app HTML page
+    """
+    return render_template("mobile.html")
+
+
+@app.route("/mobile/gameplay")
+# @login_required
+def mobile_gameplay():
+    """Mobile gameplay page
+    ---
+    tags:
+      - UI
+    summary: Mobile gameplay interface
+    description: Mobile interface for active gameplay
+    responses:
+      200:
+        description: Mobile gameplay HTML page
+    """
+    return render_template("mobile_gameplay.html")
+
+
+@app.route("/mobile/gamemaster")
+# @login_required
+# @role_required("gamemaster")
+def mobile_gamemaster():
+    """Mobile game master control page
+    ---
+    tags:
+      - UI
+    summary: Mobile game master interface
+    description: Mobile interface for game master controls
+    responses:
+      200:
+        description: Mobile game master HTML page
+    """
+    return render_template("mobile_gamemaster.html")
+
+
+@app.route("/mobile/dartboard-setup")
+# @login_required
+def mobile_dartboard_setup():
+    """Mobile dartboard setup page
+    ---
+    tags:
+      - UI
+    summary: Mobile dartboard setup interface
+    description: Mobile interface for dartboard configuration
+    responses:
+      200:
+        description: Mobile dartboard setup HTML page
+    """
+    return render_template("mobile_dartboard_setup.html")
+
+
+@app.route("/mobile/results")
+# @login_required
+def mobile_results():
+    """Mobile game results page
+    ---
+    tags:
+      - UI
+    summary: Mobile game results interface
+    description: Mobile interface for viewing game history
+    responses:
+      200:
+        description: Mobile game results HTML page
+    """
+    return render_template("mobile_results.html")
+
+
+@app.route("/mobile/account")
+# @login_required
+def mobile_account():
+    """Mobile account management page
+    ---
+    tags:
+      - UI
+    summary: Mobile account management interface
+    description: Mobile interface for account settings, API keys, and dartboards
+    responses:
+      200:
+        description: Mobile account management HTML page
+    """
+    return render_template("mobile_account.html")
+
+
+@app.route("/mobile/hotspot")
+# @login_required
+def mobile_hotspot():
+    """Mobile hotspot control page
+    ---
+    tags:
+      - UI
+    summary: Mobile hotspot control interface
+    description: Mobile interface for managing dartboard hotspot connections
+    responses:
+      200:
+        description: Mobile hotspot control HTML page
+    """
+    return render_template("mobile_hotspot.html")
+
+
+# API Key Management Endpoints
+
+
+@app.route("/api/mobile/apikeys", methods=["GET"])
+@login_required
+def get_api_keys():
+    """Get user's API keys
+    ---
+    tags:
+      - Mobile
+    summary: Get API keys
+    description: Returns all API keys for the authenticated user
+    responses:
+      200:
+        description: List of API keys
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            api_keys:
+              type: array
+              items:
+                type: object
+    """
+    mobile_service = get_mobile_service()
+    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+    api_keys = mobile_service.get_user_api_keys(player_id)
+    return jsonify({"success": True, "api_keys": api_keys})
+
+
+@app.route("/api/mobile/apikeys", methods=["POST"])
+@login_required
+def create_api_key():
+    """Create new API key
+    ---
+    tags:
+      - Mobile
+    summary: Create API key
+    description: Creates a new API key for the authenticated user
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            key_name:
+              type: string
+              description: Friendly name for the API key
+    responses:
+      200:
+        description: API key created
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            api_key:
+              type: object
+    """
+    data = request.json
+    key_name = data.get("key_name", "Default Key")
+    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+
+    mobile_service = get_mobile_service()
+    result = mobile_service.create_api_key(player_id, key_name)
+    return jsonify(result)
+
+
+@app.route("/api/mobile/apikeys/<int:key_id>", methods=["DELETE"])
+@login_required
+def revoke_api_key(key_id):
+    """Revoke API key
+    ---
+    tags:
+      - Mobile
+    summary: Revoke API key
+    description: Revokes (deactivates) an API key
+    parameters:
+      - in: path
+        name: key_id
+        type: integer
+        required: true
+    responses:
+      200:
+        description: API key revoked
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+    """
+    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+    mobile_service = get_mobile_service()
+    result = mobile_service.revoke_api_key(key_id, player_id)
+    return jsonify(result)
+
+
+# Dartboard Management Endpoints
+
+
+@app.route("/api/mobile/dartboards", methods=["GET"])
+@login_required
+def get_dartboards():
+    """Get user's dartboards
+    ---
+    tags:
+      - Mobile
+    summary: Get dartboards
+    description: Returns all dartboards for the authenticated user
+    responses:
+      200:
+        description: List of dartboards
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            dartboards:
+              type: array
+              items:
+                type: object
+    """
+    mobile_service = get_mobile_service()
+    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+    dartboards = mobile_service.get_user_dartboards(player_id)
+    return jsonify({"success": True, "dartboards": dartboards})
+
+
+@app.route("/api/mobile/dartboards", methods=["POST"])
+@login_required
+def register_dartboard():
+    """Register new dartboard
+    ---
+    tags:
+      - Mobile
+    summary: Register dartboard
+    description: Registers a new dartboard for the authenticated user
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            dartboard_id:
+              type: string
+              description: Unique dartboard identifier
+            name:
+              type: string
+              description: Friendly name for the dartboard
+            wpa_key:
+              type: string
+              description: WPA key for hotspot connection
+    responses:
+      200:
+        description: Dartboard registered
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            dartboard:
+              type: object
+    """
+    data = request.json
+    dartboard_id = data.get("dartboard_id")
+    name = data.get("name")
+    wpa_key = data.get("wpa_key")
+    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+
+    if not all([dartboard_id, name, wpa_key]):
+        return jsonify({"success": False, "error": "Missing required fields"}), 400
+
+    mobile_service = get_mobile_service()
+    result = mobile_service.register_dartboard(player_id, dartboard_id, name, wpa_key)
+    return jsonify(result)
+
+
+@app.route("/api/mobile/dartboards/<int:dartboard_id>", methods=["DELETE"])
+@login_required
+def delete_dartboard(dartboard_id):
+    """Delete dartboard
+    ---
+    tags:
+      - Mobile
+    summary: Delete dartboard
+    description: Deletes a dartboard
+    parameters:
+      - in: path
+        name: dartboard_id
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Dartboard deleted
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+    """
+    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+    mobile_service = get_mobile_service()
+    result = mobile_service.delete_dartboard(dartboard_id, player_id)
+    return jsonify(result)
+
+
+# Hotspot Configuration Endpoints
+
+
+@app.route("/api/mobile/hotspot", methods=["GET"])
+@login_required
+def get_hotspot_configs():
+    """Get hotspot configurations
+    ---
+    tags:
+      - Mobile
+    summary: Get hotspot configurations
+    description: Returns all hotspot configurations for the authenticated user
+    responses:
+      200:
+        description: List of hotspot configurations
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            configs:
+              type: array
+              items:
+                type: object
+    """
+    mobile_service = get_mobile_service()
+    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+    configs = mobile_service.get_hotspot_configs(player_id)
+    return jsonify({"success": True, "configs": configs})
+
+
+@app.route("/api/mobile/hotspot", methods=["POST"])
+@login_required
+def create_hotspot_config():
+    """Create hotspot configuration
+    ---
+    tags:
+      - Mobile
+    summary: Create hotspot configuration
+    description: Creates or updates hotspot configuration for a dartboard
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            dartboard_id:
+              type: integer
+              description: Dartboard database ID
+            ssid:
+              type: string
+              description: Hotspot SSID
+            password:
+              type: string
+              description: Hotspot password
+    responses:
+      200:
+        description: Hotspot configuration created
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            config:
+              type: object
+    """
+    data = request.json
+    dartboard_id = data.get("dartboard_id")
+    ssid = data.get("ssid")
+    password = data.get("password")
+    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+
+    if not all([dartboard_id, ssid, password]):
+        return jsonify({"success": False, "error": "Missing required fields"}), 400
+
+    mobile_service = get_mobile_service()
+    result = mobile_service.create_hotspot_config(player_id, dartboard_id, ssid, password)
+    return jsonify(result)
+
+
+@app.route("/api/mobile/hotspot/<int:config_id>/toggle", methods=["POST"])
+@login_required
+def toggle_hotspot(config_id):
+    """Toggle hotspot on/off
+    ---
+    tags:
+      - Mobile
+    summary: Toggle hotspot
+    description: Enables or disables a hotspot configuration
+    parameters:
+      - in: path
+        name: config_id
+        type: integer
+        required: true
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+              description: True to enable, False to disable
+    responses:
+      200:
+        description: Hotspot toggled
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            is_enabled:
+              type: boolean
+    """
+    data = request.json
+    enabled = data.get("enabled", False)
+    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+
+    mobile_service = get_mobile_service()
+    result = mobile_service.toggle_hotspot(config_id, player_id, enabled)
+    return jsonify(result)
+
+
+# Dartboard API Endpoints (authenticated with API key)
+
+
+@app.route("/api/dartboard/connect", methods=["POST"])
+@api_key_required
+def dartboard_connect():
+    """Dartboard connection endpoint
+    ---
+    tags:
+      - Mobile
+    summary: Dartboard connect
+    description: Called by dartboard when it connects (requires API key)
+    parameters:
+      - in: header
+        name: X-API-Key
+        type: string
+        required: true
+        description: API key for authentication
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            dartboard_id:
+              type: string
+              description: Dartboard identifier
+    responses:
+      200:
+        description: Connection acknowledged
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+    """
+    data = request.json
+    dartboard_id = data.get("dartboard_id")
+
+    if not dartboard_id:
+        return jsonify({"success": False, "error": "Missing dartboard_id"}), 400
+
+    mobile_service = get_mobile_service()
+    success = mobile_service.update_dartboard_connection(dartboard_id)
+
+    if success:
+        return jsonify({"success": True, "message": "Connection acknowledged"})
+    return jsonify({"success": False, "error": "Dartboard not found"}), 404
+
+
+@app.route("/api/dartboard/score", methods=["POST"])
+@api_key_required
+def dartboard_submit_score():
+    """Dartboard score submission endpoint
+    ---
+    tags:
+      - Mobile
+    summary: Submit score from dartboard
+    description: Called by dartboard to submit scores (requires API key)
+    parameters:
+      - in: header
+        name: X-API-Key
+        type: string
+        required: true
+        description: API key for authentication
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            score:
+              type: integer
+              description: Base score value
+            multiplier:
+              type: string
+              description: Multiplier type
+    responses:
+      200:
+        description: Score submitted
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+    """
+    data = request.json
+    # Process score through game manager
+    game_manager.process_score(data)
+    return jsonify({"success": True, "message": "Score submitted"})
+
+
+# Mobile Game Management API Endpoints (aliases for existing endpoints)
+
+
+@app.route("/api/game/current", methods=["GET"])
+@login_required
+def get_current_game():
+    """Get current game state (mobile alias)
+    ---
+    tags:
+      - Mobile
+    summary: Get current game state
+    description: Returns the complete current state including players,
+    scores, and game type (mobile-friendly endpoint)
+    responses:
+      200:
+        description: Current game state
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            game:
+              type: object
+              description: Current game state
+    """
+    game_state = game_manager.get_game_state()
+    return jsonify({"success": True, "game": game_state})
+
+
+@app.route("/api/game/start", methods=["POST"])
+@login_required
+@permission_required("game:create")
+def start_game():
+    """Start a new game (mobile alias)
+    ---
+    tags:
+      - Mobile
+    summary: Start a new game
+    description: Initializes a new darts game with specified type and
+    players (mobile-friendly endpoint)
+    parameters:
+      - in: body
+        name: body
+        description: Game configuration
+        required: true
+        schema:
+          type: object
+          properties:
+            game_type:
+              type: string
+              description: Type of game to start
+              enum: ['301', '401', '501', 'cricket']
+              default: '301'
+            players:
+              type: array
+              description: List of player names
+              items:
+                type: string
+            double_out:
+              type: boolean
+              description: Whether to require double-out to finish
+              default: false
+    responses:
+      200:
+        description: Game started successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+            game:
+              type: object
+    """
+    data = request.json
+    game_type = data.get("game_type", "301")
+    player_names = data.get("players", ["Player 1", "Player 2"])
+    double_out = data.get("double_out", False)
+
+    game_manager.new_game(game_type, player_names, double_out)
+    game_state = game_manager.get_game_state()
+
+    return jsonify(
+        {
+            "success": True,
+            "message": "Game started successfully",
+            "game": game_state,
+        },
+    )
+
+
+@app.route("/api/game/end", methods=["POST"])
+@login_required
+@permission_required("game:create")
+def end_game():
+    """End the current game
+    ---
+    tags:
+      - Mobile
+    summary: End current game
+    description: Ends the current game and saves results
+    parameters:
+      - in: body
+        name: body
+        required: false
+        schema:
+          type: object
+          properties:
+            save_results:
+              type: boolean
+              description: Whether to save game results
+              default: true
+    responses:
+      200:
+        description: Game ended successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+    """
+
+    # Reset the game state
+    game_manager.reset_game()
+
+    return jsonify(
+        {
+            "success": True,
+            "message": "Game ended successfully",
+        },
+    )
+
+
+@app.route("/api/game/results", methods=["GET"])
+@login_required
+def get_game_results():
+    """Get game results (mobile alias)
+    ---
+    tags:
+      - Mobile
+    summary: Get game results
+    description: Returns a list of recent games with results (mobile-friendly endpoint)
+    parameters:
+      - in: query
+        name: limit
+        type: integer
+        description: Maximum number of games to return
+        default: 10
+      - in: query
+        name: game_type
+        type: string
+        description: Filter by game type
+    responses:
+      200:
+        description: List of game results
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            results:
+              type: array
+              items:
+                type: object
+    """
+    limit = request.args.get("limit", 10, type=int)
+    game_type = request.args.get("game_type")
+
+    try:
+        games = game_manager.db_service.get_recent_games(limit=limit)
+
+        # Filter by game type if specified
+        if game_type:
+            games = [g for g in games if g.get("game_type") == game_type]
+
+        return jsonify({"success": True, "results": games})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @socketio.on("connect", namespace="/")

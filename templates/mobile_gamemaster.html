@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="/static/manifest.json">
+    <title>Game Master - Darts Mobile</title>
+    <link rel="stylesheet" href="/static/css/mobile.css">
+</head>
+<body>
+    <div class="mobile-app">
+        <header class="mobile-header">
+            <a href="/mobile" class="back-btn">←</a>
+            <h1>👑 Game Master</h1>
+        </header>
+
+        <main class="mobile-content">
+            <!-- New Game Section -->
+            <section class="control-section">
+                <h2>Start New Game</h2>
+                <form id="newGameForm">
+                    <div class="form-group">
+                        <label for="gameType">Game Type</label>
+                        <select id="gameType" name="gameType">
+                            <option value="301">301</option>
+                            <option value="501">501</option>
+                            <option value="cricket">Cricket</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="doubleOut" name="doubleOut">
+                            Double Out
+                        </label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="playerNames">Players (one per line)</label>
+                        <textarea id="playerNames" name="playerNames" rows="4" 
+                                  placeholder="Player 1&#10;Player 2"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-large">Start Game</button>
+                </form>
+            </section>
+
+            <!-- Game Controls -->
+            <section class="control-section">
+                <h2>Game Controls</h2>
+                <div class="control-buttons">
+                    <button class="btn btn-secondary" id="nextPlayerBtn">Next Player</button>
+                    <button class="btn btn-warning" id="endGameBtn">End Game</button>
+                </div>
+            </section>
+
+            <!-- Player Management -->
+            <section class="control-section">
+                <h2>Players</h2>
+                <div id="playersList">
+                    <p class="empty-state">No active game</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="/static/js/mobile_gamemaster.js"></script>
+</body>
+</html>

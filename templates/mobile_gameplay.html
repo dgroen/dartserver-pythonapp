@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="/static/manifest.json">
+    <title>Gameplay - Darts Mobile</title>
+    <link rel="stylesheet" href="/static/css/mobile.css">
+</head>
+<body>
+    <div class="mobile-app">
+        <header class="mobile-header">
+            <a href="/mobile" class="back-btn">←</a>
+            <h1>🎮 Gameplay</h1>
+        </header>
+
+        <main class="mobile-content">
+            <!-- Game Status -->
+            <div class="game-status" id="gameStatus">
+                <div class="status-badge">No Active Game</div>
+            </div>
+
+            <!-- Current Player -->
+            <div class="current-player-card" id="currentPlayerCard" style="display: none;">
+                <h3>Current Player</h3>
+                <div class="player-name" id="currentPlayerName">-</div>
+                <div class="player-score" id="currentPlayerScore">-</div>
+            </div>
+
+            <!-- Scoreboard -->
+            <div class="scoreboard" id="scoreboard">
+                <h3>Scoreboard</h3>
+                <div id="scoreboardContent">
+                    <p class="empty-state">Start a game to see scores</p>
+                </div>
+            </div>
+
+            <!-- Last Throw -->
+            <div class="last-throw" id="lastThrow" style="display: none;">
+                <h4>Last Throw</h4>
+                <div class="throw-display" id="throwDisplay">-</div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="/static/js/mobile_gameplay.js"></script>
+</body>
+</html>

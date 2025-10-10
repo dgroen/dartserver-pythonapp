@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="/static/manifest.json">
+    <title>Game Results - Darts Mobile</title>
+    <link rel="stylesheet" href="/static/css/mobile.css">
+</head>
+<body>
+    <div class="mobile-app">
+        <header class="mobile-header">
+            <a href="/mobile" class="back-btn">←</a>
+            <h1>📊 Game Results</h1>
+        </header>
+
+        <main class="mobile-content">
+            <div class="filters">
+                <select id="gameTypeFilter" class="filter-select">
+                    <option value="">All Game Types</option>
+                    <option value="301">301</option>
+                    <option value="501">501</option>
+                    <option value="cricket">Cricket</option>
+                </select>
+            </div>
+
+            <div id="resultsList" class="results-list">
+                <div class="loading">Loading game results...</div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/mobile_results.js"></script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="/static/manifest.json">
+    <title>Account Management - Darts Mobile</title>
+    <link rel="stylesheet" href="/static/css/mobile.css">
+</head>
+<body>
+    <div class="mobile-app">
+        <header class="mobile-header">
+            <a href="/mobile" class="back-btn">←</a>
+            <h1>⚙️ Account</h1>
+        </header>
+
+        <main class="mobile-content">
+            <!-- API Keys Section -->
+            <section class="account-section">
+                <h2>API Keys</h2>
+                <p class="section-desc">Manage API keys for dartboard authentication</p>
+                
+                <button class="btn btn-primary" id="generateApiKeyBtn">+ Create New API Key</button>
+                
+                <div id="apiKeysList" class="items-list">
+                    <div class="loading">Loading API keys...</div>
+                </div>
+            </section>
+
+            <!-- Dartboards Section -->
+            <section class="account-section">
+                <h2>My Dartboards</h2>
+                <p class="section-desc">Registered dartboards</p>
+                
+                <button class="btn btn-primary" id="addDartboardBtn">+ Register Dartboard</button>
+                
+                <div id="dartboardsList" class="items-list">
+                    <div class="loading">Loading dartboards...</div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Create API Key Modal -->
+        <div id="apiKeyModal" class="modal">
+            <div class="modal-content">
+                <h3>Create API Key</h3>
+                <form id="apiKeyForm">
+                    <div class="form-group">
+                        <label for="keyName">Key Name</label>
+                        <input type="text" id="keyName" name="keyName" required 
+                               placeholder="e.g., My Dartboard Key">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Create</button>
+                        <button type="button" class="btn btn-secondary" id="cancelApiKey">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- API Key Display Modal -->
+        <div id="apiKeyDisplayModal" class="modal">
+            <div class="modal-content">
+                <h3>API Key Created</h3>
+                <p class="warning-text">⚠️ Save this key now! You won't be able to see it again.</p>
+                <div class="api-key-display">
+                    <code id="apiKeyValue"></code>
+                    <button class="btn btn-small" id="copyApiKey">Copy</button>
+                </div>
+                <button class="btn btn-primary" id="closeApiKeyDisplay">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/mobile_account.js"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Dartboard background -->
+  <circle cx="256" cy="256" r="256" fill="#1a1a2e"/>
+  
+  <!-- Dartboard outer ring -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#e94560" stroke-width="8"/>
+  
+  <!-- Dartboard middle ring -->
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#0f3460" stroke-width="6"/>
+  
+  <!-- Dartboard inner ring -->
+  <circle cx="256" cy="256" r="100" fill="none" stroke="#e94560" stroke-width="4"/>
+  
+  <!-- Bullseye outer -->
+  <circle cx="256" cy="256" r="40" fill="#0f3460"/>
+  
+  <!-- Bullseye center -->
+  <circle cx="256" cy="256" r="20" fill="#e94560"/>
+  
+  <!-- Dart -->
+  <g transform="translate(320, 180) rotate(45)">
+    <!-- Dart body -->
+    <rect x="0" y="-3" width="80" height="6" fill="#16213e" rx="2"/>
+    <!-- Dart point -->
+    <polygon points="80,-5 95,0 80,5" fill="#c0c0c0"/>
+    <!-- Dart flights -->
+    <polygon points="0,-8 -15,-15 -15,0" fill="#e94560"/>
+    <polygon points="0,8 -15,15 -15,0" fill="#e94560"/>
+  </g>
+  
+  <!-- App name -->
+  <text x="256" y="450" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#e94560" text-anchor="middle">DARTS</text>
+</svg>

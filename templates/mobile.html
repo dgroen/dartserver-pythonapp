@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="description" content="Mobile app for dartboard connectivity and game management">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+    <title>Darts Mobile App</title>
+    <link rel="stylesheet" href="/static/css/mobile.css">
+</head>
+<body>
+    <div class="mobile-app">
+        <!-- Header -->
+        <header class="mobile-header">
+            <h1>🎯 Darts App</h1>
+            <button class="menu-toggle" id="menuToggle">☰</button>
+        </header>
+
+        <!-- Navigation Menu -->
+        <nav class="mobile-nav" id="mobileNav">
+            <ul>
+                <li><a href="/mobile/gameplay" class="nav-item">🎮 Gameplay</a></li>
+                <li><a href="/mobile/gamemaster" class="nav-item">👑 Game Master</a></li>
+                <li><a href="/mobile/dartboard-setup" class="nav-item">🎯 Dartboard Setup</a></li>
+                <li><a href="/mobile/results" class="nav-item">📊 Game Results</a></li>
+                <li><a href="/mobile/account" class="nav-item">⚙️ Account</a></li>
+                <li><a href="/mobile/hotspot" class="nav-item">📡 Hotspot Control</a></li>
+                <li><a href="/logout" class="nav-item">🚪 Logout</a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="mobile-content">
+            <div class="welcome-section">
+                <h2>Welcome to Darts Mobile</h2>
+                <p>Your complete dartboard management solution</p>
+            </div>
+
+            <div class="quick-actions">
+                <h3>Quick Actions</h3>
+                <div class="action-grid">
+                    <a href="/mobile/gameplay" class="action-card">
+                        <div class="action-icon">🎮</div>
+                        <div class="action-title">Start Game</div>
+                        <div class="action-desc">Begin playing darts</div>
+                    </a>
+                    
+                    <a href="/mobile/dartboard-setup" class="action-card">
+                        <div class="action-icon">🎯</div>
+                        <div class="action-title">Setup Dartboard</div>
+                        <div class="action-desc">Configure your dartboard</div>
+                    </a>
+                    
+                    <a href="/mobile/hotspot" class="action-card">
+                        <div class="action-icon">📡</div>
+                        <div class="action-title">Hotspot</div>
+                        <div class="action-desc">Manage connections</div>
+                    </a>
+                    
+                    <a href="/mobile/results" class="action-card">
+                        <div class="action-icon">📊</div>
+                        <div class="action-title">Results</div>
+                        <div class="action-desc">View game history</div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="status-section">
+                <h3>Connection Status</h3>
+                <div class="status-card">
+                    <div class="status-indicator" id="connectionStatus">
+                        <span class="status-dot offline"></span>
+                        <span class="status-text">Checking connection...</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="mobile-footer">
+            <p>&copy; 2024 Darts Game System</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/mobile.js"></script>
+    <script>
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js')
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.log('Service Worker registration failed:', err));
+        }
+    </script>
+</body>
+</html>

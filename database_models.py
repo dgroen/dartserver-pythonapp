@@ -2,18 +2,10 @@
 Database models for storing game data in PostgreSQL
 """
 
+import secrets
 from datetime import datetime
 
-from sqlalchemy import (
-    Boolean,
-    Column,
-    DateTime,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-    create_engine,
-)
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
@@ -29,9 +21,15 @@ class Player(Base):
     name = Column(String(100), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # Authentication fields
+    username = Column(String(100), unique=True, nullable=True)  # For user accounts
+    email = Column(String(255), unique=True, nullable=True)
+
     # Relationships
     game_results = relationship("GameResult", back_populates="player")
     scores = relationship("Score", back_populates="player")
+    api_keys = relationship("ApiKey", back_populates="player", cascade="all, delete-orphan")
+    dartboards = relationship("Dartboard", back_populates="owner", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Player(id={self.id}, name='{self.name}')>"
@@ -127,6 +125,82 @@ class Score(Base):
             f"<Score(id={self.id}, player_id={self.player_id}, "
             f"throw_seq={self.throw_sequence}, score={self.actual_score})>"
         )
+
+
+class Dartboard(Base):
+    """Dartboard table - stores registered dartboards"""
+
+    __tablename__ = "dartboard"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    dartboard_id = Column(String(100), nullable=False, unique=True)  # Unique dartboard identifier
+    name = Column(String(100), nullable=False)  # Friendly name
+    owner_id = Column(Integer, ForeignKey("player.id"), nullable=False)
+
+    # Connection settings
+    wpa_key = Column(String(255), nullable=False)  # WPA key for hotspot
+    is_active = Column(Boolean, default=True)
+    last_connected = Column(DateTime, nullable=True)
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    owner = relationship("Player", back_populates="dartboards")
+
+    def __repr__(self):
+        return f"<Dartboard(id={self.id}, dartboard_id='{self.dartboard_id}', name='{self.name}')>"
+
+
+class ApiKey(Base):
+    """ApiKey table - stores API keys for dartboard authentication"""
+
+    __tablename__ = "apikey"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    player_id = Column(Integer, ForeignKey("player.id"), nullable=False)
+    key_name = Column(String(100), nullable=False)  # Friendly name for the key
+    api_key = Column(String(255), nullable=False, unique=True)  # The actual API key
+    is_active = Column(Boolean, default=True)
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_used = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=True)  # Optional expiration
+
+    # Relationships
+    player = relationship("Player", back_populates="api_keys")
+
+    def __repr__(self):
+        return f"<ApiKey(id={self.id}, key_name='{self.key_name}', player_id={self.player_id})>"
+
+    @staticmethod
+    def generate_key():
+        """Generate a secure random API key"""
+        return secrets.token_urlsafe(32)
+
+
+class HotspotConfig(Base):
+    """HotspotConfig table - stores hotspot configuration for dartboards"""
+
+    __tablename__ = "hotspot_config"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    player_id = Column(Integer, ForeignKey("player.id"), nullable=False)
+    dartboard_id = Column(Integer, ForeignKey("dartboard.id"), nullable=False)
+
+    # Hotspot settings
+    ssid = Column(String(100), nullable=False)  # Hotspot SSID (usually dartboard_id)
+    password = Column(String(255), nullable=False)  # Hotspot password
+    is_enabled = Column(Boolean, default=False)  # Whether hotspot is currently enabled
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<HotspotConfig(id={self.id}, ssid='{self.ssid}', enabled={self.is_enabled})>"
 
 
 class DatabaseManager:

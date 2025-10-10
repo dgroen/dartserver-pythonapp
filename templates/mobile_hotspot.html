@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="/static/manifest.json">
+    <title>Hotspot Control - Darts Mobile</title>
+    <link rel="stylesheet" href="/static/css/mobile.css">
+</head>
+<body>
+    <div class="mobile-app">
+        <header class="mobile-header">
+            <a href="/mobile" class="back-btn">←</a>
+            <h1>📡 Hotspot Control</h1>
+        </header>
+
+        <main class="mobile-content">
+            <div class="info-box">
+                <h3>How It Works</h3>
+                <ol>
+                    <li>Select a dartboard to configure</li>
+                    <li>Create a hotspot with the dartboard ID as SSID</li>
+                    <li>The dartboard will automatically connect</li>
+                    <li>Scores will be sent to the app via the hotspot</li>
+                </ol>
+            </div>
+
+            <section class="hotspot-section">
+                <h2>Hotspot Configurations</h2>
+                
+                <button class="btn btn-primary" id="createHotspotBtn">+ Create Hotspot Config</button>
+                
+                <div id="hotspotsList" class="items-list">
+                    <div class="loading">Loading hotspot configurations...</div>
+                </div>
+            </section>
+
+            <section class="instructions-section">
+                <h3>Manual Hotspot Setup</h3>
+                <p>To manually create a hotspot on your device:</p>
+                <div class="platform-instructions">
+                    <details>
+                        <summary>Android Instructions</summary>
+                        <ol>
+                            <li>Go to Settings → Network & Internet → Hotspot & tethering</li>
+                            <li>Tap "Wi-Fi hotspot"</li>
+                            <li>Set the hotspot name to your dartboard ID</li>
+                            <li>Set the password from your configuration</li>
+                            <li>Turn on the hotspot</li>
+                        </ol>
+                    </details>
+                    <details>
+                        <summary>iOS Instructions</summary>
+                        <ol>
+                            <li>Go to Settings → Personal Hotspot</li>
+                            <li>Turn on "Allow Others to Join"</li>
+                            <li>Note: iOS doesn't allow custom hotspot names</li>
+                            <li>You'll need to manually connect the dartboard to your iPhone's hotspot</li>
+                        </ol>
+                    </details>
+                </div>
+            </section>
+        </main>
+
+        <!-- Create Hotspot Config Modal -->
+        <div id="hotspotModal" class="modal">
+            <div class="modal-content">
+                <h3>Create Hotspot Configuration</h3>
+                <form id="hotspotForm">
+                    <div class="form-group">
+                        <label for="dartboardSelect">Select Dartboard</label>
+                        <select id="dartboardSelect" name="dartboardId" required>
+                            <option value="">Loading dartboards...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="ssid">Hotspot SSID</label>
+                        <input type="text" id="ssid" name="ssid" required readonly>
+                        <small>Auto-filled with dartboard ID</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Hotspot Password</label>
+                        <input type="text" id="password" name="password" required>
+                        <small>Minimum 8 characters</small>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Create</button>
+                        <button type="button" class="btn btn-secondary" id="cancelHotspot">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/mobile_hotspot.js"></script>
+</body>
+</html>
