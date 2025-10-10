@@ -26,19 +26,19 @@ echo ""
 get_token() {
     local scope=$1
     echo -e "${YELLOW}Getting access token with scope: $scope${NC}"
-    
+
     TOKEN=$(curl -k -s -X POST "$WSO2_TOKEN_URL" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -d "grant_type=client_credentials" \
         -d "client_id=$CLIENT_ID" \
         -d "client_secret=$CLIENT_SECRET" \
         -d "scope=$scope" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
-    
+
     if [ -z "$TOKEN" ]; then
         echo -e "${RED}✗ Failed to get access token${NC}"
         exit 1
     fi
-    
+
     echo -e "${GREEN}✓ Token obtained: ${TOKEN:0:20}...${NC}"
     echo ""
 }

@@ -7,6 +7,7 @@
 ```
 
 That's it! The script will:
+
 - ✅ Check Python version (3.10+)
 - ✅ Install python3-venv if needed
 - ✅ Install UV package manager
@@ -20,11 +21,13 @@ That's it! The script will:
 ## Daily Workflow
 
 ### 1. Activate Virtual Environment
+
 ```bash
 source .venv/bin/activate
 ```
 
 ### 2. Run Tests
+
 ```bash
 # All tests with coverage
 make test
@@ -40,6 +43,7 @@ pytest tests/unit/test_game_301.py -v
 ```
 
 ### 3. Check Code Quality
+
 ```bash
 # Run all linters
 make lint
@@ -55,6 +59,7 @@ make security
 ```
 
 ### 4. Before Committing
+
 ```bash
 # Stage your changes
 git add .
@@ -71,6 +76,7 @@ git commit -m "Your message"
 ## Common Commands
 
 ### Testing
+
 ```bash
 make test              # Run all tests with coverage
 make test-cov          # Generate HTML coverage report
@@ -78,6 +84,7 @@ make coverage-report   # Open coverage report in browser
 ```
 
 ### Linting
+
 ```bash
 make lint              # Run all linters
 make lint-fix          # Auto-fix issues
@@ -85,6 +92,7 @@ make format            # Format code (Black + isort)
 ```
 
 ### Tox (Multi-version Testing)
+
 ```bash
 make tox               # Test on all Python versions
 make tox-py310         # Test on Python 3.10
@@ -94,6 +102,7 @@ make tox-lint          # Run linting environment
 ```
 
 ### Package Management
+
 ```bash
 # Install new package
 uv pip install <package>
@@ -109,6 +118,7 @@ uv pip show <package>
 ```
 
 ### Cleanup
+
 ```bash
 make clean             # Remove generated files
 make clean-all         # Remove venv and all generated files
@@ -140,24 +150,29 @@ dartserver-pythonapp/
 ## Key Features
 
 ### 🚀 Fast Package Management
+
 - **UV** is 10-100x faster than pip
 - Installs 109 packages in seconds
 
 ### 🧪 Comprehensive Testing
+
 - 98 tests (75 unit + 23 integration)
 - 80.17% code coverage
 - Fast execution (~5 seconds)
 
 ### 🔍 7 Linting Tools
+
 - Ruff, Black, isort, Flake8, MyPy, Pylint, Bandit
 - Consistent 100-char line length
 - Auto-fix on second commit
 
 ### 🐍 Multi-Version Support
+
 - Python 3.10, 3.11, 3.12
 - Tested with Tox
 
 ### 🪝 Smart Pre-commit Hooks
+
 - First commit: Check and report
 - Second commit: Auto-fix
 - Prevents bad code from being committed
@@ -167,6 +182,7 @@ dartserver-pythonapp/
 ## Troubleshooting
 
 ### Virtual Environment Issues
+
 ```bash
 # Recreate venv
 rm -rf .venv
@@ -174,6 +190,7 @@ rm -rf .venv
 ```
 
 ### UV Not Found
+
 ```bash
 # Add to PATH
 export PATH="$HOME/.local/bin:$PATH"
@@ -183,6 +200,7 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 ```
 
 ### Pre-commit Issues
+
 ```bash
 # Reinstall hooks
 pre-commit uninstall
@@ -193,6 +211,7 @@ pre-commit run --all-files
 ```
 
 ### Test Failures
+
 ```bash
 # Run with verbose output
 pytest tests/ -vv
@@ -236,17 +255,17 @@ pre-commit run --help
 
 ## Quick Reference
 
-| Task | Command |
-|------|---------|
-| Setup environment | `./setup-dev.sh` |
-| Activate venv | `source .venv/bin/activate` |
-| Run tests | `make test` |
-| Run linters | `make lint` |
-| Format code | `make format` |
-| Test all Python versions | `make tox` |
-| Install package | `uv pip install <pkg>` |
-| Clean up | `make clean` |
-| Show help | `make help` |
+| Task                     | Command                     |
+| ------------------------ | --------------------------- |
+| Setup environment        | `./setup-dev.sh`            |
+| Activate venv            | `source .venv/bin/activate` |
+| Run tests                | `make test`                 |
+| Run linters              | `make lint`                 |
+| Format code              | `make format`               |
+| Test all Python versions | `make tox`                  |
+| Install package          | `uv pip install <pkg>`      |
+| Clean up                 | `make clean`                |
+| Show help                | `make help`                 |
 
 ---
 

@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # RabbitMQ Message Broker
@@ -6,7 +6,7 @@ services:
     image: rabbitmq:3-management
     container_name: darts-rabbitmq
     ports:
-      - "5672:5672"   # AMQP port
+      - "5672:5672" # AMQP port
       - "15672:15672" # Management UI
     environment:
       RABBITMQ_DEFAULT_USER: guest
@@ -26,14 +26,21 @@ services:
     image: wso2/wso2is:5.11.0
     container_name: darts-wso2is
     ports:
-      - "9443:9443"   # HTTPS port
-      - "9763:9763"   # HTTP port
+      - "9443:9443" # HTTPS port
+      - "9763:9763" # HTTP port
     environment:
       - JAVA_OPTS=-Xms512m -Xmx1024m
     volumes:
       - wso2is_data:/home/wso2carbon/wso2is-5.11.0
     healthcheck:
-      test: ["CMD", "curl", "-k", "-f", "https://localhost:9443/carbon/admin/login.jsp"]
+      test:
+        [
+          "CMD",
+          "curl",
+          "-k",
+          "-f",
+          "https://localhost:9443/carbon/admin/login.jsp",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -46,9 +53,9 @@ services:
     image: wso2/wso2am:4.0.0
     container_name: darts-wso2apim
     ports:
-      - "9444:9443"   # HTTPS port (Publisher/DevPortal)
-      - "8280:8280"   # HTTP Gateway
-      - "8243:8243"   # HTTPS Gateway
+      - "9444:9443" # HTTPS port (Publisher/DevPortal)
+      - "8280:8280" # HTTP Gateway
+      - "8243:8243" # HTTPS Gateway
     environment:
       - JAVA_OPTS=-Xms512m -Xmx1024m
     volumes:
@@ -57,7 +64,14 @@ services:
       wso2is:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-k", "-f", "https://localhost:9443/carbon/admin/login.jsp"]
+      test:
+        [
+          "CMD",
+          "curl",
+          "-k",
+          "-f",
+          "https://localhost:9443/carbon/admin/login.jsp",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -81,19 +95,19 @@ services:
       RABBITMQ_PASSWORD: guest
       RABBITMQ_VHOST: /
       RABBITMQ_EXCHANGE: darts_exchange
-      
+
       # WSO2 Identity Server Configuration
       WSO2_IS_URL: https://wso2is:9443
       WSO2_IS_CLIENT_ID: ${WSO2_IS_CLIENT_ID:-L2rvop0o4DfJsqpqsh44cUgVn_ga}
       WSO2_IS_CLIENT_SECRET: ${WSO2_IS_CLIENT_SECRET:-VhNFUK083Q2iUsu8GCWfcJTVCX8a}
-      
+
       # Introspection credentials (required for token validation)
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
       WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin}
-      
+
       # JWT Validation Mode: 'jwks' or 'introspection'
       JWT_VALIDATION_MODE: introspection
-      
+
       # Flask Configuration
       API_GATEWAY_HOST: 0.0.0.0
       API_GATEWAY_PORT: 8080
@@ -123,13 +137,13 @@ services:
       RABBITMQ_VHOST: /
       RABBITMQ_EXCHANGE: darts_exchange
       RABBITMQ_TOPIC: darts.scores.#
-      
+
       # Flask Configuration
       FLASK_HOST: 0.0.0.0
       FLASK_PORT: 5000
       FLASK_DEBUG: "False"
       SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
-      
+
       # WSO2 Authentication Configuration
       WSO2_IS_URL: https://wso2is:9443
       WSO2_CLIENT_ID: ${WSO2_CLIENT_ID:-your_client_id_here}

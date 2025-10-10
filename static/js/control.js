@@ -44,19 +44,19 @@ newGameBtn.addEventListener('click', () => {
     const gameType = gameTypeSelect.value;
     const doubleOut = doubleOutCheckbox.checked;
     const playerNames = [];
-    
+
     // Get player names from current game state
     if (currentGameState && currentGameState.players && currentGameState.players.length > 0) {
         currentGameState.players.forEach(player => {
             playerNames.push(player.name);
         });
     }
-    
+
     // If no players, use defaults
     if (playerNames.length === 0) {
         playerNames.push('Player 1', 'Player 2');
     }
-    
+
     socket.emit('new_game', {
         game_type: gameType,
         players: playerNames,
@@ -85,12 +85,12 @@ pauseBtn.addEventListener('click', () => {
 submitScoreBtn.addEventListener('click', () => {
     const score = parseInt(scoreValueInput.value);
     const multiplier = multiplierSelect.value;
-    
+
     if (isNaN(score) || score < 0) {
         alert('Please enter a valid score');
         return;
     }
-    
+
     socket.emit('manual_score', {
         score: score,
         multiplier: multiplier
@@ -114,10 +114,10 @@ scoreValueInput.addEventListener('keypress', (e) => {
 function updateDisplay(state) {
     // Update players list
     updatePlayersList(state);
-    
+
     // Update game state JSON
     gameStateJson.textContent = JSON.stringify(state, null, 2);
-    
+
     // Update double-out checkbox if game is started
     if (state.game_data && state.game_data.double_out !== undefined) {
         doubleOutCheckbox.checked = state.game_data.double_out;
@@ -126,31 +126,31 @@ function updateDisplay(state) {
 
 function updatePlayersList(state) {
     playersList.innerHTML = '';
-    
+
     if (state.players && state.players.length > 0) {
         state.players.forEach((player, index) => {
             const playerItem = document.createElement('div');
             playerItem.className = 'player-item';
-            
+
             if (index === state.current_player && state.is_started) {
                 playerItem.classList.add('active');
             }
-            
+
             const playerInfo = document.createElement('div');
             playerInfo.className = 'player-info';
-            
+
             let score = 0;
             if (state.game_data && state.game_data.players && state.game_data.players[index]) {
                 score = state.game_data.players[index].score;
             }
-            
+
             playerInfo.innerHTML = `
                 <strong>${player.name}</strong>: ${score}
             `;
-            
+
             const playerActions = document.createElement('div');
             playerActions.className = 'player-actions';
-            
+
             const skipBtn = document.createElement('button');
             skipBtn.className = 'btn btn-secondary';
             skipBtn.textContent = 'Skip To';
@@ -158,7 +158,7 @@ function updatePlayersList(state) {
             skipBtn.onclick = () => {
                 socket.emit('skip_to_player', { player_id: index });
             };
-            
+
             const removeBtn = document.createElement('button');
             removeBtn.className = 'btn btn-danger';
             removeBtn.textContent = 'Remove';
@@ -167,13 +167,13 @@ function updatePlayersList(state) {
                     socket.emit('remove_player', { player_id: index });
                 }
             };
-            
+
             playerActions.appendChild(skipBtn);
             playerActions.appendChild(removeBtn);
-            
+
             playerItem.appendChild(playerInfo);
             playerItem.appendChild(playerActions);
-            
+
             playersList.appendChild(playerItem);
         });
     } else {
@@ -216,31 +216,31 @@ function playTTSAudio(audioBase64, text) {
         for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
         }
-        
+
         // Create blob from audio data
         const blob = new Blob([bytes], { type: 'audio/mpeg' });
         const audioUrl = URL.createObjectURL(blob);
-        
+
         // Create and play audio element
         const audio = new Audio(audioUrl);
-        
+
         // Clean up the object URL after playing
         audio.onended = () => {
             URL.revokeObjectURL(audioUrl);
         };
-        
+
         // Handle errors
         audio.onerror = (e) => {
             console.error('TTS audio playback error:', e);
             URL.revokeObjectURL(audioUrl);
         };
-        
+
         // Play the audio
         audio.play().catch(e => {
             console.error('TTS audio play failed:', e);
             URL.revokeObjectURL(audioUrl);
         });
-        
+
         console.log(`Playing TTS audio: "${text}"`);
     } catch (error) {
         console.error('Error processing TTS audio:', error);

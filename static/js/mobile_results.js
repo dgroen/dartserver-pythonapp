@@ -5,7 +5,7 @@ let filteredResults = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     loadResults();
-    
+
     document.getElementById('gameTypeFilter').addEventListener('change', filterResults);
 });
 
@@ -25,31 +25,31 @@ async function loadResults() {
 
 function filterResults() {
     const gameType = document.getElementById('gameTypeFilter').value;
-    
+
     if (gameType === '') {
         filteredResults = allResults;
     } else {
         filteredResults = allResults.filter(result => result.game_type === gameType);
     }
-    
+
     displayResults(filteredResults);
 }
 
 function displayResults(results) {
     const container = document.getElementById('resultsList');
-    
+
     if (results.length === 0) {
         container.innerHTML = '<p class="empty-state">No game results found</p>';
         return;
     }
-    
+
     const resultsHtml = results.map(result => `
         <div class="result-card">
             <div class="result-header">
                 <span class="result-type">${result.game_type}</span>
                 <span class="result-date">${formatDate(result.ended_at || result.created_at)}</span>
             </div>
-            
+
             ${result.players ? `
                 <div class="result-players">
                     ${result.players.map((player, index) => `
@@ -60,7 +60,7 @@ function displayResults(results) {
                     `).join('')}
                 </div>
             ` : ''}
-            
+
             ${result.duration ? `
                 <div class="item-subtitle" style="margin-top: 1rem;">
                     Duration: ${formatDuration(result.duration)}
@@ -68,7 +68,7 @@ function displayResults(results) {
             ` : ''}
         </div>
     `).join('');
-    
+
     container.innerHTML = resultsHtml;
 }
 
@@ -76,7 +76,7 @@ function formatDuration(seconds) {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    
+
     if (hours > 0) {
         return `${hours}h ${minutes}m`;
     } else if (minutes > 0) {

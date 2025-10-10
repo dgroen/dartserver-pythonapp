@@ -266,11 +266,11 @@ header h1 {
     header h1 {
         font-size: 2em;
     }
-    
+
     .players-container {
         grid-template-columns: 1fr;
     }
-    
+
     .big-message {
         font-size: 1.8em;
     }

@@ -3,7 +3,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     loadHotspotConfig();
     detectPlatform();
-    
+
     document.getElementById('hotspotConfigForm').addEventListener('submit', saveHotspotConfig);
     document.getElementById('toggleHotspotBtn').addEventListener('click', toggleHotspot);
 });
@@ -27,10 +27,10 @@ function displayHotspotConfig(config) {
         document.getElementById('toggleHotspotBtn').disabled = true;
         return;
     }
-    
+
     document.getElementById('dartboardId').value = config.dartboard_id;
     document.getElementById('wpaKey').value = config.wpa_key;
-    
+
     document.getElementById('currentConfig').innerHTML = `
         <div class="item">
             <div class="item-info">
@@ -42,7 +42,7 @@ function displayHotspotConfig(config) {
             </div>
         </div>
     `;
-    
+
     const toggleBtn = document.getElementById('toggleHotspotBtn');
     toggleBtn.disabled = false;
     toggleBtn.textContent = config.is_active ? 'Deactivate Hotspot' : 'Activate Hotspot';
@@ -51,15 +51,15 @@ function displayHotspotConfig(config) {
 
 async function saveHotspotConfig(e) {
     e.preventDefault();
-    
+
     const dartboardId = document.getElementById('dartboardId').value;
     const wpaKey = document.getElementById('wpaKey').value;
-    
+
     if (!dartboardId || !wpaKey) {
         showAlert('Please fill in all fields', 'error');
         return;
     }
-    
+
     try {
         await apiRequest('/api/mobile/hotspot', {
             method: 'POST',
@@ -68,7 +68,7 @@ async function saveHotspotConfig(e) {
                 wpa_key: wpaKey
             })
         });
-        
+
         loadHotspotConfig();
         showAlert('Hotspot configuration saved', 'success');
     } catch (error) {
@@ -82,15 +82,15 @@ async function toggleHotspot() {
         showAlert('Please configure hotspot first', 'error');
         return;
     }
-    
+
     try {
         const data = await apiRequest('/api/mobile/hotspot/toggle', {
             method: 'POST'
         });
-        
+
         currentConfig = data.config;
         displayHotspotConfig(data.config);
-        
+
         if (data.config.is_active) {
             showAlert('Hotspot activated. Please create the hotspot manually on your device.', 'success');
         } else {
@@ -104,14 +104,14 @@ async function toggleHotspot() {
 
 function detectPlatform() {
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-    
+
     let platform = 'unknown';
     if (/android/i.test(userAgent)) {
         platform = 'android';
     } else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
         platform = 'ios';
     }
-    
+
     // Show platform-specific instructions
     document.querySelectorAll('.instructions').forEach(el => {
         if (el.dataset.platform === platform) {
@@ -120,7 +120,7 @@ function detectPlatform() {
             el.style.display = 'none';
         }
     });
-    
+
     // If no specific platform detected, show all
     if (platform === 'unknown') {
         document.querySelectorAll('.instructions').forEach(el => {

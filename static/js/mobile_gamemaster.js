@@ -6,7 +6,7 @@ let currentGame = null;
 document.addEventListener('DOMContentLoaded', () => {
     initializeSocket();
     loadCurrentGame();
-    
+
     document.getElementById('newGameForm').addEventListener('submit', startNewGame);
     document.getElementById('nextPlayerBtn').addEventListener('click', nextPlayer);
     document.getElementById('endGameBtn').addEventListener('click', endGame);
@@ -14,16 +14,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initializeSocket() {
     socket = io();
-    
+
     socket.on('connect', () => {
         console.log('Connected to game server');
     });
-    
+
     socket.on('game_update', (data) => {
         currentGame = data.game;
         updateGameDisplay(data.game);
     });
-    
+
     socket.on('game_end', (data) => {
         handleGameEnd(data);
     });
@@ -46,19 +46,19 @@ async function loadCurrentGame() {
 
 async function startNewGame(e) {
     e.preventDefault();
-    
+
     const gameType = document.getElementById('gameType').value;
     const doubleOut = document.getElementById('doubleOut').checked;
     const playerNames = document.getElementById('playerNames').value
         .split('\n')
         .map(name => name.trim())
         .filter(name => name.length > 0);
-    
+
     if (playerNames.length < 2) {
         showAlert('Please enter at least 2 players', 'error');
         return;
     }
-    
+
     try {
         const response = await apiRequest('/api/game/start', {
             method: 'POST',
@@ -68,11 +68,11 @@ async function startNewGame(e) {
                 players: playerNames
             })
         });
-        
+
         currentGame = response.game;
         updateGameDisplay(response.game);
         showAlert('Game started!', 'success');
-        
+
         // Clear form
         document.getElementById('playerNames').value = '';
     } catch (error) {
@@ -86,7 +86,7 @@ async function nextPlayer() {
         showAlert('No active game', 'error');
         return;
     }
-    
+
     try {
         await apiRequest('/api/game/next-player', {
             method: 'POST'
@@ -103,11 +103,11 @@ async function endGame() {
         showAlert('No active game', 'error');
         return;
     }
-    
+
     if (!confirm('Are you sure you want to end the current game?')) {
         return;
     }
-    
+
     try {
         await apiRequest('/api/game/end', {
             method: 'POST'
@@ -125,9 +125,9 @@ function updateGameDisplay(game) {
         displayNoGame();
         return;
     }
-    
+
     displayPlayers(game.players);
-    
+
     // Enable control buttons
     document.getElementById('nextPlayerBtn').disabled = false;
     document.getElementById('endGameBtn').disabled = false;
@@ -145,7 +145,7 @@ function displayPlayers(players) {
         document.getElementById('playersList').innerHTML = '<p class="empty-state">No players</p>';
         return;
     }
-    
+
     const playersHtml = players.map((player, index) => `
         <div class="item ${player.is_current ? 'active' : ''}">
             <div class="item-info">
@@ -156,7 +156,7 @@ function displayPlayers(players) {
             </div>
         </div>
     `).join('');
-    
+
     document.getElementById('playersList').innerHTML = playersHtml;
 }
 

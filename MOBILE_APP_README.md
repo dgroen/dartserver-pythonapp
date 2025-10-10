@@ -61,6 +61,7 @@ Mobile App → Hotspot Control
 ### 3. Create Mobile Hotspot
 
 **Android:**
+
 ```
 Settings → Network & Internet → Hotspot
 → Name: DART-ABC123
@@ -69,6 +70,7 @@ Settings → Network & Internet → Hotspot
 ```
 
 **iOS:**
+
 ```
 Settings → Personal Hotspot
 → Turn On
@@ -88,6 +90,7 @@ Mobile App → Account
 ## API Endpoints
 
 ### For Web Users (Session Auth)
+
 - `GET /mobile` - Main app
 - `GET /mobile/gameplay` - Gameplay interface
 - `GET /mobile/gamemaster` - Game control
@@ -97,10 +100,12 @@ Mobile App → Account
 - `GET /mobile/hotspot` - Hotspot page
 
 ### For Dartboards (API Key Auth)
+
 - `POST /api/dartboard/connect` - Register connection
 - `POST /api/dartboard/score` - Submit score
 
 **Example:**
+
 ```bash
 curl -X POST http://your-server:5000/api/dartboard/score \
   -H "X-API-Key: your-api-key-here" \
@@ -134,12 +139,14 @@ curl -X POST http://your-server:5000/api/dartboard/score \
 ## Installation as PWA
 
 ### Android (Chrome)
+
 1. Open app in Chrome
 2. Tap menu → "Add to Home screen"
 3. Confirm installation
 4. Launch from home screen
 
 ### iOS (Safari)
+
 1. Open app in Safari
 2. Tap Share button
 3. Tap "Add to Home Screen"
@@ -167,37 +174,41 @@ python app.py
 ## Troubleshooting
 
 ### App won't load
+
 - Check server is running: `python app.py`
 - Check database is accessible
 - Check browser console for errors
 
 ### PWA won't install
+
 - Ensure HTTPS is enabled (required for PWA)
 - Check manifest.json is accessible
 - Check service worker is registered
 
 ### Dartboard won't connect
+
 - Verify hotspot is active
 - Check dartboard ID matches exactly
 - Verify WPA key is correct
 - Check API key is active
 
 ### API returns 401
+
 - Ensure user is logged in (web endpoints)
 - Verify API key is correct (dartboard endpoints)
 - Check API key is active in Account page
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [MOBILE_APP_QUICKSTART.md](MOBILE_APP_QUICKSTART.md) | 🚀 Quick start guide (5 minutes) |
-| [MOBILE_APP_GUIDE.md](docs/MOBILE_APP_GUIDE.md) | 📚 Complete user guide |
-| [MOBILE_APP_ARCHITECTURE.md](docs/MOBILE_APP_ARCHITECTURE.md) | 🏗️ Architecture & diagrams |
-| [MOBILE_APP_IMPLEMENTATION.md](docs/MOBILE_APP_IMPLEMENTATION.md) | 🔧 Technical implementation |
-| [MOBILE_APP_DEPLOYMENT.md](MOBILE_APP_DEPLOYMENT.md) | 🚢 Production deployment |
-| [MOBILE_APP_COMPLETE.md](MOBILE_APP_COMPLETE.md) | 📝 Implementation summary |
-| [MOBILE_APP_CHECKLIST.md](MOBILE_APP_CHECKLIST.md) | ✅ Task checklist |
+| Document                                                          | Description                      |
+| ----------------------------------------------------------------- | -------------------------------- |
+| [MOBILE_APP_QUICKSTART.md](MOBILE_APP_QUICKSTART.md)              | 🚀 Quick start guide (5 minutes) |
+| [MOBILE_APP_GUIDE.md](docs/MOBILE_APP_GUIDE.md)                   | 📚 Complete user guide           |
+| [MOBILE_APP_ARCHITECTURE.md](docs/MOBILE_APP_ARCHITECTURE.md)     | 🏗️ Architecture & diagrams       |
+| [MOBILE_APP_IMPLEMENTATION.md](docs/MOBILE_APP_IMPLEMENTATION.md) | 🔧 Technical implementation      |
+| [MOBILE_APP_DEPLOYMENT.md](MOBILE_APP_DEPLOYMENT.md)              | 🚢 Production deployment         |
+| [MOBILE_APP_COMPLETE.md](MOBILE_APP_COMPLETE.md)                  | 📝 Implementation summary        |
+| [MOBILE_APP_CHECKLIST.md](MOBILE_APP_CHECKLIST.md)                | ✅ Task checklist                |
 
 ## Status
 

@@ -256,11 +256,11 @@ header h1 {
     .container {
         padding: 15px;
     }
-    
+
     header h1 {
         font-size: 1.8em;
     }
-    
+
     .player-controls {
         flex-direction: column;
     }

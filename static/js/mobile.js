@@ -34,7 +34,7 @@ function installApp() {
     if (installPrompt) {
         installPrompt.style.display = 'none';
     }
-    
+
     if (deferredPrompt) {
         deferredPrompt.prompt();
         deferredPrompt.userChoice.then((choiceResult) => {
@@ -77,7 +77,7 @@ function hideOfflineIndicator() {
 // Sync offline data when back online
 async function syncOfflineData() {
     const offlineQueue = JSON.parse(localStorage.getItem('offlineQueue') || '[]');
-    
+
     for (const request of offlineQueue) {
         try {
             await fetch(request.url, {
@@ -89,7 +89,7 @@ async function syncOfflineData() {
             console.error('Failed to sync request:', error);
         }
     }
-    
+
     localStorage.setItem('offlineQueue', '[]');
 }
 
@@ -103,10 +103,10 @@ function showAlert(message, type = 'info') {
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type}`;
     alertDiv.textContent = message;
-    
+
     const content = document.querySelector('.mobile-content');
     content.insertBefore(alertDiv, content.firstChild);
-    
+
     setTimeout(() => {
         alertDiv.remove();
     }, 5000);
@@ -127,11 +127,11 @@ async function apiRequest(url, options = {}) {
                 ...options.headers
             }
         });
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         return await response.json();
     } catch (error) {
         if (!navigator.onLine) {

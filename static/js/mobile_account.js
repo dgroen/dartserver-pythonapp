@@ -3,7 +3,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     loadApiKeys();
     loadDartboards();
-    
+
     document.getElementById('generateApiKeyBtn').addEventListener('click', generateApiKey);
     document.getElementById('addDartboardBtn').addEventListener('click', () => {
         window.location.href = '/mobile/dartboard-setup';
@@ -23,12 +23,12 @@ async function loadApiKeys() {
 
 function displayApiKeys(apiKeys) {
     const container = document.getElementById('apiKeysList');
-    
+
     if (apiKeys.length === 0) {
         container.innerHTML = '<p class="empty-state">No API keys generated</p>';
         return;
     }
-    
+
     container.innerHTML = apiKeys.map(key => `
         <div class="item">
             <div class="item-info">
@@ -50,16 +50,16 @@ function displayApiKeys(apiKeys) {
 
 async function generateApiKey() {
     const name = prompt('Enter a name for this API key (optional):');
-    
+
     try {
         const data = await apiRequest('/api/mobile/apikeys', {
             method: 'POST',
             body: JSON.stringify({ name: name || 'Mobile API Key' })
         });
-        
+
         // Show the full key (only time it's visible)
         alert(`API Key Generated:\n\n${data.api_key}\n\nSave this key securely. You won't be able to see it again!`);
-        
+
         loadApiKeys();
         showAlert('API key generated successfully', 'success');
     } catch (error) {
@@ -72,12 +72,12 @@ async function revokeApiKey(keyId) {
     if (!confirm('Are you sure you want to revoke this API key?')) {
         return;
     }
-    
+
     try {
         await apiRequest(`/api/mobile/apikeys/${keyId}/revoke`, {
             method: 'POST'
         });
-        
+
         loadApiKeys();
         showAlert('API key revoked', 'success');
     } catch (error) {
@@ -90,12 +90,12 @@ async function deleteApiKey(keyId) {
     if (!confirm('Are you sure you want to delete this API key?')) {
         return;
     }
-    
+
     try {
         await apiRequest(`/api/mobile/apikeys/${keyId}`, {
             method: 'DELETE'
         });
-        
+
         loadApiKeys();
         showAlert('API key deleted', 'success');
     } catch (error) {
@@ -117,12 +117,12 @@ async function loadDartboards() {
 
 function displayDartboards(dartboards) {
     const container = document.getElementById('dartboardsList');
-    
+
     if (dartboards.length === 0) {
         container.innerHTML = '<p class="empty-state">No dartboards registered</p>';
         return;
     }
-    
+
     container.innerHTML = dartboards.map(board => `
         <div class="item">
             <div class="item-info">
@@ -144,12 +144,12 @@ async function deleteDartboard(boardId) {
     if (!confirm('Are you sure you want to delete this dartboard?')) {
         return;
     }
-    
+
     try {
         await apiRequest(`/api/mobile/dartboards/${boardId}`, {
             method: 'DELETE'
         });
-        
+
         loadDartboards();
         showAlert('Dartboard deleted', 'success');
     } catch (error) {

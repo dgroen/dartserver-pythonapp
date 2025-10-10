@@ -13,11 +13,13 @@ A complete darts game scoring system with enterprise-grade OAuth2 authentication
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Docker and Docker Compose
 - 8GB RAM minimum
 - Ports available: 80, 443, 5000, 5672, 8080, 9443, 9444, 15672
 
 ### 1. Start All Services
+
 ```bash
 docker-compose -f docker-compose-wso2.yml up -d
 ```
@@ -25,6 +27,7 @@ docker-compose -f docker-compose-wso2.yml up -d
 Wait ~2-3 minutes for WSO2 services to fully initialize.
 
 ### 2. Verify Deployment
+
 ```bash
 # Check all services are running
 docker-compose -f docker-compose-wso2.yml ps
@@ -34,20 +37,23 @@ docker-compose -f docker-compose-wso2.yml ps
 ```
 
 ### 3. Access the System
-- **Darts Game UI:** http://localhost:5000
-- **API Gateway:** http://localhost:8080
-- **RabbitMQ Management:** http://localhost:15672 (guest/guest)
-- **WSO2 Identity Server:** https://localhost:9443/carbon (admin/admin)
+
+- **Darts Game UI:** <http://localhost:5000>
+- **API Gateway:** <http://localhost:8080>
+- **RabbitMQ Management:** <http://localhost:15672> (guest/guest)
+- **WSO2 Identity Server:** <https://localhost:9443/carbon> (admin/admin)
 
 ## 📚 Documentation
 
 ### Quick References
+
 - **[Deployment Success Report](docs/DEPLOYMENT_SUCCESS.md)** - Complete deployment details
 - **[Quick Reference Guide](docs/QUICK_REFERENCE_WSO2.md)** - Common commands and examples
 - **[WSO2 Setup Guide](docs/WSO2_SETUP_GUIDE.md)** - Detailed setup instructions
 - **[API Gateway README](docs/API_GATEWAY_README.md)** - API documentation
 
 ### Test Scripts
+
 - **`test-wso2-integration.sh`** - Automated integration tests
 - **`configure-wso2.sh`** - OAuth2 client configuration
 - **`examples/api_client_example.py`** - Python client example
@@ -55,12 +61,14 @@ docker-compose -f docker-compose-wso2.yml ps
 ## 🔐 OAuth2 Configuration
 
 ### Default Client Credentials
+
 ```bash
 CLIENT_ID="L2rvop0o4DfJsqpqsh44cUgVn_ga"
 CLIENT_SECRET="VhNFUK083Q2iUsu8GCWfcJTVCX8a"
 ```
 
 ### Available Scopes
+
 - `score:write` - Submit dart scores
 - `game:write` - Create and manage games
 - `player:write` - Add and manage players
@@ -71,6 +79,7 @@ CLIENT_SECRET="VhNFUK083Q2iUsu8GCWfcJTVCX8a"
 ## 📡 API Usage
 
 ### Get Access Token
+
 ```bash
 curl -k -X POST https://localhost:9443/oauth2/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
@@ -81,6 +90,7 @@ curl -k -X POST https://localhost:9443/oauth2/token \
 ```
 
 ### Submit Score
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/scores \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -94,6 +104,7 @@ curl -X POST http://localhost:8080/api/v1/scores \
 ```
 
 ### Create Game
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/games \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -106,6 +117,7 @@ curl -X POST http://localhost:8080/api/v1/games \
 ```
 
 ### Add Player
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/players \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -136,6 +148,7 @@ if client.check_health():
 ```
 
 Run the full example:
+
 ```bash
 python3 examples/api_client_example.py
 ```
@@ -168,23 +181,25 @@ python3 examples/api_client_example.py
 
 ## 🛠️ Services
 
-| Service | Port | Description |
-|---------|------|-------------|
-| **Darts App** | 5000 | Main web application with game UI |
-| **API Gateway** | 8080 | REST API with OAuth2 authentication |
-| **RabbitMQ** | 5672, 15672 | Message broker for async processing |
-| **WSO2 Identity Server** | 9443 | OAuth2/OpenID Connect provider |
-| **WSO2API Manager** | 9444, 8243 | API management and analytics |
-| **Nginx** | 80, 443 | Reverse proxy (optional) |
+| Service                  | Port        | Description                         |
+| ------------------------ | ----------- | ----------------------------------- |
+| **Darts App**            | 5000        | Main web application with game UI   |
+| **API Gateway**          | 8080        | REST API with OAuth2 authentication |
+| **RabbitMQ**             | 5672, 15672 | Message broker for async processing |
+| **WSO2 Identity Server** | 9443        | OAuth2/OpenID Connect provider      |
+| **WSO2API Manager**      | 9444, 8243  | API management and analytics        |
+| **Nginx**                | 80, 443     | Reverse proxy (optional)            |
 
 ## 🧪 Testing
 
 ### Run All Tests
+
 ```bash
 ./test-wso2-integration.sh
 ```
 
 ### Test Individual Endpoints
+
 ```bash
 # Health check
 curl http://localhost:8080/health
@@ -206,6 +221,7 @@ curl -X POST http://localhost:8080/api/v1/scores \
 ## 📊 Monitoring
 
 ### View Logs
+
 ```bash
 # All services
 docker-compose -f docker-compose-wso2.yml logs -f
@@ -215,6 +231,7 @@ docker-compose -f docker-compose-wso2.yml logs -f api-gateway
 ```
 
 ### Check RabbitMQ
+
 ```bash
 # Via API
 curl -u guest:guest http://localhost:15672/api/queues
@@ -224,6 +241,7 @@ open http://localhost:15672
 ```
 
 ### Check Service Health
+
 ```bash
 # API Gateway
 curl http://localhost:8080/health
@@ -240,6 +258,7 @@ curl -k https://localhost:9443/carbon
 ### Environment Variables
 
 #### API Gateway
+
 ```bash
 WSO2_IS_URL=https://wso2is:9443
 WSO2_IS_CLIENT_ID=your_client_id
@@ -250,6 +269,7 @@ RABBITMQ_EXCHANGE=darts_exchange
 ```
 
 #### Darts Application
+
 ```bash
 RABBITMQ_HOST=rabbitmq
 RABBITMQ_EXCHANGE=darts_exchange
@@ -261,6 +281,7 @@ FLASK_PORT=5000
 ## 🐛 Troubleshooting
 
 ### Services Not Starting
+
 ```bash
 # Check Docker resources
 docker stats
@@ -273,6 +294,7 @@ docker-compose -f docker-compose-wso2.yml restart
 ```
 
 ### Token Validation Fails
+
 ```bash
 # Test introspection endpoint
 curl -k -u admin:admin -X POST https://localhost:9443/oauth2/introspect \
@@ -283,6 +305,7 @@ docker logs darts-api-gateway | grep introspection
 ```
 
 ### RabbitMQ Connection Issues
+
 ```bash
 # Check RabbitMQ status
 docker exec darts-rabbitmq rabbitmq-diagnostics status
@@ -307,17 +330,20 @@ docker-compose -f docker-compose-wso2.yml stop api-gateway
 ## 📈 Performance
 
 ### Typical Response Times
+
 - Token Generation: ~200ms
 - Token Introspection: ~150ms
 - Score Submission: ~50ms
 - Game Creation: ~45ms
 
 ### Resource Requirements
+
 - Memory: ~4GB total
 - CPU: ~2 cores
 - Disk: ~2GB
 
 ### Startup Times
+
 - RabbitMQ: ~10 seconds
 - WSO2 IS: ~76 seconds
 - WSO2 APIM: ~72 seconds
@@ -327,6 +353,7 @@ docker-compose -f docker-compose-wso2.yml stop api-gateway
 ## 🔒 Security
 
 ### Current Implementation
+
 - ✅ OAuth2 client credentials flow
 - ✅ Bearer token authentication
 - ✅ Token introspection validation
@@ -335,6 +362,7 @@ docker-compose -f docker-compose-wso2.yml stop api-gateway
 - ✅ CORS support
 
 ### Production Recommendations
+
 1. Use proper SSL certificates (not self-signed)
 2. Create dedicated service account for introspection
 3. Enable certificate verification
@@ -361,6 +389,7 @@ docker-compose -f docker-compose-wso2.yml stop api-gateway
 ## 📞 Support
 
 For issues or questions:
+
 1. Check the [Troubleshooting](#-troubleshooting) section
 2. Review service logs
 3. Consult the [documentation](docs/)

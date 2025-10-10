@@ -42,7 +42,7 @@ dev = [
     "coverage[toml]>=7.3.0",
 ]
 lint = [
-    "pre-commit>=3.0.0", 
+    "pre-commit>=3.0.0",
     "ruff>=0.1.0",
     "black>=23.0.0",
     "isort>=5.12.0",

@@ -8,7 +8,7 @@ Welcome to the **Dartserver Python Application** - a complete, standalone darts 
 docker-compose up
 ```
 
-Then open: **http://localhost:5000**
+Then open: **<http://localhost:5000>**
 
 That's it! 🎉
 
@@ -29,16 +29,19 @@ This is a **production-ready Python web application** for managing darts games w
 ### 1. Start the Application
 
 **Option A: Docker (Recommended)**
+
 ```bash
 docker-compose up
 ```
 
 **Option B: Quick Script**
+
 ```bash
 ./run.sh
 ```
 
 **Option C: Manual**
+
 ```bash
 python3 -m venv venv
 source venv/bin/activate
@@ -48,13 +51,14 @@ python app.py
 
 ### 2. Access the Web Interface
 
-- **Game Board:** http://localhost:5000
-- **Control Panel:** http://localhost:5000/control
-- **RabbitMQ UI:** http://localhost:15672 (guest/guest)
+- **Game Board:** <http://localhost:5000>
+- **Control Panel:** <http://localhost:5000/control>
+- **RabbitMQ UI:** <http://localhost:15672> (guest/guest)
 
 ### 3. Start Playing
 
 From the Control Panel:
+
 1. Select game type (301, 401, 501, or Cricket)
 2. Add players
 3. Click "Start New Game"
@@ -62,29 +66,32 @@ From the Control Panel:
 
 ## 📖 Documentation
 
-| Document | When to Read |
-|----------|--------------|
-| **[GET_STARTED.md](GET_STARTED.md)** | First time setup |
-| **[QUICKSTART.md](QUICKSTART.md)** | Quick reference |
-| **[README_REPO.md](README_REPO.md)** | Complete overview |
-| **[ARCHITECTURE.md](ARCHITECTURE.md)** | System design |
-| **[INDEX.md](INDEX.md)** | Documentation index |
+| Document                               | When to Read        |
+| -------------------------------------- | ------------------- |
+| **[GET_STARTED.md](GET_STARTED.md)**   | First time setup    |
+| **[QUICKSTART.md](QUICKSTART.md)**     | Quick reference     |
+| **[README_REPO.md](README_REPO.md)**   | Complete overview   |
+| **[ARCHITECTURE.md](ARCHITECTURE.md)** | System design       |
+| **[INDEX.md](INDEX.md)**               | Documentation index |
 
 **Recommended:** Start with [GET_STARTED.md](GET_STARTED.md)
 
 ## 🧪 Testing
 
 ### Verify Installation
+
 ```bash
 python verify_installation.py
 ```
 
 ### Test RabbitMQ
+
 ```bash
 python test_rabbitmq.py
 ```
 
 ### API Examples
+
 ```bash
 python examples/api_examples.py
 ```
@@ -102,6 +109,7 @@ python examples/api_examples.py
 ```
 
 Publish to:
+
 - **Exchange:** `darts_exchange`
 - **Routing Key:** `darts.scores.*`
 
@@ -120,12 +128,14 @@ Just use the manual score entry form!
 ## 🎯 Game Modes
 
 ### 301/401/501
+
 - Start with 301/401/501 points
 - Subtract each dart score
 - Win by reaching exactly 0
 - Bust if score goes below 0
 
 ### Cricket
+
 - Hit targets: 15, 16, 17, 18, 19, 20, Bull
 - Need 3 hits to "open" each target
 - Score points on opened targets
@@ -134,11 +144,13 @@ Just use the manual score entry form!
 ## 🔧 Configuration
 
 Copy and edit `.env`:
+
 ```bash
 cp .env.example .env
 ```
 
 Key settings:
+
 - `RABBITMQ_HOST` - RabbitMQ server
 - `FLASK_PORT` - Web server port
 - `FLASK_DEBUG` - Debug mode
@@ -146,17 +158,20 @@ Key settings:
 ## 🐛 Troubleshooting
 
 ### Application won't start
+
 ```bash
 python verify_installation.py
 ```
 
 ### RabbitMQ not connecting
+
 ```bash
 sudo systemctl status rabbitmq-server
 sudo systemctl start rabbitmq-server
 ```
 
 ### Port already in use
+
 Edit `.env` and change `FLASK_PORT=5001`
 
 ## 📂 Project Structure
@@ -176,30 +191,35 @@ dartserver-pythonapp/
 ## 🎨 Customization
 
 ### Add New Game Mode
+
 1. Create `games/game_newmode.py`
 2. Implement game logic
 3. Register in `game_manager.py`
 
 ### Modify Styling
+
 - Edit `static/css/style.css`
 - Edit `static/css/control.css`
 
 ### Add Audio/Video
+
 - Place files in `static/audio/` and `static/video/`
 - Update `static/js/main.js`
 
 ## 🔗 Integration
 
 ### Arduino/ESP32
+
 ```cpp
 void sendScore(int score, String multiplier) {
-  String payload = "{\"score\":" + String(score) + 
+  String payload = "{\"score\":" + String(score) +
                    ",\"multiplier\":\"" + multiplier + "\"}";
   mqttClient.publish("darts.scores.board1", payload);
 }
 ```
 
 ### Node.js Bridge
+
 ```bash
 node bridge_nodejs_to_rabbitmq.js
 ```
@@ -225,7 +245,7 @@ node bridge_nodejs_to_rabbitmq.js
 - ✅ Winner detection
 - ✅ Turn management
 
-## 🎉 You're Ready!
+## 🎉 You're Ready
 
 Everything you need is here. Start with:
 
@@ -233,7 +253,7 @@ Everything you need is here. Start with:
 docker-compose up
 ```
 
-Then open **http://localhost:5000** and start playing! 🎯
+Then open **<http://localhost:5000>** and start playing! 🎯
 
 ---
 

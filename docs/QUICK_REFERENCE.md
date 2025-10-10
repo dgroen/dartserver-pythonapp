@@ -2,12 +2,12 @@
 
 ## 📁 New Directory Locations
 
-| Type | Location |
-|------|----------|
-| **Documentation** | `docs/` |
-| **Coverage Reports** | `build/coverage/` |
-| **Test Reports** | `build/reports/` |
-| **Build Artifacts** | `build/lib/`, `build/bdist.*/` |
+| Type                 | Location                       |
+| -------------------- | ------------------------------ |
+| **Documentation**    | `docs/`                        |
+| **Coverage Reports** | `build/coverage/`              |
+| **Test Reports**     | `build/reports/`               |
+| **Build Artifacts**  | `build/lib/`, `build/bdist.*/` |
 
 ## 🔧 Common Commands
 
@@ -34,20 +34,24 @@ make check-all
 ## 📊 Output Files
 
 ### Coverage Files
+
 - `build/coverage/html/` - HTML coverage report
 - `build/coverage/coverage.xml` - XML format (for CI/CD)
 - `build/coverage/coverage.json` - JSON format
 - `build/coverage/.coverage` - Coverage data file
 
 ### Test Reports
+
 - `build/reports/junit.xml` - JUnit test results
 
 ### Documentation
+
 - `docs/build/html/` - Generated HTML documentation
 
 ## 🧹 Cleanup
 
 The `make clean` command now:
+
 - ✅ Removes all coverage files
 - ✅ Removes all test reports
 - ✅ Removes build artifacts

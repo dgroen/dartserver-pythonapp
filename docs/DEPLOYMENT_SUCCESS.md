@@ -41,20 +41,21 @@ The WSO2 API Gateway integration has been successfully deployed and tested. All 
 
 ## Deployed Services
 
-| Service | Container | Status | Ports | Health |
-|---------|-----------|--------|-------|--------|
-| **RabbitMQ** | darts-rabbitmq | ✅ Running | 5672, 15672 | Healthy |
-| **WSO2 Identity Server** | darts-wso2is | ✅ Running | 9443, 9763 | Healthy |
-| **WSO2 API Manager** | darts-wso2apim | ✅ Running | 9444, 8243, 8280 | Healthy |
-| **API Gateway** | darts-api-gateway | ✅ Running | 8080 | Running |
-| **Darts Application** | darts-app | ✅ Running | 5000 | Running |
-| **Nginx Proxy** | darts-nginx | ✅ Running | 80, 443 | Running |
+| Service                  | Container         | Status     | Ports            | Health  |
+| ------------------------ | ----------------- | ---------- | ---------------- | ------- |
+| **RabbitMQ**             | darts-rabbitmq    | ✅ Running | 5672, 15672      | Healthy |
+| **WSO2 Identity Server** | darts-wso2is      | ✅ Running | 9443, 9763       | Healthy |
+| **WSO2 API Manager**     | darts-wso2apim    | ✅ Running | 9444, 8243, 8280 | Healthy |
+| **API Gateway**          | darts-api-gateway | ✅ Running | 8080             | Running |
+| **Darts Application**    | darts-app         | ✅ Running | 5000             | Running |
+| **Nginx Proxy**          | darts-nginx       | ✅ Running | 80, 443          | Running |
 
 ---
 
 ## OAuth2 Configuration
 
 ### Client Credentials
+
 - **Client ID:** `L2rvop0o4DfJsqpqsh44cUgVn_ga`
 - **Client Secret:** `VhNFUK083Q2iUsu8GCWfcJTVCX8a`
 - **Grant Type:** `client_credentials`
@@ -62,6 +63,7 @@ The WSO2 API Gateway integration has been successfully deployed and tested. All 
 - **Introspection Endpoint:** `https://localhost:9443/oauth2/introspect`
 
 ### Supported Scopes
+
 - `score:write` - Submit dart scores
 - `score:read` - Read score data
 - `game:write` - Create and manage games
@@ -74,6 +76,7 @@ The WSO2 API Gateway integration has been successfully deployed and tested. All 
 ## API Endpoints
 
 ### Base URL
+
 ```
 http://localhost:8080
 ```
@@ -81,12 +84,15 @@ http://localhost:8080
 ### Available Endpoints
 
 #### 1. Health Check
+
 ```bash
 GET /health
 ```
+
 **Response:** `{"status": "healthy", "timestamp": "..."}`
 
 #### 2. Submit Score
+
 ```bash
 POST /api/v1/scores
 Authorization: Bearer {token_with_score:write}
@@ -101,6 +107,7 @@ Content-Type: application/json
 ```
 
 #### 3. Create Game
+
 ```bash
 POST /api/v1/games
 Authorization: Bearer {token_with_game:write}
@@ -114,6 +121,7 @@ Content-Type: application/json
 ```
 
 #### 4. Add Player
+
 ```bash
 POST /api/v1/players
 Authorization: Bearer {token_with_player:write}
@@ -129,6 +137,7 @@ Content-Type: application/json
 ## Testing Results
 
 ### Automated Test Suite
+
 All tests passed successfully using `test-wso2-integration.sh`:
 
 ✅ **Test 1:** Health Check - PASSED  
@@ -137,9 +146,10 @@ All tests passed successfully using `test-wso2-integration.sh`:
 ✅ **Test 4:** Add Player with OAuth2 - PASSED  
 ✅ **Test 5:** Unauthorized Access Rejection - PASSED  
 ✅ **Test 6:** Insufficient Permissions Rejection - PASSED  
-✅ **Test 7:** RabbitMQ Message Flow - PASSED  
+✅ **Test 7:** RabbitMQ Message Flow - PASSED
 
 ### Manual Testing
+
 - ✅ Token generation with multiple scopes
 - ✅ Token introspection validation
 - ✅ Scope-based authorization
@@ -152,14 +162,17 @@ All tests passed successfully using `test-wso2-integration.sh`:
 ## Key Implementation Details
 
 ### 1. JWT Validation Mode
+
 **Mode:** `introspection`
 
 The API Gateway uses token introspection instead of JWKS validation because:
+
 - WSO2 IS issues opaque tokens by default for `client_credentials` grant
 - Introspection provides real-time token validation
 - Admin credentials are used for introspection endpoint access
 
 **Configuration:**
+
 ```yaml
 JWT_VALIDATION_MODE: introspection
 WSO2_IS_INTROSPECT_USER: admin
@@ -167,13 +180,16 @@ WSO2_IS_INTROSPECT_PASSWORD: admin
 ```
 
 ### 2. RabbitMQ Integration
+
 **Exchange:** `darts_exchange` (topic)  
 **Routing Keys:**
+
 - `darts.scores.api` - Score submissions
 - `darts.games.create` - Game creation
 - `darts.players.add` - Player additions
 
 **Message Flow:**
+
 1. API Gateway receives authenticated request
 2. Validates token via WSO2 IS introspection
 3. Checks required scopes
@@ -182,6 +198,7 @@ WSO2_IS_INTROSPECT_PASSWORD: admin
 6. Returns success response
 
 ### 3. Security Features
+
 - ✅ OAuth2 client credentials flow
 - ✅ Bearer token authentication
 - ✅ Token introspection validation
@@ -194,35 +211,39 @@ WSO2_IS_INTROSPECT_PASSWORD: admin
 
 ## Access URLs
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| **Darts UI** | http://localhost:5000 | None |
-| **API Gateway** | http://localhost:8080 | OAuth2 Token |
-| **RabbitMQ Management** | http://localhost:15672 | guest/guest |
-| **WSO2 IS Console** | https://localhost:9443/carbon | admin/admin |
-| **WSO2 APIM Publisher** | https://localhost:9444/publisher | admin/admin |
-| **WSO2 APIM DevPortal** | https://localhost:9444/devportal | admin/admin |
+| Service                 | URL                                | Credentials  |
+| ----------------------- | ---------------------------------- | ------------ |
+| **Darts UI**            | <http://localhost:5000>            | None         |
+| **API Gateway**         | <http://localhost:8080>            | OAuth2 Token |
+| **RabbitMQ Management** | <http://localhost:15672>           | guest/guest  |
+| **WSO2 IS Console**     | <https://localhost:9443/carbon>    | admin/admin  |
+| **WSO2 APIM Publisher** | <https://localhost:9444/publisher> | admin/admin  |
+| **WSO2 APIM DevPortal** | <https://localhost:9444/devportal> | admin/admin  |
 
 ---
 
 ## Quick Start Commands
 
 ### Start All Services
+
 ```bash
 docker-compose -f docker-compose-wso2.yml up -d
 ```
 
 ### Check Service Status
+
 ```bash
 docker-compose -f docker-compose-wso2.yml ps
 ```
 
 ### Run Integration Tests
+
 ```bash
 ./test-wso2-integration.sh
 ```
 
 ### View Logs
+
 ```bash
 # All services
 docker-compose -f docker-compose-wso2.yml logs -f
@@ -232,6 +253,7 @@ docker-compose -f docker-compose-wso2.yml logs -f api-gateway
 ```
 
 ### Stop All Services
+
 ```bash
 docker-compose -f docker-compose-wso2.yml down
 ```
@@ -241,6 +263,7 @@ docker-compose -f docker-compose-wso2.yml down
 ## Example Usage
 
 ### 1. Get Access Token
+
 ```bash
 curl -k -X POST https://localhost:9443/oauth2/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
@@ -251,6 +274,7 @@ curl -k -X POST https://localhost:9443/oauth2/token \
 ```
 
 **Response:**
+
 ```json
 {
   "access_token": "2502351c-c355-347d-8afd-50b7985f427b",
@@ -261,6 +285,7 @@ curl -k -X POST https://localhost:9443/oauth2/token \
 ```
 
 ### 2. Submit Score
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/scores \
   -H "Authorization: Bearer 2502351c-c355-347d-8afd-50b7985f427b" \
@@ -274,6 +299,7 @@ curl -X POST http://localhost:8080/api/v1/scores \
 ```
 
 **Response:**
+
 ```json
 {
   "status": "success",
@@ -294,6 +320,7 @@ curl -X POST http://localhost:8080/api/v1/scores \
 ## Files Modified/Created
 
 ### Modified Files
+
 1. **docker-compose-wso2.yml**
    - Added introspection credentials (WSO2_IS_INTROSPECT_USER, WSO2_IS_INTROSPECT_PASSWORD)
    - Set JWT_VALIDATION_MODE to "introspection"
@@ -305,6 +332,7 @@ curl -X POST http://localhost:8080/api/v1/scores \
    - Enhanced logging for debugging
 
 ### Created Files
+
 1. **configure-wso2.sh** - OAuth2 client registration automation script
 2. **test-wso2-integration.sh** - Comprehensive integration test suite
 3. **docs/DEPLOYMENT_SUCCESS.md** - This deployment report
@@ -314,6 +342,7 @@ curl -X POST http://localhost:8080/api/v1/scores \
 ## Performance Metrics
 
 ### Service Startup Times
+
 - RabbitMQ: ~10 seconds
 - WSO2 Identity Server: ~76 seconds
 - WSO2 API Manager: ~72 seconds
@@ -321,6 +350,7 @@ curl -X POST http://localhost:8080/api/v1/scores \
 - Darts Application: ~3 seconds
 
 ### Response Times (Average)
+
 - Token Generation: ~200ms
 - Token Introspection: ~150ms
 - Score Submission: ~50ms (excluding token validation)
@@ -328,6 +358,7 @@ curl -X POST http://localhost:8080/api/v1/scores \
 - Player Addition: ~40ms
 
 ### Resource Usage
+
 - Total Memory: ~4GB
 - Total CPU: ~2 cores
 - Disk Space: ~2GB
@@ -357,6 +388,7 @@ curl -X POST http://localhost:8080/api/v1/scores \
 ## Troubleshooting
 
 ### Token Validation Fails
+
 ```bash
 # Check introspection endpoint
 curl -k -u admin:admin -X POST https://localhost:9443/oauth2/introspect \
@@ -367,6 +399,7 @@ docker logs darts-api-gateway | grep introspection
 ```
 
 ### RabbitMQ Connection Issues
+
 ```bash
 # Check RabbitMQ status
 docker exec darts-rabbitmq rabbitmq-diagnostics ping
@@ -376,6 +409,7 @@ curl -u guest:guest http://localhost:15672/api/queues
 ```
 
 ### Service Not Starting
+
 ```bash
 # Check container logs
 docker logs darts-wso2is
@@ -390,11 +424,13 @@ docker stats
 ## Next Steps
 
 ### Immediate
+
 - ✅ System is production-ready for testing
 - ✅ All endpoints are functional
 - ✅ OAuth2 authentication is working
 
 ### Short-term Enhancements
+
 1. Configure WSO2 API Manager policies
 2. Set up rate limiting
 3. Add API analytics
@@ -402,6 +438,7 @@ docker stats
 5. Set up developer portal
 
 ### Long-term Improvements
+
 1. Implement JWT token type
 2. Add refresh token support
 3. Implement user authentication (password grant)
@@ -415,6 +452,7 @@ docker stats
 ## Support & Documentation
 
 ### Documentation Files
+
 - [Quick Reference](./QUICK_REFERENCE_WSO2.md)
 - [WSO2 Setup Guide](./WSO2_SETUP_GUIDE.md)
 - [WSO2 Integration](./WSO2_INTEGRATION.md)
@@ -422,10 +460,12 @@ docker stats
 - [Implementation Summary](./WSO2_IMPLEMENTATION_SUMMARY.md)
 
 ### Test Scripts
+
 - `test-wso2-integration.sh` - Full integration test suite
 - `configure-wso2.sh` - OAuth2 client configuration
 
 ### Useful Commands
+
 ```bash
 # View all services
 docker-compose -f docker-compose-wso2.yml ps
@@ -451,7 +491,7 @@ The WSO2 API Gateway integration is **fully operational** and ready for use. All
 ✅ Scope-based authorization  
 ✅ RabbitMQ message flow  
 ✅ All API endpoints functional  
-✅ Comprehensive test coverage  
+✅ Comprehensive test coverage
 
 The system provides a secure, scalable foundation for the Darts application with enterprise-grade identity and access management.
 
@@ -459,4 +499,4 @@ The system provides a secure, scalable foundation for the Darts application with
 
 **Deployment Completed Successfully** 🎉
 
-*For questions or issues, refer to the troubleshooting section or review the service logs.*
+_For questions or issues, refer to the troubleshooting section or review the service logs._

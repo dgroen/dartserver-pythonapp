@@ -105,7 +105,7 @@ repos:
           - flake8-bugbear
           - flake8-comprehensions
           - flake8-simplify
-        args: [--max-line-length=100, --extend-ignore=E203,E266,E501,W503]
+        args: [--max-line-length=100, --extend-ignore=E203, E266, E501, W503]
 
   # Bandit - Security linter
   - repo: https://github.com/PyCQA/bandit
@@ -132,7 +132,7 @@ repos:
     rev: v3.0.3
     hooks:
       - id: pylint
-        args: [--rcfile=pyproject.toml, --disable=C0114,C0115,C0116]
+        args: [--rcfile=pyproject.toml, --disable=C0114, C0115, C0116]
         exclude: ^(tests/|examples/)
 
   # YAML linter
@@ -172,8 +172,8 @@ ci:
 
     for more information, see https://pre-commit.ci
   autofix_prs: true
-  autoupdate_branch: ''
-  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_branch: ""
+  autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
   autoupdate_schedule: weekly
   skip: []
   submodules: false

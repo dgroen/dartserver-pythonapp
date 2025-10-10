@@ -251,7 +251,6 @@ class GameManager:
 
         # Handle game events
         if result:
-
             # Emit throw effects
             self._emit_throw_effects(multiplier, base_score, actual_score)
 

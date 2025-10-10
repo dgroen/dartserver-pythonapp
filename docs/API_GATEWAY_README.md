@@ -72,6 +72,7 @@ The API Gateway provides a secure, managed REST API layer on top of the RabbitMQ
 **Description:** Check if the API Gateway is healthy and operational.
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -91,6 +92,7 @@ The API Gateway provides a secure, managed REST API layer on top of the RabbitMQ
 **Rate Limit:** 100 requests/minute
 
 **Request Body:**
+
 ```json
 {
   "score": 20,
@@ -101,6 +103,7 @@ The API Gateway provides a secure, managed REST API layer on top of the RabbitMQ
 ```
 
 **Response (201 Created):**
+
 ```json
 {
   "status": "success",
@@ -117,6 +120,7 @@ The API Gateway provides a secure, managed REST API layer on top of the RabbitMQ
 ```
 
 **Validation Rules:**
+
 - `score`: Integer between 0 and 60
 - `multiplier`: One of "SINGLE", "DOUBLE", "TRIPLE"
 - `player_id`: Optional string
@@ -133,6 +137,7 @@ The API Gateway provides a secure, managed REST API layer on top of the RabbitMQ
 **Rate Limit:** 10 requests/minute
 
 **Request Body:**
+
 ```json
 {
   "game_type": "301",
@@ -142,6 +147,7 @@ The API Gateway provides a secure, managed REST API layer on top of the RabbitMQ
 ```
 
 **Response (201 Created):**
+
 ```json
 {
   "status": "success",
@@ -158,6 +164,7 @@ The API Gateway provides a secure, managed REST API layer on top of the RabbitMQ
 ```
 
 **Validation Rules:**
+
 - `game_type`: One of "301", "401", "501", "cricket"
 - `players`: Array with at least 1 player name
 - `double_out`: Boolean (optional, default: false)
@@ -173,6 +180,7 @@ The API Gateway provides a secure, managed REST API layer on top of the RabbitMQ
 **Rate Limit:** 20 requests/minute
 
 **Request Body:**
+
 ```json
 {
   "name": "Player 3"
@@ -180,6 +188,7 @@ The API Gateway provides a secure, managed REST API layer on top of the RabbitMQ
 ```
 
 **Response (201 Created):**
+
 ```json
 {
   "status": "success",
@@ -194,6 +203,7 @@ The API Gateway provides a secure, managed REST API layer on top of the RabbitMQ
 ```
 
 **Validation Rules:**
+
 - `name`: Non-empty string
 
 ## Authentication
@@ -225,6 +235,7 @@ curl -k -X POST https://localhost:9443/oauth2/token \
 ```
 
 **Response:**
+
 ```json
 {
   "access_token": "eyJhbGciOiJSUzI1NiIsICJ...",
@@ -256,6 +267,7 @@ curl -X POST http://localhost:8080/api/v1/scores \
 **Cause:** Invalid request data
 
 **Response:**
+
 ```json
 {
   "error": "Invalid request",
@@ -268,6 +280,7 @@ curl -X POST http://localhost:8080/api/v1/scores \
 **Cause:** Missing or invalid access token
 
 **Response:**
+
 ```json
 {
   "error": "Invalid or expired token",
@@ -280,6 +293,7 @@ curl -X POST http://localhost:8080/api/v1/scores \
 **Cause:** Insufficient permissions (missing required scope)
 
 **Response:**
+
 ```json
 {
   "error": "Insufficient permissions",
@@ -292,6 +306,7 @@ curl -X POST http://localhost:8080/api/v1/scores \
 **Cause:** Server-side error
 
 **Response:**
+
 ```json
 {
   "error": "Internal server error",
@@ -332,12 +347,14 @@ SECRET_KEY=your_secret_key
 ### JWT Validation Modes
 
 **JWKS Mode (Recommended):**
+
 - Validates JWT signature using public keys from JWKS endpoint
 - Faster and more efficient
 - No network call to WSO2 IS for each request
 - Requires JWKS endpoint to be accessible
 
 **Introspection Mode:**
+
 - Validates token by calling WSO2 IS introspection endpoint
 - More secure (can check revocation status)
 - Requires network call for each request
@@ -352,6 +369,7 @@ SECRET_KEY=your_secret_key
 **Routing Key:** `darts.scores.api`
 
 **Message Format:**
+
 ```json
 {
   "score": 20,
@@ -370,6 +388,7 @@ SECRET_KEY=your_secret_key
 **Routing Key:** `darts.games.create`
 
 **Message Format:**
+
 ```json
 {
   "action": "new_game",
@@ -388,6 +407,7 @@ SECRET_KEY=your_secret_key
 **Routing Key:** `darts.players.add`
 
 **Message Format:**
+
 ```json
 {
   "action": "add_player",
@@ -402,11 +422,13 @@ SECRET_KEY=your_secret_key
 ### Docker Deployment
 
 **Build Image:**
+
 ```bash
 docker build -f Dockerfile.gateway -t darts-api-gateway .
 ```
 
 **Run Container:**
+
 ```bash
 docker run -d \
   --name darts-api-gateway \
@@ -427,11 +449,13 @@ docker-compose -f docker-compose-wso2.yml up -d api-gateway
 ### Standalone Deployment
 
 **Install Dependencies:**
+
 ```bash
 pip install -r requirements-gateway.txt
 ```
 
 **Run Application:**
+
 ```bash
 python api_gateway.py
 ```
@@ -443,6 +467,7 @@ python api_gateway.py
 **Endpoint:** `GET /health`
 
 **Use for:**
+
 - Kubernetes liveness/readiness probes
 - Load balancer health checks
 - Monitoring systems
@@ -450,6 +475,7 @@ python api_gateway.py
 ### Logging
 
 The API Gateway logs:
+
 - All incoming requests
 - Authentication attempts
 - Token validation results
@@ -457,6 +483,7 @@ The API Gateway logs:
 - Errors and exceptions
 
 **Log Format:**
+
 ```
 2024-01-01 12:00:00 - api_gateway - INFO - Token validated for user: dartboard-001
 2024-01-01 12:00:01 - api_gateway - INFO - Published message to darts.scores.api: {...}
@@ -465,6 +492,7 @@ The API Gateway logs:
 ### Metrics
 
 Monitor these metrics:
+
 - Request rate (requests/second)
 - Error rate (errors/total requests)
 - Response time (p50, p95, p99)
@@ -507,10 +535,12 @@ Monitor these metrics:
 ### Token Validation Fails
 
 **Symptoms:**
+
 - 401 Unauthorized responses
 - "Invalid or expired token" errors
 
 **Solutions:**
+
 1. Check token expiration
 2. Verify JWKS endpoint is accessible
 3. Try introspection mode
@@ -520,10 +550,12 @@ Monitor these metrics:
 ### RabbitMQ Connection Failed
 
 **Symptoms:**
+
 - 500 Internal Server Error
 - "Unable to publish message to queue" errors
 
 **Solutions:**
+
 1. Verify RabbitMQ is running
 2. Check network connectivity
 3. Verify credentials
@@ -533,10 +565,12 @@ Monitor these metrics:
 ### High Latency
 
 **Symptoms:**
+
 - Slow API responses
 - Timeouts
 
 **Solutions:**
+
 1. Check RabbitMQ performance
 2. Monitor WSO2 IS response time
 3. Use JWKS mode instead of introspection
@@ -546,6 +580,7 @@ Monitor these metrics:
 ## Client Examples
 
 See the following examples:
+
 - Python: `examples/dartboard_client.py`
 - Arduino/ESP32: See `docs/WSO2_INTEGRATION.md`
 - JavaScript: Coming soon
@@ -561,6 +596,7 @@ See the following examples:
 ## Support
 
 For issues and questions:
+
 1. Check the troubleshooting section
 2. Review logs: `docker logs darts-api-gateway`
 3. Consult the documentation

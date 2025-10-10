@@ -111,10 +111,10 @@ if command -v uv &> /dev/null; then
 else
     print_info "Installing UV..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
-    
+
     # Add UV to PATH for current session (try multiple possible locations)
     export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
-    
+
     if command -v uv &> /dev/null; then
         print_success "UV installed successfully"
         UV_VERSION=$(uv --version)
@@ -184,7 +184,7 @@ print_header "Setting Up Pre-commit Hooks"
 # Verify pre-commit is installed (should be from dev dependencies)
 if python -m pip show pre-commit &> /dev/null; then
     print_success "pre-commit is installed"
-    
+
     # Install pre-commit hooks
     print_info "Installing pre-commit hooks..."
     if pre-commit install; then

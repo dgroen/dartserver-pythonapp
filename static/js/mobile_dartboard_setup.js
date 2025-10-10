@@ -8,16 +8,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function registerDartboard(e) {
     e.preventDefault();
-    
+
     const dartboardId = document.getElementById('dartboardId').value;
     const wpaKey = document.getElementById('wpaKey').value;
     const name = document.getElementById('dartboardName').value;
-    
+
     if (!dartboardId || !wpaKey) {
         showAlert('Please fill in Dartboard ID and WPA Key', 'error');
         return;
     }
-    
+
     try {
         await apiRequest('/api/mobile/dartboards', {
             method: 'POST',
@@ -27,9 +27,9 @@ async function registerDartboard(e) {
                 name: name || null
             })
         });
-        
+
         showAlert('Dartboard registered successfully!', 'success');
-        
+
         // Redirect to account page after 2 seconds
         setTimeout(() => {
             window.location.href = '/mobile/account';

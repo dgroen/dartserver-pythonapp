@@ -7,6 +7,7 @@ The Darts Mobile App is a Progressive Web App (PWA) that allows users to connect
 ## Features
 
 ### 1. **Gameplay** (`/mobile/gameplay`)
+
 - Real-time game monitoring
 - Live scoreboard updates
 - Current player display
@@ -14,6 +15,7 @@ The Darts Mobile App is a Progressive Web App (PWA) that allows users to connect
 - WebSocket-based live updates
 
 ### 2. **Game Master** (`/mobile/gamemaster`)
+
 - Start new games (301, 501, Cricket)
 - Configure game settings (double out, etc.)
 - Manage players
@@ -21,24 +23,28 @@ The Darts Mobile App is a Progressive Web App (PWA) that allows users to connect
 - Real-time game control
 
 ### 3. **Dartboard Setup** (`/mobile/dartboard-setup`)
+
 - Register new dartboards
 - Generate unique dartboard IDs
 - Create WPA keys for secure connection
 - Name dartboards for easy identification
 
 ### 4. **Game Results** (`/mobile/results`)
+
 - View all completed games
 - Filter by game type
 - See player rankings and scores
 - View game duration and statistics
 
 ### 5. **Account Management** (`/mobile/account`)
+
 - Manage API keys for dartboard authentication
 - View registered dartboards
 - Monitor dartboard connection status
 - Revoke/delete API keys and dartboards
 
 ### 6. **Hotspot Control** (`/mobile/hotspot`)
+
 - Configure mobile hotspot for dartboard connectivity
 - Platform-specific instructions (Android/iOS)
 - Activate/deactivate hotspot configurations
@@ -269,6 +275,7 @@ alembic downgrade -1
 ## Support
 
 For issues or questions:
+
 1. Check the troubleshooting section above
 2. Review API documentation at `/api/docs`
 3. Check server logs for errors

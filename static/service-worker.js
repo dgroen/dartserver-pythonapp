@@ -105,7 +105,7 @@ self.addEventListener('push', (event) => {
         badge: '/static/icons/icon-72x72.png',
         vibrate: [200, 100, 200]
     };
-    
+
     event.waitUntil(
         self.registration.showNotification(data.title, options)
     );

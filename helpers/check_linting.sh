@@ -20,9 +20,9 @@ OVERALL_STATUS=0
 run_linter() {
     local name=$1
     local command=$2
-    
+
     echo -n "Checking $name... "
-    
+
     if eval "$command" > /dev/null 2>&1; then
         echo -e "${GREEN}✅ PASSED${NC}"
         return 0
@@ -80,7 +80,7 @@ if [ $OVERALL_STATUS -eq 0 ]; then
     echo ""
     echo "Optional checks (informational only):"
     echo ""
-    
+
     # Pylint (informational)
     echo -n "Checking Pylint (informational)... "
     PYLINT_OUTPUT=$(.venv/bin/pylint --rcfile=pyproject.toml $(find . -name "*.py" -not -path "./.venv/*" -not -path "./venv/*" -not -path "./.tox/*" -not -path "./build/*") 2>&1 | grep -c "^[EWC]:" || true)
@@ -89,7 +89,7 @@ if [ $OVERALL_STATUS -eq 0 ]; then
     else
         echo -e "${YELLOW}⚠️  $PYLINT_OUTPUT warnings (acceptable)${NC}"
     fi
-    
+
     # Mypy (informational)
     echo -n "Checking Mypy (informational)... "
     MYPY_OUTPUT=$(.venv/bin/mypy . --exclude '.venv|venv|.tox|build' 2>&1 | grep -c "error:" || true)
@@ -98,7 +98,7 @@ if [ $OVERALL_STATUS -eq 0 ]; then
     else
         echo -e "${YELLOW}⚠️  $MYPY_OUTPUT type hints (acceptable)${NC}"
     fi
-    
+
     echo ""
     echo "🎉 Codebase is ready for commit!"
     exit 0

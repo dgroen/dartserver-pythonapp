@@ -4,7 +4,7 @@ Handles dartboard management, API key authentication, and mobile app functionali
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -133,7 +133,7 @@ class MobileService:
             )
 
             if dartboard:
-                dartboard.last_connected = datetime.datetime.utcnow()
+                dartboard.last_connected = datetime.now(tz=timezone.utc)
                 self.db_session.commit()
                 return True
 
@@ -266,7 +266,7 @@ class MobileService:
                 return None
 
             # Update last used timestamp
-            key_obj.last_used = datetime.datetime.utcnow()
+            key_obj.last_used = datetime.now(tz=timezone.utc)
             self.db_session.commit()
 
             # Get player info
@@ -357,7 +357,7 @@ class MobileService:
                 # Update existing config
                 existing.ssid = ssid
                 existing.password = password
-                existing.updated_at = datetime.datetime.now()
+                existing.updated_at = datetime.now(tz=timezone.utc)
                 config = existing
             else:
                 # Create new config
@@ -412,7 +412,7 @@ class MobileService:
                 return {"success": False, "error": "Hotspot configuration not found"}
 
             config.is_enabled = enabled
-            config.updated_at = datetime.datetime.now()
+            config.updated_at = datetime.now(tz=timezone.utc)
             self.db_session.commit()
 
             logger.info(f"Hotspot {'enabled' if enabled else 'disabled'}: {config.ssid}")

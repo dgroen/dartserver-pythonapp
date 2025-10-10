@@ -7,6 +7,7 @@ Welcome to the Darts Game System documentation! This directory contains comprehe
 ## 📚 Documentation Index
 
 ### Quick Start
+
 - **[QUICK_START.md](../QUICK_START.md)** - Get up and running in minutes
   - Prerequisites
   - Step-by-step setup
@@ -14,6 +15,7 @@ Welcome to the Darts Game System documentation! This directory contains comprehe
   - Troubleshooting
 
 ### Authentication & Security
+
 - **[AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md)** - Complete authentication guide (500+ lines)
   - Detailed WSO2 configuration
   - Role and user setup
@@ -69,12 +71,12 @@ Welcome to the Darts Game System documentation! This directory contains comprehe
    - Review security features
    - See what files were created/modified
 
-2. **Code Reference**: 
+2. **Code Reference**:
    - `/auth.py` - Authentication module
    - `/app.py` - Main application with protected routes
    - `/templates/` - UI templates
 
-3. **Testing**: 
+3. **Testing**:
    - Run `./test-authentication.sh` for automated tests
    - Follow manual test procedures in documentation
 
@@ -98,17 +100,20 @@ Welcome to the Darts Game System documentation! This directory contains comprehe
 The system implements a three-tier role model:
 
 ### 🟢 Player Role
+
 - View game board
 - Submit scores
 - View game state
 
 ### 🟡 Game Master Role
+
 - All Player permissions
 - Access control panel
 - Create games
 - Manage players
 
 ### 🔴 Admin Role
+
 - Full system access
 - All permissions
 
@@ -119,12 +124,14 @@ The system implements a three-tier role model:
 ## 🔧 Configuration Files
 
 ### Environment Configuration
+
 - **`.env`** - Environment variables (create from `.env.example`)
   - WSO2 credentials
   - OAuth2 settings
   - Session configuration
 
 ### Docker Configuration
+
 - **`docker-compose-wso2.yml`** - Docker Compose configuration
   - All services defined
   - Environment variables
@@ -132,6 +139,7 @@ The system implements a three-tier role model:
   - Health checks
 
 ### Application Configuration
+
 - **`auth.py`** - Authentication module
   - Role definitions
   - Permission mappings
@@ -142,6 +150,7 @@ The system implements a three-tier role model:
 ## 🛠️ Helper Scripts
 
 ### Setup Scripts
+
 - **`start-with-auth.sh`** - Quick start script
   - Validates configuration
   - Starts all services
@@ -155,6 +164,7 @@ The system implements a three-tier role model:
   - OAuth2 app registration
 
 ### Testing Scripts
+
 - **`test-authentication.sh`** - Authentication testing
   - Automated endpoint tests
   - Service health checks
@@ -165,7 +175,9 @@ The system implements a three-tier role model:
 ## 📖 Key Concepts
 
 ### OAuth2 Authorization Code Flow
+
 The system uses the OAuth2 Authorization Code Flow for secure authentication:
+
 1. User accesses protected resource
 2. Redirected to WSO2 for authentication
 3. User logs in with credentials
@@ -176,13 +188,16 @@ The system uses the OAuth2 Authorization Code Flow for secure authentication:
 **Visual diagram**: [AUTHENTICATION_FLOW.md](AUTHENTICATION_FLOW.md#oauth2-authorization-code-flow)
 
 ### Token Validation
+
 Two methods supported:
+
 - **JWKS** - JSON Web Key Set signature verification
 - **Introspection** - WSO2 token introspection endpoint
 
 **Configuration**: Set `JWT_VALIDATION_MODE` in `.env`
 
 ### Session Management
+
 - Secure session cookies (HttpOnly, SameSite)
 - Token storage in server-side session
 - Automatic session validation on each request
@@ -192,19 +207,21 @@ Two methods supported:
 ## 🔒 Security Features
 
 ### Implemented
+
 ✅ OAuth2 Authorization Code Flow  
 ✅ CSRF Protection (state parameter)  
 ✅ Token Validation (JWKS + Introspection)  
 ✅ Role-Based Access Control  
 ✅ Session Security (HttpOnly, SameSite)  
-✅ Input Validation  
+✅ Input Validation
 
 ### Production Requirements
+
 ⚠️ Enable HTTPS  
 ⚠️ Use valid SSL certificates  
 ⚠️ Set SESSION_COOKIE_SECURE=True  
 ⚠️ Generate strong SECRET_KEY  
-⚠️ Create dedicated service account  
+⚠️ Create dedicated service account
 
 **Full security guide**: [AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md#security-considerations)
 
@@ -215,22 +232,26 @@ Two methods supported:
 ### Common Issues
 
 #### Services Won't Start
+
 - Check Docker is running
 - Verify ports are available
 - Check Docker resources (4GB+ RAM recommended)
 
 #### Cannot Connect to WSO2
+
 - Wait 2-3 minutes for startup
 - Check logs: `docker-compose -f docker-compose-wso2.yml logs wso2is`
 - Verify: `curl -k https://localhost:9443/carbon/admin/login.jsp`
 
 #### Authentication Fails
+
 - Verify WSO2 configuration
 - Check client credentials in `.env`
 - Verify callback URL matches
 - Check user has roles assigned
 
 #### 403 Forbidden
+
 - Verify user has required role
 - Check permission configuration
 - Review route protection decorators
@@ -241,23 +262,25 @@ Two methods supported:
 
 ## 📊 Service URLs
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| Darts Game | http://localhost:5000 | WSO2 users |
-| WSO2 IS Console | https://localhost:9443/carbon | admin / admin |
-| RabbitMQ Management | http://localhost:15672 | guest / guest |
-| API Gateway | http://localhost:8080 | Token required |
+| Service             | URL                             | Credentials    |
+| ------------------- | ------------------------------- | -------------- |
+| Darts Game          | <http://localhost:5000>         | WSO2 users     |
+| WSO2 IS Console     | <https://localhost:9443/carbon> | admin / admin  |
+| RabbitMQ Management | <http://localhost:15672>        | guest / guest  |
+| API Gateway         | <http://localhost:8080>         | Token required |
 
 ---
 
 ## 🧪 Testing
 
 ### Automated Tests
+
 ```bash
 ./test-authentication.sh
 ```
 
 ### Manual Tests
+
 1. Test each role (player, gamemaster, admin)
 2. Verify access control
 3. Test logout functionality
@@ -270,16 +293,19 @@ Two methods supported:
 ## 📝 API Endpoints
 
 ### Public Endpoints
+
 - `GET /login` - Login page
 - `GET /callback` - OAuth2 callback
 
 ### Protected Endpoints
+
 - `GET /` - Game board (all roles)
 - `GET /control` - Control panel (gamemaster, admin)
 - `GET /profile` - User profile (all roles)
 - `GET /logout` - Logout (all roles)
 
 ### API Endpoints
+
 - `GET /api/game` - Get game state
 - `POST /api/game` - Create game (gamemaster, admin)
 - `POST /api/player` - Add player (gamemaster, admin)
@@ -300,12 +326,14 @@ Two methods supported:
    - Update routes in `app.py`
 
 2. **Test Changes**
+
    ```bash
    docker-compose -f docker-compose-wso2.yml restart darts-app
    ./test-authentication.sh
    ```
 
 3. **View Logs**
+
    ```bash
    docker-compose -f docker-compose-wso2.yml logs -f darts-app
    ```
@@ -329,15 +357,18 @@ Two methods supported:
 ## 📚 Additional Resources
 
 ### WSO2 Documentation
+
 - [WSO2 Identity Server Documentation](https://is.docs.wso2.com/)
 - [OAuth2 Guide](https://is.docs.wso2.com/en/latest/guides/identity-federation/oauth/)
 - [Role-Based Access Control](https://is.docs.wso2.com/en/latest/guides/identity-lifecycles/manage-roles-overview/)
 
 ### OAuth2 Resources
+
 - [OAuth 2.0 Authorization Code Flow](https://oauth.net/2/grant-types/authorization-code/)
 - [OpenID Connect](https://openid.net/connect/)
 
 ### Flask Resources
+
 - [Flask Documentation](https://flask.palletsprojects.com/)
 - [Flask Sessions](https://flask.palletsprojects.com/en/2.3.x/quickstart/#sessions)
 
@@ -352,11 +383,13 @@ Two methods supported:
    - Check troubleshooting sections
 
 2. **Check Logs**
+
    ```bash
    docker-compose -f docker-compose-wso2.yml logs -f
    ```
 
 3. **Run Tests**
+
    ```bash
    ./test-authentication.sh
    ```
@@ -398,24 +431,24 @@ docker-compose -f docker-compose-wso2.yml up -d
 
 ### Test Users
 
-| Username | Password | Role |
-|----------|----------|------|
-| testplayer | Player@123 | player |
+| Username       | Password       | Role       |
+| -------------- | -------------- | ---------- |
+| testplayer     | Player@123     | player     |
 | testgamemaster | GameMaster@123 | gamemaster |
-| testadmin | Admin@123 | admin |
+| testadmin      | Admin@123      | admin      |
 
-*Note: Create these users in WSO2 Console first*
+_Note: Create these users in WSO2 Console first_
 
 ---
 
 ## 📄 Document Versions
 
-| Document | Lines | Last Updated |
-|----------|-------|--------------|
-| AUTHENTICATION_SETUP.md | 500+ | 2024 |
-| AUTHENTICATION_FLOW.md | 400+ | 2024 |
-| AUTHENTICATION_SUMMARY.md | 400+ | 2024 |
-| QUICK_START.md | 200+ | 2024 |
+| Document                  | Lines | Last Updated |
+| ------------------------- | ----- | ------------ |
+| AUTHENTICATION_SETUP.md   | 500+  | 2024         |
+| AUTHENTICATION_FLOW.md    | 400+  | 2024         |
+| AUTHENTICATION_SUMMARY.md | 400+  | 2024         |
+| QUICK_START.md            | 200+  | 2024         |
 
 ---
 

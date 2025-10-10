@@ -22,6 +22,7 @@ alembic upgrade head
 ```
 
 Verify migration:
+
 ```bash
 alembic current
 # Should show: d55f29e75045 (head)
@@ -49,18 +50,21 @@ done
 PWA requires HTTPS. Options:
 
 **Option A: Let's Encrypt (Recommended)**
+
 ```bash
 sudo apt-get install certbot python3-certbot-nginx
 sudo certbot --nginx -d yourdomain.com
 ```
 
 **Option B: Self-signed (Development only)**
+
 ```bash
 openssl req -x509 -newkey rsa:4096 -nodes \
   -keyout key.pem -out cert.pem -days 365
 ```
 
 Update `app.py` to use SSL:
+
 ```python
 if __name__ == "__main__":
     socketio.run(
@@ -122,11 +126,13 @@ if not player_id:
 **Option A: Gunicorn + Nginx**
 
 Install Gunicorn:
+
 ```bash
 pip install gunicorn eventlet
 ```
 
 Create `gunicorn_config.py`:
+
 ```python
 bind = "127.0.0.1:5000"
 workers = 4
@@ -138,11 +144,13 @@ loglevel = "info"
 ```
 
 Run with Gunicorn:
+
 ```bash
 gunicorn -c gunicorn_config.py app:app
 ```
 
 Configure Nginx:
+
 ```nginx
 server {
     listen 80;
@@ -190,6 +198,7 @@ server {
 **Option B: Systemd Service**
 
 Create `/etc/systemd/system/dartserver.service`:
+
 ```ini
 [Unit]
 Description=Dartboard Server
@@ -209,6 +218,7 @@ WantedBy=multi-user.target
 ```
 
 Enable and start:
+
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable dartserver
@@ -221,11 +231,13 @@ sudo systemctl status dartserver
 **Rate Limiting**
 
 Install Flask-Limiter:
+
 ```bash
 pip install Flask-Limiter
 ```
 
 Add to `app.py`:
+
 ```python
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -275,6 +287,7 @@ def set_security_headers(response):
 **Application Logging**
 
 Update logging configuration:
+
 ```python
 import logging
 from logging.handlers import RotatingFileHandler
@@ -297,11 +310,13 @@ if not app.debug:
 **Error Tracking (Optional)**
 
 Install Sentry:
+
 ```bash
 pip install sentry-sdk[flask]
 ```
 
 Configure:
+
 ```python
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
@@ -316,6 +331,7 @@ sentry_sdk.init(
 ### 9. Database Backup
 
 Create backup script `/usr/local/bin/backup-dartserver.sh`:
+
 ```bash
 #!/bin/bash
 BACKUP_DIR="/var/backups/dartserver"
@@ -333,6 +349,7 @@ find $BACKUP_DIR -name "*.sql.gz" -mtime +30 -delete
 ```
 
 Add to crontab:
+
 ```bash
 0 2 * * * /usr/local/bin/backup-dartserver.sh
 ```
@@ -340,16 +357,19 @@ Add to crontab:
 ### 10. Testing Deployment
 
 Run the test suite:
+
 ```bash
 python test_mobile_app.py
 ```
 
 Test PWA installation:
-1. Open https://yourdomain.com/mobile on mobile device
+
+1. Open <https://yourdomain.com/mobile> on mobile device
 2. Look for "Add to Home Screen" prompt
 3. Install and test offline functionality
 
 Test API endpoints:
+
 ```bash
 # Test API key creation
 curl -X POST https://yourdomain.com/api/mobile/apikeys \
@@ -418,6 +438,7 @@ curl -X POST https://yourdomain.com/api/mobile/dartboards \
 ### Database Indexes
 
 Already created in migration:
+
 - `dartboard_id` (unique)
 - `api_key_hash` (indexed)
 - `username` (unique)
@@ -425,11 +446,13 @@ Already created in migration:
 ### Caching
 
 Consider adding Redis for session storage:
+
 ```bash
 pip install redis flask-session
 ```
 
 Configure:
+
 ```python
 from flask_session import Session
 import redis
@@ -442,6 +465,7 @@ Session(app)
 ### CDN for Static Files
 
 Upload static files to CDN and update URLs:
+
 ```python
 app.config['CDN_DOMAIN'] = 'cdn.yourdomain.com'
 ```
@@ -472,6 +496,7 @@ sudo systemctl restart dartserver
 ## Support
 
 For issues or questions:
+
 - Check logs: `/var/log/dartserver/`
 - Review documentation: `/docs/`
 - Test endpoints: `python test_mobile_app.py`
