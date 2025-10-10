@@ -169,7 +169,7 @@ def callback():
     app.logger.info(f"Session ID: {session.get('_id', 'No session ID')}")
 
     if state != stored_state:
-        app.logging.exception(f"State mismatch! Request: {state}, Session: {stored_state}")
+        app.logger.error(f"State mismatch! Request: {state}, Session: {stored_state}")
         return redirect(url_for("login", error="Invalid state parameter"))
 
     # Get authorization code

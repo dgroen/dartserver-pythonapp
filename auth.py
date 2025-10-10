@@ -45,6 +45,9 @@ JWT_VALIDATION_MODE = os.getenv("JWT_VALIDATION_MODE", "introspection")
 # SSL verification configuration
 WSO2_IS_VERIFY_SSL = os.getenv("WSO2_IS_VERIFY_SSL", "False").lower() == "true"
 
+# Authentication bypass configuration
+AUTH_DISABLED = os.getenv("AUTH_DISABLED", "False").lower() == "true"
+
 # Initialize JWKS client
 jwks_client = None
 if JWT_VALIDATION_MODE == "jwks":
@@ -225,10 +228,19 @@ def login_required(f):
     """
     Decorator to require authentication
     Redirects to login page if user is not authenticated
+    Can be bypassed by setting AUTH_DISABLED=true in environment
     """
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Bypass authentication if disabled
+        if AUTH_DISABLED:
+            # Set default user info for bypass mode
+            request.user_claims = {"sub": "bypass_user", "username": "bypass_user"}
+            request.user_roles = ["admin"]  # Grant admin role in bypass mode
+            logger.info("Authentication bypassed - AUTH_DISABLED is true")
+            return f(*args, **kwargs)
+
         if "access_token" not in session:
             return redirect(url_for("login", next=request.url))
 
@@ -254,12 +266,20 @@ def role_required(*required_roles):
     """
     Decorator to require specific roles
     Returns 403 if user doesn't have required role
+    Can be bypassed by setting AUTH_DISABLED=true in environment
     """
 
     def decorator(f):
         @wraps(f)
         @login_required
         def decorated_function(*args, **kwargs):
+            # Bypass role check if authentication is disabled
+            if AUTH_DISABLED:
+                logger.info(
+                    f"Role check bypassed - AUTH_DISABLED is true (required: {required_roles})",
+                )
+                return f(*args, **kwargs)
+
             user_roles = getattr(request, "user_roles", [])
 
             # Debug: Log role check
@@ -295,12 +315,20 @@ def permission_required(permission: str):
     """
     Decorator to require specific permission
     Returns 403 if user doesn't have required permission
+    Can be bypassed by setting AUTH_DISABLED=true in environment
     """
 
     def decorator(f):
         @wraps(f)
         @login_required
         def decorated_function(*args, **kwargs):
+            # Bypass permission check if authentication is disabled
+            if AUTH_DISABLED:
+                logger.info(
+                    f"Permission check bypassed - AUTH_DISABLED is true (required: {permission})",
+                )
+                return f(*args, **kwargs)
+
             user_roles = getattr(request, "user_roles", [])
 
             if not has_permission(user_roles, permission):

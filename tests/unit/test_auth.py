@@ -233,7 +233,7 @@ class TestLoginRequired:
     def test_login_required_with_valid_token(self):
         """Test login_required allows access with valid token."""
         app = Flask(__name__)
-        app.config["SECRET_KEY"] = "test-secret"
+        app.config["SECRET_KEY"] = "test-secret"  # pragma: allowlist secret
 
         @app.route("/protected")
         @login_required
@@ -259,7 +259,7 @@ class TestLoginRequired:
     def test_login_required_without_token(self):
         """Test login_required redirects without token."""
         app = Flask(__name__)
-        app.config["SECRET_KEY"] = "test-secret"
+        app.config["SECRET_KEY"] = "test-secret"  # pragma: allowlist secret
 
         @app.route("/login")
         def login():
@@ -461,3 +461,101 @@ class TestPermissionRequired:
                 assert response.status_code == 200
                 data = json.loads(response.data)
                 assert data["message"] == "action performed"
+
+
+class TestAuthDisabled:
+    """Test authentication bypass functionality."""
+
+    @patch("auth.AUTH_DISABLED", True)
+    def test_login_required_bypassed(self):
+        """Test login_required decorator bypassed when AUTH_DISABLED is True."""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret"
+
+        @app.route("/protected")
+        @login_required
+        def protected():
+            return jsonify({"message": "success"})
+
+        with app.test_client() as client:
+            # No session token, but should still work
+            response = client.get("/protected")
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert data["message"] == "success"
+
+    @patch("auth.AUTH_DISABLED", True)
+    def test_role_required_bypassed(self):
+        """Test role_required decorator bypassed when AUTH_DISABLED is True."""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret"
+
+        @app.route("/admin-only")
+        @role_required("admin")
+        def admin_only():
+            return jsonify({"message": "admin access"})
+
+        with app.test_client() as client:
+            # No session token or roles, but should still work
+            response = client.get("/admin-only")
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert data["message"] == "admin access"
+
+    @patch("auth.AUTH_DISABLED", True)
+    def test_permission_required_bypassed(self):
+        """Test permission_required decorator bypassed when AUTH_DISABLED is True."""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret"
+
+        @app.route("/create-game")
+        @permission_required("game:create")
+        def create_game():
+            return jsonify({"message": "game created"})
+
+        with app.test_client() as client:
+            # No session token or permissions, but should still work
+            response = client.get("/create-game")
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert data["message"] == "game created"
+
+    @patch("auth.AUTH_DISABLED", True)
+    def test_multiple_decorators_bypassed(self):
+        """Test multiple auth decorators bypassed when AUTH_DISABLED is True."""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret"
+
+        @app.route("/complex")
+        @role_required("admin", "gamemaster")
+        @permission_required("game:manage")
+        def complex_endpoint():
+            return jsonify({"message": "complex access granted"})
+
+        with app.test_client() as client:
+            # No session token, roles, or permissions, but should still work
+            response = client.get("/complex")
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert data["message"] == "complex access granted"
+
+    @patch("auth.AUTH_DISABLED", False)
+    def test_auth_not_bypassed_when_disabled_false(self):
+        """Test authentication is enforced when AUTH_DISABLED is False."""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret"
+
+        @app.route("/login")
+        def login():
+            return jsonify({"message": "login page"})
+
+        @app.route("/protected")
+        @login_required
+        def protected():
+            return jsonify({"message": "success"})
+
+        with app.test_client() as client:
+            # No session token, should redirect to login
+            response = client.get("/protected")
+            assert response.status_code == 302  # Redirect
+            assert "/login" in response.location
