@@ -1,9 +1,11 @@
 # WSO2 IS Redirect URI Configuration Fix
 
 ## Problem
+
 The login redirect from WSO2 IS was redirecting to `localhost` instead of `letsplaydarts.eu` with the proper SSL port handled by the reverse proxy.
 
 ## Root Causes
+
 1. **Missing X-Forwarded-Host header in nginx**: Flask's ProxyFix middleware needs this header to understand the external domain
 2. **Hardcoded localhost redirect URIs**: Docker-compose had fallback redirect URIs pointing to localhost
 3. **WSO2 IS configuration not mounted**: The deployment.toml file was not being mounted into the container
@@ -12,6 +14,7 @@ The login redirect from WSO2 IS was redirecting to `localhost` instead of `letsp
 ## Changes Made
 
 ### 1. Nginx Configuration (`nginx/nginx.conf`)
+
 Added `X-Forwarded-Host` header to both the main application and WSO2 IS proxy locations:
 
 ```nginx
@@ -36,13 +39,16 @@ location /auth/ {
 ```
 
 ### 2. Docker Compose Configuration (`docker-compose-wso2.yml`)
+
 - Changed default redirect URIs from `http://localhost:5000/callback` to `https://letsplaydarts.eu/callback`
 - Changed post-logout redirect URI from `http://localhost:5000/` to `https://letsplaydarts.eu/`
 - Enabled secure cookies: `SESSION_COOKIE_SECURE: "True"`
 - Uncommented the deployment.toml volume mount for WSO2 IS
 
 ### 3. WSO2 IS Configuration (`wso2is-config/deployment.toml`)
+
 The configuration file is already correct with:
+
 - `hostname = "letsplaydarts.eu"`
 - `base_path = "https://letsplaydarts.eu/auth"`
 - OAuth endpoints configured with `letsplaydarts.eu/auth` paths
@@ -56,7 +62,7 @@ You need to configure the OAuth application in WSO2 IS to accept redirect URIs f
 1. **Access WSO2 IS Admin Console**:
    - URL: `https://letsplaydarts.eu/auth/carbon`
    - Username: `admin`
-   - Password: `admin`
+   - Password: `admin` <!-- pragma: allowlist secret -->
 
 2. **Navigate to Service Providers**:
    - Main Menu → Identity → Service Providers → List
@@ -69,11 +75,13 @@ You need to configure the OAuth application in WSO2 IS to accept redirect URIs f
 
 4. **Update Callback URLs**:
    Add the following callback URLs (use regex pattern for flexibility):
+
    ```
    regexp=https://letsplaydarts\.eu/callback
    ```
-   
+
    Or add specific URLs:
+
    ```
    https://letsplaydarts.eu/callback
    ```
@@ -88,6 +96,7 @@ You need to configure the OAuth application in WSO2 IS to accept redirect URIs f
    - Copy the OAuth Client Key (Client ID)
    - Copy the OAuth Client Secret
    - Update your `.env` file or docker-compose environment variables:
+
      ```
      WSO2_CLIENT_ID=<your_client_id>
      WSO2_CLIENT_SECRET=<your_client_secret>
@@ -109,12 +118,14 @@ You need to configure the OAuth application in WSO2 IS to accept redirect URIs f
 ## Testing
 
 1. **Restart the services**:
+
    ```bash
    docker-compose -f docker-compose-wso2.yml down
    docker-compose -f docker-compose-wso2.yml up -d
    ```
 
 2. **Check logs** for the dynamic redirect URI:
+
    ```bash
    docker logs darts-app | grep "Dynamic redirect URI"
    ```
@@ -130,17 +141,20 @@ You need to configure the OAuth application in WSO2 IS to accept redirect URIs f
 ### Still redirecting to localhost?
 
 1. **Check nginx is running and configured correctly**:
+
    ```bash
    docker exec darts-nginx nginx -t
    docker logs darts-nginx
    ```
 
 2. **Check Flask is receiving the correct headers**:
+
    ```bash
    docker logs darts-app | grep "Request headers"
    ```
 
 3. **Verify ProxyFix is enabled** in `app.py`:
+
    ```python
    app.wsgi_app = ProxyFix(
        app.wsgi_app,
@@ -156,6 +170,7 @@ You need to configure the OAuth application in WSO2 IS to accept redirect URIs f
 1. **Check the OAuth application configuration** in WSO2 IS
 2. **Verify the callback URL** is registered exactly as: `https://letsplaydarts.eu/callback`
 3. **Check WSO2 IS logs**:
+
    ```bash
    docker logs darts-wso2is | grep -i redirect
    ```

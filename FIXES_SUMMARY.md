@@ -3,18 +3,22 @@
 ## Issues Fixed
 
 ### 1. ✅ SSL Error Stack Trace Spam
+
 **Problem**: Console flooded with 20+ line stack traces when HTTP requests hit HTTPS server
 
 **Solution**: Implemented custom error handler that:
+
 - Intercepts SSL protocol mismatch errors
 - Suppresses stack traces
 - Logs concise, rate-limited messages (every 10 seconds)
 - Shows user-friendly error messages
 
 **Files Modified**:
+
 - `app.py` (lines 1782-1837): Added `patch_eventlet_ssl_error_handling()` function
 
 **Result**:
+
 ```
 Before: 20+ lines of stack trace per error
 After:  ⚠️  SSL Protocol Mismatch Detected
@@ -25,15 +29,18 @@ After:  ⚠️  SSL Protocol Mismatch Detected
 ---
 
 ### 2. ✅ Multi-Domain WSO2 Authentication
+
 **Problem**: WSO2 redirect URIs were hardcoded, preventing login from working across multiple domains/ports
 
 **Solution**: Implemented dynamic redirect URI generation that:
+
 - Automatically detects the request scheme (http/https)
 - Automatically detects the host and port
 - Builds appropriate redirect URIs on-the-fly
 - Works with localhost:5000, letsplaydarts.eu:5001, and letsplaydarts.eu:443
 
 **Files Modified**:
+
 - `auth.py` (lines 40-81): Added `get_dynamic_redirect_uri()` and `get_dynamic_post_logout_redirect_uri()`
 - `auth.py` (line 402): Updated `get_authorization_url()` to use dynamic URIs
 - `auth.py` (line 432): Updated `exchange_code_for_token()` to use dynamic URIs
@@ -55,6 +62,7 @@ After:  ⚠️  SSL Protocol Mismatch Detected
 Register all redirect URIs in WSO2 IS Service Provider configuration:
 
 **Option 1: List all URIs (comma-separated)**
+
 ```
 https://localhost:5000/callback,
 https://letsplaydarts.eu:5001/callback,
@@ -62,6 +70,7 @@ https://letsplaydarts.eu/callback
 ```
 
 **Option 2: Use regex pattern (recommended)**
+
 ```
 regexp=(https://localhost:5000/callback|https://letsplaydarts\.eu:5001/callback|https://letsplaydarts\.eu/callback)
 ```
@@ -93,6 +102,7 @@ WSO2_IS_INTROSPECT_PASSWORD=admin
 ### Port Forwarding (Router/Firewall)
 
 Forward these ports to your server:
+
 - **5000**: Development access
 - **5001**: Production with custom port
 - **443**: Standard HTTPS
@@ -112,6 +122,7 @@ sudo ufw status
 ### DNS Configuration
 
 Ensure your domain points to your public IP:
+
 ```
 A Record: letsplaydarts.eu → Your Public IP
 ```
@@ -158,6 +169,7 @@ python app.py
 ```
 
 You should see:
+
 ```
 ✅ SSL error handling patch applied
 ================================================================================
@@ -189,6 +201,7 @@ https://letsplaydarts.eu
 2. Should redirect to WSO2 IS login page
 3. After login, should redirect back to your application
 4. Check logs for dynamic redirect URI:
+
    ```
    INFO:auth:Dynamic redirect URI: https://letsplaydarts.eu:5001/callback
    ```
@@ -219,14 +232,16 @@ curl http://localhost:5000
 
 ### Issue: "Connection Refused" from public domain
 
-**Solution**: 
+**Solution**:
+
 1. Check firewall: `sudo ufw status`
 2. Check port forwarding on router
 3. Verify DNS: `nslookup letsplaydarts.eu`
 
 ### Issue: Still seeing SSL stack traces
 
-**Solution**: 
+**Solution**:
+
 1. Restart the application
 2. Verify you see "✅ SSL error handling patch applied" in startup logs
 3. Check that `FLASK_USE_SSL=True` in `.env`
@@ -248,7 +263,7 @@ curl http://localhost:5000
 ✅ Ruff linting passed  
 ✅ Black formatting applied  
 ✅ No breaking changes  
-✅ Backward compatible  
+✅ Backward compatible
 
 ---
 
@@ -266,6 +281,7 @@ curl http://localhost:5000
 ## Support
 
 For issues or questions:
+
 1. Check the troubleshooting section above
 2. Review the detailed documentation in `docs/`
 3. Check application logs for error messages
@@ -279,6 +295,6 @@ For issues or questions:
 ✅ **Multi-Domain Support**: Login works from localhost, custom port, and standard HTTPS  
 ✅ **Dynamic Redirect URIs**: Automatically adapts to the access method  
 ✅ **Production Ready**: Secure, tested, and documented  
-✅ **Easy Configuration**: Simple environment variables and WSO2 setup  
+✅ **Easy Configuration**: Simple environment variables and WSO2 setup
 
 **Status**: Ready for production deployment! 🚀

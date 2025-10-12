@@ -52,11 +52,13 @@ letsplaydarts.eu → Your Public IP
 ### 4. Get SSL Certificate
 
 **Production:**
+
 ```bash
 sudo certbot --nginx -d letsplaydarts.eu
 ```
 
 **Development:**
+
 ```bash
 mkdir -p ssl
 openssl req -x509 -newkey rsa:4096 -nodes \
@@ -76,6 +78,7 @@ python app.py
 ## 🧪 Testing
 
 ### Test SSL Error Handling
+
 ```bash
 # Wrong protocol (HTTP to HTTPS server)
 curl http://localhost:5000
@@ -93,6 +96,7 @@ curl http://localhost:5000
 3. **Standard HTTPS**: `https://letsplaydarts.eu` → Login → Should work
 
 Check logs for dynamic redirect URIs:
+
 ```
 INFO:auth:Dynamic redirect URI: https://letsplaydarts.eu:5001/callback
 ```
@@ -101,11 +105,11 @@ INFO:auth:Dynamic redirect URI: https://letsplaydarts.eu:5001/callback
 
 ## 🔧 Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| "Invalid redirect_uri" | Register all URIs in WSO2 IS |
-| "SSL verification failed" | Set `WSO2_IS_VERIFY_SSL=False` |
-| "Connection refused" | Check firewall and port forwarding |
+| Issue                     | Solution                              |
+| ------------------------- | ------------------------------------- |
+| "Invalid redirect_uri"    | Register all URIs in WSO2 IS          |
+| "SSL verification failed" | Set `WSO2_IS_VERIFY_SSL=False`        |
+| "Connection refused"      | Check firewall and port forwarding    |
 | Still seeing stack traces | Restart app, verify SSL patch applied |
 
 ---
@@ -133,17 +137,17 @@ INFO:auth:Dynamic redirect URI: https://letsplaydarts.eu:5001/callback
 ✅ Automatic redirect URI detection  
 ✅ Works with localhost, custom port, and standard HTTPS  
 ✅ Production-ready security  
-✅ Zero configuration needed (auto-detects everything)  
+✅ Zero configuration needed (auto-detects everything)
 
 ---
 
 ## 🎯 Access Methods Supported
 
-| Access Method | Redirect URI Generated |
-|--------------|----------------------|
-| `https://localhost:5000` | `https://localhost:5000/callback` |
+| Access Method                   | Redirect URI Generated                   |
+| ------------------------------- | ---------------------------------------- |
+| `https://localhost:5000`        | `https://localhost:5000/callback`        |
 | `https://letsplaydarts.eu:5001` | `https://letsplaydarts.eu:5001/callback` |
-| `https://letsplaydarts.eu` | `https://letsplaydarts.eu/callback` |
+| `https://letsplaydarts.eu`      | `https://letsplaydarts.eu/callback`      |
 
 ---
 

@@ -31,11 +31,11 @@ def get_dynamic_redirect_uri() -> str:
 
 ### Example Scenarios
 
-| User Accesses | Dynamic Redirect URI Generated |
-|--------------|-------------------------------|
-| `https://localhost:5000` | `https://localhost:5000/callback` |
+| User Accesses                   | Dynamic Redirect URI Generated           |
+| ------------------------------- | ---------------------------------------- |
+| `https://localhost:5000`        | `https://localhost:5000/callback`        |
 | `https://letsplaydarts.eu:5001` | `https://letsplaydarts.eu:5001/callback` |
-| `https://letsplaydarts.eu` | `https://letsplaydarts.eu/callback` |
+| `https://letsplaydarts.eu`      | `https://letsplaydarts.eu/callback`      |
 
 ## WSO2 Identity Server Configuration
 
@@ -56,6 +56,7 @@ https://letsplaydarts.eu/callback
 ```
 
 **Or use a regex pattern:**
+
 ```
 regexp=(https://localhost:5000/callback|https://letsplaydarts\.eu:5001/callback|https://letsplaydarts\.eu/callback)
 ```
@@ -74,6 +75,7 @@ https://letsplaydarts.eu/
 ```
 
 **Or use a regex pattern:**
+
 ```
 regexp=(https://localhost:5000/|https://letsplaydarts\.eu:5001/|https://letsplaydarts\.eu/)
 ```
@@ -185,9 +187,9 @@ services:
     build: .
     container_name: darts-app
     ports:
-      - "5000:5000"  # Development
-      - "5001:5000"  # Production custom port
-      - "443:5000"   # Standard HTTPS
+      - "5000:5000" # Development
+      - "5001:5000" # Production custom port
+      - "443:5000" # Standard HTTPS
     environment:
       FLASK_USE_SSL: "True"
       WSO2_IS_URL: https://wso2is:9443
@@ -275,6 +277,7 @@ INFO:auth:Generating authorization URL with params: {...}
 **Cause**: The redirect URI is not registered in WSO2 IS
 
 **Solution**:
+
 1. Check WSO2 IS Service Provider configuration
 2. Ensure all redirect URIs are registered
 3. Use regex pattern for flexibility
@@ -284,6 +287,7 @@ INFO:auth:Generating authorization URL with params: {...}
 **Cause**: WSO2 IS uses self-signed certificate
 
 **Solution**:
+
 ```bash
 # In .env file
 WSO2_IS_VERIFY_SSL=False
@@ -294,6 +298,7 @@ WSO2_IS_VERIFY_SSL=False
 **Cause**: Port not accessible from public internet
 
 **Solution**:
+
 1. Check firewall rules: `sudo ufw status`
 2. Allow ports: `sudo ufw allow 5001/tcp`
 3. Check port forwarding on router
@@ -303,6 +308,7 @@ WSO2_IS_VERIFY_SSL=False
 **Cause**: Application accessed via HTTP instead of HTTPS
 
 **Solution**:
+
 1. Always use HTTPS URLs
 2. Configure HTTP to HTTPS redirect in Nginx
 3. Set `FLASK_USE_SSL=True`
@@ -365,14 +371,14 @@ If you need to map different domains to different WSO2 clients:
 # In auth.py, customize get_dynamic_redirect_uri()
 def get_dynamic_redirect_uri() -> str:
     host = request.host
-    
+
     # Map domains to specific redirect URIs
     domain_mapping = {
         "letsplaydarts.eu": "https://letsplaydarts.eu/callback",
         "letsplaydarts.eu:5001": "https://letsplaydarts.eu:5001/callback",
         "localhost:5000": "https://localhost:5000/callback",
     }
-    
+
     return domain_mapping.get(host, f"{request.scheme}://{host}/callback")
 ```
 
@@ -413,6 +419,7 @@ LOG_LEVEL=DEBUG
 ### Monitor Authentication Flow
 
 Check logs for:
+
 - Dynamic redirect URI generation
 - OAuth2 authorization requests
 - Token exchange responses
@@ -429,7 +436,7 @@ tail -f logs/app.log | grep -E "(redirect_uri|authorization|token)"
 ✅ **Multiple domains** supported (localhost, custom port, standard HTTPS)  
 ✅ **WSO2 IS integration** works seamlessly across all domains  
 ✅ **SSL/TLS** properly configured for secure communication  
-✅ **Production-ready** with proper security measures  
+✅ **Production-ready** with proper security measures
 
 ## Related Documentation
 

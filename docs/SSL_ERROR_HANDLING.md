@@ -33,7 +33,7 @@ The `patch_eventlet_ssl_error_handling()` function modifies eventlet's WSGI erro
 def patch_eventlet_ssl_error_handling():
     """
     Monkey-patch eventlet's WSGI error handler to suppress SSL protocol errors
-    
+
     This prevents stack traces from flooding the console when clients attempt
     to connect using HTTP to an HTTPS server.
     """
@@ -55,6 +55,7 @@ To prevent log spam, SSL errors are aggregated and reported every 10 seconds:
 ### Automatic Activation
 
 The error handler is automatically activated when:
+
 - `FLASK_USE_SSL=True` in `.env`
 - SSL certificates exist in the `ssl/` directory
 - The server starts successfully with HTTPS
@@ -102,15 +103,17 @@ When HTTP requests are received by the HTTPS server:
 ### Manual Testing
 
 1. Start the server with SSL enabled:
+
    ```bash
    # Ensure SSL is enabled in .env
    echo "FLASK_USE_SSL=True" >> .env
-   
+
    # Start the server
    python app.py
    ```
 
 2. In another terminal, run the test script:
+
    ```bash
    python test_ssl_error_handling.py
    ```
@@ -120,6 +123,7 @@ When HTTP requests are received by the HTTPS server:
 ### Using curl
 
 Test HTTP to HTTPS connection:
+
 ```bash
 # This will trigger an SSL error
 curl http://localhost:5000
@@ -171,6 +175,7 @@ curl -k https://localhost:5000
 **Result**: SSL errors if main app uses HTTPS
 
 **Solution**: Either:
+
 - Use HTTPS URLs in container configuration
 - Disable SSL for internal communication
 - Use nginx as SSL termination proxy
@@ -198,11 +203,13 @@ if current_time - ssl_error_state["last_logged"] >= 30:
 To see full stack traces (for debugging):
 
 1. Comment out the patch call in `app.py`:
+
    ```python
    # patch_eventlet_ssl_error_handling()
    ```
 
 2. Or disable SSL entirely:
+
    ```bash
    # In .env file
    FLASK_USE_SSL=False
@@ -215,11 +222,13 @@ To see full stack traces (for debugging):
 **Problem**: Full stack traces still appear in console
 
 **Possible Causes**:
+
 1. SSL error handling patch not applied
 2. Different type of SSL error (not HTTP_REQUEST)
 3. Error occurring before patch is applied
 
 **Solutions**:
+
 1. Verify `patch_eventlet_ssl_error_handling()` is called
 2. Check error message - may be different SSL issue
 3. Ensure patch is applied before server starts
@@ -229,11 +238,13 @@ To see full stack traces (for debugging):
 **Problem**: HTTP requests fail silently
 
 **Possible Causes**:
+
 1. Client not reaching server
 2. Firewall blocking connections
 3. Server not listening on expected interface
 
 **Solutions**:
+
 1. Check server is running: `netstat -tlnp | grep 5000`
 2. Verify firewall rules: `sudo ufw status`
 3. Check `FLASK_HOST` setting (use `0.0.0.0` for all interfaces)
@@ -284,7 +295,7 @@ The error handler is implemented as a monkey-patch to `eventlet.wsgi.HttpProtoco
 def custom_handle_error(self):
     """Handle errors with special treatment for SSL protocol errors"""
     exc_type, exc_value, _ = sys.exc_info()
-    
+
     # Check if this is an SSL HTTP_REQUEST error
     if exc_type and issubclass(exc_type, ssl.SSLError):
         error_msg = str(exc_value)
@@ -292,7 +303,7 @@ def custom_handle_error(self):
             # Rate-limited logging
             # Suppress stack trace
             return
-    
+
     # For all other errors, use the original handler
     original_handle_error(self)
 ```
@@ -304,6 +315,7 @@ Eventlet's WSGI server handles SSL errors at a low level, before they reach Flas
 ### Thread Safety
 
 The error handler uses a dictionary for state management, which is safe for this use case because:
+
 1. Python's GIL ensures atomic dictionary operations
 2. Only simple increment/assignment operations are performed
 3. Race conditions would only affect error counting, not functionality
@@ -311,6 +323,7 @@ The error handler uses a dictionary for state management, which is safe for this
 ### Performance Impact
 
 The error handler has minimal performance impact:
+
 - Only executes when errors occur
 - Simple type checking and string comparison
 - No blocking operations
@@ -319,6 +332,7 @@ The error handler has minimal performance impact:
 ## Support
 
 For issues or questions:
+
 1. Check the [SSL Configuration Guide](SSL_CONFIGURATION.md)
 2. Review server startup messages
 3. Enable debug logging: `FLASK_DEBUG=True`

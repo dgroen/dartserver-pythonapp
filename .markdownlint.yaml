@@ -1,0 +1,14 @@
+# Markdownlint configuration
+# Disable some rules for documentation files
+
+# MD013: Line length - disabled for docs
+MD013: false
+
+# MD040: Fenced code language - warning only
+MD040: false
+
+# MD036: Emphasis as heading - disabled
+MD036: false
+
+# MD029: Ordered list prefix - disabled
+MD029: false

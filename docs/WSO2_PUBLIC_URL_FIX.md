@@ -21,14 +21,14 @@ We implemented a **dual-URL system** that separates:
 
 ### URL Usage Matrix
 
-| Endpoint | Type | URL Used | Reason |
-|----------|------|----------|--------|
-| `/oauth2/authorize` | Browser redirect | Public | User's browser needs to access it |
-| `/oidc/logout` | Browser redirect | Public | User's browser needs to access it |
-| `/oauth2/token` | Backend API | Internal | Server-to-server call (faster, more secure) |
-| `/oauth2/userinfo` | Backend API | Internal | Server-to-server call |
-| `/oauth2/introspect` | Backend API | Internal | Server-to-server call |
-| `/oauth2/jwks` | Backend API | Internal | Server-to-server call |
+| Endpoint             | Type             | URL Used | Reason                                      |
+| -------------------- | ---------------- | -------- | ------------------------------------------- |
+| `/oauth2/authorize`  | Browser redirect | Public   | User's browser needs to access it           |
+| `/oidc/logout`       | Browser redirect | Public   | User's browser needs to access it           |
+| `/oauth2/token`      | Backend API      | Internal | Server-to-server call (faster, more secure) |
+| `/oauth2/userinfo`   | Backend API      | Internal | Server-to-server call                       |
+| `/oauth2/introspect` | Backend API      | Internal | Server-to-server call                       |
+| `/oauth2/jwks`       | Backend API      | Internal | Server-to-server call                       |
 
 ## Implementation
 
@@ -82,7 +82,7 @@ The nginx reverse proxy routes `/auth/` to the WSO2 IS container:
 ```nginx
 location /auth/ {
     limit_req zone=auth_limit burst=5 nodelay;
-    
+
     proxy_pass https://wso2_is/;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -95,21 +95,25 @@ location /auth/ {
 ## Benefits
 
 ### 1. **Remote Access Works**
+
 - Users can now login from any device
 - Mobile devices can authenticate
 - No localhost references in browser
 
 ### 2. **Performance Optimization**
+
 - Backend API calls use internal Docker network (faster)
 - No unnecessary routing through nginx for server-to-server calls
 - Reduced latency for token validation
 
 ### 3. **Security Improvement**
+
 - Internal API calls don't go through public internet
 - Reduced attack surface
 - Better network isolation
 
 ### 4. **Flexibility**
+
 - Works with or without Docker
 - Supports multiple deployment scenarios
 - Backward compatible (if `WSO2_IS_INTERNAL_URL` not set, uses `WSO2_IS_URL`)
@@ -125,6 +129,7 @@ WSO2_IS_INTERNAL_URL=https://wso2is:9443
 ```
 
 **Flow:**
+
 1. User browser → `https://letsplaydarts.eu/auth/oauth2/authorize` (via nginx)
 2. Backend API → `https://wso2is:9443/oauth2/token` (direct Docker network)
 
@@ -137,6 +142,7 @@ WSO2_IS_URL=https://localhost:9443
 ```
 
 **Flow:**
+
 1. User browser → `https://localhost:9443/oauth2/authorize`
 2. Backend API → `https://localhost:9443/oauth2/token`
 
@@ -149,6 +155,7 @@ WSO2_IS_INTERNAL_URL=https://wso2is:9443
 ```
 
 **Flow:**
+
 1. User browser → `https://letsplaydarts.eu:9443/oauth2/authorize` (direct to WSO2)
 2. Backend API → `https://wso2is:9443/oauth2/token` (Docker network)
 
@@ -175,6 +182,7 @@ regexp=(https://localhost:5000/callback|https://letsplaydarts\.eu:5000/callback|
 ### Issue: Still redirecting to localhost
 
 **Check:**
+
 1. Restart the application after changing `.env`
 2. Verify `WSO2_IS_URL` in environment variables
 3. Check browser console for redirect URL
@@ -183,6 +191,7 @@ regexp=(https://localhost:5000/callback|https://letsplaydarts\.eu:5000/callback|
 ### Issue: Backend API calls failing
 
 **Check:**
+
 1. Verify `WSO2_IS_INTERNAL_URL` is accessible from darts-app container
 2. Check Docker network connectivity: `docker exec darts-app curl -k https://wso2is:9443`
 3. Verify SSL verification is disabled: `WSO2_IS_VERIFY_SSL=False`
@@ -190,6 +199,7 @@ regexp=(https://localhost:5000/callback|https://letsplaydarts\.eu:5000/callback|
 ### Issue: CORS errors
 
 **Check:**
+
 1. Nginx CORS headers are configured
 2. WSO2 IS CORS settings allow your domain
 3. Check browser console for specific CORS error
@@ -204,6 +214,7 @@ docker exec darts-app env | grep WSO2
 ```
 
 Expected output:
+
 ```
 WSO2_IS_URL=https://letsplaydarts.eu/auth
 WSO2_IS_INTERNAL_URL=https://wso2is:9443
@@ -229,6 +240,7 @@ docker logs darts-app | grep -i wso2
 ## Summary
 
 This fix enables remote authentication by:
+
 - ✅ Using public URL for browser redirects
 - ✅ Using internal URL for backend API calls
 - ✅ Supporting multiple deployment scenarios

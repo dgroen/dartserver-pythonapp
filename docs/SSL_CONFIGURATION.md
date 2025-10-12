@@ -3,6 +3,7 @@
 This guide explains how to configure and troubleshoot SSL/HTTPS for the Darts Game Server.
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Quick Start](#quick-start)
 - [SSL Certificate Generation](#ssl-certificate-generation)
@@ -31,21 +32,25 @@ The Darts Game Server supports both HTTP and HTTPS modes. For production deploym
 ### Enable SSL for Development
 
 1. Generate self-signed certificates:
+
    ```bash
    ./helpers/generate_ssl_certs.sh letsplaydarts.eu
    ```
 
 2. Enable SSL in `.env`:
+
    ```bash
    FLASK_USE_SSL=True
    ```
 
 3. Start the server:
+
    ```bash
    python app.py
    ```
 
 4. Access the application:
+
    ```
    https://letsplaydarts.eu:5000
    ```
@@ -53,16 +58,19 @@ The Darts Game Server supports both HTTP and HTTPS modes. For production deploym
 ### Disable SSL for Development
 
 1. Update `.env`:
+
    ```bash
    FLASK_USE_SSL=False
    ```
 
 2. Start the server:
+
    ```bash
    python app.py
    ```
 
 3. Access the application:
+
    ```
    http://localhost:5000
    ```
@@ -78,6 +86,7 @@ The project includes a script to generate self-signed SSL certificates:
 ```
 
 **Examples:**
+
 ```bash
 # Generate for localhost
 ./helpers/generate_ssl_certs.sh localhost
@@ -90,11 +99,13 @@ The project includes a script to generate self-signed SSL certificates:
 ```
 
 **Generated Files:**
+
 - `ssl/cert.pem` - SSL certificate
 - `ssl/key.pem` - Private key
 - `ssl/openssl.cnf` - OpenSSL configuration
 
 **Certificate Details:**
+
 - **Algorithm:** RSA 4096-bit
 - **Validity:** 365 days
 - **Subject Alternative Names (SAN):**
@@ -107,17 +118,20 @@ The project includes a script to generate self-signed SSL certificates:
 To avoid browser security warnings, you can trust the self-signed certificate on your system:
 
 **Linux:**
+
 ```bash
 sudo cp ssl/cert.pem /usr/local/share/ca-certificates/letsplaydarts.eu.crt
 sudo update-ca-certificates
 ```
 
 **macOS:**
+
 ```bash
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ssl/cert.pem
 ```
 
 **Windows:**
+
 1. Double-click `ssl/cert.pem`
 2. Click "Install Certificate"
 3. Select "Local Machine"
@@ -182,7 +196,7 @@ darts-app:
     FLASK_USE_SSL: "True"
     SESSION_COOKIE_SECURE: "True"
   volumes:
-    - ./ssl:/app/ssl:ro  # Mount SSL certificates
+    - ./ssl:/app/ssl:ro # Mount SSL certificates
 ```
 
 ## Troubleshooting
@@ -194,11 +208,13 @@ darts-app:
 **Cause:** Client is using HTTP to connect to an HTTPS server.
 
 **Solution:**
+
 - Use `https://` instead of `http://` in the URL
 - Correct: `https://letsplaydarts.eu:5000`
 - Wrong: `http://letsplaydarts.eu:5000`
 
 **Alternative:** Disable SSL for development:
+
 ```bash
 # In .env
 FLASK_USE_SSL=False
@@ -209,6 +225,7 @@ FLASK_USE_SSL=False
 **Cause:** SSL is enabled but certificate files are missing.
 
 **Solution:**
+
 ```bash
 # Generate certificates
 ./helpers/generate_ssl_certs.sh letsplaydarts.eu
@@ -223,6 +240,7 @@ ls -la ssl/
 **Cause:** Using self-signed certificates (expected for development).
 
 **Solution:**
+
 - Click "Advanced" in the browser
 - Click "Proceed to [domain] (unsafe)"
 - Or trust the certificate system-wide (see above)
@@ -232,6 +250,7 @@ ls -la ssl/
 **Cause:** Incorrect file permissions.
 
 **Solution:**
+
 ```bash
 chmod 644 ssl/cert.pem
 chmod 600 ssl/key.pem
@@ -242,6 +261,7 @@ chmod 600 ssl/key.pem
 **Cause:** Domain not configured in `/etc/hosts`.
 
 **Solution:**
+
 ```bash
 # Add to /etc/hosts
 echo "127.0.0.1 letsplaydarts.eu" | sudo tee -a /etc/hosts
@@ -315,6 +335,7 @@ openssl s_client -connect letsplaydarts.eu:5000 -servername letsplaydarts.eu
    - Never use self-signed certificates in production
 
 2. **Enable HTTPS Everywhere**
+
    ```bash
    FLASK_USE_SSL=True
    SESSION_COOKIE_SECURE=True
@@ -326,6 +347,7 @@ openssl s_client -connect letsplaydarts.eu:5000 -servername letsplaydarts.eu
    - Benefits: Better performance, easier certificate management
 
 4. **Automatic Certificate Renewal**
+
    ```bash
    # Add to crontab for Let's Encrypt
    0 0 * * * certbot renew --quiet --post-hook "systemctl reload nginx"
@@ -345,17 +367,17 @@ server {
 
     ssl_certificate /etc/letsencrypt/live/letsplaydarts.eu/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/letsplaydarts.eu/privkey.pem;
-    
+
     # SSL configuration
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers on;
-    
+
     # Security headers
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
-    
+
     location / {
         proxy_pass http://localhost:5000;
         proxy_set_header Host $host;
@@ -363,7 +385,7 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
-    
+
     # WebSocket support
     location /socket.io {
         proxy_pass http://localhost:5000/socket.io;
@@ -390,7 +412,7 @@ services:
   darts-app:
     build: .
     environment:
-      FLASK_USE_SSL: "False"  # SSL handled by nginx
+      FLASK_USE_SSL: "False" # SSL handled by nginx
       FLASK_HOST: "0.0.0.0"
       FLASK_PORT: "5000"
     networks:

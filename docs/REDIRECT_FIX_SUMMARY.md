@@ -1,10 +1,13 @@
 # WSO2 IS Redirect Fix - Summary
 
 ## Problem Identified
+
 The login redirect was using `localhost:5000` or `letsplaydarts.eu:5000` instead of `letsplaydarts.eu` (port 443 via reverse proxy).
 
 ## Root Cause
+
 The `.env` file had hardcoded redirect URIs with port 5000:
+
 ```
 WSO2_REDIRECT_URI=https://letsplaydarts.eu:5000/callback
 WSO2_POST_LOGOUT_REDIRECT_URI=https://letsplaydarts.eu:5000/
@@ -13,25 +16,32 @@ WSO2_POST_LOGOUT_REDIRECT_URI=https://letsplaydarts.eu:5000/
 ## Changes Applied
 
 ### 1. ✅ Fixed `.env` file
+
 Changed redirect URIs to use standard HTTPS port (443) via reverse proxy:
+
 ```bash
 WSO2_REDIRECT_URI=https://letsplaydarts.eu/callback
 WSO2_POST_LOGOUT_REDIRECT_URI=https://letsplaydarts.eu/
 ```
 
 ### 2. ✅ Updated `nginx/nginx.conf`
+
 Added `X-Forwarded-Host` header to ensure Flask receives the correct external hostname:
+
 ```nginx
 proxy_set_header X-Forwarded-Host $host;
 ```
 
 ### 3. ✅ Updated `docker-compose-wso2.yml`
+
 - Changed default redirect URIs from localhost to letsplaydarts.eu
 - Enabled secure cookies: `SESSION_COOKIE_SECURE: "True"`
 - Uncommented WSO2 IS deployment.toml volume mount
 
 ### 4. ✅ Verified `wso2is-config/deployment.toml`
+
 Configuration is correct with:
+
 ```toml
 hostname = "letsplaydarts.eu"
 base_path = "https://letsplaydarts.eu/auth"
@@ -44,6 +54,7 @@ base_path = "https://letsplaydarts.eu/auth"
 **IMPORTANT**: You must update the OAuth application in WSO2 IS to accept the new redirect URI.
 
 1. **Access WSO2 IS Admin Console**:
+
    ```
    URL: https://letsplaydarts.eu/auth/carbon
    Username: admin
@@ -61,11 +72,13 @@ base_path = "https://letsplaydarts.eu/auth"
 
 4. **Update Callback URLs**:
    Replace the old callback URL with:
+
    ```
    https://letsplaydarts.eu/callback
    ```
-   
+
    Or use a regex pattern to support both (for testing):
+
    ```
    regexp=(https://letsplaydarts\.eu/callback|https://letsplaydarts\.eu:5000/callback)
    ```
@@ -95,6 +108,7 @@ Run the verification script:
 ### Step 4: Test the Login Flow
 
 1. **Open browser** and navigate to:
+
    ```
    https://letsplaydarts.eu/login
    ```
@@ -104,15 +118,17 @@ Run the verification script:
 3. **Click login** and observe the redirect to WSO2 IS
 
 4. **Check the authorization URL** in the network tab. It should contain:
+
    ```
    redirect_uri=https://letsplaydarts.eu/callback
    ```
-   
+
    **NOT**:
    - ❌ `redirect_uri=http://localhost:5000/callback`
    - ❌ `redirect_uri=https://letsplaydarts.eu:5000/callback`
 
 5. **Complete the login** and verify you're redirected back to:
+
    ```
    https://letsplaydarts.eu/callback?code=...
    ```
@@ -155,27 +171,32 @@ Nginx → Flask → Token Exchange → Success!
 ### Issue: Still seeing localhost in redirect URI
 
 **Check 1**: Verify nginx is passing the correct headers
+
 ```bash
 docker logs darts-app 2>&1 | grep "Request headers"
 ```
 
 Look for:
+
 ```
 X-Forwarded-Proto: https
 X-Forwarded-Host: letsplaydarts.eu
 ```
 
 **Check 2**: Verify ProxyFix is working
+
 ```bash
 docker logs darts-app 2>&1 | grep "Dynamic redirect URI"
 ```
 
 Should show:
+
 ```
 Dynamic redirect URI: https://letsplaydarts.eu/callback
 ```
 
 **Check 3**: Clear browser cache and cookies
+
 ```
 Ctrl+Shift+Delete → Clear all cookies and cached files
 ```
@@ -183,17 +204,20 @@ Ctrl+Shift+Delete → Clear all cookies and cached files
 ### Issue: WSO2 IS returns "invalid_redirect_uri" error
 
 **Solution**: The OAuth application in WSO2 IS doesn't have the new callback URL registered.
+
 - Follow "Step 1: Update WSO2 IS OAuth Application Configuration" above
 - Make sure the callback URL is exactly: `https://letsplaydarts.eu/callback`
 
 ### Issue: Session/cookie issues after login
 
 **Check**: Verify secure cookies are enabled
+
 ```bash
 docker exec darts-app printenv | grep SESSION_COOKIE_SECURE
 ```
 
 Should show:
+
 ```
 SESSION_COOKIE_SECURE=True
 ```

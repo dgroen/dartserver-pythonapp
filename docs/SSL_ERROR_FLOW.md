@@ -294,6 +294,7 @@ Yes  │       │  No
 ## Error Message Format
 
 ### Before (Stack Trace)
+
 ```
 ssl.SSLError: [SSL: HTTP_REQUEST] http request (_ssl.c:2580)
 (2072967) accepted ('127.0.0.1', 40242)
@@ -330,6 +331,7 @@ ssl.SSLError: [SSL: HTTP_REQUEST] http request (_ssl.c:2580)
 ```
 
 ### After (Concise Message)
+
 ```
 ⚠️  SSL Protocol Mismatch Detected
    5 HTTP request(s) to HTTPS server (rejected)
@@ -341,6 +343,7 @@ ssl.SSLError: [SSL: HTTP_REQUEST] http request (_ssl.c:2580)
 ## Performance Impact
 
 ### Successful Requests (HTTPS)
+
 ```
 ┌─────────┐     ┌─────────┐     ┌─────────┐
 │ Client  │────▶│  SSL    │────▶│  Flask  │
@@ -355,6 +358,7 @@ Impact: NONE (error handler not invoked)
 ```
 
 ### Failed Requests (HTTP to HTTPS)
+
 ```
 ┌─────────┐     ┌─────────┐     ┌──────────┐
 │ Client  │────▶│  SSL    │────▶│  Error   │
@@ -374,6 +378,7 @@ Impact: < 1ms per error (negligible)
 ## Configuration Options
 
 ### Enable/Disable SSL
+
 ```
 .env file:
 ┌────────────────────────┐
@@ -383,6 +388,7 @@ Impact: < 1ms per error (negligible)
 ```
 
 ### Adjust Rate Limiting
+
 ```
 app.py (line 1814):
 ┌────────────────────────────────────────────┐

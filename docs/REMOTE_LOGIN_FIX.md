@@ -19,12 +19,14 @@ WSO2_IS_URL=https://letsplaydarts.eu/auth
 ### 2. Restart Your Application
 
 If running **without Docker**:
+
 ```bash
 # Stop the app (Ctrl+C)
 python app.py
 ```
 
 If running **with Docker**:
+
 ```bash
 docker-compose -f docker-compose-wso2.yml down
 docker-compose -f docker-compose-wso2.yml up -d
@@ -55,6 +57,7 @@ regexp=(https://localhost:5000/callback|https://letsplaydarts\.eu:5000/callback|
 ## How It Works
 
 ### Before Fix
+
 ```
 User clicks Login
   ↓
@@ -64,6 +67,7 @@ Doesn't work from remote devices
 ```
 
 ### After Fix
+
 ```
 User clicks Login
   ↓
@@ -95,16 +99,17 @@ Works from anywhere! 🎉
 
 ## Environment Variables Explained
 
-| Variable | Purpose | Example |
-|----------|---------|---------|
-| `WSO2_IS_URL` | Public URL for browser redirects | `https://letsplaydarts.eu/auth` |
-| `WSO2_IS_INTERNAL_URL` | Internal URL for backend API calls | `https://wso2is:9443` |
+| Variable               | Purpose                            | Example                         |
+| ---------------------- | ---------------------------------- | ------------------------------- |
+| `WSO2_IS_URL`          | Public URL for browser redirects   | `https://letsplaydarts.eu/auth` |
+| `WSO2_IS_INTERNAL_URL` | Internal URL for backend API calls | `https://wso2is:9443`           |
 
 **Note:** If `WSO2_IS_INTERNAL_URL` is not set, it defaults to `WSO2_IS_URL`.
 
 ## Deployment Configurations
 
 ### Running Locally (No Docker)
+
 ```bash
 # .env
 WSO2_IS_URL=https://letsplaydarts.eu/auth
@@ -112,6 +117,7 @@ WSO2_IS_URL=https://letsplaydarts.eu/auth
 ```
 
 ### Running in Docker
+
 ```bash
 # .env or docker-compose.yml
 WSO2_IS_URL=https://letsplaydarts.eu/auth
@@ -123,21 +129,24 @@ WSO2_IS_INTERNAL_URL=https://wso2is:9443
 ### Still seeing localhost redirects?
 
 1. **Clear browser cache and cookies**
+
    ```bash
    # Chrome: Ctrl+Shift+Delete
    # Firefox: Ctrl+Shift+Delete
    ```
 
 2. **Verify environment variable**
+
    ```bash
    # Check .env file
    cat .env | grep WSO2_IS_URL
-   
+
    # Should show:
    # WSO2_IS_URL=https://letsplaydarts.eu/auth
    ```
 
 3. **Restart application**
+
    ```bash
    # Kill and restart
    pkill -f "python app.py"
@@ -147,22 +156,26 @@ WSO2_IS_INTERNAL_URL=https://wso2is:9443
 ### Can't access WSO2 admin console?
 
 Try both URLs:
+
 - Public: `https://letsplaydarts.eu/auth/carbon`
 - Local: `https://localhost:9443/carbon`
 
 Default credentials:
+
 - Username: `admin`
-- Password: `admin`
+- Password: `admin` <!-- pragma: allowlist secret -->
 
 ### Login works locally but not remotely?
 
 1. **Check firewall rules**
+
    ```bash
    sudo ufw status
    # Should allow ports 80, 443
    ```
 
 2. **Check nginx is running**
+
    ```bash
    docker ps | grep nginx
    # or
@@ -170,6 +183,7 @@ Default credentials:
    ```
 
 3. **Check DNS**
+
    ```bash
    nslookup letsplaydarts.eu
    # Should point to your server's public IP
@@ -178,16 +192,19 @@ Default credentials:
 ### Backend API calls failing?
 
 1. **Check Docker network**
+
    ```bash
    docker exec darts-app ping wso2is
    ```
 
 2. **Check WSO2 IS is running**
+
    ```bash
    docker ps | grep wso2is
    ```
 
 3. **Test internal URL**
+
    ```bash
    docker exec darts-app curl -k https://wso2is:9443/oauth2/jwks
    ```
@@ -212,6 +229,7 @@ Default credentials:
 ## Testing
 
 All authentication tests pass:
+
 ```bash
 pytest tests/unit/test_auth.py -v
 # ✅ 38 passed
@@ -220,6 +238,7 @@ pytest tests/unit/test_auth.py -v
 ## Need More Help?
 
 See detailed documentation:
+
 - `docs/WSO2_PUBLIC_URL_FIX.md` - Complete technical explanation
 - `docs/WSO2_MULTI_DOMAIN_SETUP.md` - Multi-domain setup guide
 - `DEPLOYMENT_CHECKLIST.md` - Full deployment checklist
@@ -230,6 +249,6 @@ See detailed documentation:
 ✅ **Tested:** All 38 authentication tests passing  
 ✅ **Compatible:** Works with Docker and non-Docker setups  
 ✅ **Secure:** Backend API calls use internal network  
-✅ **Fast:** Optimized routing for better performance  
+✅ **Fast:** Optimized routing for better performance
 
 **You're all set! Users can now login from anywhere! 🚀**

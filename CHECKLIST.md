@@ -15,7 +15,8 @@
 **Status**: ⏳ PENDING - YOU MUST DO THIS
 
 **Steps**:
-1. Open: https://letsplaydarts.eu/auth/carbon
+
+1. Open: <https://letsplaydarts.eu/auth/carbon>
 2. Login: admin / admin
 3. Navigate: Main Menu → Identity → Service Providers → List
 4. Find your application (Client ID: `gKL8KC2FkWIz2r3553vraJ8pf8Ma`)
@@ -30,6 +31,7 @@
 **Status**: ⏳ PENDING - YOU MUST DO THIS
 
 **Command**:
+
 ```bash
 cd /data/dartserver-pythonapp
 docker-compose -f docker-compose-wso2.yml down
@@ -43,11 +45,13 @@ docker-compose -f docker-compose-wso2.yml up -d
 **Status**: ⏳ PENDING - RECOMMENDED
 
 **Command**:
+
 ```bash
 ./scripts/verify-redirect-config.sh
 ```
 
 **Expected Output**:
+
 - ✓ Nginx container is running
 - ✓ Nginx configuration is valid
 - ✓ X-Forwarded-Host header is configured
@@ -58,7 +62,8 @@ docker-compose -f docker-compose-wso2.yml up -d
 **Status**: ⏳ PENDING - REQUIRED
 
 **Steps**:
-1. Open browser: https://letsplaydarts.eu/login
+
+1. Open browser: <https://letsplaydarts.eu/login>
 2. Open DevTools (F12) → Network tab
 3. Click login button
 4. Check the authorization request URL contains:
@@ -73,6 +78,7 @@ docker-compose -f docker-compose-wso2.yml up -d
 ### Current Configuration
 
 **Environment Variables** (`.env`):
+
 ```
 WSO2_IS_URL=https://letsplaydarts.eu/auth
 WSO2_CLIENT_ID=gKL8KC2FkWIz2r3553vraJ8pf8Ma
@@ -82,6 +88,7 @@ WSO2_POST_LOGOUT_REDIRECT_URI=https://letsplaydarts.eu/
 ```
 
 **Expected Flow**:
+
 ```
 User → https://letsplaydarts.eu/login
      → Nginx (adds X-Forwarded headers)
@@ -95,21 +102,25 @@ User → https://letsplaydarts.eu/login
 ### Troubleshooting Commands
 
 **Check nginx headers**:
+
 ```bash
 docker logs darts-app 2>&1 | grep "Request headers" | tail -1
 ```
 
 **Check dynamic redirect URI**:
+
 ```bash
 docker logs darts-app 2>&1 | grep "Dynamic redirect URI" | tail -5
 ```
 
 **Check WSO2 IS logs**:
+
 ```bash
 docker logs darts-wso2is 2>&1 | grep -i redirect | tail -10
 ```
 
 **Restart specific service**:
+
 ```bash
 docker-compose -f docker-compose-wso2.yml restart darts-app
 docker-compose -f docker-compose-wso2.yml restart nginx
@@ -117,17 +128,20 @@ docker-compose -f docker-compose-wso2.yml restart nginx
 
 ## Summary
 
-**What was wrong**: 
+**What was wrong**:
+
 - `.env` had redirect URIs with port 5000: `https://letsplaydarts.eu:5000/callback`
 - Nginx wasn't passing `X-Forwarded-Host` header
 - WSO2 IS OAuth app likely has old callback URL registered
 
 **What was fixed**:
+
 - ✅ Removed port from redirect URIs in `.env`
 - ✅ Added `X-Forwarded-Host` header to nginx config
 - ✅ Updated docker-compose defaults
 
 **What you need to do**:
+
 1. ⚠️ Update WSO2 IS OAuth application callback URL
 2. ⚠️ Restart services
 3. ⚠️ Test the login flow

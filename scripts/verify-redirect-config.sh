@@ -18,7 +18,7 @@ echo ""
 echo "2. Checking darts-app configuration..."
 if docker ps | grep -q darts-app; then
     echo "   ✓ Darts-app container is running"
-    
+
     # Check environment variables
     echo "   Checking environment variables..."
     docker exec darts-app printenv | grep WSO2_IS_URL | head -1
@@ -33,17 +33,17 @@ echo ""
 echo "3. Checking WSO2 IS configuration..."
 if docker ps | grep -q darts-wso2is; then
     echo "   ✓ WSO2 IS container is running"
-    
+
     # Check if deployment.toml is mounted
     if docker exec darts-wso2is test -f /home/wso2carbon/wso2is-5.11.0/repository/conf/deployment.toml; then
         echo "   ✓ deployment.toml is present"
-        
+
         # Check hostname configuration
         HOSTNAME=$(docker exec darts-wso2is grep "^hostname" /home/wso2carbon/wso2is-5.11.0/repository/conf/deployment.toml 2>/dev/null)
         if [ ! -z "$HOSTNAME" ]; then
             echo "   $HOSTNAME"
         fi
-        
+
         # Check base_path configuration
         BASE_PATH=$(docker exec darts-wso2is grep "^base_path" /home/wso2carbon/wso2is-5.11.0/repository/conf/deployment.toml 2>/dev/null)
         if [ ! -z "$BASE_PATH" ]; then

@@ -160,7 +160,7 @@ services:
       JWT_VALIDATION_MODE: introspection
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
       WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin}
-      SESSION_COOKIE_SECURE: "True"  # Enable secure cookies for HTTPS
+      SESSION_COOKIE_SECURE: "True" # Enable secure cookies for HTTPS
     depends_on:
       rabbitmq:
         condition: service_healthy

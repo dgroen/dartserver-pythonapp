@@ -323,19 +323,20 @@ PUBLIC INTERNET (Untrusted)
 
 ## 📊 URL Comparison Table
 
-| Scenario | Old URL (Broken) | New URL (Fixed) | Accessible From |
-|----------|------------------|-----------------|-----------------|
-| **Login Redirect** | `https://localhost:9443/oauth2/authorize` | `https://letsplaydarts.eu/auth/oauth2/authorize` | ✅ Anywhere |
-| **Logout Redirect** | `https://localhost:9443/oidc/logout` | `https://letsplaydarts.eu/auth/oidc/logout` | ✅ Anywhere |
-| **Token Exchange** | `https://localhost:9443/oauth2/token` | `https://wso2is:9443/oauth2/token` | 🔒 Internal only |
-| **User Info** | `https://localhost:9443/oauth2/userinfo` | `https://wso2is:9443/oauth2/userinfo` | 🔒 Internal only |
-| **Token Introspect** | `https://localhost:9443/oauth2/introspect` | `https://wso2is:9443/oauth2/introspect` | 🔒 Internal only |
+| Scenario             | Old URL (Broken)                           | New URL (Fixed)                                  | Accessible From  |
+| -------------------- | ------------------------------------------ | ------------------------------------------------ | ---------------- |
+| **Login Redirect**   | `https://localhost:9443/oauth2/authorize`  | `https://letsplaydarts.eu/auth/oauth2/authorize` | ✅ Anywhere      |
+| **Logout Redirect**  | `https://localhost:9443/oidc/logout`       | `https://letsplaydarts.eu/auth/oidc/logout`      | ✅ Anywhere      |
+| **Token Exchange**   | `https://localhost:9443/oauth2/token`      | `https://wso2is:9443/oauth2/token`               | 🔒 Internal only |
+| **User Info**        | `https://localhost:9443/oauth2/userinfo`   | `https://wso2is:9443/oauth2/userinfo`            | 🔒 Internal only |
+| **Token Introspect** | `https://localhost:9443/oauth2/introspect` | `https://wso2is:9443/oauth2/introspect`          | 🔒 Internal only |
 
 ---
 
 ## 🎯 Key Takeaways
 
 ### 1. **Browser Redirects = Public URL**
+
 ```python
 # User's browser needs to access these
 WSO2_IS_AUTHORIZE_URL = "https://letsplaydarts.eu/auth/oauth2/authorize"
@@ -343,6 +344,7 @@ WSO2_IS_LOGOUT_URL = "https://letsplaydarts.eu/auth/oidc/logout"
 ```
 
 ### 2. **Backend API Calls = Internal URL**
+
 ```python
 # Server-to-server calls use internal network
 WSO2_IS_TOKEN_URL = "https://wso2is:9443/oauth2/token"
@@ -351,6 +353,7 @@ WSO2_IS_INTROSPECT_URL = "https://wso2is:9443/oauth2/introspect"
 ```
 
 ### 3. **Benefits of Dual-URL System**
+
 - 🌍 **Remote Access**: Users can login from anywhere
 - ⚡ **Performance**: Backend calls use fast internal network
 - 🔒 **Security**: Internal APIs not exposed to public
@@ -361,6 +364,7 @@ WSO2_IS_INTROSPECT_URL = "https://wso2is:9443/oauth2/introspect"
 ## 🧪 Testing Scenarios
 
 ### Test 1: Local Machine
+
 ```
 User: localhost
 URL: https://localhost:5000
@@ -369,6 +373,7 @@ Reason: Can access both localhost and public URLs
 ```
 
 ### Test 2: Remote Computer
+
 ```
 User: Different computer on internet
 URL: https://letsplaydarts.eu
@@ -377,6 +382,7 @@ Reason: Uses public URL for redirects
 ```
 
 ### Test 3: Mobile Device
+
 ```
 User: Smartphone on cellular network
 URL: https://letsplaydarts.eu
@@ -385,6 +391,7 @@ Reason: Uses public URL for redirects
 ```
 
 ### Test 4: Different Port
+
 ```
 User: Any device
 URL: https://letsplaydarts.eu:5000
@@ -397,6 +404,7 @@ Reason: Dynamic redirect URI adapts to port
 ## 📝 Configuration Examples
 
 ### Example 1: Production (Docker + Nginx)
+
 ```bash
 # .env
 WSO2_IS_URL=https://letsplaydarts.eu/auth
@@ -404,6 +412,7 @@ WSO2_IS_INTERNAL_URL=https://wso2is:9443
 ```
 
 ### Example 2: Development (Local)
+
 ```bash
 # .env
 WSO2_IS_URL=https://localhost:9443
@@ -411,6 +420,7 @@ WSO2_IS_URL=https://localhost:9443
 ```
 
 ### Example 3: Staging (Docker, No Nginx)
+
 ```bash
 # .env
 WSO2_IS_URL=https://staging.letsplaydarts.eu:9443
@@ -422,8 +432,8 @@ WSO2_IS_INTERNAL_URL=https://wso2is:9443
 **Status:** ✅ **FIXED AND TESTED**  
 **Impact:** 🟢 **HIGH** - Enables remote authentication  
 **Complexity:** 🟡 **MEDIUM** - Dual-URL system  
-**Risk:** 🟢 **LOW** - Backward compatible  
+**Risk:** 🟢 **LOW** - Backward compatible
 
 ---
 
-*Remote login now works from any device, anywhere in the world! 🌍*
+_Remote login now works from any device, anywhere in the world! 🌍_

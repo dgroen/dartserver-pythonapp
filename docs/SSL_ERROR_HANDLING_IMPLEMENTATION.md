@@ -25,6 +25,7 @@ This is a **protocol mismatch error** - not a bug, but expected behavior when pr
 ### 1. Custom Error Handler
 
 Created `patch_eventlet_ssl_error_handling()` function that:
+
 - Monkey-patches eventlet's WSGI error handler
 - Detects SSL HTTP_REQUEST errors specifically
 - Suppresses stack traces for these errors
@@ -34,6 +35,7 @@ Created `patch_eventlet_ssl_error_handling()` function that:
 ### 2. Automatic Activation
 
 The error handler is automatically activated when:
+
 - SSL is enabled (`FLASK_USE_SSL=True`)
 - SSL certificates exist and are valid
 - Server starts successfully with HTTPS
@@ -51,6 +53,7 @@ Instead of stack traces, users now see:
 ### 4. Startup Guidance
 
 Enhanced startup messages to clearly indicate:
+
 - Whether SSL is enabled or disabled
 - Correct URL format to use (http:// vs https://)
 - Common troubleshooting steps
@@ -61,11 +64,12 @@ Enhanced startup messages to clearly indicate:
 ### app.py
 
 **Added Function** (lines 1782-1833):
+
 ```python
 def patch_eventlet_ssl_error_handling():
     """
     Monkey-patch eventlet's WSGI error handler to suppress SSL protocol errors
-    
+
     This prevents stack traces from flooding the console when clients attempt
     to connect using HTTP to an HTTPS server. Instead, it logs a concise,
     user-friendly message with rate limiting.
@@ -74,6 +78,7 @@ def patch_eventlet_ssl_error_handling():
 ```
 
 **Modified Startup** (line 1862):
+
 ```python
 # Apply SSL error handling patch
 patch_eventlet_ssl_error_handling()
@@ -84,6 +89,7 @@ patch_eventlet_ssl_error_handling()
 ### Unit Tests
 
 Created `tests/unit/test_ssl_config.py` with 9 tests:
+
 - ✅ SSL certificates exist
 - ✅ SSL certificate is valid
 - ✅ SSL certificate has correct SANs
@@ -99,6 +105,7 @@ All tests pass successfully.
 ### Integration Test
 
 Created `test_ssl_error_handling.py`:
+
 - Simulates HTTP requests to HTTPS server
 - Verifies error handling works correctly
 - Demonstrates rate limiting behavior
@@ -125,12 +132,14 @@ Created `test_ssl_error_handling.py`:
 ## Benefits
 
 ### Before
+
 - ❌ Console flooded with stack traces
 - ❌ Difficult to identify real issues
 - ❌ No guidance on how to fix
 - ❌ Poor user experience
 
 ### After
+
 - ✅ Clean, concise error messages
 - ✅ Rate-limited logging prevents spam
 - ✅ Clear guidance on correct URL format
@@ -144,6 +153,7 @@ Created `test_ssl_error_handling.py`:
 Eventlet's WSGI server handles SSL errors at a very low level, before they reach Flask's error handlers. The errors occur in the SSL handshake phase, which happens before any Flask code executes.
 
 Options considered:
+
 1. **Modify eventlet source** - Not maintainable
 2. **Custom WSGI server** - Too complex, breaks Flask-SocketIO
 3. **Monkey-patch error handler** - ✅ Simple, effective, maintainable
@@ -151,6 +161,7 @@ Options considered:
 ### Thread Safety
 
 The implementation is thread-safe because:
+
 - Python's GIL ensures atomic dictionary operations
 - Only simple increment/assignment operations
 - Race conditions only affect error counting, not functionality
@@ -159,6 +170,7 @@ The implementation is thread-safe because:
 ### Performance Impact
 
 Minimal performance impact:
+
 - Only executes when errors occur (not on successful requests)
 - Simple type checking and string comparison
 - No database queries or I/O operations
@@ -167,6 +179,7 @@ Minimal performance impact:
 ## Compatibility
 
 ### Tested With
+
 - Python 3.12.11
 - Flask 3.1.0
 - Flask-SocketIO 5.4.1
@@ -174,6 +187,7 @@ Minimal performance impact:
 - Ubuntu Linux
 
 ### Works With
+
 - Self-signed certificates
 - Let's Encrypt certificates
 - Commercial SSL certificates
@@ -207,17 +221,20 @@ Possible improvements for future versions:
 If issues arise, rollback is simple:
 
 1. **Comment out the patch**:
+
    ```python
    # patch_eventlet_ssl_error_handling()
    ```
 
 2. **Or disable SSL**:
+
    ```bash
    # In .env file
    FLASK_USE_SSL=False
    ```
 
 3. **Or revert the commit**:
+
    ```bash
    git revert <commit-hash>
    ```

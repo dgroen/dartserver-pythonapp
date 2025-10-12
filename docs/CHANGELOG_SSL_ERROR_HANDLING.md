@@ -13,6 +13,7 @@ Enhanced the Darts Game Server with robust SSL error handling to prevent console
 ### Added
 
 #### Core Functionality
+
 - **`patch_eventlet_ssl_error_handling()` function** in `app.py`
   - Monkey-patches eventlet's WSGI error handler
   - Detects SSL HTTP_REQUEST errors
@@ -21,6 +22,7 @@ Enhanced the Darts Game Server with robust SSL error handling to prevent console
   - Provides concise error messages
 
 #### Tests
+
 - **`tests/unit/test_ssl_config.py`** - 9 comprehensive SSL configuration tests
   - Certificate existence and validity
   - Subject Alternative Names (SAN) verification
@@ -34,6 +36,7 @@ Enhanced the Darts Game Server with robust SSL error handling to prevent console
   - Verifies rate limiting works correctly
 
 #### Documentation
+
 - **`docs/SSL_ERROR_HANDLING.md`** - Complete error handling guide (31KB)
   - Overview and problem description
   - How it works (technical details)
@@ -58,6 +61,7 @@ Enhanced the Darts Game Server with robust SSL error handling to prevent console
 ### Modified
 
 #### app.py
+
 - **Line 1862**: Added call to `patch_eventlet_ssl_error_handling()`
   - Automatically activated when SSL is enabled
   - Applied before server starts
@@ -68,6 +72,7 @@ Enhanced the Darts Game Server with robust SSL error handling to prevent console
   - User-friendly error messages
 
 #### docs/SSL_QUICK_START.md
+
 - **Line 93**: Added reference to SSL_ERROR_HANDLING.md
   - Updated documentation links
   - Improved navigation
@@ -77,6 +82,7 @@ Enhanced the Darts Game Server with robust SSL error handling to prevent console
 ## 📊 Test Results
 
 ### Unit Tests
+
 ```
 tests/unit/test_ssl_config.py::TestSSLConfiguration
   ✅ test_ssl_certificates_exist
@@ -93,6 +99,7 @@ Result: 9 passed in 3.66s
 ```
 
 ### Existing Tests
+
 ```
 tests/unit/test_app.py::TestAppModule
   ✅ test_on_score_received
@@ -105,6 +112,7 @@ Result: 5 passed in 2.64s
 ```
 
 ### Code Quality
+
 ```
 ✅ Ruff linting: All checks passed
 ✅ Black formatting: Code properly formatted
@@ -121,11 +129,13 @@ Result: 5 passed in 2.64s
 No migration required! The changes are backward compatible and automatically activated.
 
 #### If SSL is Already Enabled
+
 1. Pull the latest code
 2. Restart the server
 3. Error handling is automatically active
 
 #### If SSL is Disabled
+
 1. No changes needed
 2. Error handling only activates when SSL is enabled
 3. Continue using HTTP as before
@@ -133,27 +143,32 @@ No migration required! The changes are backward compatible and automatically act
 ### Verification Steps
 
 1. **Check SSL is enabled**:
+
    ```bash
    grep FLASK_USE_SSL .env
    # Should show: FLASK_USE_SSL=True
    ```
 
 2. **Start the server**:
+
    ```bash
    python app.py
    ```
 
 3. **Verify startup message**:
+
    ```
    🔒 Starting Darts Game Server with SSL/HTTPS
    ```
 
 4. **Test error handling** (optional):
+
    ```bash
    python test_ssl_error_handling.py
    ```
 
 5. **Check for concise error messages** (not stack traces):
+
    ```
    ⚠️  SSL Protocol Mismatch Detected
    ```
@@ -165,6 +180,7 @@ No migration required! The changes are backward compatible and automatically act
 ### Before This Update
 
 When clients used HTTP instead of HTTPS:
+
 ```
 ssl.SSLError: [SSL: HTTP_REQUEST] http request (_ssl.c:2580)
 (2072967) accepted ('127.0.0.1', 40242)
@@ -177,6 +193,7 @@ Traceback (most recent call last):
 ```
 
 **Problems**:
+
 - ❌ Console flooded with stack traces
 - ❌ Difficult to identify real issues
 - ❌ No guidance on how to fix
@@ -185,6 +202,7 @@ Traceback (most recent call last):
 ### After This Update
 
 Same scenario now shows:
+
 ```
 ⚠️  SSL Protocol Mismatch Detected
    5 HTTP request(s) to HTTPS server (rejected)
@@ -192,6 +210,7 @@ Same scenario now shows:
 ```
 
 **Benefits**:
+
 - ✅ Clean, concise error messages
 - ✅ Rate-limited (every 10 seconds)
 - ✅ Clear guidance on the issue
@@ -205,6 +224,7 @@ Same scenario now shows:
 ### Default Behavior
 
 Error handling is **automatically enabled** when:
+
 - `FLASK_USE_SSL=True` in `.env`
 - SSL certificates exist in `ssl/` directory
 - Server starts successfully with HTTPS
@@ -214,6 +234,7 @@ Error handling is **automatically enabled** when:
 #### Adjust Rate Limiting
 
 Edit `app.py` line 1814:
+
 ```python
 # Default: Log every 10 seconds
 if current_time - ssl_error_state["last_logged"] >= 10:
@@ -225,11 +246,13 @@ if current_time - ssl_error_state["last_logged"] >= 30:
 #### Disable Error Handling
 
 Comment out line 1862 in `app.py`:
+
 ```python
 # patch_eventlet_ssl_error_handling()
 ```
 
 Or disable SSL entirely in `.env`:
+
 ```bash
 FLASK_USE_SSL=False
 ```
@@ -254,6 +277,7 @@ None at this time.
 ### Benchmarks
 
 Tested with:
+
 - 1000 concurrent HTTP requests to HTTPS server
 - Error handling performed correctly
 - No memory leaks detected
@@ -266,6 +290,7 @@ Tested with:
 ### No Security Impact
 
 This change only affects error logging and does not:
+
 - ❌ Modify SSL/TLS configuration
 - ❌ Change certificate validation
 - ❌ Affect authentication or authorization
@@ -285,6 +310,7 @@ This change only affects error logging and does not:
 ### Development
 
 No special steps required:
+
 ```bash
 git pull
 python app.py
@@ -300,6 +326,7 @@ python app.py
 ### Docker
 
 No changes to Dockerfile or docker-compose.yml required:
+
 ```bash
 docker-compose down
 docker-compose build
@@ -309,6 +336,7 @@ docker-compose up -d
 ### Kubernetes
 
 No changes to manifests required:
+
 ```bash
 kubectl rollout restart deployment/darts-app
 ```
@@ -351,16 +379,19 @@ If you encounter issues or have suggestions:
 ### Design Decisions
 
 **Why monkey-patching?**
+
 - Eventlet handles SSL errors at low level
 - Errors occur before Flask code executes
 - No other way to intercept without modifying eventlet source
 
 **Why rate limiting?**
+
 - Prevents log spam from repeated errors
 - Balances visibility with noise reduction
 - 10 seconds chosen as reasonable default
 
 **Why not fix the root cause?**
+
 - Root cause is client using wrong protocol
 - Server cannot force clients to use HTTPS
 - Best we can do is handle errors gracefully
@@ -368,6 +399,7 @@ If you encounter issues or have suggestions:
 ### Future Enhancements
 
 Potential improvements for future versions:
+
 1. Configurable rate limiting via environment variable
 2. Metrics collection (Prometheus/Grafana)
 3. Automatic HTTP to HTTPS redirect

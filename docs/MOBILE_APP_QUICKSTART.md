@@ -168,7 +168,7 @@ Response:
 import requests
 
 API_URL = "https://yourdomain.com"
-API_KEY = "your-api-key-here"
+API_KEY = "your-api-key-here"  # pragma: allowlist secret
 DARTBOARD_ID = "DART-ABC123"
 
 # Connect
@@ -202,9 +202,9 @@ print(response.json())
 #include <ArduinoJson.h>
 
 const char* ssid = "DART-ABC123";
-const char* password = "your-hotspot-password";
+const char* password = "your-hotspot-password";  // pragma: allowlist secret
 const char* apiUrl = "http://192.168.43.1:5000";  // Mobile hotspot IP
-const char* apiKey = "your-api-key-here";
+const char* apiKey = "your-api-key-here";  // pragma: allowlist secret
 
 void setup() {
   Serial.begin(115200);

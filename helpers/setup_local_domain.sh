@@ -21,7 +21,7 @@ if grep -q "$DOMAIN" /etc/hosts; then
         echo "Skipping update."
         exit 0
     fi
-    
+
     # Remove existing entry
     sudo sed -i "/$DOMAIN/d" /etc/hosts
 fi

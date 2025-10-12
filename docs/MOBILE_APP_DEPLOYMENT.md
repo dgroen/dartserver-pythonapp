@@ -82,7 +82,7 @@ Create `.env` file:
 
 ```bash
 # Database
-DATABASE_URL=postgresql://user:password@localhost/dartserver
+DATABASE_URL=postgresql://user:password@localhost/dartserver  # pragma: allowlist secret
 
 # Security
 SECRET_KEY=your-secret-key-here
