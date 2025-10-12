@@ -4,6 +4,7 @@ Receives scores through RabbitMQ and manages 301 and Cricket games
 Includes WSO2 IS authentication and role-based access control
 """
 
+import logging
 import os
 import secrets
 import threading
@@ -13,6 +14,7 @@ from flasgger import Swagger
 from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 from flask_cors import CORS
 from flask_socketio import SocketIO
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from auth import (
     exchange_code_for_token,
@@ -30,10 +32,32 @@ from src.mobile_service import MobileService
 # Load environment variables
 load_dotenv()
 
+# Configure logging to output to stdout for Docker
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()],
+)
+
 # Initialize Flask app
 app = Flask(__name__)
+
+# Configure Flask to trust proxy headers from nginx
+# This allows Flask to correctly detect the original scheme (https) and host
+# when running behind a reverse proxy
+app.wsgi_app = ProxyFix(
+    app.wsgi_app,
+    x_for=1,  # Trust X-Forwarded-For
+    x_proto=1,  # Trust X-Forwarded-Proto
+    x_host=1,  # Trust X-Forwarded-Host
+    x_prefix=1,  # Trust X-Forwarded-Prefix
+)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key")
-app.config["SESSION_COOKIE_SECURE"] = os.getenv("SESSION_COOKIE_SECURE", "False").lower() == "true"
+# Auto-detect SSL for SESSION_COOKIE_SECURE
+use_ssl = os.getenv("FLASK_USE_SSL", "False").lower() == "true"
+app.config["SESSION_COOKIE_SECURE"] = (
+    use_ssl or os.getenv("SESSION_COOKIE_SECURE", "False").lower() == "true"
+)
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = 3600  # 1 hour
@@ -1775,6 +1799,61 @@ def start_rabbitmq_consumer():
         print("Application will continue without RabbitMQ integration")
 
 
+def patch_eventlet_ssl_error_handling():
+    """
+    Monkey-patch eventlet's WSGI handler to suppress SSL protocol errors
+
+    This prevents stack traces from flooding the console when clients attempt
+    to connect using HTTP to an HTTPS server. Instead, it logs a concise,
+    user-friendly message with rate limiting.
+    """
+    import ssl
+    import time
+
+    from eventlet import wsgi
+
+    # Store original handler
+    original_handle = wsgi.HttpProtocol.handle
+
+    # Rate limiting state
+    ssl_error_state = {"count": 0, "last_logged": 0}
+
+    def custom_handle(self):
+        """Handle requests with special treatment for SSL protocol errors"""
+        try:
+            # Call the original handle method
+            original_handle(self)
+        except ssl.SSLError as e:
+            error_msg = str(e)
+            if "HTTP_REQUEST" in error_msg or "http request" in error_msg.lower():
+                # Rate limit the logging (only log every 10 seconds)
+                current_time = time.time()
+                ssl_error_state["count"] += 1
+
+                if current_time - ssl_error_state["last_logged"] >= 10:
+                    print("")
+                    print("⚠️  SSL Protocol Mismatch Detected")
+                    print(
+                        f"   {ssl_error_state['count']} HTTP request(s) "
+                        "to HTTPS server (rejected)",
+                    )
+                    print("   Clients must use HTTPS URLs to connect")
+                    print("")
+                    ssl_error_state["last_logged"] = current_time
+                    ssl_error_state["count"] = 0
+
+                # Suppress the stack trace by not re-raising
+                return
+            # Re-raise other SSL errors
+            raise
+        except Exception:
+            # Re-raise all other exceptions
+            raise
+
+    # Apply the monkey-patch
+    wsgi.HttpProtocol.handle = custom_handle
+
+
 if __name__ == "__main__":
     # Start RabbitMQ consumer
     start_rabbitmq_consumer()
@@ -1783,6 +1862,90 @@ if __name__ == "__main__":
     host = os.getenv("FLASK_HOST", "0.0.0.0")
     port = int(os.getenv("FLASK_PORT", 5000))
     debug = os.getenv("FLASK_DEBUG", "True").lower() == "true"
+    use_ssl = os.getenv("FLASK_USE_SSL", "False").lower() == "true"
 
-    print(f"Starting Darts Game Server on {host}:{port}")
-    socketio.run(app, host=host, port=port, debug=debug)
+    # SSL Configuration
+    ssl_args = {}
+    protocol = "http"
+
+    if use_ssl:
+        from pathlib import Path
+
+        ssl_dir = Path(__file__).parent / "ssl"
+        cert_file = ssl_dir / "cert.pem"
+        key_file = ssl_dir / "key.pem"
+
+        if cert_file.exists() and key_file.exists():
+            # For eventlet, pass certfile and keyfile directly
+            ssl_args = {"certfile": str(cert_file), "keyfile": str(key_file)}
+            protocol = "https"
+
+            # Apply SSL error handling patch
+            patch_eventlet_ssl_error_handling()
+            print("✅ SSL error handling patch applied")
+
+            print("=" * 80)
+            print("🔒 Starting Darts Game Server with SSL/HTTPS")
+            print(f"   URL: {protocol}://{host}:{port}")
+            print("=" * 80)
+            print("⚠️  IMPORTANT: Using self-signed SSL certificate")
+            print("   - Your browser will show a security warning")
+            print("   - This is expected for self-signed certificates")
+            print("   - Click 'Advanced' and 'Proceed' to continue")
+            print("")
+            print("⚠️  SSL ERROR TROUBLESHOOTING:")
+            print("   - If you see 'SSL: HTTP_REQUEST' errors, clients are")
+            print("     using HTTP instead of HTTPS")
+            print("   - Make sure to access the application using: https://")
+            print(f"   - Correct URL: {protocol}://{host}:{port}")
+            print(f"   - Wrong URL:   http://{host}:{port}")
+            print("")
+            print("   To disable SSL for development:")
+            print("   - Set FLASK_USE_SSL=False in .env file")
+            print("=" * 80)
+        else:
+            print("=" * 80)
+            print("⚠️  SSL CONFIGURATION ERROR")
+            print("=" * 80)
+            print("SSL is enabled but certificates not found!")
+            print("Expected files:")
+            print(f"  - Certificate: {cert_file}")
+            print(f"  - Private Key: {key_file}")
+            print("")
+            print("To generate SSL certificates, run:")
+            print("  ./helpers/generate_ssl_certs.sh letsplaydarts.eu")
+            print("")
+            print("Falling back to HTTP (insecure)...")
+            print("=" * 80)
+            use_ssl = False
+
+    if not use_ssl:
+        print("=" * 80)
+        print("🌐 Starting Darts Game Server (HTTP - No SSL)")
+        print(f"   URL: {protocol}://{host}:{port}")
+        print("=" * 80)
+        print("⚠️  Running without SSL encryption")
+        print("   For production, enable SSL by:")
+        print("   1. Set FLASK_USE_SSL=True in .env")
+        print("   2. Generate certificates: ./helpers/generate_ssl_certs.sh letsplaydarts.eu")
+        print("=" * 80)
+
+    try:
+        socketio.run(app, host=host, port=port, debug=debug, **ssl_args)
+    except Exception as e:
+        print("")
+        print("=" * 80)
+        print("❌ SERVER ERROR")
+        print("=" * 80)
+        print(f"Failed to start server: {e}")
+        if use_ssl and "SSL" in str(e):
+            print("")
+            print("SSL-related error detected. Possible solutions:")
+            print("1. Regenerate SSL certificates:")
+            print("   ./helpers/generate_ssl_certs.sh letsplaydarts.eu")
+            print("2. Disable SSL for development:")
+            print("   Set FLASK_USE_SSL=False in .env")
+            print("3. Check certificate permissions:")
+            print(f"   ls -la {ssl_dir}/")
+        print("=" * 80)
+        raise

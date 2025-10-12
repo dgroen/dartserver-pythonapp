@@ -18,22 +18,80 @@ from jwt import PyJWKClient
 logger = logging.getLogger(__name__)
 
 # WSO2 Identity Server Configuration
+# WSO2_IS_URL: Public URL for browser redirects (authorize, logout)
+# WSO2_IS_INTERNAL_URL: Internal URL for backend API calls (token, userinfo, introspect)
 WSO2_IS_URL = os.getenv("WSO2_IS_URL", "https://localhost:9443")
+WSO2_IS_INTERNAL_URL = os.getenv("WSO2_IS_INTERNAL_URL", WSO2_IS_URL)
+
+# Browser-facing URLs (use public URL)
 WSO2_IS_AUTHORIZE_URL = f"{WSO2_IS_URL}/oauth2/authorize"
-WSO2_IS_TOKEN_URL = f"{WSO2_IS_URL}/oauth2/token"
-WSO2_IS_USERINFO_URL = f"{WSO2_IS_URL}/oauth2/userinfo"
 WSO2_IS_LOGOUT_URL = f"{WSO2_IS_URL}/oidc/logout"
-WSO2_IS_JWKS_URL = f"{WSO2_IS_URL}/oauth2/jwks"
-WSO2_IS_INTROSPECT_URL = f"{WSO2_IS_URL}/oauth2/introspect"
+
+# Backend API URLs (use internal URL for server-to-server communication)
+WSO2_IS_TOKEN_URL = f"{WSO2_IS_INTERNAL_URL}/oauth2/token"
+WSO2_IS_USERINFO_URL = f"{WSO2_IS_INTERNAL_URL}/oauth2/userinfo"
+WSO2_IS_JWKS_URL = f"{WSO2_IS_INTERNAL_URL}/oauth2/jwks"
+WSO2_IS_INTROSPECT_URL = f"{WSO2_IS_INTERNAL_URL}/oauth2/introspect"
 
 # OAuth2 Client Configuration
 WSO2_CLIENT_ID = os.getenv("WSO2_CLIENT_ID", "")
 WSO2_CLIENT_SECRET = os.getenv("WSO2_CLIENT_SECRET", "")
-WSO2_REDIRECT_URI = os.getenv("WSO2_REDIRECT_URI", "http://localhost:5000/callback")
-WSO2_POST_LOGOUT_REDIRECT_URI = os.getenv(
+# Default redirect URI (can be overridden by environment variable)
+WSO2_REDIRECT_URI_DEFAULT = os.getenv("WSO2_REDIRECT_URI", "http://localhost:5000/callback")
+WSO2_POST_LOGOUT_REDIRECT_URI_DEFAULT = os.getenv(
     "WSO2_POST_LOGOUT_REDIRECT_URI",
     os.getenv("WSO2_REDIRECT_URI", "http://localhost:5000/callback").replace("/callback", "/"),
 )
+
+
+def get_dynamic_redirect_uri() -> str:
+    """
+    Dynamically build redirect URI based on the current request
+    Supports multiple domains and ports:
+    - https://localhost:5000
+    - https://letsplaydarts.eu:5001
+    - https://letsplaydarts.eu (port 443)
+    """
+    if not request:
+        return WSO2_REDIRECT_URI_DEFAULT
+
+    # Get the scheme (http/https)
+    scheme = request.scheme
+
+    # Get the host (includes port if non-standard)
+    host = request.host
+
+    # Debug logging
+    logger.info(f"Request scheme: {scheme}")
+    logger.info(f"Request host: {host}")
+    logger.info(f"Request headers: {dict(request.headers)}")
+
+    # Build the redirect URI
+    redirect_uri = f"{scheme}://{host}/callback"
+
+    logger.info(f"Dynamic redirect URI: {redirect_uri}")
+    return redirect_uri
+
+
+def get_dynamic_post_logout_redirect_uri() -> str:
+    """
+    Dynamically build post-logout redirect URI based on the current request
+    """
+    if not request:
+        return WSO2_POST_LOGOUT_REDIRECT_URI_DEFAULT
+
+    # Get the scheme (http/https)
+    scheme = request.scheme
+
+    # Get the host (includes port if non-standard)
+    host = request.host
+
+    # Build the post-logout redirect URI
+    post_logout_uri = f"{scheme}://{host}/"
+
+    logger.debug(f"Dynamic post-logout redirect URI: {post_logout_uri}")
+    return post_logout_uri
+
 
 # Introspection credentials
 WSO2_IS_INTROSPECT_USER = os.getenv("WSO2_IS_INTROSPECT_USER", "admin")
@@ -352,11 +410,14 @@ def permission_required(permission: str):
 def get_authorization_url(state: str | None = None) -> str:
     """
     Generate OAuth2 authorization URL for WSO2 IS
+    Uses dynamic redirect URI based on the current request
     """
+    redirect_uri = get_dynamic_redirect_uri()
+
     params = {
         "response_type": "code",
         "client_id": WSO2_CLIENT_ID,
-        "redirect_uri": WSO2_REDIRECT_URI,
+        "redirect_uri": redirect_uri,
         "scope": "openid profile email groups",
     }
 
@@ -366,7 +427,7 @@ def get_authorization_url(state: str | None = None) -> str:
     # Debug logging
     logger.info(f"Generating authorization URL with params: {params}")
     logger.info(f"WSO2_CLIENT_ID value: '{WSO2_CLIENT_ID}'")
-    logger.info(f"WSO2_REDIRECT_URI value: '{WSO2_REDIRECT_URI}'")
+    logger.info(f"Dynamic redirect_uri value: '{redirect_uri}'")
 
     query_string = urlencode(params)
     auth_url = f"{WSO2_IS_AUTHORIZE_URL}?{query_string}"
@@ -379,14 +440,17 @@ def get_authorization_url(state: str | None = None) -> str:
 def exchange_code_for_token(code: str) -> dict | None:
     """
     Exchange authorization code for access token
+    Uses dynamic redirect URI based on the current request
     """
+    redirect_uri = get_dynamic_redirect_uri()
+
     try:
         response = requests.post(
             WSO2_IS_TOKEN_URL,
             data={
                 "grant_type": "authorization_code",
                 "code": code,
-                "redirect_uri": WSO2_REDIRECT_URI,
+                "redirect_uri": redirect_uri,
                 "client_id": WSO2_CLIENT_ID,
                 "client_secret": WSO2_CLIENT_SECRET,
             },
@@ -431,9 +495,12 @@ def get_user_info(access_token: str) -> dict | None:
 def logout_user(id_token: str | None = None) -> str:
     """
     Generate logout URL for WSO2 IS
+    Uses dynamic post-logout redirect URI based on the current request
     """
+    post_logout_uri = get_dynamic_post_logout_redirect_uri()
+
     params = {
-        "post_logout_redirect_uri": WSO2_POST_LOGOUT_REDIRECT_URI,
+        "post_logout_redirect_uri": post_logout_uri,
     }
 
     if id_token:

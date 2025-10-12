@@ -32,6 +32,7 @@ services:
       - JAVA_OPTS=-Xms512m -Xmx1024m
     volumes:
       - wso2is_data:/home/wso2carbon/wso2is-5.11.0
+      - ./wso2is-config/deployment.toml:/home/wso2carbon/wso2is-5.11.0/repository/conf/deployment.toml:rw
     healthcheck:
       test:
         [
@@ -142,19 +143,24 @@ services:
       FLASK_HOST: 0.0.0.0
       FLASK_PORT: 5000
       FLASK_DEBUG: "False"
+      FLASK_USE_SSL: "False"
       SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
 
       # WSO2 Authentication Configuration
-      WSO2_IS_URL: https://wso2is:9443
+      # WSO2_IS_URL: Public URL for browser redirects (authorize, logout)
+      WSO2_IS_URL: https://letsplaydarts.eu/auth
+      # WSO2_IS_INTERNAL_URL: Internal Docker network URL for backend API calls
+      WSO2_IS_INTERNAL_URL: https://wso2is:9443
       WSO2_CLIENT_ID: ${WSO2_CLIENT_ID:-your_client_id_here}
       WSO2_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-your_client_secret_here}
-      WSO2_REDIRECT_URI: ${WSO2_REDIRECT_URI:-http://localhost:5000/callback}
-      WSO2_POST_LOGOUT_REDIRECT_URI: ${WSO2_POST_LOGOUT_REDIRECT_URI:-http://localhost:5000/}
+      # Use dynamic redirect URIs - these are fallbacks only, app will use X-Forwarded headers
+      WSO2_REDIRECT_URI: ${WSO2_REDIRECT_URI:-https://letsplaydarts.eu/callback}
+      WSO2_POST_LOGOUT_REDIRECT_URI: ${WSO2_POST_LOGOUT_REDIRECT_URI:-https://letsplaydarts.eu/}
       WSO2_IS_VERIFY_SSL: "False"
       JWT_VALIDATION_MODE: introspection
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
       WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin}
-      SESSION_COOKIE_SECURE: "False"
+      SESSION_COOKIE_SECURE: "True"  # Enable secure cookies for HTTPS
     depends_on:
       rabbitmq:
         condition: service_healthy

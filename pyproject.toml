@@ -168,10 +168,15 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "PLR2004", "ARG001", "ARG002"]
-"examples/*" = ["T201", "S105", "S106", "S113"]
-"test_*.py" = ["S101", "PLR2004", "ARG001", "ARG002", "S113"]
+"tests/*" = ["S101", "PLR2004", "ARG001", "ARG002", "S603", "S607", "PTH116", "PTH123"]
+"examples/*" = ["T201", "S105", "S106", "S113", "E402"]
+"test_*.py" = ["S101", "PLR2004", "ARG001", "ARG002", "S113", "S603", "S607", "PT028", "PTH116", "PTH123"]
 "verify_installation.py" = ["T201", "S105", "S106"]
+"alembic/env.py" = ["E402"]
+"database_models.py" = ["A003"]
+"db_manage.py" = ["E402"]
+"helpers/*.py" = ["E402"]
+"test_ssl_error_handling.py" = ["PT028"]
 
 [tool.mypy]
 python_version = "3.10"
