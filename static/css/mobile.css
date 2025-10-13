@@ -1,16 +1,19 @@
-/* Mobile PWA Styles */
+/* Mobile PWA Styles - Matching Web App Design */
 :root {
+    --primary-gradient-start: #1e3c72;
+    --primary-gradient-end: #2a5298;
     --primary-color: #1a1a2e;
     --secondary-color: #16213e;
     --accent-color: #0f3460;
     --highlight-color: #e94560;
-    --success-color: #2ecc71;
+    --success-color: #4CAF50;
     --warning-color: #f39c12;
-    --danger-color: #e74c3c;
+    --danger-color: #dc3545;
     --text-primary: #ffffff;
     --text-secondary: #b0b0b0;
     --border-color: #2d2d44;
-    --card-bg: #1e1e30;
+    --card-bg: rgba(0, 0, 0, 0.3);
+    --card-hover-bg: rgba(255, 255, 255, 0.1);
 }
 
 * {
@@ -20,12 +23,14 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background-color: var(--primary-color);
+    font-family: 'Arial', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+    background-attachment: fixed;
     color: var(--text-primary);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
 }
 
 .mobile-app {
@@ -36,7 +41,9 @@ body {
 
 /* Header */
 .mobile-header {
-    background-color: var(--secondary-color);
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     padding: 1rem;
     display: flex;
     align-items: center;
@@ -48,9 +55,10 @@ body {
 }
 
 .mobile-header h1 {
-    font-size: 1.25rem;
-    font-weight: 600;
+    font-size: 1.5rem;
+    font-weight: 700;
     flex: 1;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .back-btn {
@@ -118,6 +126,11 @@ body {
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
 }
 
+.nav-card:active {
+    transform: translateY(-2px) scale(0.98);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+}
+
 .nav-card .icon {
     font-size: 2.5rem;
     margin-bottom: 0.5rem;
@@ -151,6 +164,10 @@ body {
     background-color: #d63851;
 }
 
+.btn-primary:active {
+    transform: scale(0.96);
+}
+
 .btn-secondary {
     background-color: var(--accent-color);
     color: var(--text-primary);
@@ -158,6 +175,10 @@ body {
 
 .btn-secondary:hover {
     background-color: #0d2a4d;
+}
+
+.btn-secondary:active {
+    transform: scale(0.96);
 }
 
 .btn-success {
@@ -514,6 +535,229 @@ body {
 .install-prompt p {
     margin-bottom: 1rem;
     color: var(--text-secondary);
+}
+
+/* Welcome Section */
+.welcome-section {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 1rem;
+    padding: 2rem 1.5rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.welcome-section h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.welcome-section p {
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+/* Quick Actions Section */
+.quick-actions {
+    margin-bottom: 1.5rem;
+}
+
+.quick-actions h3 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    padding-left: 0.5rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.action-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.action-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    border: 2px solid transparent;
+}
+
+.action-card:active {
+    transform: scale(0.95);
+}
+
+.action-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--highlight-color);
+}
+
+.action-icon {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.action-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.action-desc {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Status Section */
+.status-section {
+    margin-bottom: 1.5rem;
+}
+
+.status-section h3 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    padding-left: 0.5rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.status-card {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    animation: pulse-dot 2s infinite;
+}
+
+.status-dot.online {
+    background-color: var(--success-color);
+    box-shadow: 0 0 10px var(--success-color);
+}
+
+.status-dot.offline {
+    background-color: var(--danger-color);
+    box-shadow: 0 0 10px var(--danger-color);
+}
+
+.status-text {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+@keyframes pulse-dot {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Mobile Navigation Menu */
+.mobile-nav {
+    position: fixed;
+    top: 0;
+    left: -100%;
+    width: 80%;
+    max-width: 300px;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: left 0.3s ease;
+    z-index: 200;
+    overflow-y: auto;
+    padding-top: 4rem;
+}
+
+.mobile-nav.active {
+    left: 0;
+}
+
+.mobile-nav ul {
+    list-style: none;
+    padding: 1rem 0;
+}
+
+.mobile-nav li {
+    margin: 0;
+}
+
+.mobile-nav .nav-item {
+    display: block;
+    padding: 1rem 1.5rem;
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 1.1rem;
+    transition: all 0.2s;
+    border-left: 3px solid transparent;
+}
+
+.mobile-nav .nav-item:hover,
+.mobile-nav .nav-item:active {
+    background: rgba(255, 255, 255, 0.1);
+    border-left-color: var(--highlight-color);
+}
+
+.menu-toggle {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+}
+
+.menu-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Menu Overlay */
+.menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 150;
+    display: none;
+}
+
+.menu-overlay.active {
+    display: block;
+}
+
+/* Footer */
+.mobile-footer {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: auto;
 }
 
 /* Offline Indicator */

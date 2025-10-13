@@ -15,7 +15,25 @@
         <header class="mobile-header">
             <a href="/mobile" class="back-btn">←</a>
             <h1>🎮 Gameplay</h1>
+            <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
         </header>
+
+        <!-- Menu Overlay -->
+        <div class="menu-overlay" id="menuOverlay"></div>
+
+        <!-- Navigation Menu -->
+        <nav class="mobile-nav" id="mobileNav">
+            <ul>
+                <li><a href="/mobile" class="nav-item">🏠 Home</a></li>
+                <li><a href="/mobile/gameplay" class="nav-item">🎮 Gameplay</a></li>
+                <li><a href="/mobile/gamemaster" class="nav-item">👑 Game Master</a></li>
+                <li><a href="/mobile/dartboard-setup" class="nav-item">🎯 Dartboard Setup</a></li>
+                <li><a href="/mobile/results" class="nav-item">📊 Game Results</a></li>
+                <li><a href="/mobile/account" class="nav-item">⚙️ Account</a></li>
+                <li><a href="/mobile/hotspot" class="nav-item">📡 Hotspot Control</a></li>
+                <li><a href="/logout" class="nav-item">🚪 Logout</a></li>
+            </ul>
+        </nav>
 
         <main class="mobile-content">
             <!-- Game Status -->
@@ -48,5 +66,40 @@
 
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="/static/js/mobile_gameplay.js"></script>
+    <script>
+        // Menu Toggle Functionality
+        const menuToggle = document.getElementById('menuToggle');
+        const mobileNav = document.getElementById('mobileNav');
+        const menuOverlay = document.getElementById('menuOverlay');
+
+        function toggleMenu() {
+            mobileNav.classList.toggle('active');
+            menuOverlay.classList.toggle('active');
+        }
+
+        menuToggle.addEventListener('click', toggleMenu);
+        menuOverlay.addEventListener('click', toggleMenu);
+
+        // Close menu when clicking a nav item
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                mobileNav.classList.remove('active');
+                menuOverlay.classList.remove('active');
+            });
+        });
+
+        // Register Service Worker for PWA functionality
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker registered successfully:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.error('❌ Service Worker registration failed:', error);
+                    });
+            });
+        }
+    </script>
 </body>
 </html>

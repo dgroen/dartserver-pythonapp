@@ -1,6 +1,7 @@
 // Service Worker for PWA Offline Support
+// Version 2.0 - Enhanced for Android Installation
 
-const CACHE_NAME = 'darts-mobile-v1';
+const CACHE_NAME = 'darts-mobile-v2';
 const urlsToCache = [
     '/mobile',
     '/mobile/gameplay',
@@ -17,7 +18,9 @@ const urlsToCache = [
     '/static/js/mobile_gameplay.js',
     '/static/js/mobile_gamemaster.js',
     '/static/js/mobile_results.js',
-    '/static/manifest.json'
+    '/static/manifest.json',
+    '/static/icons/icon-192x192.png',
+    '/static/icons/icon-512x512.png'
 ];
 
 // Install event - cache resources

@@ -1,4 +1,4 @@
-# Markdownlint configuration
+
 # Disable some rules for documentation files
 
 # MD013: Line length - disabled for docs
