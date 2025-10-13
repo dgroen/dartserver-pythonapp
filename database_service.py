@@ -429,17 +429,28 @@ class DatabaseService:
         """
         session = self.db_manager.get_session()
         try:
-            # Get unique game sessions
-            game_sessions = (
-                session.query(GameResult.game_session_id)
-                .distinct()
-                .order_by(GameResult.started_at.desc())
+            # Get unique game sessions with their start times
+            # Use a subquery to get the max started_at for each game_session_id
+            from sqlalchemy import func
+
+            subquery = (
+                session.query(
+                    GameResult.game_session_id,
+                    func.max(GameResult.started_at).label("max_started_at"),
+                )
+                .group_by(GameResult.game_session_id)
+                .order_by(func.max(GameResult.started_at).desc())
                 .limit(limit)
-                .all()
+                .subquery()
             )
 
+            game_sessions = session.query(
+                subquery.c.game_session_id,
+                subquery.c.max_started_at,
+            ).all()
+
             results = []
-            for (game_session_id,) in game_sessions:
+            for game_session_id, _ in game_sessions:
                 game_results = (
                     session.query(GameResult).filter_by(game_session_id=game_session_id).all()
                 )

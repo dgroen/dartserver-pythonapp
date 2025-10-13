@@ -3,13 +3,18 @@ Database models for storing game data in PostgreSQL
 """
 
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
 Base = declarative_base()
+
+
+def utc_now():
+    """Return current UTC time with timezone awareness"""
+    return datetime.now(tz=timezone.utc)
 
 
 class Player(Base):
@@ -19,7 +24,7 @@ class Player(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     # Authentication fields
     username = Column(String(100), unique=True, nullable=True)  # For user accounts
@@ -43,7 +48,7 @@ class GameType(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(50), nullable=False, unique=True)  # '301', '401', '501', 'cricket'
     description = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     # Relationships
     game_results = relationship("GameResult", back_populates="game_type")
@@ -65,7 +70,7 @@ class GameResult(Base):
     final_score = Column(Integer)  # Final score
     is_winner = Column(Boolean, default=False)
     double_out_enabled = Column(Boolean, default=False)  # For 301/401/501 games
-    started_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, default=utc_now)
     finished_at = Column(DateTime)
     game_session_id = Column(String(100), nullable=False)  # UUID to group players in same game
 
@@ -114,7 +119,7 @@ class Score(Base):
     is_finish = Column(Boolean, default=False)  # Winning throw
 
     # Timestamp
-    thrown_at = Column(DateTime, default=datetime.utcnow)
+    thrown_at = Column(DateTime, default=utc_now)
 
     # Relationships
     game_result = relationship("GameResult", back_populates="scores")
@@ -143,8 +148,8 @@ class Dartboard(Base):
     last_connected = Column(DateTime, nullable=True)
 
     # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     # Relationships
     owner = relationship("Player", back_populates="dartboards")
@@ -165,7 +170,7 @@ class ApiKey(Base):
     is_active = Column(Boolean, default=True)
 
     # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     last_used = Column(DateTime, nullable=True)
     expires_at = Column(DateTime, nullable=True)  # Optional expiration
 
@@ -196,8 +201,8 @@ class HotspotConfig(Base):
     is_enabled = Column(Boolean, default=False)  # Whether hotspot is currently enabled
 
     # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     def __repr__(self):
         return f"<HotspotConfig(id={self.id}, ssid='{self.ssid}', enabled={self.is_enabled})>"
