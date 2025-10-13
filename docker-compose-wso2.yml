@@ -146,6 +146,20 @@ services:
       FLASK_USE_SSL: "False"
       SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
 
+      # Dartboard Configuration
+      DARTBOARD_SENDS_ACTUAL_SCORE: "True"
+
+      # Text-to-Speech Configuration
+      TTS_ENABLED: ${TTS_ENABLED:-true}
+      TTS_ENGINE: ${TTS_ENGINE:-gtts}
+      TTS_SPEED: ${TTS_SPEED:-150}
+      TTS_VOLUME: ${TTS_VOLUME:-0.9}
+      TTS_VOICE: ${TTS_VOICE:-default}
+
+      # Database Configuration
+      # Use host.docker.internal to access host's PostgreSQL from container
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:5432/dartsdb}
+
       # WSO2 Authentication Configuration
       # WSO2_IS_URL: Public URL for browser redirects (authorize, logout)
       WSO2_IS_URL: https://letsplaydarts.eu/auth
@@ -161,6 +175,8 @@ services:
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
       WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin}
       SESSION_COOKIE_SECURE: "True" # Enable secure cookies for HTTPS
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Allow container to access host services
     depends_on:
       rabbitmq:
         condition: service_healthy
