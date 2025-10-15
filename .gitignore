@@ -65,3 +65,4 @@ docker-backups/2025-10-14_18-02-07/postgres_dump.sql.gz
 docker-backups/2025-10-14_18-02-07/rabbitmq_data.tar.gz
 docker-backups/2025-10-14_18-02-07/wso2apim_data.tar.gz
 docker-backups/2025-10-14_18-02-07/wso2is_data.tar.gz
+wso2is_data_backup_20251014_180429.tar.gz
