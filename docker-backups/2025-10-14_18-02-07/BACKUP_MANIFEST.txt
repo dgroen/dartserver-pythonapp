@@ -1,0 +1,118 @@
+================================================================================
+Docker Volumes Backup Manifest
+================================================================================
+
+Backup Date: Tue Oct 14 18:03:58 UTC 2025
+Backup Location: ./docker-backups/2025-10-14_18-02-07
+Project: dartserver-pythonapp
+
+================================================================================
+Database Backups:
+================================================================================
+
+✓ PostgreSQL Database (pg_dump)
+  File: postgres_dump.sql.gz
+  Size: 8.0K
+  Database: dartsdb
+
+================================================================================
+Volumes Backed Up:
+================================================================================
+
+✓ postgres_data
+  File: postgres_data.tar.gz
+  Size: 6.9M
+
+✓ rabbitmq_data
+  File: rabbitmq_data.tar.gz
+  Size: 136K
+
+✓ wso2is_data
+  File: wso2is_data.tar.gz
+  Size: 392M
+
+✓ wso2apim_data
+  File: wso2apim_data.tar.gz
+  Size: 453M
+
+================================================================================
+Restore Instructions:
+================================================================================
+
+OPTION 1: Restore PostgreSQL Database from SQL Dump (RECOMMENDED)
+------------------------------------------------------------------
+
+1. Stop the containers:
+   docker-compose -f docker-compose.yml down
+   # or
+   docker-compose -f docker-compose-wso2.yml down
+
+2. Start only PostgreSQL:
+   docker-compose -f docker-compose.yml up -d postgres
+
+3. Restore the database:
+   gunzip -c ./docker-backups/2025-10-14_18-02-07/postgres_dump.sql.gz | \
+     docker exec -i darts-postgres psql -U postgres dartsdb
+
+4. Start all containers:
+   docker-compose -f docker-compose.yml up -d
+   # or
+   docker-compose -f docker-compose-wso2.yml up -d
+
+OPTION 2: Restore Docker Volume from Backup
+--------------------------------------------
+
+To restore a volume from backup:
+
+1. Stop the containers:
+   docker-compose -f docker-compose.yml down
+   # or
+   docker-compose -f docker-compose-wso2.yml down
+
+2. Remove the old volume (CAUTION: This deletes data!):
+   docker volume rm dartserver-pythonapp_<volume_name>
+
+3. Create a new volume:
+   docker volume create dartserver-pythonapp_<volume_name>
+
+4. Restore from backup:
+   docker run --rm \
+     -v dartserver-pythonapp_<volume_name>:/data \
+     -v $(pwd)/./docker-backups/2025-10-14_18-02-07:/backup \
+     alpine \
+     tar xzf /backup/<volume_name>.tar.gz -C /data
+
+5. Start the containers:
+   docker-compose -f docker-compose.yml up -d
+   # or
+   docker-compose -f docker-compose-wso2.yml up -d
+
+================================================================================
+Example - Restore PostgreSQL Volume:
+================================================================================
+
+docker-compose -f docker-compose.yml down
+docker volume rm dartserver-pythonapp_postgres_data
+docker volume create dartserver-pythonapp_postgres_data
+docker run --rm \
+  -v dartserver-pythonapp_postgres_data:/data \
+  -v $(pwd)/./docker-backups/2025-10-14_18-02-07:/backup \
+  alpine \
+  tar xzf /backup/postgres_data.tar.gz -C /data
+docker-compose -f docker-compose.yml up -d
+
+================================================================================
+Example - Restore WSO2 IS Volume:
+================================================================================
+
+docker-compose -f docker-compose-wso2.yml down
+docker volume rm dartserver-pythonapp_wso2is_data
+docker volume create dartserver-pythonapp_wso2is_data
+docker run --rm \
+  -v dartserver-pythonapp_wso2is_data:/data \
+  -v $(pwd)/./docker-backups/2025-10-14_18-02-07:/backup \
+  alpine \
+  tar xzf /backup/wso2is_data.tar.gz -C /data
+docker-compose -f docker-compose-wso2.yml up -d
+
+================================================================================

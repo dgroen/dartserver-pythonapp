@@ -255,6 +255,42 @@ def profile():
     )
 
 
+@app.route("/debug/auth")
+@login_required
+def debug_auth():
+    """Debug authentication information"""
+    from auth import get_user_groups_from_scim2, get_user_roles, validate_token
+
+    access_token = session.get("access_token")
+    user_info = session.get("user_info", {})
+
+    # Validate token and get claims
+    token_claims = validate_token(access_token) if access_token else {}
+
+    # Extract roles
+    extracted_roles = get_user_roles(token_claims, access_token=access_token)
+
+    # Try to get SCIM2 groups directly
+    scim2_groups = []
+    if access_token:
+        try:
+            scim2_groups = get_user_groups_from_scim2(access_token)
+        except Exception as e:
+            app.logger.warning(f"Failed to fetch SCIM2 groups in debug: {e}")
+
+    return jsonify(
+        {
+            "session_keys": list(session.keys()),
+            "user_info": user_info,
+            "token_claims": token_claims,
+            "extracted_roles": extracted_roles,
+            "scim2_groups": scim2_groups,
+            "request_user_roles": getattr(request, "user_roles", []),
+            "request_user_claims": getattr(request, "user_claims", {}),
+        },
+    )
+
+
 @app.route("/test-refresh")
 def test_refresh():
     """Test page for automatic refresh functionality
@@ -993,7 +1029,7 @@ def api_key_required(f):
 
 
 @app.route("/mobile")
-# @login_required
+@login_required
 def mobile_app():
     """Mobile app main page
     ---
@@ -1009,7 +1045,7 @@ def mobile_app():
 
 
 @app.route("/mobile/gameplay")
-# @login_required
+@login_required
 def mobile_gameplay():
     """Mobile gameplay page
     ---
@@ -1025,8 +1061,8 @@ def mobile_gameplay():
 
 
 @app.route("/mobile/gamemaster")
-# @login_required
-# @role_required("gamemaster")
+@login_required
+@role_required("gamemaster")
 def mobile_gamemaster():
     """Mobile game master control page
     ---
@@ -1042,7 +1078,7 @@ def mobile_gamemaster():
 
 
 @app.route("/mobile/dartboard-setup")
-# @login_required
+@login_required
 def mobile_dartboard_setup():
     """Mobile dartboard setup page
     ---
@@ -1058,7 +1094,7 @@ def mobile_dartboard_setup():
 
 
 @app.route("/mobile/results")
-# @login_required
+@login_required
 def mobile_results():
     """Mobile game results page
     ---
@@ -1074,7 +1110,7 @@ def mobile_results():
 
 
 @app.route("/mobile/account")
-# @login_required
+@login_required
 def mobile_account():
     """Mobile account management page
     ---
@@ -1090,7 +1126,7 @@ def mobile_account():
 
 
 @app.route("/mobile/hotspot")
-# @login_required
+@login_required
 def mobile_hotspot():
     """Mobile hotspot control page
     ---

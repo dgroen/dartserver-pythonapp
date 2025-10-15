@@ -32,6 +32,7 @@ WSO2_IS_TOKEN_URL = f"{WSO2_IS_INTERNAL_URL}/oauth2/token"
 WSO2_IS_USERINFO_URL = f"{WSO2_IS_INTERNAL_URL}/oauth2/userinfo"
 WSO2_IS_JWKS_URL = f"{WSO2_IS_INTERNAL_URL}/oauth2/jwks"
 WSO2_IS_INTROSPECT_URL = f"{WSO2_IS_INTERNAL_URL}/oauth2/introspect"
+WSO2_IS_SCIM2_ME_URL = f"{WSO2_IS_INTERNAL_URL}/scim2/Me"
 
 # OAuth2 Client Configuration
 WSO2_CLIENT_ID = os.getenv("WSO2_CLIENT_ID", "")
@@ -200,57 +201,82 @@ def validate_token(token: str) -> dict[str, Any] | None:  # noqa: PLR0911
 
 def get_user_roles(token_claims: dict, access_token: str | None = None) -> list[str]:
     """
-    Extract user roles from token claims
-    WSO2 IS stores roles in 'groups' or 'roles' claim
-    If not found in token claims, try fetching from userinfo endpoint
+    Extract user roles from token claims using multi-tier approach.
+
+    WSO2 IS stores roles in 'groups' or 'roles' claim.
+    Extraction strategy:
+    1. Check token claims for role information
+    2. If not found, try userinfo endpoint
+    3. If still not found, fallback to SCIM2 /Me endpoint
+
+    Args:
+        token_claims: Decoded JWT token claims
+        access_token: OAuth2 access token for API calls
+
+    Returns:
+        List of normalized role names (lowercase, without domain prefixes)
     """
-    # Debug: Log all token claims to see what's available
-    print(f"[DEBUG] Token claims for role extraction: {token_claims}")
-    logger.info(f"Token claims for role extraction: {token_claims}")
+    logger.debug(f"Extracting roles from token claims: {list(token_claims.keys())}")
 
     roles = []
 
-    # Check for roles in different claim formats
-    if "groups" in token_claims:
-        groups = token_claims["groups"]
-        if isinstance(groups, list):
-            roles.extend(groups)
-        elif isinstance(groups, str):
-            roles.append(groups)
+    # Check for roles in different claim formats that WSO2 might use
+    possible_role_claims = ["groups", "roles", "role", "group", "realm_roles"]
 
-    if "roles" in token_claims:
-        token_roles = token_claims["roles"]
-        if isinstance(token_roles, list):
-            roles.extend(token_roles)
-        elif isinstance(token_roles, str):
-            roles.append(token_roles)
+    for claim_name in possible_role_claims:
+        if claim_name in token_claims:
+            claim_value = token_claims[claim_name]
+            logger.debug(f"Found claim '{claim_name}': {claim_value}")
+
+            if isinstance(claim_value, list):
+                roles.extend(claim_value)
+            elif isinstance(claim_value, str):
+                roles.append(claim_value)
+            elif isinstance(claim_value, dict) and "roles" in claim_value:
+                # Handle nested role structures (e.g., realm_access.roles)
+                nested_roles = claim_value["roles"]
+                if isinstance(nested_roles, list):
+                    roles.extend(nested_roles)
+                elif isinstance(nested_roles, str):
+                    roles.append(nested_roles)
 
     # If no roles found in token claims and we have an access token, try userinfo endpoint
     if not roles and access_token:
-        print("[DEBUG] No roles in token claims, trying userinfo endpoint...")
         logger.info("No roles in token claims, trying userinfo endpoint")
         try:
             userinfo = get_user_info(access_token)
             if userinfo:
-                print(f"[DEBUG] UserInfo response: {userinfo}")
                 logger.info(f"UserInfo response: {userinfo}")
 
-                # Check for roles in userinfo
-                if "groups" in userinfo:
-                    groups = userinfo["groups"]
-                    if isinstance(groups, list):
-                        roles.extend(groups)
-                    elif isinstance(groups, str):
-                        roles.append(groups)
+                # Check for roles in userinfo using the same claim names
+                for claim_name in possible_role_claims:
+                    if claim_name in userinfo:
+                        claim_value = userinfo[claim_name]
+                        logger.debug(f"Found claim '{claim_name}' in userinfo: {claim_value}")
 
-                if "roles" in userinfo:
-                    userinfo_roles = userinfo["roles"]
-                    if isinstance(userinfo_roles, list):
-                        roles.extend(userinfo_roles)
-                    elif isinstance(userinfo_roles, str):
-                        roles.append(userinfo_roles)
+                        if isinstance(claim_value, list):
+                            roles.extend(claim_value)
+                        elif isinstance(claim_value, str):
+                            roles.append(claim_value)
+                        elif isinstance(claim_value, dict) and "roles" in claim_value:
+                            nested_roles = claim_value["roles"]
+                            if isinstance(nested_roles, list):
+                                roles.extend(nested_roles)
+                            elif isinstance(nested_roles, str):
+                                roles.append(nested_roles)
         except Exception as e:
             logger.warning(f"Failed to fetch roles from userinfo: {e}")
+
+    # If still no roles found, try SCIM2 /Me endpoint as last resort
+    if not roles and access_token:
+        logger.info("No roles in userinfo, trying SCIM2 /Me endpoint")
+        try:
+            scim_groups = get_user_groups_from_scim2(access_token)
+            if scim_groups:
+                roles.extend(scim_groups)
+                logger.info(f"SCIM2 returned groups: {scim_groups}")
+        except Exception as e:
+            logger.warning(f"Failed to fetch roles from SCIM2: {e}")
 
     # Normalize role names (remove domain prefixes if present)
     normalized_roles = []
@@ -259,7 +285,6 @@ def get_user_roles(token_claims: dict, access_token: str | None = None) -> list[
         normalized_role = role.split("/")[-1] if "/" in role else role
         normalized_roles.append(normalized_role.lower())
 
-    print(f"[DEBUG] Extracted and normalized roles: {normalized_roles}")
     logger.info(f"Extracted and normalized roles: {normalized_roles}")
     return normalized_roles
 
@@ -418,7 +443,7 @@ def get_authorization_url(state: str | None = None) -> str:
         "response_type": "code",
         "client_id": WSO2_CLIENT_ID,
         "redirect_uri": redirect_uri,
-        "scope": "openid profile email groups",
+        "scope": "openid profile email groups internal_login",
     }
 
     if state:
@@ -492,6 +517,50 @@ def get_user_info(access_token: str) -> dict | None:
         return None
 
 
+def get_user_groups_from_scim2(access_token: str) -> list[str]:
+    """
+    Get user groups from WSO2 IS SCIM2 /Me endpoint
+    This is a fallback when groups are not included in the token or userinfo
+    """
+    try:
+        logger.info("Fetching user groups from SCIM2 /Me endpoint")
+
+        response = requests.get(
+            WSO2_IS_SCIM2_ME_URL,
+            headers={"Authorization": f"Bearer {access_token}"},
+            verify=WSO2_IS_VERIFY_SSL,
+            timeout=5,
+        )
+
+        if response.status_code == 200:
+            scim_data = response.json()
+            logger.info(f"SCIM2 /Me response: {scim_data}")
+
+            groups = []
+            # SCIM2 groups are in the 'groups' array
+            if "groups" in scim_data and isinstance(scim_data["groups"], list):
+                for group in scim_data["groups"]:
+                    # Each group has 'display' and 'value' fields
+                    if isinstance(group, dict):
+                        group_name = group.get("display") or group.get("value")
+                        if group_name:
+                            groups.append(group_name)
+                    elif isinstance(group, str):
+                        groups.append(group)
+
+            logger.info(f"Extracted groups from SCIM2: {groups}")
+            return groups
+
+        logger.warning(
+            f"Failed to get user groups from SCIM2: status={response.status_code}, "
+            f"response={response.text}",
+        )
+        return []
+    except Exception as e:
+        logger.warning(f"Error getting user groups from SCIM2: {e}")
+        return []
+
+
 def logout_user(id_token: str | None = None) -> str:
     """
     Generate logout URL for WSO2 IS
@@ -506,5 +575,5 @@ def logout_user(id_token: str | None = None) -> str:
     if id_token:
         params["id_token_hint"] = id_token
 
-    query_string = "&".join([f"{k}={v}" for k, v in params.items()])
+    query_string = urlencode(params)
     return f"{WSO2_IS_LOGOUT_URL}?{query_string}"

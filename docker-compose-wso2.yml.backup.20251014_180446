@@ -23,7 +23,7 @@ services:
 
   # WSO2 Identity Server
   wso2is:
-    image: wso2/wso2is:7.1.0
+    image: wso2/wso2is:5.11.0
     container_name: darts-wso2is
     ports:
       - "9443:9443" # HTTPS port
@@ -31,8 +31,8 @@ services:
     environment:
       - JAVA_OPTS=-Xms512m -Xmx1024m
     volumes:
-      - wso2is_data:/home/wso2carbon/wso2is-7.1.0
-      - ./wso2is-7-config/deployment.toml:/home/wso2carbon/wso2is-7.1.0/repository/conf/deployment.toml:ro
+      - wso2is_data:/home/wso2carbon/wso2is-5.11.0
+      - ./wso2is-config/deployment.toml:/home/wso2carbon/wso2is-5.11.0/repository/conf/deployment.toml:rw
     healthcheck:
       test:
         [
@@ -40,7 +40,7 @@ services:
           "curl",
           "-k",
           "-f",
-          "https://localhost:9443/api/health-check/v1.0/health",
+          "https://localhost:9443/carbon/admin/login.jsp",
         ]
       interval: 30s
       timeout: 10s
@@ -71,7 +71,7 @@ services:
           "curl",
           "-k",
           "-f",
-          "https://localhost:9443/api/health-check/v1.0/health",
+          "https://localhost:9443/carbon/admin/login.jsp",
         ]
       interval: 30s
       timeout: 10s
@@ -205,7 +205,6 @@ services:
       - darts-network
 
 volumes:
-  wso2is_7_data:
   rabbitmq_data:
   wso2is_data:
   wso2apim_data:

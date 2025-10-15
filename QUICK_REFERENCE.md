@@ -1,175 +1,128 @@
-# Quick Reference - SSL & Multi-Domain Setup
+# 🚀 Quick Reference - WSO2 Role Management
 
-## ✅ What Was Fixed
-
-1. **SSL Error Stack Traces** → Clean, rate-limited messages
-2. **Hardcoded Redirect URIs** → Dynamic, auto-detecting URIs
-
----
-
-## 🚀 Quick Start
-
-### 1. Configure WSO2 Identity Server
-
-In WSO2 IS Service Provider, add this regex pattern for redirect URIs:
-
-```
-regexp=(https://localhost:5000/callback|https://letsplaydarts\.eu:5001/callback|https://letsplaydarts\.eu/callback)
-```
-
-### 2. Update .env File
+## One-Line Commands
 
 ```bash
-# WSO2 Configuration
-WSO2_IS_URL=https://your-wso2-server:9443
-WSO2_CLIENT_ID=your_client_id
-WSO2_CLIENT_SECRET=your_client_secret
-WSO2_IS_VERIFY_SSL=False
+# List roles for a user
+python3 manage_user_roles.py list Dennis
 
-# SSL Configuration
-FLASK_USE_SSL=True
-FLASK_HOST=0.0.0.0
-FLASK_PORT=5000
+# Add gamemaster role
+python3 manage_user_roles.py add Dennis gamemaster
 
-# Token Validation
-JWT_VALIDATION_MODE=introspection
-WSO2_IS_INTROSPECT_USER=admin
-WSO2_IS_INTROSPECT_PASSWORD=admin
+# Add admin role
+python3 manage_user_roles.py add Dennis admin
+
+# Add player role
+python3 manage_user_roles.py add Dennis player
+
+# Remove a role
+python3 manage_user_roles.py remove Dennis player
+
+# Verify configuration
+python3 verify_wso2_roles.py
+
+# Setup roles (batch)
+python3 setup_wso2_roles.py
 ```
 
-### 3. Configure Network
+## Important URLs
+
+| Purpose | URL |
+|---------|-----|
+| **Logout** | https://letsplaydarts.eu/logout |
+| **Login** | https://letsplaydarts.eu/login |
+| **Debug Auth** | https://letsplaydarts.eu/debug/auth |
+| **Control Panel** | https://letsplaydarts.eu/control |
+| **WSO2 Console** | https://letsplaydarts.eu/auth/console |
+
+## After Role Changes
+
+**Always do this after changing roles:**
+
+1. Logout: https://letsplaydarts.eu/logout
+2. Login: https://letsplaydarts.eu/login
+3. Test: https://letsplaydarts.eu/control
+
+## Check Logs
 
 ```bash
-# Firewall
-sudo ufw allow 5000/tcp
-sudo ufw allow 5001/tcp
-sudo ufw allow 443/tcp
+# All logs
+docker-compose -f docker-compose-wso2.yml logs -f darts-app
 
-# DNS (A Record)
-letsplaydarts.eu → Your Public IP
+# Role-related logs only
+docker-compose -f docker-compose-wso2.yml logs -f darts-app | grep -E "roles|SCIM2|DEBUG"
+
+# WSO2 logs
+docker-compose -f docker-compose-wso2.yml logs -f wso2is
 ```
 
-### 4. Get SSL Certificate
+## Available Roles
 
-**Production:**
+| Role | Description | Access |
+|------|-------------|--------|
+| `gamemaster` | Game management | Control panel, create games, manage players |
+| `admin` | Full access | Everything |
+| `player` | Basic access | View games, submit scores |
+
+## Current Configuration
+
+**User:** Dennis  
+**Role:** gamemaster ✅  
+**Status:** Configured and verified
+
+## Troubleshooting One-Liners
 
 ```bash
-sudo certbot --nginx -d letsplaydarts.eu
+# Verify user exists
+python3 verify_wso2_roles.py
+
+# Check if role is assigned
+python3 manage_user_roles.py list Dennis
+
+# Test SCIM2 API directly
+curl -k -u admin:admin "https://letsplaydarts.eu/auth/scim2/Users?filter=userName%20eq%20%22Dennis%22"
+
+# Restart application
+docker-compose -f docker-compose-wso2.yml restart darts-app
+
+# Check application status
+docker-compose -f docker-compose-wso2.yml ps
 ```
 
-**Development:**
+## Quick Test Sequence
 
 ```bash
-mkdir -p ssl
-openssl req -x509 -newkey rsa:4096 -nodes \
-  -keyout ssl/key.pem -out ssl/cert.pem -days 365 \
-  -subj "/CN=letsplaydarts.eu" \
-  -addext "subjectAltName=DNS:letsplaydarts.eu,DNS:localhost"
+# 1. Verify role is assigned
+python3 verify_wso2_roles.py
+
+# 2. Check logs for role extraction
+docker-compose -f docker-compose-wso2.yml logs --tail=50 darts-app | grep -E "roles|SCIM2"
+
+# 3. Test in browser
+# - Logout: https://letsplaydarts.eu/logout
+# - Login: https://letsplaydarts.eu/login
+# - Debug: https://letsplaydarts.eu/debug/auth
+# - Control: https://letsplaydarts.eu/control
 ```
 
-### 5. Start Application
+## Common Issues
 
-```bash
-python app.py
-```
+| Issue | Solution |
+|-------|----------|
+| 403 on /control | Logout and login again |
+| Roles not showing | Check debug endpoint |
+| SCIM2 403 error | Add API permissions in WSO2 console |
+| User not found | Check username spelling (case-sensitive) |
 
----
+## Files Created
 
-## 🧪 Testing
-
-### Test SSL Error Handling
-
-```bash
-# Wrong protocol (HTTP to HTTPS server)
-curl http://localhost:5000
-
-# Expected output (in console, rate-limited):
-⚠️  SSL Protocol Mismatch Detected
-   1 HTTP request(s) to HTTPS server (rejected)
-   Clients must use HTTPS URLs to connect
-```
-
-### Test Multi-Domain Login
-
-1. **Localhost**: `https://localhost:5000` → Login → Should work
-2. **Custom Port**: `https://letsplaydarts.eu:5001` → Login → Should work
-3. **Standard HTTPS**: `https://letsplaydarts.eu` → Login → Should work
-
-Check logs for dynamic redirect URIs:
-
-```
-INFO:auth:Dynamic redirect URI: https://letsplaydarts.eu:5001/callback
-```
+- `setup_wso2_roles.py` - Automated setup
+- `verify_wso2_roles.py` - Verification
+- `manage_user_roles.py` - Interactive management
+- `WSO2_ROLE_MANAGEMENT.md` - Full documentation
+- `ROLE_CONFIGURATION_SUMMARY.md` - Completion summary
+- `QUICK_REFERENCE.md` - This file
 
 ---
 
-## 🔧 Troubleshooting
-
-| Issue                     | Solution                              |
-| ------------------------- | ------------------------------------- |
-| "Invalid redirect_uri"    | Register all URIs in WSO2 IS          |
-| "SSL verification failed" | Set `WSO2_IS_VERIFY_SSL=False`        |
-| "Connection refused"      | Check firewall and port forwarding    |
-| Still seeing stack traces | Restart app, verify SSL patch applied |
-
----
-
-## 📁 Key Files Modified
-
-- `app.py` (lines 1782-1837): SSL error handling
-- `auth.py` (lines 40-81): Dynamic redirect URIs
-- `auth.py` (lines 397-497): Updated auth functions
-
----
-
-## 📚 Documentation
-
-- **FIXES_SUMMARY.md** - Complete summary of all fixes
-- **docs/WSO2_MULTI_DOMAIN_SETUP.md** - Detailed multi-domain guide
-- **docs/SSL_ERROR_HANDLING.md** - SSL error handling guide
-- **docs/SSL_ERROR_FLOW.md** - Visual flow diagrams
-
----
-
-## ✨ Features
-
-✅ Clean SSL error messages (no more stack trace spam)  
-✅ Automatic redirect URI detection  
-✅ Works with localhost, custom port, and standard HTTPS  
-✅ Production-ready security  
-✅ Zero configuration needed (auto-detects everything)
-
----
-
-## 🎯 Access Methods Supported
-
-| Access Method                   | Redirect URI Generated                   |
-| ------------------------------- | ---------------------------------------- |
-| `https://localhost:5000`        | `https://localhost:5000/callback`        |
-| `https://letsplaydarts.eu:5001` | `https://letsplaydarts.eu:5001/callback` |
-| `https://letsplaydarts.eu`      | `https://letsplaydarts.eu/callback`      |
-
----
-
-## 🔐 Security Checklist
-
-- [ ] SSL certificates installed
-- [ ] WSO2 redirect URIs registered
-- [ ] Firewall configured
-- [ ] Strong secrets in .env
-- [ ] .env file permissions: `chmod 600 .env`
-- [ ] HTTPS enforced (no HTTP in production)
-- [ ] Token validation enabled
-
----
-
-## 📞 Support
-
-1. Check troubleshooting section above
-2. Review detailed docs in `docs/` folder
-3. Check application logs
-4. Verify WSO2 IS configuration
-
----
-
-**Status**: ✅ Ready for Production Deployment!
+**Remember:** Always logout and login after role changes! 🔄
