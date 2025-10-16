@@ -487,3 +487,253 @@ class DatabaseService:
             return []
         finally:
             session.close()
+
+    def get_or_create_player(self, username, email=None, name=None):
+        """
+        Get or create a player from username
+
+        Args:
+            username: Username from authentication
+            email: Email address (optional)
+            name: Display name (optional, defaults to username)
+
+        Returns:
+            Player object
+        """
+        session = self.db_manager.get_session()
+        try:
+            # Try to find by username first
+            player = session.query(Player).filter_by(username=username).first()
+
+            if not player:
+                # Create new player
+                player = Player(
+                    name=name or username,
+                    username=username,
+                    email=email,
+                    created_at=datetime.now(tz=timezone.utc),
+                )
+                session.add(player)
+                session.commit()
+                print(f"New player created: {username} (name: {player.name})")
+            else:
+                print(f"Player found: {username}")
+
+            return player
+
+        except Exception as e:
+            session.rollback()
+            print(f"Error getting or creating player: {e}")
+            return None
+        finally:
+            session.close()
+
+    def get_player_game_history(self, player_id, game_type=None, limit=50):
+        """
+        Get a player's game history with statistics
+
+        Args:
+            player_id: Player ID
+            game_type: Optional game type filter ('301', '401', '501', 'cricket')
+            limit: Maximum number of games to return
+
+        Returns:
+            List of game results with player statistics
+        """
+        session = self.db_manager.get_session()
+        try:
+            query = session.query(GameResult).filter_by(player_id=player_id)
+
+            if game_type:
+                game_type_obj = session.query(GameType).filter_by(name=game_type).first()
+                if game_type_obj:
+                    query = query.filter_by(game_type_id=game_type_obj.id)
+
+            game_results = query.order_by(GameResult.finished_at.desc()).limit(limit).all()
+
+            results = []
+            for gr in game_results:
+                game_type_obj = session.query(GameType).filter_by(id=gr.game_type_id).first()
+                game_session_results = (
+                    session.query(GameResult).filter_by(game_session_id=gr.game_session_id).all()
+                )
+
+                # Get all players in this game
+                players_in_game = []
+                for game_result in game_session_results:
+                    player = session.query(Player).filter_by(id=game_result.player_id).first()
+                    players_in_game.append(
+                        {
+                            "name": player.name if player else "Unknown",
+                            "final_score": game_result.final_score,
+                            "is_winner": game_result.is_winner,
+                        },
+                    )
+
+                results.append(
+                    {
+                        "game_session_id": gr.game_session_id,
+                        "game_type": game_type_obj.name if game_type_obj else "Unknown",
+                        "started_at": gr.started_at.isoformat(),
+                        "finished_at": gr.finished_at.isoformat() if gr.finished_at else None,
+                        "is_winner": gr.is_winner,
+                        "final_score": gr.final_score,
+                        "start_score": gr.start_score,
+                        "player_count": len(players_in_game),
+                        "players": players_in_game,
+                        "double_out_enabled": gr.double_out_enabled,
+                    },
+                )
+
+            return results
+
+        except Exception as e:
+            print(f"Error getting player game history: {e}")
+            return []
+        finally:
+            session.close()
+
+    def get_player_statistics(self, player_id):
+        """
+        Get overall statistics for a player
+
+        Args:
+            player_id: Player ID
+
+        Returns:
+            Dictionary with player statistics
+        """
+        session = self.db_manager.get_session()
+        try:
+            player = session.query(Player).filter_by(id=player_id).first()
+            if not player:
+                return None
+
+            all_game_results = session.query(GameResult).filter_by(player_id=player_id).all()
+
+            if not all_game_results:
+                return {
+                    "player_id": player_id,
+                    "player_name": player.name,
+                    "total_games": 0,
+                    "wins": 0,
+                    "losses": 0,
+                    "win_rate": 0,
+                    "average_score": 0,
+                    "by_game_type": {},
+                }
+
+            total_games = len(all_game_results)
+            wins = sum(1 for gr in all_game_results if gr.is_winner)
+            losses = total_games - wins
+            average_score = sum(gr.final_score or 0 for gr in all_game_results) / total_games
+
+            # Stats by game type
+            by_game_type = {}
+            for gr in all_game_results:
+                game_type = session.query(GameType).filter_by(id=gr.game_type_id).first()
+                game_type_name = game_type.name if game_type else "Unknown"
+
+                if game_type_name not in by_game_type:
+                    by_game_type[game_type_name] = {
+                        "games": 0,
+                        "wins": 0,
+                        "losses": 0,
+                        "average_score": 0,
+                        "scores": [],
+                    }
+
+                by_game_type[game_type_name]["games"] += 1
+                by_game_type[game_type_name]["wins"] += 1 if gr.is_winner else 0
+                by_game_type[game_type_name]["losses"] += 0 if gr.is_winner else 1
+                by_game_type[game_type_name]["scores"].append(gr.final_score or 0)
+
+            # Calculate averages per game type
+            for _game_type_name, stats in by_game_type.items():
+                if stats["scores"]:
+                    stats["average_score"] = sum(stats["scores"]) / len(stats["scores"])
+                del stats["scores"]  # Remove scores list from final output
+
+            return {
+                "player_id": player_id,
+                "player_name": player.name,
+                "total_games": total_games,
+                "wins": wins,
+                "losses": losses,
+                "win_rate": round((wins / total_games * 100), 1) if total_games > 0 else 0,
+                "average_score": round(average_score, 1),
+                "by_game_type": by_game_type,
+            }
+
+        except Exception as e:
+            print(f"Error getting player statistics: {e}")
+            return None
+        finally:
+            session.close()
+
+    def get_active_games(self):
+        """
+        Get currently active games with their current state
+
+        Returns:
+            List of active games with current scores and player info
+        """
+        session = self.db_manager.get_session()
+        try:
+            # Get game sessions that have started but not finished
+            from sqlalchemy import and_
+
+            active_games_query = (
+                session.query(GameResult.game_session_id)
+                .filter(
+                    and_(
+                        GameResult.started_at.isnot(None),
+                        GameResult.finished_at.isnull(),
+                    ),
+                )
+                .group_by(GameResult.game_session_id)
+                .all()
+            )
+
+            results = []
+            for (game_session_id,) in active_games_query:
+                game_results = (
+                    session.query(GameResult).filter_by(game_session_id=game_session_id).all()
+                )
+
+                if game_results:
+                    game_type = (
+                        session.query(GameType).filter_by(id=game_results[0].game_type_id).first()
+                    )
+
+                    players = []
+                    for gr in sorted(game_results, key=lambda x: x.player_order):
+                        player = session.query(Player).filter_by(id=gr.player_id).first()
+                        players.append(
+                            {
+                                "player_id": gr.player_id,
+                                "player_name": player.name if player else "Unknown",
+                                "current_score": gr.final_score,
+                                "start_score": gr.start_score,
+                                "is_winner": gr.is_winner,
+                            },
+                        )
+
+                    results.append(
+                        {
+                            "game_session_id": game_session_id,
+                            "game_type": game_type.name if game_type else "Unknown",
+                            "started_at": game_results[0].started_at.isoformat(),
+                            "player_count": len(players),
+                            "players": players,
+                            "double_out_enabled": game_results[0].double_out_enabled,
+                        },
+                    )
+
+            return results
+
+        except Exception as e:
+            print(f"Error getting active games: {e}")
+            return []
+        finally:
+            session.close()

@@ -43,20 +43,12 @@ logging.basicConfig(
 
 # Initialize Flask app with correct template and static folder paths
 # Since app.py is in src/app/, we need to go up 2 levels to reach root templates/static
+_app_dir = Path(__file__).resolve().parent
+_root_dir = _app_dir.parent.parent
 app = Flask(
     __name__,
-    template_folder=Path(
-        Path.parent(Path.resolve(__file__)),
-        "..",
-        "..",
-        "templates",
-    ),
-    static_folder=Path(
-        Path.parent(Path.resolve(__file__)),
-        "..",
-        "..",
-        "static",
-    ),
+    template_folder=str(_root_dir / "templates"),
+    static_folder=str(_root_dir / "static"),
 )
 
 # Configure Flask to trust proxy headers from nginx
@@ -130,6 +122,7 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
 # Initialize Game Manager
 game_manager = GameManager(socketio)
+app.game_manager = game_manager  # Attach to app for access in decorators
 
 # Initialize RabbitMQ Consumer
 rabbitmq_consumer = None
@@ -180,6 +173,24 @@ def control():
     user_roles = getattr(request, "user_roles", [])
     user_claims = getattr(request, "user_claims", {})
     return render_template("control.html", user_roles=user_roles, user_claims=user_claims)
+
+
+@app.route("/history")
+@login_required
+def history():
+    """User game history page
+    ---
+    tags:
+      - UI
+    summary: Game history page
+    description: Renders the user's game history with statistics
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template("history.html", user_roles=user_roles, user_claims=user_claims)
 
 
 @app.route("/login")
@@ -237,6 +248,24 @@ def callback():
     user_info = get_user_info(session["access_token"])
     if user_info:
         session["user_info"] = user_info
+
+        # Auto-add user to game lobby by creating/getting player in database
+        try:
+            username = user_info.get("preferred_username") or user_info.get("sub")
+            email = user_info.get("email")
+            name = user_info.get("name") or user_info.get("given_name", username)
+
+            if username:
+                player = game_manager.db_service.get_or_create_player(
+                    username=username,
+                    email=email,
+                    name=name,
+                )
+                if player:
+                    session["player_id"] = player.id
+                    app.logger.info(f"Player created/retrieved: {username} (ID: {player.id})")
+        except Exception as e:
+            app.logger.warning(f"Failed to create/get player in callback: {e}")
 
     # Clear OAuth state
     session.pop("oauth_state", None)
@@ -1770,6 +1799,124 @@ def get_game_results():
             games = [g for g in games if g.get("game_type") == game_type]
 
         return jsonify({"success": True, "results": games})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/player/history", methods=["GET"])
+@login_required
+def get_player_history():
+    """Get current player's game history
+    ---
+    tags:
+      - Player
+    summary: Get player game history
+    description: Returns the logged-in player's game history with statistics
+    parameters:
+      - in: query
+        name: game_type
+        type: string
+        description: Filter by game type (301, 401, 501, cricket)
+      - in: query
+        name: limit
+        type: integer
+        description: Maximum number of games to return
+        default: 50
+    responses:
+      200:
+        description: Player game history
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            games:
+              type: array
+              items:
+                type: object
+      401:
+        description: Unauthorized - player ID not available
+    """
+    try:
+        player_id = session.get("player_id")
+        if not player_id:
+            return jsonify({"success": False, "error": "Player ID not available"}), 401
+
+        game_type = request.args.get("game_type")
+        limit = request.args.get("limit", 50, type=int)
+
+        games = game_manager.db_service.get_player_game_history(
+            player_id=player_id,
+            game_type=game_type,
+            limit=limit,
+        )
+
+        return jsonify({"success": True, "games": games})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/player/statistics", methods=["GET"])
+@login_required
+def get_player_statistics():
+    """Get current player's statistics
+    ---
+    tags:
+      - Player
+    summary: Get player statistics
+    description: Returns the logged-in player's overall statistics
+    responses:
+      200:
+        description: Player statistics
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            statistics:
+              type: object
+      401:
+        description: Unauthorized - player ID not available
+    """
+    try:
+        player_id = session.get("player_id")
+        if not player_id:
+            return jsonify({"success": False, "error": "Player ID not available"}), 401
+
+        stats = game_manager.db_service.get_player_statistics(player_id=player_id)
+
+        if stats:
+            return jsonify({"success": True, "statistics": stats})
+        return jsonify({"success": False, "error": "Player not found"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/active-games", methods=["GET"])
+@login_required
+def get_active_games():
+    """Get active games with current state
+    ---
+    tags:
+      - Game
+    summary: Get active games
+    description: Returns all currently active games with their current state and player scores
+    responses:
+      200:
+        description: List of active games
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            games:
+              type: array
+              items:
+                type: object
+    """
+    try:
+        games = game_manager.db_service.get_active_games()
+        return jsonify({"success": True, "games": games})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

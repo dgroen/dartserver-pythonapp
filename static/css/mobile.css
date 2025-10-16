@@ -771,3 +771,206 @@ body {
     top: 60px;
     z-index: 99;
 }
+
+/* Tab Navigation */
+.tab-navigation {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 0.5rem;
+    border-radius: 0.75rem;
+}
+
+.tab-button {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 0.5rem;
+    background-color: transparent;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab-button.active {
+    background-color: var(--highlight-color);
+    color: var(--text-primary);
+}
+
+.tab-button:active {
+    transform: scale(0.98);
+}
+
+/* Tab Content */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Result Cards */
+.result-card {
+    background-color: var(--card-bg);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+}
+
+.result-type {
+    font-weight: 600;
+    color: var(--highlight-color);
+    font-size: 1.1rem;
+}
+
+.result-date {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.result-players {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.result-player {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.result-player.winner {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1));
+    border: 1px solid var(--success-color);
+}
+
+.result-player span:last-child {
+    font-weight: 600;
+    color: var(--highlight-color);
+}
+
+/* Leaderboard */
+.leaderboard-section {
+    margin-top: 1rem;
+}
+
+.leaderboard-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.leaderboard-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.leaderboard-position {
+    min-width: 2rem;
+    font-weight: 600;
+    color: var(--highlight-color);
+}
+
+.leaderboard-name {
+    flex: 1;
+    color: var(--text-primary);
+}
+
+.leaderboard-score {
+    min-width: 4rem;
+    text-align: right;
+    font-weight: 600;
+    color: var(--success-color);
+}
+
+/* Stat Badges */
+.stat-badge {
+    background: linear-gradient(135deg, var(--accent-color), rgba(15, 52, 96, 0.6));
+    border-radius: 0.75rem;
+    padding: 1rem;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--highlight-color);
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#statBadges {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Card Headers */
+.card-header {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--highlight-color);
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--highlight-color);
+    padding-bottom: 0.5rem;
+}
+
+/* Throw Display */
+.throw-display {
+    font-size: 2rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--success-color);
+    padding: 1rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 0.5rem;
+}

@@ -12,7 +12,7 @@ from urllib.parse import urlencode
 
 import jwt
 import requests
-from flask import jsonify, redirect, request, session, url_for
+from flask import current_app, jsonify, redirect, request, session, url_for
 
 from src.core.config import Config
 
@@ -347,6 +347,24 @@ def login_required(f):
             # Set default user info for bypass mode
             request.user_claims = {"sub": "bypass_user", "username": "bypass_user"}
             request.user_roles = ["admin"]  # Grant admin role in bypass mode
+
+            # Create/get bypass player in database if not already done
+            if "player_id" not in session:
+                try:
+                    # Access game_manager from Flask app context
+                    game_manager = current_app.game_manager
+                    player = game_manager.db_service.get_or_create_player(
+                        username="bypass_user",
+                        email="bypass@local.dev",
+                        name="Bypass User",
+                    )
+                    if player:
+                        session["player_id"] = player.id
+                        logger.info(f"Bypass player created/retrieved: {player.id}")
+                except Exception as e:
+                    logger.warning(f"Failed to create/get bypass player: {e}")
+                    # Continue anyway to avoid breaking the app
+
             logger.info("Authentication bypassed - AUTH_DISABLED is true")
             return f(*args, **kwargs)
 
