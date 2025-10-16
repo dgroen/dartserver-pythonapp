@@ -13,7 +13,8 @@ from urllib.parse import urlencode
 import jwt
 import requests
 from flask import jsonify, redirect, request, session, url_for
-from jwt import PyJWKClient
+
+from src.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -37,60 +38,77 @@ WSO2_IS_SCIM2_ME_URL = f"{WSO2_IS_INTERNAL_URL}/scim2/Me"
 # OAuth2 Client Configuration
 WSO2_CLIENT_ID = os.getenv("WSO2_CLIENT_ID", "")
 WSO2_CLIENT_SECRET = os.getenv("WSO2_CLIENT_SECRET", "")
-# Default redirect URI (can be overridden by environment variable)
-WSO2_REDIRECT_URI_DEFAULT = os.getenv("WSO2_REDIRECT_URI", "http://localhost:5000/callback")
+# Default redirect URI: use Config for environment-aware defaults
+WSO2_REDIRECT_URI_DEFAULT = os.getenv("WSO2_REDIRECT_URI", Config.CALLBACK_URL)
 WSO2_POST_LOGOUT_REDIRECT_URI_DEFAULT = os.getenv(
     "WSO2_POST_LOGOUT_REDIRECT_URI",
-    os.getenv("WSO2_REDIRECT_URI", "http://localhost:5000/callback").replace("/callback", "/"),
+    os.getenv("WSO2_REDIRECT_URI", Config.LOGOUT_REDIRECT_URL),
 )
 
 
 def get_dynamic_redirect_uri() -> str:
     """
-    Dynamically build redirect URI based on the current request
-    Supports multiple domains and ports:
-    - https://localhost:5000
-    - https://letsplaydarts.eu:5001
-    - https://letsplaydarts.eu (port 443)
+    Dynamically build redirect URI based on the current request and configuration.
+
+    Priority:
+    1. Use request headers if available (X-Forwarded-Proto, X-Forwarded-Host)
+    2. Fall back to request.scheme and request.host
+    3. Fall back to configured defaults (Config.CALLBACK_URL)
+
+    Supports multiple domains and schemes:
+    - https://letsplaydarts.eu/callback (production)
+    - http://dev.letsplaydarts.eu/callback (development)
+    - http://localhost:5000/callback (local)
     """
     if not request:
+        logger.debug(f"No active request, using default redirect URI: {WSO2_REDIRECT_URI_DEFAULT}")
         return WSO2_REDIRECT_URI_DEFAULT
 
-    # Get the scheme (http/https)
-    scheme = request.scheme
+    # Try to get scheme from X-Forwarded-Proto header (from reverse proxy like nginx)
+    scheme = request.headers.get("X-Forwarded-Proto", request.scheme)
 
-    # Get the host (includes port if non-standard)
-    host = request.host
-
-    # Debug logging
-    logger.info(f"Request scheme: {scheme}")
-    logger.info(f"Request host: {host}")
-    logger.info(f"Request headers: {dict(request.headers)}")
+    # Try to get host from X-Forwarded-Host header (from reverse proxy)
+    host = request.headers.get("X-Forwarded-Host", request.host)
 
     # Build the redirect URI
     redirect_uri = f"{scheme}://{host}/callback"
 
-    logger.info(f"Dynamic redirect URI: {redirect_uri}")
+    logger.debug(
+        f"Dynamic redirect URI: {redirect_uri} "
+        f"(scheme={scheme}, host={host}, "
+        f"config_domain={Config.APP_DOMAIN})",
+    )
     return redirect_uri
 
 
 def get_dynamic_post_logout_redirect_uri() -> str:
     """
-    Dynamically build post-logout redirect URI based on the current request
+    Dynamically build post-logout redirect URI based on the current request and configuration.
+
+    Priority:
+    1. Use request headers if available (X-Forwarded-Proto, X-Forwarded-Host)
+    2. Fall back to request.scheme and request.host
+    3. Fall back to configured defaults (Config.LOGOUT_REDIRECT_URL)
     """
     if not request:
+        logger.debug(
+            f"No active request, using default post-logout redirect URI: "
+            f"{WSO2_POST_LOGOUT_REDIRECT_URI_DEFAULT}",
+        )
         return WSO2_POST_LOGOUT_REDIRECT_URI_DEFAULT
 
-    # Get the scheme (http/https)
-    scheme = request.scheme
+    # Try to get scheme from X-Forwarded-Proto header
+    scheme = request.headers.get("X-Forwarded-Proto", request.scheme)
 
-    # Get the host (includes port if non-standard)
-    host = request.host
+    # Try to get host from X-Forwarded-Host header
+    host = request.headers.get("X-Forwarded-Host", request.host)
 
     # Build the post-logout redirect URI
     post_logout_uri = f"{scheme}://{host}/"
 
-    logger.debug(f"Dynamic post-logout redirect URI: {post_logout_uri}")
+    logger.debug(
+        f"Dynamic post-logout redirect URI: {post_logout_uri} (scheme={scheme}, host={host})",
+    )
     return post_logout_uri
 
 
@@ -111,9 +129,17 @@ AUTH_DISABLED = os.getenv("AUTH_DISABLED", "False").lower() == "true"
 jwks_client = None
 if JWT_VALIDATION_MODE == "jwks":
     try:
+        # Import PyJWKClient lazily so that importing this module doesn't
+        # fail in environments where the installed 'jwt' package/version
+        # doesn't provide PyJWKClient (for example, some distributions
+        # or a package named 'jwt' that is not PyJWT).
+        from jwt import PyJWKClient  # type: ignore
+
         jwks_client = PyJWKClient(WSO2_IS_JWKS_URL)
-    except Exception as e:
-        logger.warning(f"Failed to initialize JWKS client: {e}")
+    except Exception:
+        logger.warning(
+            "Failed to initialize JWKS client (PyJWKClient may be missing). {e}",
+        )
 
 # Role definitions
 ROLES = {

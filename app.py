@@ -27,6 +27,7 @@ from auth import (
 )
 from game_manager import GameManager
 from rabbitmq_consumer import RabbitMQConsumer
+from src.config import Config
 from src.mobile_service import MobileService
 
 # Load environment variables
@@ -53,17 +54,21 @@ app.wsgi_app = ProxyFix(
     x_prefix=1,  # Trust X-Forwarded-Prefix
 )
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key")
-# Auto-detect SSL for SESSION_COOKIE_SECURE
-use_ssl = os.getenv("FLASK_USE_SSL", "False").lower() == "true"
-app.config["SESSION_COOKIE_SECURE"] = (
-    use_ssl or os.getenv("SESSION_COOKIE_SECURE", "False").lower() == "true"
-)
+# Use Config class for environment-aware SSL settings
+app.config["SESSION_COOKIE_SECURE"] = Config.SESSION_COOKIE_SECURE
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = 3600  # 1 hour
 _dsas = os.getenv("DARTBOARD_SENDS_ACTUAL_SCORE", "false")
 app.config["DARTBOARD_SENDS_ACTUAL_SCORE"] = _dsas.lower() == "true"
 CORS(app)
+
+# Log environment and configuration info
+logging.info(f"Application Configuration: {Config}")
+logging.info(f"Environment: {Config.get_environment()}")
+logging.info(f"App URL: {Config.APP_URL}")
+logging.info(f"Callback URL: {Config.CALLBACK_URL}")
+logging.info(f"Session Cookie Secure: {app.config['SESSION_COOKIE_SECURE']}")
 
 # Initialize Swagger
 swagger_config = {
@@ -90,9 +95,9 @@ swagger_template = {
             "name": "Darts Game Server",
         },
     },
-    "host": os.getenv("SWAGGER_HOST", "localhost:5000"),
+    "host": Config.SWAGGER_HOST,
     "basePath": "/",
-    "schemes": ["http", "https"],
+    "schemes": ["http", "https"] if not Config.is_production() else ["https"],
     "tags": [
         {"name": "Game", "description": "Game management endpoints"},
         {"name": "Players", "description": "Player management endpoints"},
