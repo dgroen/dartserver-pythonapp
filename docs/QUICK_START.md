@@ -1,272 +1,202 @@
-# Quick Start Guide
+# Quick Start Guide - Darts Game System with Authentication
 
-## One-Command Setup
+This guide will help you get the Darts Game System running with WSO2 Identity Server authentication in minutes.
 
-```bash
-./setup-dev.sh
-```
+## Prerequisites
 
-That's it! The script will:
+- Docker and Docker Compose installed
+- Ports available: 5000, 8080, 9443, 9763, 5672, 15672, 80, 443
 
-- ✅ Check Python version (3.10+)
-- ✅ Install python3-venv if needed
-- ✅ Install UV package manager
-- ✅ Create virtual environment with Python venv
-- ✅ Install all dependencies (109 packages)
-- ✅ Set up pre-commit hooks
-- ✅ Run initial tests (98 tests)
-
----
-
-## Daily Workflow
-
-### 1. Activate Virtual Environment
+## Step 1: Initial Setup
 
 ```bash
-source .venv/bin/activate
+# Clone or navigate to the project directory
+cd /data/dartserver-pythonapp
+
+# Run the quick start script
+./start-with-auth.sh
 ```
 
-### 2. Run Tests
+If this is your first run, the script will create a `.env` file and prompt you to configure WSO2.
+
+## Step 2: Configure WSO2 Identity Server
 
 ```bash
-# All tests with coverage
-make test
-
-# Unit tests only
-make test-unit
-
-# Integration tests only
-make test-integration
-
-# Specific test file
-pytest tests/unit/test_game_301.py -v
+# Run the configuration helper script
+./configure-wso2-roles.sh
 ```
 
-### 3. Check Code Quality
+This script provides step-by-step instructions for:
+
+1. Creating roles (player, gamemaster, admin)
+2. Creating test users
+3. Registering the OAuth2 application
+4. Configuring claims
+
+**Follow the manual steps in the WSO2 Management Console** (the script will guide you).
+
+## Step 3: Update Environment Variables
+
+After completing WSO2 configuration, update your `.env` file:
 
 ```bash
-# Run all linters
-make lint
-
-# Auto-fix formatting
-make format
-
-# Type checking
-make type-check
-
-# Security scan
-make security
+# Edit .env and add your OAuth2 credentials
+nano .env
 ```
 
-### 4. Before Committing
+Update these values:
+
+```
+WSO2_CLIENT_ID=your_actual_client_id
+WSO2_CLIENT_SECRET=your_actual_client_secret
+```
+
+## Step 4: Start the System
 
 ```bash
-# Stage your changes
-git add .
-
-# Commit (pre-commit hooks will run automatically)
-git commit -m "Your message"
-
-# If hooks fail, commit again (will auto-fix)
-git commit -m "Your message"
+# Run the start script again
+./start-with-auth.sh
 ```
 
----
+Wait for all services to be ready (this may take 2-3 minutes on first run).
+
+## Step 5: Access the Application
+
+Once all services are ready:
+
+1. **Open the Darts Game**: <http://localhost:5000>
+2. **Click "Login with WSO2"**
+3. **Login with a test user**:
+   - Player: `testplayer` / `Player@123`
+   - Game Master: `testgamemaster` / `GameMaster@123`
+   - Admin: `testadmin` / `Admin@123`
+
+## Role Capabilities
+
+### 🟢 Player Role
+
+- View game board
+- Submit scores
+- View game state
+- View leaderboard
+
+### 🟡 Game Master Role
+
+- All Player permissions
+- Access control panel
+- Create new games
+- Add/remove players
+- Manage game flow
+
+### 🔴 Admin Role
+
+- Full system access
+- All Game Master permissions
+- System configuration
+- User management
 
 ## Common Commands
 
-### Testing
+### View Logs
 
 ```bash
-make test              # Run all tests with coverage
-make test-cov          # Generate HTML coverage report
-make coverage-report   # Open coverage report in browser
+docker-compose -f docker-compose-wso2.yml logs -f
 ```
 
-### Linting
+### View Specific Service Logs
 
 ```bash
-make lint              # Run all linters
-make lint-fix          # Auto-fix issues
-make format            # Format code (Black + isort)
+docker-compose -f docker-compose-wso2.yml logs -f darts-app
+docker-compose -f docker-compose-wso2.yml logs -f wso2is
 ```
 
-### Tox (Multi-version Testing)
+### Stop Services
 
 ```bash
-make tox               # Test on all Python versions
-make tox-py310         # Test on Python 3.10
-make tox-py311         # Test on Python 3.11
-make tox-py312         # Test on Python 3.12
-make tox-lint          # Run linting environment
+docker-compose -f docker-compose-wso2.yml down
 ```
 
-### Package Management
+### Restart Services
 
 ```bash
-# Install new package
-uv pip install <package>
-
-# Install from requirements
-uv pip install -r requirements.txt
-
-# List installed packages
-uv pip list
-
-# Show package info
-uv pip show <package>
+docker-compose -f docker-compose-wso2.yml restart
 ```
 
-### Cleanup
+### Clean Restart (removes volumes)
 
 ```bash
-make clean             # Remove generated files
-make clean-all         # Remove venv and all generated files
+docker-compose -f docker-compose-wso2.yml down -v
+docker-compose -f docker-compose-wso2.yml up -d
 ```
 
----
+## Service URLs
 
-## Project Structure
-
-```
-dartserver-pythonapp/
-├── app.py                 # Flask application
-├── game_manager.py        # Core game logic
-├── games/
-│   ├── game_301.py       # 301 game
-│   └── game_cricket.py   # Cricket game
-├── tests/
-│   ├── unit/             # Unit tests (75 tests)
-│   └── integration/      # Integration tests (23 tests)
-├── .venv/                # Virtual environment (python venv)
-├── pyproject.toml        # Main configuration
-├── tox.ini               # Tox configuration
-├── Makefile              # Convenient commands
-└── setup-dev.sh          # Setup script
-```
-
----
-
-## Key Features
-
-### 🚀 Fast Package Management
-
-- **UV** is 10-100x faster than pip
-- Installs 109 packages in seconds
-
-### 🧪 Comprehensive Testing
-
-- 98 tests (75 unit + 23 integration)
-- 80.17% code coverage
-- Fast execution (~5 seconds)
-
-### 🔍 7 Linting Tools
-
-- Ruff, Black, isort, Flake8, MyPy, Pylint, Bandit
-- Consistent 100-char line length
-- Auto-fix on second commit
-
-### 🐍 Multi-Version Support
-
-- Python 3.10, 3.11, 3.12
-- Tested with Tox
-
-### 🪝 Smart Pre-commit Hooks
-
-- First commit: Check and report
-- Second commit: Auto-fix
-- Prevents bad code from being committed
-
----
+| Service             | URL                             | Credentials    |
+| ------------------- | ------------------------------- | -------------- |
+| Darts Game          | <http://localhost:5000>         | WSO2 users     |
+| WSO2 IS Console     | <https://localhost:9443/carbon> | admin / admin  |
+| RabbitMQ Management | <http://localhost:15672>        | guest / guest  |
+| API Gateway         | <http://localhost:8080>         | Token required |
 
 ## Troubleshooting
 
-### Virtual Environment Issues
+### "WSO2 Client ID not configured"
 
-```bash
-# Recreate venv
-rm -rf .venv
-./setup-dev.sh
-```
+- Run `./configure-wso2-roles.sh` and follow the steps
+- Update `.env` with your Client ID and Secret
 
-### UV Not Found
+### "Cannot connect to WSO2"
 
-```bash
-# Add to PATH
-export PATH="$HOME/.local/bin:$PATH"
+- Wait 2-3 minutes for WSO2 IS to fully start
+- Check logs: `docker-compose -f docker-compose-wso2.yml logs wso2is`
+- Verify WSO2 is accessible: `curl -k https://localhost:9443/carbon/admin/login.jsp`
 
-# Make permanent
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-```
+### "Invalid redirect URI"
 
-### Pre-commit Issues
+- Ensure you registered `http://localhost:5000/callback` in WSO2
+- Check the OAuth2 application configuration in WSO2 Console
 
-```bash
-# Reinstall hooks
-pre-commit uninstall
-pre-commit install
+### "User has no roles"
 
-# Run manually
-pre-commit run --all-files
-```
+- Verify the user is assigned a role in WSO2 Console
+- Check that claims are configured correctly
+- Ensure "groups" claim is included in the token
 
-### Test Failures
+### "403 Forbidden" on Control Panel
 
-```bash
-# Run with verbose output
-pytest tests/ -vv
+- Only Game Masters and Admins can access the control panel
+- Verify your user has the correct role assigned
 
-# Run with debugging
-pytest tests/ --pdb
+### Services won't start
 
-# Run specific test
-pytest tests/unit/test_game_301.py::TestGame301::test_specific -vv
-```
+- Check if ports are already in use: `netstat -tuln | grep -E '5000|8080|9443|5672|15672'`
+- Ensure Docker has enough resources (at least 4GB RAM recommended)
 
----
+## Next Steps
 
-## Documentation
+- Read the full documentation: [docs/AUTHENTICATION_SETUP.md](docs/AUTHENTICATION_SETUP.md)
+- Configure production settings (HTTPS, secure cookies, etc.)
+- Create additional users and roles as needed
+- Customize permissions in `auth.py`
 
-- **SETUP_COMPLETE.md** - Complete setup documentation
-- **SETUP_FIXES.md** - Details of fixes made
-- **DEVELOPMENT.md** - Development guidelines
-- **TESTING.md** - Testing guidelines
-- **README.md** - Project overview
+## Security Notes
 
----
+⚠️ **Development Mode**: The current configuration uses:
 
-## Getting Help
+- Self-signed certificates (SSL verification disabled)
+- HTTP instead of HTTPS for the app
+- Default admin credentials for introspection
 
-```bash
-# Show all make commands
-make help
+🔒 **For Production**: See [docs/AUTHENTICATION_SETUP.md](docs/AUTHENTICATION_SETUP.md) for security hardening steps.
 
-# Show pytest options
-pytest --help
+## Support
 
-# Show tox environments
-tox -l
+For detailed information, see:
 
-# Show pre-commit hooks
-pre-commit run --help
-```
+- [AUTHENTICATION_SETUP.md](docs/AUTHENTICATION_SETUP.md) - Complete setup guide
+- [README.md](README.md) - Project overview
+- WSO2 IS Documentation: <https://is.docs.wso2.com/>
 
 ---
 
-## Quick Reference
-
-| Task                     | Command                     |
-| ------------------------ | --------------------------- |
-| Setup environment        | `./setup-dev.sh`            |
-| Activate venv            | `source .venv/bin/activate` |
-| Run tests                | `make test`                 |
-| Run linters              | `make lint`                 |
-| Format code              | `make format`               |
-| Test all Python versions | `make tox`                  |
-| Install package          | `uv pip install <pkg>`      |
-| Clean up                 | `make clean`                |
-| Show help                | `make help`                 |
-
----
-
-**Happy coding! 🎯**
+**Ready to play darts! 🎯**
