@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from database_models import GameType, Player
+from src.core.database_models import GameType, Player
 
 # Load environment variables
 load_dotenv()

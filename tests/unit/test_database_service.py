@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from database_models import DatabaseManager
-from database_service import DatabaseService
+from src.core.database_models import DatabaseManager
+from src.core.database_service import DatabaseService
 
 
 class TestDatabaseManager:

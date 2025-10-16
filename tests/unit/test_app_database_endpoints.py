@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app import app
+from src.app.app import app
 
 
 class TestDatabaseEndpoints:
@@ -20,7 +20,7 @@ class TestDatabaseEndpoints:
     @pytest.fixture
     def mock_game_manager(self):
         """Mock game manager with database service."""
-        with patch("app.game_manager") as mock_gm:
+        with patch("src.app.app.game_manager") as mock_gm:
             mock_db_service = MagicMock()
             mock_gm.db_service = mock_db_service
             yield mock_gm, mock_db_service
@@ -114,7 +114,7 @@ class TestTTSEndpoints:
     @pytest.fixture
     def mock_game_manager(self):
         """Mock game manager with TTS service."""
-        with patch("app.game_manager") as mock_gm:
+        with patch("src.app.app.game_manager") as mock_gm:
             mock_tts = MagicMock()
             mock_gm.tts = mock_tts
             yield mock_gm, mock_tts

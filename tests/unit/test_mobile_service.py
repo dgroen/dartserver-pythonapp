@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from database_models import ApiKey, Dartboard, HotspotConfig, Player
-from src.mobile_service import MobileService
+from src.app.mobile_service import MobileService
+from src.core.database_models import ApiKey, Dartboard, HotspotConfig, Player
 
 
 class TestMobileService:

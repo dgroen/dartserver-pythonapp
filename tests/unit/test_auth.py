@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 import jwt
 from flask import Flask, jsonify
 
-from auth import (
+from src.core.auth import (
     get_user_roles,
     has_permission,
     login_required,
@@ -19,8 +19,8 @@ from auth import (
 class TestValidateToken:
     """Test token validation functions."""
 
-    @patch("auth.JWT_VALIDATION_MODE", "jwks")
-    @patch("auth.jwks_client")
+    @patch("src.core.auth.JWT_VALIDATION_MODE", "jwks")
+    @patch("src.core.auth.jwks_client")
     def test_validate_token_jwks_success(self, mock_jwks_client):
         """Test successful token validation using JWKS."""
         # Mock signing key
@@ -35,48 +35,48 @@ class TestValidateToken:
             "groups": ["admin"],
         }
 
-        with patch("auth.jwt.decode", return_value=expected_claims):
+        with patch("src.core.auth.jwt.decode", return_value=expected_claims):
             result = validate_token("test-token")
             assert result == expected_claims
 
-    @patch("auth.JWT_VALIDATION_MODE", "jwks")
-    @patch("auth.jwks_client")
+    @patch("src.core.auth.JWT_VALIDATION_MODE", "jwks")
+    @patch("src.core.auth.jwks_client")
     def test_validate_token_jwks_expired(self, mock_jwks_client):
         """Test token validation with expired token."""
         mock_signing_key = Mock()
         mock_signing_key.key = "test-key"
         mock_jwks_client.get_signing_key_from_jwt.return_value = mock_signing_key
 
-        with patch("auth.jwt.decode", side_effect=jwt.ExpiredSignatureError):
+        with patch("src.core.auth.jwt.decode", side_effect=jwt.ExpiredSignatureError):
             result = validate_token("expired-token")
             assert result is None
 
-    @patch("auth.JWT_VALIDATION_MODE", "jwks")
-    @patch("auth.jwks_client")
+    @patch("src.core.auth.JWT_VALIDATION_MODE", "jwks")
+    @patch("src.core.auth.jwks_client")
     def test_validate_token_jwks_invalid(self, mock_jwks_client):
         """Test token validation with invalid token."""
         mock_signing_key = Mock()
         mock_signing_key.key = "test-key"
         mock_jwks_client.get_signing_key_from_jwt.return_value = mock_signing_key
 
-        with patch("auth.jwt.decode", side_effect=jwt.InvalidTokenError("Invalid")):
+        with patch("src.core.auth.jwt.decode", side_effect=jwt.InvalidTokenError("Invalid")):
             result = validate_token("invalid-token")
             assert result is None
 
-    @patch("auth.JWT_VALIDATION_MODE", "jwks")
-    @patch("auth.jwks_client")
+    @patch("src.core.auth.JWT_VALIDATION_MODE", "jwks")
+    @patch("src.core.auth.jwks_client")
     def test_validate_token_jwks_exception(self, mock_jwks_client):
         """Test token validation with unexpected exception."""
         mock_signing_key = Mock()
         mock_signing_key.key = "test-key"
         mock_jwks_client.get_signing_key_from_jwt.return_value = mock_signing_key
 
-        with patch("auth.jwt.decode", side_effect=Exception("Unexpected error")):
+        with patch("src.core.auth.jwt.decode", side_effect=Exception("Unexpected error")):
             result = validate_token("test-token")
             assert result is None
 
-    @patch("auth.JWT_VALIDATION_MODE", "introspection")
-    @patch("auth.requests.post")
+    @patch("src.core.auth.JWT_VALIDATION_MODE", "introspection")
+    @patch("src.core.auth.requests.post")
     def test_validate_token_introspection_success(self, mock_post):
         """Test successful token validation using introspection."""
         mock_response = Mock()
@@ -94,8 +94,8 @@ class TestValidateToken:
         assert result["username"] == "testuser"
         assert result["groups"] == ["player"]
 
-    @patch("auth.JWT_VALIDATION_MODE", "introspection")
-    @patch("auth.requests.post")
+    @patch("src.core.auth.JWT_VALIDATION_MODE", "introspection")
+    @patch("src.core.auth.requests.post")
     def test_validate_token_introspection_inactive(self, mock_post):
         """Test token validation with inactive token."""
         mock_response = Mock()
@@ -106,8 +106,8 @@ class TestValidateToken:
         result = validate_token("inactive-token")
         assert result is None
 
-    @patch("auth.JWT_VALIDATION_MODE", "introspection")
-    @patch("auth.requests.post")
+    @patch("src.core.auth.JWT_VALIDATION_MODE", "introspection")
+    @patch("src.core.auth.requests.post")
     def test_validate_token_introspection_error(self, mock_post):
         """Test token validation with introspection error."""
         mock_response = Mock()
@@ -117,8 +117,8 @@ class TestValidateToken:
         result = validate_token("test-token")
         assert result is None
 
-    @patch("auth.JWT_VALIDATION_MODE", "introspection")
-    @patch("auth.requests.post")
+    @patch("src.core.auth.JWT_VALIDATION_MODE", "introspection")
+    @patch("src.core.auth.requests.post")
     def test_validate_token_introspection_exception(self, mock_post):
         """Test token validation with request exception."""
         mock_post.side_effect = Exception("Connection error")
@@ -244,7 +244,7 @@ class TestLoginRequired:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-token"
 
-            with patch("auth.validate_token") as mock_validate:
+            with patch("src.core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {
                     "sub": "test-user",
                     "username": "testuser",
@@ -293,7 +293,7 @@ class TestLoginRequired:
             with client.session_transaction() as sess:
                 sess["access_token"] = "invalid-token"
 
-            with patch("auth.validate_token", return_value=None):
+            with patch("src.core.auth.validate_token", return_value=None):
                 response = client.get("/protected")
                 assert response.status_code == 302
                 assert "/login" in response.location
@@ -316,7 +316,7 @@ class TestRoleRequired:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-token"
 
-            with patch("auth.validate_token") as mock_validate:
+            with patch("src.core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {
                     "sub": "test-user",
                     "username": "testuser",
@@ -342,7 +342,7 @@ class TestRoleRequired:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-token"
 
-            with patch("auth.validate_token") as mock_validate:
+            with patch("src.core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {
                     "sub": "test-user",
                     "username": "testuser",
@@ -368,7 +368,7 @@ class TestRoleRequired:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-token"
 
-            with patch("auth.validate_token") as mock_validate:
+            with patch("src.core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {
                     "sub": "test-user",
                     "username": "testuser",
@@ -398,7 +398,7 @@ class TestPermissionRequired:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-token"
 
-            with patch("auth.validate_token") as mock_validate:
+            with patch("src.core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {
                     "sub": "test-user",
                     "username": "testuser",
@@ -424,7 +424,7 @@ class TestPermissionRequired:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-token"
 
-            with patch("auth.validate_token") as mock_validate:
+            with patch("src.core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {
                     "sub": "test-user",
                     "username": "testuser",
@@ -450,7 +450,7 @@ class TestPermissionRequired:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-token"
 
-            with patch("auth.validate_token") as mock_validate:
+            with patch("src.core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {
                     "sub": "test-user",
                     "username": "testuser",
@@ -466,7 +466,7 @@ class TestPermissionRequired:
 class TestAuthDisabled:
     """Test authentication bypass functionality."""
 
-    @patch("auth.AUTH_DISABLED", True)
+    @patch("src.core.auth.AUTH_DISABLED", True)
     def test_login_required_bypassed(self):
         """Test login_required decorator bypassed when AUTH_DISABLED is True."""
         app = Flask(__name__)
@@ -484,7 +484,7 @@ class TestAuthDisabled:
             data = json.loads(response.data)
             assert data["message"] == "success"
 
-    @patch("auth.AUTH_DISABLED", True)
+    @patch("src.core.auth.AUTH_DISABLED", True)
     def test_role_required_bypassed(self):
         """Test role_required decorator bypassed when AUTH_DISABLED is True."""
         app = Flask(__name__)
@@ -502,7 +502,7 @@ class TestAuthDisabled:
             data = json.loads(response.data)
             assert data["message"] == "admin access"
 
-    @patch("auth.AUTH_DISABLED", True)
+    @patch("src.core.auth.AUTH_DISABLED", True)
     def test_permission_required_bypassed(self):
         """Test permission_required decorator bypassed when AUTH_DISABLED is True."""
         app = Flask(__name__)
@@ -520,7 +520,7 @@ class TestAuthDisabled:
             data = json.loads(response.data)
             assert data["message"] == "game created"
 
-    @patch("auth.AUTH_DISABLED", True)
+    @patch("src.core.auth.AUTH_DISABLED", True)
     def test_multiple_decorators_bypassed(self):
         """Test multiple auth decorators bypassed when AUTH_DISABLED is True."""
         app = Flask(__name__)
@@ -539,7 +539,7 @@ class TestAuthDisabled:
             data = json.loads(response.data)
             assert data["message"] == "complex access granted"
 
-    @patch("auth.AUTH_DISABLED", False)
+    @patch("src.core.auth.AUTH_DISABLED", False)
     def test_auth_not_bypassed_when_disabled_false(self):
         """Test authentication is enforced when AUTH_DISABLED is False."""
         app = Flask(__name__)

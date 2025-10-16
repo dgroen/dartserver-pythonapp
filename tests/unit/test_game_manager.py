@@ -1,6 +1,6 @@
 """Unit tests for GameManager class."""
 
-from game_manager import GameManager
+from src.app.game_manager import GameManager
 
 
 class TestGameManager:

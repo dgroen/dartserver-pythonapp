@@ -5,14 +5,17 @@ from unittest.mock import patch
 
 import pytest
 
-from app import app as flask_app
-from app import game_manager, socketio
+from src.app.app import app as flask_app
+from src.app.app import game_manager, socketio
 
 
 @pytest.fixture
 def app():
     """Create Flask app for testing."""
-    with patch("app.start_rabbitmq_consumer"), patch("game_manager.DatabaseService"):
+    with (
+        patch("src.app.app.start_rabbitmq_consumer"),
+        patch("src.app.game_manager.DatabaseService"),
+    ):
         flask_app.config["TESTING"] = True
         yield flask_app
 

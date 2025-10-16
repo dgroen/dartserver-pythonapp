@@ -1,3 +1,4 @@
 """
-Source package for dartserver application
+Darts Game Web Application
+Main source package
 """
