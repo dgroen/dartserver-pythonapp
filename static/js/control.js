@@ -14,6 +14,7 @@ const scoreValueInput = document.getElementById('score-value');
 const multiplierSelect = document.getElementById('multiplier');
 const submitScoreBtn = document.getElementById('submit-score-btn');
 const gameStateJson = document.getElementById('game-state-json');
+const showThrowoutAdviceCheckbox = document.getElementById('show-throwout-advice');
 
 let currentGameState = null;
 
@@ -82,6 +83,12 @@ pauseBtn.addEventListener('click', () => {
     console.log('Pause/Resume clicked');
 });
 
+showThrowoutAdviceCheckbox.addEventListener('change', () => {
+    const enabled = showThrowoutAdviceCheckbox.checked;
+    socket.emit('set_throwout_advice', { enabled: enabled });
+    console.log(`Throwout advice ${enabled ? 'enabled' : 'disabled'}`);
+});
+
 submitScoreBtn.addEventListener('click', () => {
     const score = parseInt(scoreValueInput.value);
     const multiplier = multiplierSelect.value;
@@ -121,6 +128,11 @@ function updateDisplay(state) {
     // Update double-out checkbox if game is started
     if (state.game_data && state.game_data.double_out !== undefined) {
         doubleOutCheckbox.checked = state.game_data.double_out;
+    }
+
+    // Update throwout advice checkbox state
+    if (state.show_throwout_advice !== undefined) {
+        showThrowoutAdviceCheckbox.checked = state.show_throwout_advice;
     }
 }
 

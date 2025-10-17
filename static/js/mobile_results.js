@@ -4,7 +4,28 @@ let allResults = [];
 let filteredResults = [];
 let playerStats = {};
 
+console.log('Mobile Results JS loaded');
+
+// Check for debug parameter
+const urlParams = new URLSearchParams(window.location.search);
+const debugMode = urlParams.has('debug');
+if (debugMode) {
+    console.log('Debug mode enabled');
+    document.getElementById('debugInfo').style.display = 'block';
+}
+
+function addDebug(msg) {
+    if (debugMode) {
+        const debugEl = document.getElementById('debugInfo');
+        debugEl.textContent += `${new Date().toISOString()}: ${msg}\n`;
+    }
+    console.log(msg);
+}
+
+addDebug('Mobile Results JS loaded');
+
 document.addEventListener('DOMContentLoaded', () => {
+    addDebug('DOMContentLoaded fired');
     // Load initial data
     loadPlayerHistory();
     loadPlayerStatistics();
@@ -44,32 +65,46 @@ function switchTab(tabName) {
 
 // Helper function for API requests
 async function apiRequest(url, options = {}) {
-    const response = await fetch(url, {
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers,
-        },
-    });
+    addDebug(`API Request: ${url}`);
+    try {
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers,
+            },
+        });
 
-    if (!response.ok && response.status === 401) {
-        window.location.href = '/login';
-        throw new Error('Unauthorized');
+        if (!response.ok && response.status === 401) {
+            addDebug('Unauthorized - redirecting to login');
+            window.location.href = '/login';
+            throw new Error('Unauthorized');
+        }
+
+        const data = await response.json();
+        addDebug(`API Response from ${url}: ${JSON.stringify(data).substring(0, 200)}`);
+        return data;
+    } catch (error) {
+        addDebug(`API Error on ${url}: ${error.message}`);
+        throw error;
     }
-
-    return response.json();
 }
 
 // Load player statistics
 async function loadPlayerStatistics() {
+    addDebug('loadPlayerStatistics called');
     try {
         const response = await apiRequest('/api/player/statistics');
+        addDebug(`Statistics response: ${JSON.stringify(response)}`);
         if (response.success && response.statistics) {
             playerStats = response.statistics;
             updateStatBadges();
+            addDebug(`Updated stat badges`);
+        } else {
+            addDebug(`Statistics response unsuccessful: ${response.error || 'unknown'}`);
         }
     } catch (error) {
-        console.error('Failed to load statistics:', error);
+        addDebug(`Failed to load statistics: ${error.message}`);
     }
 }
 
@@ -92,15 +127,18 @@ function updateStatBadges() {
 
 // Load player game history
 async function loadPlayerHistory() {
+    addDebug('loadPlayerHistory called');
     try {
         const response = await apiRequest('/api/player/history');
+        addDebug(`History response: ${JSON.stringify(response)}`);
         allResults = response.games || [];
+        addDebug(`Loaded ${allResults.length} games`);
         filteredResults = allResults;
         displayResults(filteredResults);
     } catch (error) {
-        console.error('Failed to load history:', error);
+        addDebug(`Failed to load history: ${error.message}`);
         document.getElementById('resultsList').innerHTML = `
-            <p class="empty-state">Failed to load game history</p>
+            <p class="empty-state">Failed to load game history: ${error.message}</p>
         `;
     }
 }
@@ -180,13 +218,16 @@ function filterResults() {
 
 // Display game results
 function displayResults(results) {
+    addDebug(`displayResults called with ${results ? results.length : 0} results`);
     const container = document.getElementById('resultsList');
 
     if (!results || results.length === 0) {
+        addDebug('No results to display');
         container.innerHTML = '<p class="empty-state">No game results found</p>';
         return;
     }
 
+    addDebug(`Displaying ${results.length} results`);
     const resultsHtml = results.map(result => {
         const finished_at = result.finished_at || result.started_at;
         const resultClass = result.is_winner ? 'win' : 'loss';

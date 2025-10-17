@@ -73,11 +73,22 @@ def get_dynamic_redirect_uri() -> str:
     # Build the redirect URI
     redirect_uri = f"{scheme}://{host}/callback"
 
-    logger.debug(
-        f"Dynamic redirect URI: {redirect_uri} "
-        f"(scheme={scheme}, host={host}, "
-        f"config_domain={Config.APP_DOMAIN})",
-    )
+    # Enhanced logging for localhost debugging
+    is_localhost = "localhost" in host or "127.0.0.1" in host
+    if is_localhost:
+        logger.info(
+            f"Localhost redirect URI: {redirect_uri} "
+            f"(scheme={scheme}, host={host}, "
+            f"config_domain={Config.APP_DOMAIN}, "
+            f"config_scheme={Config.APP_SCHEME}, "
+            f"session_secure={Config.SESSION_COOKIE_SECURE})",
+        )
+    else:
+        logger.debug(
+            f"Dynamic redirect URI: {redirect_uri} "
+            f"(scheme={scheme}, host={host}, "
+            f"config_domain={Config.APP_DOMAIN})",
+        )
     return redirect_uri
 
 
@@ -106,9 +117,17 @@ def get_dynamic_post_logout_redirect_uri() -> str:
     # Build the post-logout redirect URI
     post_logout_uri = f"{scheme}://{host}/"
 
-    logger.debug(
-        f"Dynamic post-logout redirect URI: {post_logout_uri} (scheme={scheme}, host={host})",
-    )
+    # Enhanced logging for localhost debugging
+    is_localhost = "localhost" in host or "127.0.0.1" in host
+    if is_localhost:
+        logger.info(
+            f"Localhost post-logout redirect URI: {post_logout_uri} "
+            f"(scheme={scheme}, host={host})",
+        )
+    else:
+        logger.debug(
+            f"Dynamic post-logout redirect URI: {post_logout_uri} (scheme={scheme}, host={host})",
+        )
     return post_logout_uri
 
 

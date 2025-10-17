@@ -7,6 +7,8 @@ import jwt
 from flask import Flask, jsonify
 
 from src.core.auth import (
+    get_dynamic_post_logout_redirect_uri,
+    get_dynamic_redirect_uri,
     get_user_roles,
     has_permission,
     login_required,
@@ -559,3 +561,58 @@ class TestAuthDisabled:
             response = client.get("/protected")
             assert response.status_code == 302  # Redirect
             assert "/login" in response.location
+
+
+class TestDynamicRedirectUri:
+    """Test dynamic redirect URI generation for localhost and other domains."""
+
+    def test_localhost_http_redirect_uri(self):
+        """Test redirect URI for localhost with HTTP."""
+        app = Flask(__name__)
+
+        with app.test_request_context("http://localhost:5000/login"):
+            uri = get_dynamic_redirect_uri()
+            assert uri == "http://localhost:5000/callback"
+
+    def test_localhost_https_redirect_uri(self):
+        """Test redirect URI for localhost with HTTPS."""
+        app = Flask(__name__)
+
+        with app.test_request_context("https://localhost:5000/login"):
+            uri = get_dynamic_redirect_uri()
+            assert uri == "https://localhost:5000/callback"
+
+    def test_localhost_with_forwarded_headers(self):
+        """Test redirect URI respects X-Forwarded-Proto header."""
+        app = Flask(__name__)
+
+        with app.test_request_context(
+            "http://localhost:5000/login",
+            headers={"X-Forwarded-Proto": "https", "X-Forwarded-Host": "localhost:5000"},
+        ):
+            uri = get_dynamic_redirect_uri()
+            assert uri == "https://localhost:5000/callback"
+
+    def test_localhost_post_logout_redirect_uri(self):
+        """Test post-logout redirect URI for localhost."""
+        app = Flask(__name__)
+
+        with app.test_request_context("http://localhost:5000/login"):
+            uri = get_dynamic_post_logout_redirect_uri()
+            assert uri == "http://localhost:5000/"
+
+    def test_remote_domain_redirect_uri(self):
+        """Test redirect URI for remote domain."""
+        app = Flask(__name__)
+
+        with app.test_request_context("https://letsplaydarts.eu/login"):
+            uri = get_dynamic_redirect_uri()
+            assert uri == "https://letsplaydarts.eu/callback"
+
+    def test_localhost_127_0_0_1_redirect_uri(self):
+        """Test redirect URI for 127.0.0.1."""
+        app = Flask(__name__)
+
+        with app.test_request_context("http://127.0.0.1:5000/login"):
+            uri = get_dynamic_redirect_uri()
+            assert uri == "http://127.0.0.1:5000/callback"

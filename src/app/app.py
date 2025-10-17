@@ -1921,6 +1921,19 @@ def get_active_games():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/debug/session", methods=["GET"])
+def debug_session():
+    """Debug endpoint - returns session and player info"""
+    return jsonify(
+        {
+            "player_id": session.get("player_id"),
+            "username": session.get("username"),
+            "session_keys": list(session.keys()),
+            "auth_disabled": os.getenv("AUTH_DISABLED") == "true",
+        },
+    )
+
+
 @socketio.on("connect", namespace="/")
 def handle_connect():
     """Handle client connection"""
@@ -1977,6 +1990,13 @@ def handle_skip_to_player(data):
 def handle_manual_score(data):
     """Handle manual score entry"""
     game_manager.process_score(data)
+
+
+@socketio.on("set_throwout_advice", namespace="/")
+def handle_set_throwout_advice(data):
+    """Handle toggle of throwout advice"""
+    enabled = data.get("enabled", False)
+    game_manager.set_show_throwout_advice(enabled)
 
 
 def start_rabbitmq_consumer():

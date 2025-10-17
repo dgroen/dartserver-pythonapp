@@ -1,8 +1,10 @@
 """
 Environment and configuration management for multi-environment support
 Supports production (https://letsplaydarts.eu) and development (http://dev.letsplaydarts.eu)
+Also supports localhost development with auto-detection
 """
 
+import logging
 import os
 from typing import Literal
 
@@ -10,6 +12,8 @@ from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 class Config:
@@ -34,6 +38,15 @@ class Config:
     # If SESSION_COOKIE_SECURE not explicitly set, derive from scheme
     if not os.getenv("SESSION_COOKIE_SECURE"):
         SESSION_COOKIE_SECURE = APP_SCHEME == "https" or FLASK_USE_SSL
+
+    # Special handling for localhost to prevent cookie issues
+    # On localhost, if using http:// scheme, SESSION_COOKIE_SECURE must be False
+    if "localhost" in APP_DOMAIN and APP_SCHEME == "http":
+        SESSION_COOKIE_SECURE = False
+        logger.info(
+            "Localhost detected with http:// scheme - "
+            "SESSION_COOKIE_SECURE forced to False to allow cookies",
+        )
 
     @classmethod
     def get_environment(cls) -> Literal["production", "development", "staging"]:

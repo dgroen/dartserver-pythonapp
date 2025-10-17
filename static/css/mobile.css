@@ -418,6 +418,7 @@ body {
     border-radius: 1rem;
     padding: 1.5rem;
     text-align: center;
+    margin-bottom: 1rem;
 }
 
 .throw-display {
@@ -425,6 +426,24 @@ body {
     font-weight: 700;
     color: var(--highlight-color);
     margin-top: 0.5rem;
+}
+
+/* Throwout Advice */
+.throwout-advice {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1));
+    border: 2px solid var(--success-color);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.advice-display {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--success-color);
+    margin-top: 0.5rem;
+    font-style: italic;
 }
 
 /* Control Section */

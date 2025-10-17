@@ -74,6 +74,10 @@ function initializeSocket() {
         updateCurrentPlayer(data);
     });
 
+    socket.on('game_state', (data) => {
+        handleGameState(data);
+    });
+
     socket.on('game_end', (data) => {
         handleGameEnd(data);
     });
@@ -223,6 +227,32 @@ function updateCurrentPlayer(data) {
     if (currentGame) {
         displayScoreboard(data.players || currentGame.players);
     }
+}
+
+function handleGameState(data) {
+    // Handle game state updates which may include throwout advice
+    if (data.throwout_advice) {
+        displayThrowoutAdvice(data.throwout_advice);
+    } else {
+        hideThrowoutAdvice();
+    }
+}
+
+function displayThrowoutAdvice(advice) {
+    const adviceElement = document.getElementById('throwoutAdvice');
+    const adviceDisplay = document.getElementById('adviceDisplay');
+
+    if (Array.isArray(advice) && advice.length > 0) {
+        adviceDisplay.textContent = advice.join(' or ');
+        adviceElement.style.display = 'block';
+    } else {
+        adviceElement.style.display = 'none';
+    }
+}
+
+function hideThrowoutAdvice() {
+    const adviceElement = document.getElementById('throwoutAdvice');
+    adviceElement.style.display = 'none';
 }
 
 function handleGameEnd(data) {
