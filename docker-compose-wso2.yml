@@ -1,6 +1,26 @@
 version: "3.8"
 
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: darts-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dartsdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - darts-network
+
   # RabbitMQ Message Broker
   rabbitmq:
     image: rabbitmq:3-management
@@ -157,14 +177,14 @@ services:
       TTS_VOICE: ${TTS_VOICE:-default}
 
       # Database Configuration
-      # Use host.docker.internal to access host's PostgreSQL from container
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:5432/dartsdb}
+      # Use postgres service name for Docker internal networking
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dartsdb
 
       # WSO2 Authentication Configuration
       # WSO2_IS_URL: Public URL for browser redirects (authorize, logout)
       WSO2_IS_URL: https://letsplaydarts.eu/auth
       # WSO2_IS_INTERNAL_URL: Internal Docker network URL for backend API calls
-      WSO2_IS_INTERNAL_URL: https://wso2is:9443
+#      WSO2_IS_INTERNAL_URL: https://wso2is:9443
       WSO2_CLIENT_ID: ${WSO2_CLIENT_ID:-your_client_id_here}
       WSO2_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-your_client_secret_here}
       # Use dynamic redirect URIs - these are fallbacks only, app will use X-Forwarded headers
@@ -175,9 +195,9 @@ services:
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
       WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin}
       SESSION_COOKIE_SECURE: "True" # Enable secure cookies for HTTPS
-    extra_hosts:
-      - "host.docker.internal:host-gateway"  # Allow container to access host services
     depends_on:
+      postgres:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
       wso2is:
@@ -205,6 +225,7 @@ services:
       - darts-network
 
 volumes:
+  postgres_data:
   wso2is_7_data:
   rabbitmq_data:
   wso2is_data:

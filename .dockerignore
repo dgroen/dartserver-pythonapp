@@ -1,2 +1,7 @@
 docker-backups
 docs
+.tox
+.vscode
+.venv
+helpers
+examples
