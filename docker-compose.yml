@@ -40,6 +40,8 @@ services:
     container_name: darts-app
     ports:
       - "5000:5000"
+    env_file:
+      - .env
     environment:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
