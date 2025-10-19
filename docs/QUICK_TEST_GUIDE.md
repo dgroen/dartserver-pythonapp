@@ -4,13 +4,14 @@
 
 ✅ **PWA Installation** - You can now install the app on your Android phone  
 ✅ **Menu on Gameplay Page** - Menu button (☰) now works  
-✅ **Game Master Access** - Available from menu and home page  
+✅ **Game Master Access** - Available from menu and home page
 
 ---
 
 ## 📱 How to Test on Your Android Phone
 
 ### Step 1: Clear Browser Cache
+
 1. Open Chrome on your Android phone
 2. Tap the three dots (⋮) → Settings → Privacy and security
 3. Tap "Clear browsing data"
@@ -18,6 +19,7 @@
 5. Tap "Clear data"
 
 ### Step 2: Test Menu Navigation
+
 1. Open: `https://letsplaydarts.eu/mobile/gameplay`
 2. Look for the **☰ menu button** in the top-right corner
 3. Tap it - menu should slide in from the right
@@ -33,6 +35,7 @@
 5. Tap "👑 Game Master" to navigate
 
 ### Step 3: Test PWA Installation
+
 1. Open: `https://letsplaydarts.eu/mobile/gamemaster`
 2. Wait 3-5 seconds for the page to fully load
 3. Tap the three dots (⋮) in Chrome
@@ -41,6 +44,7 @@
 6. The app icon should appear on your home screen
 
 ### Step 4: Test Home Page Access
+
 1. Open: `https://letsplaydarts.eu/mobile`
 2. Scroll to "Quick Actions"
 3. You should see a new **👑 Game Master** card
@@ -50,7 +54,8 @@
 
 ## 🎯 What You Should See
 
-### Before (Old):
+### Before (Old)
+
 ```
 Gameplay Page:
 ┌─────────────────────┐
@@ -62,7 +67,8 @@ Gameplay Page:
 └─────────────────────┘
 ```
 
-### After (New):
+### After (New)
+
 ```
 Gameplay Page:
 ┌─────────────────────┐
@@ -94,6 +100,7 @@ Tap ☰ to open menu:
 ## 🔍 Troubleshooting
 
 ### "Install app" option not showing?
+
 - ✅ Make sure you're using **HTTPS** (not HTTP)
 - ✅ Wait 3-5 seconds after page loads
 - ✅ Clear browser cache and try again
@@ -101,16 +108,19 @@ Tap ☰ to open menu:
 - ✅ Check if app is already installed (look on home screen)
 
 ### Menu button not appearing?
+
 - ✅ Hard refresh the page (pull down to refresh)
 - ✅ Clear browser cache
 - ✅ Check browser console for JavaScript errors
 
 ### Menu not opening when tapped?
+
 - ✅ Make sure JavaScript is enabled
 - ✅ Check browser console for errors
 - ✅ Try refreshing the page
 
 ### Game Master link not working?
+
 - ✅ Make sure the Flask server is running
 - ✅ Check that `/mobile/gamemaster` route exists in app.py
 - ✅ Look for 404 errors in browser console
@@ -145,6 +155,7 @@ To verify Service Worker is registered:
 ## 🎉 Expected Results
 
 After these fixes:
+
 1. **PWA Installation Works** - Users can install the app on Android
 2. **Menu Navigation Works** - Users can access Game Master from any page
 3. **Better UX** - Consistent navigation across all mobile pages
@@ -155,6 +166,7 @@ After these fixes:
 ## 📞 Need Help?
 
 If something doesn't work:
+
 1. Check browser console for errors
 2. Verify HTTPS is being used
 3. Clear cache and try again

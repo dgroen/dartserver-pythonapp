@@ -42,6 +42,7 @@ The Darts Mobile App is now a **Progressive Web App (PWA)** that can be installe
 ### Method 1: Chrome Browser (Recommended)
 
 1. **Open the App**
+
    ```
    https://letsplaydarts.eu/mobile
    ```
@@ -109,6 +110,7 @@ The Darts Mobile App is now a **Progressive Web App (PWA)** that can be installe
 ### App Shortcuts
 
 Long-press the app icon to access quick actions:
+
 - 🎮 **Start Game**: Jump directly to gameplay
 - 📊 **View Results**: Check game history
 
@@ -123,7 +125,7 @@ Long-press the app icon to access quick actions:
 ✅ **Service Worker**: Offline functionality  
 ✅ **Icons**: All required sizes (72px - 512px)  
 ✅ **Responsive**: Mobile-optimized design  
-✅ **Standalone Display**: Full-screen mode  
+✅ **Standalone Display**: Full-screen mode
 
 ### Icon Sizes Generated
 
@@ -155,18 +157,19 @@ Long-press the app icon to access quick actions:
 
 ### Before vs After
 
-| Feature | Before | After |
-|---------|--------|-------|
-| Background | Solid dark color | Beautiful gradient |
-| Cards | Basic dark cards | Glassmorphism with blur |
-| Buttons | Simple buttons | Animated, touch-friendly |
-| Navigation | Basic menu | Slide-out with overlay |
-| Icons | Missing | All sizes generated |
-| Installability | Not installable | Full PWA support |
+| Feature        | Before           | After                    |
+| -------------- | ---------------- | ------------------------ |
+| Background     | Solid dark color | Beautiful gradient       |
+| Cards          | Basic dark cards | Glassmorphism with blur  |
+| Buttons        | Simple buttons   | Animated, touch-friendly |
+| Navigation     | Basic menu       | Slide-out with overlay   |
+| Icons          | Missing          | All sizes generated      |
+| Installability | Not installable  | Full PWA support         |
 
 ### Design Consistency
 
 The mobile app now matches the web app's design:
+
 - ✅ Same gradient background
 - ✅ Same color scheme
 - ✅ Same card styling
@@ -180,6 +183,7 @@ The mobile app now matches the web app's design:
 ### Service Worker Caching
 
 Cached resources for offline use:
+
 - All mobile pages
 - CSS and JavaScript files
 - Icons and manifest
@@ -225,6 +229,7 @@ Cached resources for offline use:
 **Problem**: "Add to Home Screen" option not available
 
 **Solutions**:
+
 1. Make sure you're using HTTPS
 2. Clear browser cache and reload
 3. Try a different browser (Chrome recommended)
@@ -236,6 +241,7 @@ Cached resources for offline use:
 **Problem**: App opens in browser instead of standalone
 
 **Solutions**:
+
 1. Uninstall and reinstall the app
 2. Check manifest.json `display` property
 3. Clear app data and cache
@@ -246,6 +252,7 @@ Cached resources for offline use:
 **Problem**: Default icon showing instead of dartboard
 
 **Solutions**:
+
 1. Verify icons exist: `/static/icons/icon-*.png`
 2. Clear browser cache
 3. Reinstall the app
@@ -256,6 +263,7 @@ Cached resources for offline use:
 **Problem**: App doesn't work without internet
 
 **Solutions**:
+
 1. Check service worker registration
 2. Open DevTools → Application → Service Workers
 3. Clear cache and re-register
@@ -280,9 +288,11 @@ Edit `/static/manifest.json`:
 
 1. Edit `/static/icons/icon.svg`
 2. Run icon generator:
+
    ```bash
    python3 helpers/create_pwa_icons_pil.py
    ```
+
 3. Clear cache and reinstall
 
 ### Modifying Styles
@@ -291,9 +301,9 @@ Edit `/static/css/mobile.css`:
 
 ```css
 :root {
-    --primary-gradient-start: #1e3c72;
-    --primary-gradient-end: #2a5298;
-    --highlight-color: #e94560;
+  --primary-gradient-start: #1e3c72;
+  --primary-gradient-end: #2a5298;
+  --highlight-color: #e94560;
 }
 ```
 
@@ -329,6 +339,7 @@ curl -I https://letsplaydarts.eu/static/icons/icon-192x192.png
 ### Lighthouse Audit
 
 Run PWA audit:
+
 1. Open DevTools
 2. Go to **Lighthouse** tab
 3. Select "Progressive Web App"
@@ -376,9 +387,10 @@ Run PWA audit:
 
 ---
 
-## 🎉 Success!
+## 🎉 Success
 
 Your Darts Mobile App is now:
+
 - ✅ Installable on Android
 - ✅ Beautiful and modern design
 - ✅ Matching web app UI
@@ -392,12 +404,14 @@ Your Darts Mobile App is now:
 ## 📞 Support
 
 Having issues? Check:
+
 1. Browser console for errors
 2. Service worker status
 3. Network tab for failed requests
 4. Manifest validation
 
 For more help, see:
+
 - `docs/MOBILE_APP_GUIDE.md`
 - `docs/MOBILE_APP_QUICKSTART.md`
 - `docs/TROUBLESHOOTING.md`

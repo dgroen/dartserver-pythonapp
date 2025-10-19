@@ -59,7 +59,7 @@ def main():
 ╔══════════════════════════════════════════════════════════════╗
 ║   WSO2 Identity Server - Role Verification                  ║
 ╚══════════════════════════════════════════════════════════════╝
-    """
+    """,
     )
 
     username = "Dennis"
@@ -83,10 +83,7 @@ def main():
     emails = user.get("emails", [])
     if emails and isinstance(emails, list) and len(emails) > 0:
         email_obj = emails[0]
-        if isinstance(email_obj, dict):
-            email = email_obj.get("value", "N/A")
-        else:
-            email = str(email_obj)
+        email = email_obj.get("value", "N/A") if isinstance(email_obj, dict) else str(email_obj)
     else:
         email = "N/A"
     print(f"Email:     {email}")
@@ -114,7 +111,7 @@ def main():
     if all_groups:
         for i, group in enumerate(all_groups, 1):
             group_name = group.get("displayName", "N/A")
-            group_id = group.get("id", "N/A")
+            group.get("id", "N/A")
             members = group.get("members", [])
             member_count = len(members)
 

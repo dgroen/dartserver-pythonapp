@@ -10,11 +10,11 @@ The Darts Game application uses WSO2 Identity Server for authentication and role
 
 ### Available Roles
 
-| Role | Description | Access Level |
-|------|-------------|--------------|
+| Role           | Description                              | Access Level                                           |
+| -------------- | ---------------------------------------- | ------------------------------------------------------ |
 | **gamemaster** | Game management and control panel access | Can create games, manage players, access control panel |
-| **admin** | Full system access | All permissions including system administration |
-| **player** | Basic game participation | Can view games and submit scores |
+| **admin**      | Full system access                       | All permissions including system administration        |
+| **player**     | Basic game participation                 | Can view games and submit scores                       |
 
 ---
 
@@ -25,11 +25,13 @@ The Darts Game application uses WSO2 Identity Server for authentication and role
 This script configures roles for users by adding them to appropriate groups in WSO2 IS.
 
 **Usage:**
+
 ```bash
 python3 setup_wso2_roles.py
 ```
 
 **What it does:**
+
 - Searches for the specified user in WSO2 IS
 - Creates groups if they don't exist
 - Adds the user to the specified groups
@@ -37,6 +39,7 @@ python3 setup_wso2_roles.py
 
 **Configuration:**
 Edit the script to change the username or roles:
+
 ```python
 username = "Dennis"
 roles = ["gamemaster"]  # Add more: ["gamemaster", "admin", "player"]
@@ -47,11 +50,13 @@ roles = ["gamemaster"]  # Add more: ["gamemaster", "admin", "player"]
 This script verifies the current role configuration for a user.
 
 **Usage:**
+
 ```bash
 python3 verify_wso2_roles.py
 ```
 
 **What it shows:**
+
 - User information (username, ID, email)
 - Current group membership
 - All available groups in the system
@@ -72,6 +77,7 @@ python3 setup_wso2_roles.py
 ```
 
 Expected output:
+
 ```
 ✅ Role configuration completed successfully!
 
@@ -91,6 +97,7 @@ python3 verify_wso2_roles.py
 ```
 
 Expected output:
+
 ```
 ✅ User has sufficient permissions for control panel access
 
@@ -102,21 +109,25 @@ Expected output:
 ### Step 3: Test in Application
 
 1. **Logout** from the application:
+
    ```
    https://letsplaydarts.eu/logout
    ```
 
 2. **Login** again to get a fresh token with the new roles:
+
    ```
    https://letsplaydarts.eu/login
    ```
 
 3. **Check debug endpoint** to verify roles are being extracted:
+
    ```
    https://letsplaydarts.eu/debug/auth
    ```
-   
+
    Look for:
+
    ```json
    {
      "extracted_roles": ["gamemaster"],
@@ -126,10 +137,11 @@ Expected output:
    ```
 
 4. **Access control panel**:
+
    ```
    https://letsplaydarts.eu/control
    ```
-   
+
    This should now work! 🎉
 
 ---
@@ -146,6 +158,7 @@ roles = ["gamemaster", "admin", "player"]
 ```
 
 Then run the script:
+
 ```bash
 python3 setup_wso2_roles.py
 ```
@@ -165,9 +178,11 @@ The script automatically creates groups if they don't exist. To create a custom 
 
 1. Edit `setup_wso2_roles.py`
 2. Add the custom group name to the roles list:
+
    ```python
    roles = ["gamemaster", "custom_role"]
    ```
+
 3. Run the script
 
 ---
@@ -177,11 +192,13 @@ The script automatically creates groups if they don't exist. To create a custom 
 ### Issue: User not found
 
 **Error:**
+
 ```
 ❌ User 'Dennis' not found
 ```
 
 **Solution:**
+
 1. Check that the user exists in WSO2 IS Console: `https://letsplaydarts.eu/auth/console`
 2. Verify the username is correct (case-sensitive)
 3. Create the user if needed via WSO2 IS Console
@@ -189,16 +206,20 @@ The script automatically creates groups if they don't exist. To create a custom 
 ### Issue: Authentication failed
 
 **Error:**
+
 ```
 ❌ Error searching for user: 401
 ```
 
 **Solution:**
+
 1. Check WSO2 admin credentials in the script:
+
    ```python
    WSO2_ADMIN_USER = "admin"
    WSO2_ADMIN_PASSWORD = "admin"
    ```
+
 2. Verify WSO2 IS is running: `docker-compose -f docker-compose-wso2.yml ps`
 
 ### Issue: Roles not appearing in application
@@ -206,12 +227,14 @@ The script automatically creates groups if they don't exist. To create a custom 
 **Problem:** User has roles in WSO2 but they don't appear in the application.
 
 **Solution:**
+
 1. **Logout and login again** - This is crucial! The application caches tokens.
 2. Check the debug endpoint: `https://letsplaydarts.eu/debug/auth`
 3. Look for roles in the output:
    - `extracted_roles`: Should show your roles
    - `scim2_groups`: Should show groups from SCIM2 API
 4. Check application logs:
+
    ```bash
    docker-compose -f docker-compose-wso2.yml logs -f darts-app | grep -E "roles|SCIM2"
    ```
@@ -221,10 +244,13 @@ The script automatically creates groups if they don't exist. To create a custom 
 **Problem:** User gets 403 error when accessing `/control`
 
 **Solution:**
+
 1. Verify user has `gamemaster` or `admin` role:
+
    ```bash
    python3 verify_wso2_roles.py
    ```
+
 2. Ensure the role name matches exactly (lowercase, no spaces)
 3. Logout and login again to refresh the token
 4. Check application logs for role extraction errors
@@ -276,16 +302,17 @@ The application uses a multi-tier approach to extract roles:
 ## ✅ Current Configuration Status
 
 **User:** Dennis  
-**Email:** dennis@it-groen.com  
+**Email:** <dennis@it-groen.com>  
 **User ID:** d39f3c2c-dc26-4067-a21d-de932d79b53c  
 **Groups:** gamemaster  
 **Status:** ✅ Configured and verified
 
 **Next Steps:**
-1. Logout: https://letsplaydarts.eu/logout
-2. Login: https://letsplaydarts.eu/login
-3. Debug: https://letsplaydarts.eu/debug/auth
-4. Control: https://letsplaydarts.eu/control
+
+1. Logout: <https://letsplaydarts.eu/logout>
+2. Login: <https://letsplaydarts.eu/login>
+3. Debug: <https://letsplaydarts.eu/debug/auth>
+4. Control: <https://letsplaydarts.eu/control>
 
 ---
 
@@ -296,6 +323,6 @@ The `gamemaster` role has been successfully configured for user Dennis via the W
 ✅ Access the control panel at `/control`  
 ✅ Create and manage games  
 ✅ Add and remove players  
-✅ View game state and scores  
+✅ View game state and scores
 
 **Important:** You must logout and login again for the changes to take effect!

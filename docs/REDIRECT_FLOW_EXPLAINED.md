@@ -21,7 +21,7 @@ User clicks "Login"
     │
     └─→ WSO2 IS redirects back to:
         https://letsplaydarts.eu/callback?code=xxx
-        
+
         ✅ SUCCESS - User is logged in
 
 
@@ -37,9 +37,9 @@ User clicks "Logout"
     ├─→ WSO2 IS validates post_logout_redirect_uri ❌
     │   (NOT in registered callbacks!)
     │
-    └─→ ERROR: "Post logout URI does not match with 
+    └─→ ERROR: "Post logout URI does not match with
                registered callback URI"
-        
+
         ❌ FAILED - User sees error page
 ```
 
@@ -51,6 +51,7 @@ WSO2 Identity Server **validates ALL redirect URIs** for security:
 2. **Logout Flow**: Validates `post_logout_redirect_uri` parameter
 
 **Current WSO2 IS Configuration:**
+
 ```
 Registered Callback URLs:
   ✅ https://letsplaydarts.eu/callback
@@ -101,7 +102,7 @@ User clicks "Login"
     │
     └─→ WSO2 IS redirects back to:
         https://letsplaydarts.eu/callback?code=xxx
-        
+
         ✅ SUCCESS - User is logged in
 
 
@@ -119,7 +120,7 @@ User clicks "Logout"
     │
     └─→ WSO2 IS redirects back to:
         https://letsplaydarts.eu/
-        
+
         ✅ SUCCESS - User is logged out and back at home page
 ```
 
@@ -128,6 +129,7 @@ User clicks "Logout"
 ### Step-by-Step Guide
 
 1. **Access WSO2 IS Management Console**
+
    ```
    URL: https://letsplaydarts.eu/auth/carbon
    Username: admin
@@ -135,6 +137,7 @@ User clicks "Logout"
    ```
 
 2. **Navigate to Service Providers**
+
    ```
    Main → Identity → Service Providers → List
    ```
@@ -149,18 +152,21 @@ User clicks "Logout"
    - Find the "Callback Url" field
 
 5. **Update Callback URL**
-   
+
    **Current value:**
+
    ```
    https://letsplaydarts.eu/callback
    ```
-   
+
    **New value (regex pattern):**
+
    ```
    regexp=https://letsplaydarts\.eu(/callback|/)
    ```
-   
+
    **OR (comma-separated):**
+
    ```
    https://letsplaydarts.eu/callback,https://letsplaydarts.eu/
    ```
@@ -172,6 +178,7 @@ User clicks "Logout"
 ## Verification
 
 ### Test Login Flow
+
 ```bash
 1. Navigate to: https://letsplaydarts.eu
 2. Click "Login" button
@@ -181,6 +188,7 @@ User clicks "Logout"
 ```
 
 ### Test Logout Flow
+
 ```bash
 1. While logged in, click "Logout" button
 2. Should redirect to WSO2 IS logout page
@@ -193,6 +201,7 @@ User clicks "Logout"
 ### Flask Application Code
 
 **Login Redirect** (`auth.py`):
+
 ```python
 def get_authorization_url(state: str | None = None) -> str:
     redirect_uri = get_dynamic_redirect_uri()  # → https://letsplaydarts.eu/callback
@@ -206,6 +215,7 @@ def get_authorization_url(state: str | None = None) -> str:
 ```
 
 **Logout Redirect** (`auth.py`):
+
 ```python
 def logout_user(id_token: str | None = None) -> str:
     post_logout_uri = get_dynamic_post_logout_redirect_uri()  # → https://letsplaydarts.eu/
@@ -247,6 +257,7 @@ retry_url = "${carbon.protocol}://letsplaydarts.eu/auth/authenticationendpoint/r
 **Cause**: Changes not saved properly
 
 **Solution**:
+
 1. Make sure you clicked "Update" **twice**:
    - Once in the OAuth/OpenID Connect Configuration dialog
    - Once in the Service Provider edit page
@@ -258,6 +269,7 @@ retry_url = "${carbon.protocol}://letsplaydarts.eu/auth/authenticationendpoint/r
 **Cause**: Some WSO2 IS versions have issues with regex
 
 **Solution**: Use comma-separated list instead:
+
 ```
 https://letsplaydarts.eu/callback,https://letsplaydarts.eu/
 ```
@@ -267,6 +279,7 @@ https://letsplaydarts.eu/callback,https://letsplaydarts.eu/
 **Cause**: WSO2 IS not running or not accessible
 
 **Solution**:
+
 ```bash
 # Check if WSO2 IS is running
 docker ps | grep wso2is
@@ -289,6 +302,7 @@ docker-compose -f docker-compose-wso2.yml restart wso2is
 ### Regex Pattern Security
 
 The regex pattern `regexp=https://letsplaydarts\.eu(/callback|/)` is secure because:
+
 - ✅ Exact domain match (escaped dots)
 - ✅ Limited to specific paths
 - ✅ No wildcards that could match unintended URLs
@@ -303,22 +317,24 @@ regexp=https://letsplaydarts\.eu/.*
 
 ## Summary
 
-| Aspect | Before Fix | After Fix |
-|--------|-----------|-----------|
-| **Login Flow** | ✅ Works | ✅ Works |
-| **Logout Flow** | ❌ Fails | ✅ Works |
-| **Registered URIs** | Only `/callback` | Both `/callback` and `/` |
-| **Error Message** | "Post logout URI does not match" | None |
-| **User Experience** | Broken logout | Seamless login/logout |
+| Aspect              | Before Fix                       | After Fix                |
+| ------------------- | -------------------------------- | ------------------------ |
+| **Login Flow**      | ✅ Works                         | ✅ Works                 |
+| **Logout Flow**     | ❌ Fails                         | ✅ Works                 |
+| **Registered URIs** | Only `/callback`                 | Both `/callback` and `/` |
+| **Error Message**   | "Post logout URI does not match" | None                     |
+| **User Experience** | Broken logout                    | Seamless login/logout    |
 
 ## Quick Reference
 
 ### Files to Check
+
 - `/data/dartserver-pythonapp/.env` - Environment variables
 - `/data/dartserver-pythonapp/auth.py` - Authentication logic
 - `/data/dartserver-pythonapp/wso2is-config/deployment.toml` - WSO2 IS config
 
 ### Commands to Run
+
 ```bash
 # Show configuration instructions
 ./update_wso2_callback_urls.sh
@@ -334,10 +350,11 @@ docker-compose -f docker-compose-wso2.yml restart wso2is
 ```
 
 ### URLs to Access
-- **Application**: https://letsplaydarts.eu
-- **WSO2 IS Console**: https://letsplaydarts.eu/auth/carbon
-- **OAuth2 Authorize**: https://letsplaydarts.eu/auth/oauth2/authorize
-- **OIDC Logout**: https://letsplaydarts.eu/auth/oidc/logout
+
+- **Application**: <https://letsplaydarts.eu>
+- **WSO2 IS Console**: <https://letsplaydarts.eu/auth/carbon>
+- **OAuth2 Authorize**: <https://letsplaydarts.eu/auth/oauth2/authorize>
+- **OIDC Logout**: <https://letsplaydarts.eu/auth/oidc/logout>
 
 ## Need Help?
 

@@ -184,7 +184,7 @@ services:
       # WSO2_IS_URL: Public URL for browser redirects (authorize, logout)
       WSO2_IS_URL: https://letsplaydarts.eu/auth
       # WSO2_IS_INTERNAL_URL: Internal Docker network URL for backend API calls
-#      WSO2_IS_INTERNAL_URL: https://wso2is:9443
+      #      WSO2_IS_INTERNAL_URL: https://wso2is:9443
       WSO2_CLIENT_ID: ${WSO2_CLIENT_ID:-your_client_id_here}
       WSO2_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-your_client_secret_here}
       # Use dynamic redirect URIs - these are fallbacks only, app will use X-Forwarded headers

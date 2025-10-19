@@ -1,9 +1,11 @@
 # 🔧 Fix: Login Redirects to letsplaydarts.eu
 
 ## ⚠️ Problem
+
 When you click "Login with WSO2" on `http://localhost:5000`, the redirect goes to `https://letsplaydarts.eu/callback` instead of `http://localhost:5000/callback`.
 
 ## 🎯 Root Cause
+
 The OAuth2 client in WSO2 Identity Server is only registered with production domain callbacks. It doesn't know localhost is allowed.
 
 ```
@@ -26,12 +28,14 @@ The OAuth2 client in WSO2 Identity Server is only registered with production dom
 ## 🚀 Quick Fix Options
 
 ### Option 1: Automatic Fix (Recommended)
+
 ```bash
 cd /data/dartserver-pythonapp
 python3 helpers/fix-wso2-localhost-callback.py
 ```
 
 This script will:
+
 - Connect to WSO2
 - Find the Darts application
 - Add `http://localhost:5000/callback` to allowed URLs
@@ -40,13 +44,13 @@ This script will:
 ### Option 2: Manual Fix via WSO2 UI
 
 1. **Open WSO2 Admin Console**
-   - URL: https://localhost:9443/carbon
+   - URL: <https://localhost:9443/carbon>
    - Username: `admin`
    - Password: `admin`
 
 2. **Navigate to Service Providers**
    - Click: Main → Identity → Service Providers
-   
+
 3. **Find and Edit Your App**
    - Look for your application (likely "darts_app" or similar)
    - Click: Edit
@@ -55,16 +59,17 @@ This script will:
    - Find: "OAuth/OpenID Connect Configuration" section
    - Look for: "Callback URL" or "Authorized Redirect URIs" field
    - Add: `http://localhost:5000/callback`
-   
+
    It should look like one of these:
+
    ```
    # Option A: Multiple URLs
    http://localhost:5000/callback
    https://letsplaydarts.eu/callback
-   
+
    # Option B: Regex pattern
    regexp=http://localhost:5000(/callback|/)|https://letsplaydarts.eu/callback
-   
+
    # Option C: As-is (if it shows)
    ["http://localhost:5000/callback", "https://letsplaydarts.eu/callback"]
    ```
@@ -73,6 +78,7 @@ This script will:
    - Click: Update or Save
 
 ### Option 3: CLI Fix via Docker
+
 ```bash
 # Get WSO2 container ID
 docker-compose -f docker-compose-wso2.yml ps
@@ -97,7 +103,7 @@ After applying the fix:
    - Close browser completely
 
 2. **Test the login**
-   - Visit: http://localhost:5000
+   - Visit: <http://localhost:5000>
    - Click: "🔐 Login with WSO2"
    - Expected: Redirect to WSO2 login at `https://localhost:9443`
    - Enter: WSO2 credentials
@@ -110,26 +116,32 @@ After applying the fix:
 ## 🐛 Still Not Working?
 
 ### Issue: Still redirecting to letsplaydarts.eu
+
 - **Check**: Is the fix actually applied? (Restart browser, clear cache)
 - **Check**: WSO2 container is running: `docker ps | grep wso2`
 - **Try**: Restarting WSO2: `docker-compose -f docker-compose-wso2.yml restart`
 
 ### Issue: "Invalid redirect_uri" error
+
 - **Problem**: The `redirect_uri` parameter doesn't match exactly
 - **Fix**: Make sure it's exactly: `http://localhost:5000/callback` (not https, correct port)
 
 ### Issue: "Invalid state parameter" or session lost
+
 - **Problem**: Cookies aren't working properly
 - **Fix**: Check that `.env` has `SESSION_COOKIE_SECURE=False` for localhost HTTP
 - **Check**: Look at logs for: `SESSION_COOKIE_SECURE forced to False`
 
-### Issue: Can't connect to https://localhost:9443
+### Issue: Can't connect to <https://localhost:9443>
+
 - **Problem**: SSL certificate issue or WSO2 not running
 - **Fix 1**: Make sure WSO2 is running:
+
   ```bash
   docker-compose -f docker-compose-wso2.yml up -d
   docker-compose -f docker-compose-wso2.yml logs wso2is
   ```
+
 - **Fix 2**: For `requests` library, SSL verification is disabled (safe for localhost)
 
 ## 📋 Configuration Checklist
@@ -143,6 +155,7 @@ After applying the fix:
 - [ ] App container is running (or running locally)
 
 ## 📚 Related Documentation
+
 - See: `LOCALHOST_QUICKSTART.md` - Quick start guide
 - See: `docs/LOCALHOST_LOGIN_FIX.md` - Detailed troubleshooting
 - See: `WSO2_LOCALHOST_CALLBACK_FIX.md` - WSO2-specific fixes
@@ -150,10 +163,11 @@ After applying the fix:
 ## 🆘 Need More Help?
 
 1. **Check logs:**
+
    ```bash
    # Flask app logs
    docker-compose logs app
-   
+
    # WSO2 logs
    docker-compose logs wso2is
    ```
@@ -163,6 +177,7 @@ After applying the fix:
    - Look for lines like: "Dynamic redirect URI: ..."
 
 3. **Test redirect URI generation:**
+
    ```bash
    python3 -c "
    import os

@@ -5,6 +5,7 @@ This guide explains how to configure the Darts Game Server for both production a
 ## Overview
 
 The application supports multiple environments with different configurations:
+
 - **Production**: `https://letsplaydarts.eu`
 - **Development**: `http://dev.letsplaydarts.eu`
 - **Local**: `http://localhost:5000`
@@ -49,12 +50,14 @@ SESSION_COOKIE_SECURE=False
 ### Required Environment Variables
 
 #### `ENVIRONMENT` (required)
+
 - **Purpose**: Defines which environment the app is running in
 - **Valid values**: `production`, `development`, `staging`
 - **Default**: `production`
 - **Usage**: Affects logging, debug mode, and security settings
 
 **Examples:**
+
 ```env
 ENVIRONMENT=production    # Production deployment
 ENVIRONMENT=development   # Development/testing
@@ -62,12 +65,14 @@ ENVIRONMENT=staging       # Staging environment
 ```
 
 #### `APP_DOMAIN` (required)
+
 - **Purpose**: The public domain/hostname where your app is accessible
 - **Format**: Domain name with optional port (no scheme)
 - **Default**: `localhost:5000`
 - **Note**: Should NOT include `http://` or `https://` prefix
 
 **Examples:**
+
 ```env
 APP_DOMAIN=letsplaydarts.eu           # Production
 APP_DOMAIN=dev.letsplaydarts.eu       # Development
@@ -76,12 +81,14 @@ APP_DOMAIN=192.168.1.100:5000        # Local network
 ```
 
 #### `APP_SCHEME` (required)
+
 - **Purpose**: URL scheme used for all redirects and callbacks
 - **Valid values**: `http` or `https`
 - **Default**: `https`
 - **Note**: Must match what users access in their browser
 
 **Examples:**
+
 ```env
 APP_SCHEME=https   # Production (required for security)
 APP_SCHEME=http    # Development/Local testing only
@@ -91,14 +98,15 @@ APP_SCHEME=http    # Development/Local testing only
 
 These URLs are **automatically generated** from `APP_DOMAIN` and `APP_SCHEME`. You should NOT set them manually:
 
-| Variable | Example | Auto-generated from |
-|----------|---------|-------------------|
-| `APP_URL` | `https://letsplaydarts.eu` | `APP_SCHEME://APP_DOMAIN` |
-| `CALLBACK_URL` | `https://letsplaydarts.eu/callback` | `APP_URL/callback` |
-| `LOGOUT_REDIRECT_URL` | `https://letsplaydarts.eu/` | `APP_URL/` |
-| `SWAGGER_HOST` | `letsplaydarts.eu` | `APP_DOMAIN` (if not overridden) |
+| Variable              | Example                             | Auto-generated from              |
+| --------------------- | ----------------------------------- | -------------------------------- |
+| `APP_URL`             | `https://letsplaydarts.eu`          | `APP_SCHEME://APP_DOMAIN`        |
+| `CALLBACK_URL`        | `https://letsplaydarts.eu/callback` | `APP_URL/callback`               |
+| `LOGOUT_REDIRECT_URL` | `https://letsplaydarts.eu/`         | `APP_URL/`                       |
+| `SWAGGER_HOST`        | `letsplaydarts.eu`                  | `APP_DOMAIN` (if not overridden) |
 
 These are used for:
+
 - OAuth2 redirect URIs in WSO2 configuration
 - Session cookie security settings
 - API documentation
@@ -106,6 +114,7 @@ These are used for:
 ### Optional Variables
 
 #### `SWAGGER_HOST` (optional)
+
 - **Purpose**: Override the Swagger API documentation host
 - **Default**: Same as `APP_DOMAIN`
 - **Use case**: Rarely needed, only if serving docs from different domain
@@ -115,6 +124,7 @@ SWAGGER_HOST=api.letsplaydarts.eu
 ```
 
 #### `SESSION_COOKIE_SECURE` (optional)
+
 - **Purpose**: Controls HTTP-only cookie security
 - **Valid values**: `true` or `false`
 - **Default**: Auto-detected from `APP_SCHEME` (true if https, false if http)
@@ -126,6 +136,7 @@ SESSION_COOKIE_SECURE=false  # Allow non-secure cookies
 ```
 
 #### `FLASK_DEBUG` (optional)
+
 - **Purpose**: Enable Flask debug mode
 - **Valid values**: `True` or `False`
 - **Default**: `False`
@@ -137,6 +148,7 @@ FLASK_DEBUG=True    # Development only
 ```
 
 #### `FLASK_USE_SSL` (optional)
+
 - **Purpose**: Configure Flask to use SSL
 - **Valid values**: `True` or `False`
 - **Default**: `true`
@@ -248,6 +260,7 @@ The application uses this priority order when determining URLs:
    - `APP_SCHEME://APP_DOMAIN` from `.env`
 
 This allows the application to work correctly behind:
+
 - Nginx reverse proxy
 - Load balancers
 - Direct connections
@@ -316,7 +329,7 @@ When running behind Nginx, ensure these headers are forwarded:
 ```nginx
 location / {
     proxy_pass http://localhost:5000;
-    
+
     # Forward the original request scheme and host
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_set_header X-Forwarded-Host $server_name;
@@ -347,6 +360,7 @@ services:
 **Symptom**: Error like "redirect_uri mismatch" from WSO2
 
 **Solution**:
+
 1. Check your `.env` file has correct `APP_DOMAIN` and `APP_SCHEME`
 2. Verify the derived `CALLBACK_URL` is registered in WSO2
 3. Check nginx headers are being forwarded correctly
@@ -362,6 +376,7 @@ docker logs darts-app | grep -i "redirect"
 **Symptom**: Login doesn't persist between requests
 
 **Solution**:
+
 1. Check `SESSION_COOKIE_SECURE` matches your `APP_SCHEME`
 2. For http: `SESSION_COOKIE_SECURE=False`
 3. For https: `SESSION_COOKIE_SECURE=True`
@@ -372,6 +387,7 @@ docker logs darts-app | grep -i "redirect"
 **Symptom**: App accessible but login redirects fail
 
 **Solution**:
+
 1. Ensure `APP_DOMAIN` includes the domain you're accessing
 2. Register the redirect URI in WSO2 admin console
 3. If behind reverse proxy, check `X-Forwarded-*` headers are set
@@ -381,6 +397,7 @@ docker logs darts-app | grep -i "redirect"
 ### Production Best Practices
 
 ✅ **DO:**
+
 - Use `ENVIRONMENT=production`
 - Set `APP_SCHEME=https`
 - Use strong `SECRET_KEY`
@@ -389,6 +406,7 @@ docker logs darts-app | grep -i "redirect"
 - Use environment-specific credentials
 
 ❌ **DON'T:**
+
 - Expose `.env` file in version control
 - Use `FLASK_DEBUG=True` in production
 - Use `AUTH_DISABLED=True` in production
@@ -398,6 +416,7 @@ docker logs darts-app | grep -i "redirect"
 ### Development Best Practices
 
 For local development, it's acceptable to:
+
 - Use `ENVIRONMENT=development`
 - Use `APP_SCHEME=http` for localhost
 - Set `FLASK_DEBUG=True`

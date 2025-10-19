@@ -51,14 +51,14 @@
 🏃 FASTEST (Auto-Fix)
    └─ Just copy the template:
       cp .env.localhost-http .env
-      
+
       Done! (Update WSO2 callback URL once)
 
 🎯 INTERACTIVE GUIDE
    └─ Run the setup script:
       chmod +x helpers/configure-localhost-login.sh
       ./helpers/configure-localhost-login.sh
-      
+
       Answer the prompts and you're done!
 
 📚 READ THE GUIDE FIRST
@@ -95,7 +95,7 @@ BEFORE ❌                           AFTER ✅
 ─────────────────────────────────────────────────────────────────────────────────
 
 ❌ User runs on http://localhost   ✅ App detects http://localhost
-❌ SESSION_COOKIE_SECURE=True      ✅ Auto-sets SESSION_COOKIE_SECURE=False  
+❌ SESSION_COOKIE_SECURE=True      ✅ Auto-sets SESSION_COOKIE_SECURE=False
 ❌ Cookies not saved               ✅ Cookies work perfectly
 ❌ Session lost after login        ✅ Session persists as expected
 ❌ User confused                   ✅ Clear logging & helpful messages

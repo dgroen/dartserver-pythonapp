@@ -5,6 +5,7 @@ This document provides a quick reference for setting up and switching between pr
 ## Files Added
 
 ### 1. New Configuration Module
+
 - **File**: `src/config.py`
 - **Purpose**: Centralized environment-aware configuration
 - **Features**:
@@ -14,6 +15,7 @@ This document provides a quick reference for setting up and switching between pr
   - Provides helper methods
 
 ### 2. Documentation
+
 - **File**: `docs/MULTI_ENVIRONMENT_SETUP.md`
   - Comprehensive guide with all configuration options
   - Troubleshooting section
@@ -21,20 +23,23 @@ This document provides a quick reference for setting up and switching between pr
   - Nginx configuration example
 
 ### 3. Example Environment Files
+
 - **`.env.production.example`**: Production deployment template
 - **`.env.development.example`**: Development deployment template
 - **`.env.local.example`**: Local testing template
 
 ## Quick Setup
 
-### For Production (https://letsplaydarts.eu)
+### For Production (<https://letsplaydarts.eu>)
 
 1. Copy production template:
+
 ```bash
 cp .env.production.example .env
 ```
 
 2. Edit `.env` with your production values:
+
 ```env
 ENVIRONMENT=production
 APP_DOMAIN=letsplaydarts.eu
@@ -49,14 +54,16 @@ SECRET_KEY=your_secure_key
 
 3. Deploy and start the application
 
-### For Development (http://dev.letsplaydarts.eu)
+### For Development (<http://dev.letsplaydarts.eu>)
 
 1. Copy development template:
+
 ```bash
 cp .env.development.example .env
 ```
 
 2. Edit `.env` with your development values:
+
 ```env
 ENVIRONMENT=development
 APP_DOMAIN=dev.letsplaydarts.eu
@@ -70,38 +77,42 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dartsdb_dev
 
 3. Run the application
 
-### For Local Testing (http://localhost:5000)
+### For Local Testing (<http://localhost:5000>)
 
 1. Copy local template:
+
 ```bash
 cp .env.local.example .env
 ```
 
 2. Start services (if using Docker):
+
 ```bash
 docker-compose up -d postgres rabbitmq
 ```
 
 3. Run the application:
+
 ```bash
 python app.py
 ```
 
 or with Flask:
+
 ```bash
 flask run
 ```
 
 ## Configuration Variables Summary
 
-| Variable | Production | Development | Local | Purpose |
-|----------|-----------|-------------|-------|---------|
-| `ENVIRONMENT` | `production` | `development` | `development` | Environment name |
-| `APP_DOMAIN` | `letsplaydarts.eu` | `dev.letsplaydarts.eu` | `localhost:5000` | Public domain |
-| `APP_SCHEME` | `https` | `http` | `http` | URL scheme |
-| `FLASK_DEBUG` | `False` | `True` | `True` | Debug mode |
-| `FLASK_USE_SSL` | `True` | `False` | `False` | SSL in Flask |
-| `SESSION_COOKIE_SECURE` | `True` | `False` | `False` | Secure cookies |
+| Variable                | Production         | Development            | Local            | Purpose          |
+| ----------------------- | ------------------ | ---------------------- | ---------------- | ---------------- |
+| `ENVIRONMENT`           | `production`       | `development`          | `development`    | Environment name |
+| `APP_DOMAIN`            | `letsplaydarts.eu` | `dev.letsplaydarts.eu` | `localhost:5000` | Public domain    |
+| `APP_SCHEME`            | `https`            | `http`                 | `http`           | URL scheme       |
+| `FLASK_DEBUG`           | `False`            | `True`                 | `True`           | Debug mode       |
+| `FLASK_USE_SSL`         | `True`             | `False`                | `False`          | SSL in Flask     |
+| `SESSION_COOKIE_SECURE` | `True`             | `False`                | `False`          | Secure cookies   |
 
 ## What Changed
 
@@ -185,12 +196,12 @@ server {
 
     location / {
         proxy_pass http://localhost:5000;
-        
+
         # Forward scheme and host for correct redirect URIs
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Forwarded-Host $server_name;
         proxy_set_header X-Forwarded-For $remote_addr;
-        
+
         # WebSocket support
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -216,6 +227,7 @@ APP_SCHEME=https
 ### Check Application Logs
 
 When the app starts, it logs:
+
 ```
 INFO:root:Application Configuration: Config(environment=production, domain=letsplaydarts.eu, scheme=https)
 INFO:root:Environment: production
@@ -249,6 +261,7 @@ curl -X GET "http://localhost:5000/api/auth/authorize" -v
 ### "redirect_uri mismatch" error from WSO2
 
 **Solution:**
+
 1. Verify `APP_DOMAIN` matches your actual domain
 2. Check `APP_SCHEME` matches what users access (http/https)
 3. Ensure redirect URI is registered in WSO2:
@@ -258,6 +271,7 @@ curl -X GET "http://localhost:5000/api/auth/authorize" -v
 ### Cookies not persisting
 
 **Solution:**
+
 1. Check `SESSION_COOKIE_SECURE` setting
 2. For http: must be `false`
 3. For https: should be `true`
@@ -266,6 +280,7 @@ curl -X GET "http://localhost:5000/api/auth/authorize" -v
 ### Different behavior between environments
 
 **Solution:**
+
 1. Check `.env` file is correct
 2. Restart the application after changing `.env`
 3. Look at logs for actual config being used

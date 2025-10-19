@@ -3,6 +3,7 @@
 ## What's New?
 
 You now have:
+
 1. ✅ **Automatic player registration** when users log in
 2. ✅ **Game history page** at `/history` showing all past games
 3. ✅ **Mobile results enhancement** with personal stats and active games leaderboard
@@ -11,6 +12,7 @@ You now have:
 ## How to Test
 
 ### 1. Test Auto-Registration
+
 ```bash
 # Start the application
 python app.py
@@ -21,6 +23,7 @@ python app.py
 ```
 
 ### 2. Test Web History Page
+
 - Navigate to: `http://localhost:5000/history`
 - Should see:
   - Statistics boxes (Games, Wins, Win Rate, Avg Score)
@@ -28,12 +31,13 @@ python app.py
   - Past games with player scores
 
 ### 3. Test API Endpoints
+
 ```bash
 # Player History
 curl -H "Authorization: Bearer <token>" \
   http://localhost:5000/api/player/history
 
-# Player Statistics  
+# Player Statistics
 curl -H "Authorization: Bearer <token>" \
   http://localhost:5000/api/player/statistics
 
@@ -43,12 +47,14 @@ curl -H "Authorization: Bearer <token>" \
 ```
 
 ### 4. Test Mobile Results Page
+
 - Open: `/mobile/results`
 - Test tabs: "📜 Your History" and "🔥 Active Games"
 - Filter by game type
 - View active games leaderboard
 
 ### 5. Test Mobile Gameplay Page
+
 - Open: `/mobile/gameplay`
 - Test tabs: "🎮 Current Game" and "🔥 Active Games"
 - Browse active games while a game is running
@@ -56,33 +62,38 @@ curl -H "Authorization: Bearer <token>" \
 ## Key Files Modified/Created
 
 ### Backend (Python)
+
 - `src/core/database_service.py` - Added 4 query methods (lines 491-751)
 - `src/app/app.py` - Added auto-registration (line 233-249), 3 API endpoints, 1 web route
 
 ### Frontend Templates (HTML)
+
 - `templates/history.html` - **NEW** Game history page
 - `templates/mobile_results.html` - Enhanced with tabs and stats
 - `templates/mobile_gameplay.html` - Enhanced with tabs
 
 ### Frontend Logic (JavaScript)
+
 - `static/js/mobile_results.js` - Completely updated
 - `static/js/mobile_gameplay.js` - Enhanced with new functions
 
 ### Styling (CSS)
+
 - `static/css/mobile.css` - Added 202 lines (tabs, cards, leaderboards, stats)
 
 ## API Endpoints Summary
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/history` | Web page showing game history and stats |
-| GET | `/api/player/history` | Get user's game history (JSON) |
-| GET | `/api/player/statistics` | Get user's statistics (JSON) |
-| GET | `/api/active-games` | Get all active games (JSON) |
+| Method | Endpoint                 | Purpose                                 |
+| ------ | ------------------------ | --------------------------------------- |
+| GET    | `/history`               | Web page showing game history and stats |
+| GET    | `/api/player/history`    | Get user's game history (JSON)          |
+| GET    | `/api/player/statistics` | Get user's statistics (JSON)            |
+| GET    | `/api/active-games`      | Get all active games (JSON)             |
 
 ## Data Returned
 
 ### `/api/player/history`
+
 ```json
 {
   "success": true,
@@ -107,6 +118,7 @@ curl -H "Authorization: Bearer <token>" \
 ```
 
 ### `/api/player/statistics`
+
 ```json
 {
   "success": true,
@@ -117,14 +129,15 @@ curl -H "Authorization: Bearer <token>" \
     "win_rate": 66.67,
     "average_score": 150.5,
     "by_game_type": {
-      "301": {"games": 10, "wins": 8, "win_rate": 80.0},
-      "501": {"games": 32, "wins": 20, "win_rate": 62.5}
+      "301": { "games": 10, "wins": 8, "win_rate": 80.0 },
+      "501": { "games": 32, "wins": 20, "win_rate": 62.5 }
     }
   }
 }
 ```
 
 ### `/api/active-games`
+
 ```json
 {
   "success": true,
@@ -149,26 +162,32 @@ curl -H "Authorization: Bearer <token>" \
 ## Mobile Features
 
 ### Mobile Results Page (`/mobile/results`)
+
 **Your History Tab:**
+
 - Statistics badges (Games, Wins)
 - Game type filter dropdown
 - Past game results with player scores
 - Win/loss indicators
 
 **Active Games Tab:**
+
 - Live leaderboards
 - Current game standings
 - Player scores
 - Time since game started
 
 ### Mobile Gameplay Page (`/mobile/gameplay`)
+
 **Current Game Tab:**
+
 - Game status
 - Current player highlight
 - Last throw display
 - Full scoreboard
 
 **Active Games Tab:**
+
 - Browse all active games
 - View live leaderboards
 - Monitor multiple games
@@ -176,6 +195,7 @@ curl -H "Authorization: Bearer <token>" \
 ## Testing with Example Data
 
 To test with game data, ensure:
+
 1. Create a game session
 2. Add multiple players
 3. Submit some scores
@@ -185,19 +205,23 @@ To test with game data, ensure:
 ## Troubleshooting
 
 ### No history showing?
+
 - Ensure user is logged in
 - Check if games exist in database: `SELECT * FROM game_results;`
 - Verify player_id is correctly set in session
 
 ### API returns 401?
+
 - User not authenticated, login first
 - Check WSO2 authentication configuration
 
 ### Stats showing zeros?
+
 - User may not have played any games yet
 - Check database for completed games: `SELECT * FROM game_results WHERE finished_at IS NOT NULL;`
 
 ### Styling issues?
+
 - Clear browser cache (Ctrl+Shift+Delete)
 - Ensure CSS file loaded: Check network tab in DevTools
 - Verify `/static/css/mobile.css` exists

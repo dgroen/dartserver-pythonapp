@@ -19,6 +19,7 @@ psycopg2.errors.InvalidColumnReference: for SELECT DISTINCT, ORDER BY expression
 ```
 
 The problematic query was:
+
 ```python
 session.query(GameResult.game_session_id)
     .distinct()
@@ -32,6 +33,7 @@ session.query(GameResult.game_session_id)
 ### 1. Fixed `get_recent_games()` in `database_service.py`
 
 **Before:**
+
 ```python
 game_sessions = (
     session.query(GameResult.game_session_id)
@@ -43,6 +45,7 @@ game_sessions = (
 ```
 
 **After:**
+
 ```python
 from sqlalchemy import func
 
@@ -63,6 +66,7 @@ game_sessions = (
 ```
 
 **Why this works:**
+
 - Uses `GROUP BY` instead of `DISTINCT` to get unique game sessions
 - Properly includes `started_at` in the aggregation
 - Orders by the maximum `started_at` for each game session
@@ -73,6 +77,7 @@ game_sessions = (
 As per project linting rules, replaced all instances of `datetime.utcnow` with timezone-aware datetime:
 
 **Added helper function:**
+
 ```python
 from datetime import datetime, timezone
 
@@ -82,6 +87,7 @@ def utc_now():
 ```
 
 **Updated all model defaults:**
+
 - `Player.created_at`
 - `GameType.created_at`
 - `GameResult.started_at`
@@ -93,18 +99,21 @@ def utc_now():
 ## Testing
 
 ### All Tests Pass
+
 ```bash
 pytest tests/unit/test_database_service.py -v
 # Result: 23 passed
 ```
 
 ### Linting Passes
+
 ```bash
 ruff check database_models.py database_service.py
 # Result: All checks passed!
 ```
 
 ### Manual Verification
+
 ```python
 from database_service import DatabaseService
 db_service = DatabaseService()
@@ -131,6 +140,7 @@ games = db_service.get_recent_games(limit=10)
 To verify the fix is working:
 
 1. **Check database connectivity:**
+
    ```python
    from database_service import DatabaseService
    db = DatabaseService()
@@ -138,6 +148,7 @@ To verify the fix is working:
    ```
 
 2. **Start a new game and verify it's stored:**
+
    ```python
    session_id = db.start_new_game(
        game_type_name='301',
@@ -149,12 +160,14 @@ To verify the fix is working:
    ```
 
 3. **Retrieve recent games:**
+
    ```python
    games = db.get_recent_games(limit=5)
    print(f"Found {len(games)} recent games")
    ```
 
 4. **Test via API:**
+
    ```bash
    curl http://localhost:5000/api/game/history?limit=5
    ```

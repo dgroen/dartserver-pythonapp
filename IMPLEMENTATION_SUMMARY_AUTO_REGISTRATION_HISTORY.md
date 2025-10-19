@@ -1,6 +1,7 @@
 # Player Auto-Registration and Game History Implementation Summary
 
 ## Overview
+
 This document summarizes the comprehensive implementation of four major features for the Darts Game Web/Mobile Application:
 
 1. **Automatic Player Registration** - Users are automatically registered when they log in
@@ -17,11 +18,13 @@ This document summarizes the comprehensive implementation of four major features
 Added four new methods to `DatabaseService` class:
 
 #### `get_or_create_player(username, email=None, name=None)` (Lines 491-529)
+
 - Creates or retrieves a player record from authenticated user data
 - Returns player_id, created flag, and player object
 - Handles username/email uniqueness and display name updates
 
 #### `get_player_game_history(player_id, game_type=None, limit=50)` (Lines 531-600)
+
 - Fetches paginated game history for a specific player
 - Supports filtering by game type (301, 401, 501, Cricket)
 - Returns list of completed games with:
@@ -31,6 +34,7 @@ Added four new methods to `DatabaseService` class:
   - Is_winner flag for the queried player
 
 #### `get_player_statistics(player_id)` (Lines 602-680)
+
 - Calculates comprehensive player statistics
 - Returns:
   - Total games played
@@ -40,6 +44,7 @@ Added four new methods to `DatabaseService` class:
   - Per-game-type breakdowns
 
 #### `get_active_games()` (Lines 682-751)
+
 - Queries all currently active games
 - Returns games with started_at timestamp but no finished_at timestamp
 - Includes:
@@ -52,6 +57,7 @@ Added four new methods to `DatabaseService` class:
 **File**: `/data/dartserver-pythonapp/src/app/app.py` (Lines 233-249)
 
 Modified `/callback` route to:
+
 - Call `get_or_create_player()` after successful OAuth2 authentication
 - Store `player_id` in Flask session for future requests
 - Automatically register the logged-in user in the game lobby
@@ -61,9 +67,11 @@ Modified `/callback` route to:
 **File**: `/data/dartserver-pythonapp/src/app/app.py`
 
 #### `GET /api/player/history` (Lines 1805-1855)
+
 - Returns paginated game history for the logged-in user
 - Supports optional `game_type` query parameter
 - Returns JSON with:
+
   ```json
   {
     "success": true,
@@ -88,8 +96,10 @@ Modified `/callback` route to:
   ```
 
 #### `GET /api/player/statistics` (Lines 1858-1891)
+
 - Returns comprehensive player statistics
 - Returns JSON with:
+
   ```json
   {
     "success": true,
@@ -108,8 +118,10 @@ Modified `/callback` route to:
   ```
 
 #### `GET /api/active-games` (Lines 1894-1902)
+
 - Returns all currently active games
 - Returns JSON with:
+
   ```json
   {
     "success": true,
@@ -136,14 +148,15 @@ Modified `/callback` route to:
 **File**: `/data/dartserver-pythonapp/templates/history.html` (180 lines)
 
 New route `/history` displays:
+
 - **Statistics Dashboard**: Visual stat boxes showing:
   - Total games played
   - Total wins
   - Win rate percentage
   - Average score
-  
+
 - **Game Type Filter**: Dropdown to filter history by game type
-  
+
 - **Game Cards**: Each card shows:
   - Game type and date/time
   - All players with final scores
@@ -156,6 +169,7 @@ New route `/history` displays:
 **File**: `/data/dartserver-pythonapp/static/js/mobile_results.js`
 
 Enhanced with:
+
 - **Tab Navigation**: "📜 Your History" and "🔥 Active Games" tabs
 - **Statistics Badges**: Shows total games and wins count
 - **Game Type Filter**: Filter history by game type
@@ -163,7 +177,7 @@ Enhanced with:
   - User's past games with results
   - Win/loss indicators
   - Player scores from each game
-  
+
 - **Active Games Tab**:
   - Real-time leaderboard of ongoing games
   - Shows current scores for each game session
@@ -175,13 +189,14 @@ Enhanced with:
 **File**: `/data/dartserver-pythonapp/static/js/mobile_gameplay.js`
 
 Enhanced with:
+
 - **Tab Navigation**: "🎮 Current Game" and "🔥 Active Games" tabs
 - **Current Game Tab**:
   - Game status display
   - Current player highlight card
   - Last throw display
   - Scoreboard with player rankings
-  
+
 - **Active Games Tab**:
   - Browse all active games
   - View current standings and leaderboards
@@ -192,6 +207,7 @@ Enhanced with:
 **File**: `/data/dartserver-pythonapp/static/css/mobile.css` (Added lines 775-976)
 
 New CSS classes for:
+
 - **Tab Navigation**: `.tab-navigation`, `.tab-button`, `.tab-content`
 - **Result Cards**: `.result-card`, `.result-header`, `.result-player`, `.result-players`
 - **Leaderboard**: `.leaderboard-section`, `.leaderboard-row`, `.leaderboard-title`
@@ -202,24 +218,28 @@ New CSS classes for:
 ## Technical Decisions
 
 ### Database Queries
+
 - Used SQLAlchemy ORM with existing models: `Player`, `GameResult`, `GameType`, `Score`
 - Leveraged session storage (`session['player_id']`) for maintaining player context
 - Calculated statistics on-demand to ensure always-current data
 - Used `isnull()` and `isnot(None)` for proper SQL null comparisons
 
 ### API Design
+
 - RESTful endpoints following existing project conventions
 - Authentication via `@login_required` decorator
 - JSON response format consistent with existing endpoints
 - Query parameters for filtering (e.g., `game_type` filter)
 
 ### Frontend Architecture
+
 - Tab-based interface for mobile to reduce navigation complexity
 - Client-side filtering for responsive UI experience
 - Async/await pattern for API calls
 - Consistent date formatting (Today/Yesterday/Date format)
 
 ### Responsive Design
+
 - Mobile-first approach with touch-friendly interfaces
 - Consistent color scheme with project's design system
 - Proper spacing and typography hierarchy
@@ -257,22 +277,25 @@ New CSS classes for:
 ## Key Features
 
 ### For Users
+
 ✅ Automatic registration when logging in  
 ✅ View complete game history with filtering  
 ✅ See personal statistics (wins, win rate, average scores)  
 ✅ Monitor active games and leaderboards  
-✅ Track performance by game type  
+✅ Track performance by game type
 
 ### For Developers
+
 ✅ Modular database query methods  
 ✅ RESTful API endpoints with proper authentication  
 ✅ Reusable JavaScript functions  
 ✅ Consistent styling with CSS variables  
-✅ Maintainable and extensible architecture  
+✅ Maintainable and extensible architecture
 
 ## Future Enhancements
 
 Potential additions:
+
 - Export game history as CSV/PDF
 - Historical statistics graphs and charts
 - Win streak tracking

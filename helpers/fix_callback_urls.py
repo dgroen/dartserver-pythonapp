@@ -2,6 +2,7 @@
 """
 Fix WSO2 callback URLs to allow both login and logout redirects
 """
+import sys
 import xml.etree.ElementTree as ET
 
 import requests
@@ -42,7 +43,7 @@ response = session.post(
 if response.status_code != 200:
     print(f"❌ Failed to get application: {response.status_code}")
     print(response.text)
-    exit(1)
+    sys.exit(1)
 
 root = ET.fromstring(response.content)
 ns = {
@@ -52,18 +53,20 @@ ns = {
 }
 
 oauth_config = root.find(
-    ".//ax2324:inboundAuthenticationConfig/ax2324:inboundAuthenticationRequestConfigs", ns
+    ".//ax2324:inboundAuthenticationConfig/ax2324:inboundAuthenticationRequestConfigs",
+    ns,
 )
 
 if oauth_config is None:
     print("❌ No OAuth configuration found")
-    exit(1)
+    sys.exit(1)
 
 for config in oauth_config.findall("ax2324:inboundAuthenticationRequestConfigs", ns):
     auth_type = config.find("ax2324:inboundAuthType", ns)
     if auth_type is not None and auth_type.text == "oauth2":
         callback_elem = config.find(
-            'ax2324:properties/ax2324:properties[ax2324:name="callbackUrl"]/ax2324:value', ns
+            'ax2324:properties/ax2324:properties[ax2324:name="callbackUrl"]/ax2324:value',
+            ns,
         )
         if callback_elem is not None:
             current_callback = callback_elem.text

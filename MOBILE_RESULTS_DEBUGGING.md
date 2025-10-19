@@ -23,6 +23,7 @@ This will show a debug panel at the top of the page with real-time debug informa
 ### 3. Check Browser Console
 
 Open your browser's developer tools (F12) and go to the **Console** tab. Look for messages that start with timestamps showing:
+
 - `loadPlayerHistory called`
 - `API Request: /api/player/history`
 - `API Response from /api/player/history: ...`
@@ -34,6 +35,7 @@ Open your browser's developer tools (F12) and go to the **Console** tab. Look fo
 Open: **`http://localhost:5000/api/debug/session`**
 
 This should return:
+
 ```json
 {
     "player_id": 18,
@@ -44,6 +46,7 @@ This should return:
 ```
 
 **If `player_id` is `null`:**
+
 - The auth bypass isn't working
 - Check that `AUTH_DISABLED=true` is set in your environment
 - Check the application logs for errors
@@ -53,30 +56,32 @@ This should return:
 Open: **`http://localhost:5000/api/player/history`**
 
 This should return:
+
 ```json
 {
-    "success": true,
-    "games": [
-        {
-            "game_session_id": "sample_...",
-            "game_type": "301",
-            "started_at": "2024-01-15T10:30:00+00:00",
-            "finished_at": "2024-01-15T10:45:00+00:00",
-            "is_winner": true,
-            "final_score": 0,
-            "start_score": 301,
-            "player_count": 2,
-            "players": [
-                {"name": "Bypass User", "final_score": 0, "is_winner": true},
-                {"name": "Opponent 1", "final_score": 50, "is_winner": false}
-            ],
-            "double_out_enabled": false
-        }
-    ]
+  "success": true,
+  "games": [
+    {
+      "game_session_id": "sample_...",
+      "game_type": "301",
+      "started_at": "2024-01-15T10:30:00+00:00",
+      "finished_at": "2024-01-15T10:45:00+00:00",
+      "is_winner": true,
+      "final_score": 0,
+      "start_score": 301,
+      "player_count": 2,
+      "players": [
+        { "name": "Bypass User", "final_score": 0, "is_winner": true },
+        { "name": "Opponent 1", "final_score": 50, "is_winner": false }
+      ],
+      "double_out_enabled": false
+    }
+  ]
 }
 ```
 
 **If you get an error:**
+
 - Check the `error` field in the response
 - Common errors:
   - `"error": "Player ID not available"` → player_id isn't in session
@@ -87,21 +92,22 @@ This should return:
 Open: **`http://localhost:5000/api/player/statistics`**
 
 Should return:
+
 ```json
 {
-    "success": true,
-    "statistics": {
-        "total_games": 5,
-        "wins": 3,
-        "losses": 2,
-        "win_rate": 60.0,
-        "average_score": 25,
-        "by_game_type": {
-            "301": {"games": 2, "wins": 2, "win_rate": 100.0},
-            "501": {"games": 2, "wins": 1, "win_rate": 50.0},
-            "Cricket": {"games": 1, "wins": 0, "win_rate": 0.0}
-        }
+  "success": true,
+  "statistics": {
+    "total_games": 5,
+    "wins": 3,
+    "losses": 2,
+    "win_rate": 60.0,
+    "average_score": 25,
+    "by_game_type": {
+      "301": { "games": 2, "wins": 2, "win_rate": 100.0 },
+      "501": { "games": 2, "wins": 1, "win_rate": 50.0 },
+      "Cricket": { "games": 1, "wins": 0, "win_rate": 0.0 }
     }
+  }
 }
 ```
 
@@ -110,6 +116,7 @@ Should return:
 ### Issue: "No game results found" displayed
 
 **Possible Causes:**
+
 1. Sample data wasn't generated
    - **Solution:** Run `python helpers/generate_sample_game_data.py`
 
@@ -120,6 +127,7 @@ Should return:
    - **Solution:** Check `/api/debug/session` - if player_id is null, restart the app
 
 **Debugging:**
+
 - Check `/api/player/history` endpoint directly
 - Look at console logs in debug mode (`?debug` parameter)
 - Check application server logs for any errors
@@ -127,6 +135,7 @@ Should return:
 ### Issue: "Unauthorized" or redirected to login
 
 **Possible Causes:**
+
 1. AUTH_DISABLED not set
    - **Solution:** Set `export AUTH_DISABLED=true` before starting the app
 
@@ -134,6 +143,7 @@ Should return:
    - **Solution:** Clear browser cookies for localhost and refresh
 
 **Debugging:**
+
 - Check `/api/debug/session` - auth_disabled should be true
 - Check browser cookies - session should exist
 - Check application logs
@@ -141,6 +151,7 @@ Should return:
 ### Issue: API returns 500 error
 
 **Debugging Steps:**
+
 1. Check the application server logs for the full error message
 2. Verify database connection: `DATABASE_URL` environment variable is set
 3. Verify database has the games table: Check PostgreSQL directly
@@ -224,6 +235,7 @@ When reporting issues, please include:
 ## Next Steps if Still Not Working
 
 1. **Enable full debug mode:**
+
    ```
    export LOG_LEVEL=DEBUG
    python run.py
@@ -239,6 +251,7 @@ When reporting issues, please include:
    - If both don't work, the issue is in the API
 
 4. **Clear everything and restart:**
+
    ```bash
    # Stop the app
    # Clear session/cookies in browser

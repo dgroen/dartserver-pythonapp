@@ -19,15 +19,18 @@ https://letsplaydarts.eu:9443/carbon
 ```
 
 **Credentials:**
+
 - Username: `admin`
 - Password: `admin`
 
 **Pros:**
+
 - ✅ Works immediately
 - ✅ No configuration changes needed
 - ✅ Bypasses reverse proxy complexity
 
 **Cons:**
+
 - ⚠️ Requires port 9443 to be accessible (currently exposed in docker-compose)
 - ⚠️ Different URL than other services
 
@@ -58,15 +61,18 @@ location /auth/ {
 ```
 
 Then restart nginx:
+
 ```bash
 docker-compose restart nginx
 ```
 
 **Pros:**
+
 - ✅ Allows access via `https://letsplaydarts.eu/auth/carbon`
 - ✅ Consistent URL structure
 
 **Cons:**
+
 - ⚠️ Requires nginx configuration change
 - ⚠️ May need additional rewrites for other console paths
 
@@ -79,17 +85,20 @@ WSO2 Identity Server 6.0+ has better support for reverse proxy deployments with 
 **Upgrade to WSO2 IS 6.1.0:**
 
 Edit `docker-compose-wso2.yml`:
+
 ```yaml
 services:
   wso2is:
-    image: wso2/wso2is:6.1.0  # Changed from 5.11.0
+    image: wso2/wso2is:6.1.0 # Changed from 5.11.0
 ```
 
 **Pros:**
+
 - ✅ Better reverse proxy support
 - ✅ Modern features and security updates
 
 **Cons:**
+
 - ⚠️ Requires migration and testing
 - ⚠️ Configuration file format may differ
 - ⚠️ Service Provider configurations may need updates
@@ -166,6 +175,7 @@ https://letsplaydarts.eu/auth/carbon
 Since you need to update the Service Provider callback URLs, use the direct port access:
 
 1. **Access Console:**
+
    ```
    https://letsplaydarts.eu:9443/carbon
    ```
@@ -175,11 +185,13 @@ Since you need to update the Service Provider callback URLs, use the direct port
    - Password: `admin`
 
 3. **Navigate to Service Providers:**
+
    ```
    Main → Identity → Service Providers → List
    ```
 
 4. **Edit your application** and update callback URLs to:
+
    ```
    regexp=https://letsplaydarts\.eu(/callback|/)
    ```
@@ -193,6 +205,7 @@ Since you need to update the Service Provider callback URLs, use the direct port
 After updating the Service Provider:
 
 ### Test Login
+
 ```bash
 1. Go to: https://letsplaydarts.eu
 2. Click "Login"
@@ -202,6 +215,7 @@ After updating the Service Provider:
 ```
 
 ### Test Logout
+
 ```bash
 1. While logged in, click "Logout"
 2. Should redirect to: https://letsplaydarts.eu/auth/oidc/logout
@@ -221,11 +235,11 @@ After updating the Service Provider:
 
 ## Summary
 
-| Access Method | URL | Status |
-|--------------|-----|--------|
-| **OAuth2 Endpoints** | `https://letsplaydarts.eu/auth/oauth2/*` | ✅ Working |
-| **OIDC Endpoints** | `https://letsplaydarts.eu/auth/oidc/*` | ✅ Working |
-| **Management Console (via nginx)** | `https://letsplaydarts.eu/auth/carbon` | ❌ Broken |
-| **Management Console (direct)** | `https://letsplaydarts.eu:9443/carbon` | ✅ Working |
+| Access Method                      | URL                                      | Status     |
+| ---------------------------------- | ---------------------------------------- | ---------- |
+| **OAuth2 Endpoints**               | `https://letsplaydarts.eu/auth/oauth2/*` | ✅ Working |
+| **OIDC Endpoints**                 | `https://letsplaydarts.eu/auth/oidc/*`   | ✅ Working |
+| **Management Console (via nginx)** | `https://letsplaydarts.eu/auth/carbon`   | ❌ Broken  |
+| **Management Console (direct)**    | `https://letsplaydarts.eu:9443/carbon`   | ✅ Working |
 
 **Bottom Line:** Use port 9443 to access the Management Console, or implement Option 2 (nginx rewrite rules).

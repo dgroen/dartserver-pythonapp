@@ -1,12 +1,15 @@
 [server]
-hostname = "localhost"
+hostname = "letsplaydarts.eu"
 node_ip = "127.0.0.1"
 
 [transport.https.properties]
-proxyPort = 9443
+proxyPort = 443
 
 [tomcat.management_console]
-proxy_context_path = "/console"
+proxy_context_path = "/auth/console"
+
+[authentication.endpoint]
+app_base_path = "https://letsplaydarts.eu/auth"
 
 [super_admin]
 username = "admin"

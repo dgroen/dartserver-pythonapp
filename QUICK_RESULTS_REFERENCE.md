@@ -4,7 +4,7 @@
 
 ✅ **Navigation Links** - Easy access to Game History from main pages  
 ✅ **Sample Data Generator** - Create test games for local development  
-✅ **Results Pages** - Web and mobile interfaces for viewing game history  
+✅ **Results Pages** - Web and mobile interfaces for viewing game history
 
 ## One-Liner Quick Start
 
@@ -23,13 +23,13 @@ python helpers/generate_sample_game_data.py
 
 ## Pages & Links
 
-| Page | URL | Access From |
-|------|-----|-------------|
-| Main Game Board | `/` | App start |
-| Game History (Web) | `/history` | 📊 button on `/` or `/control` |
-| Control Panel | `/control` | ⚙️ button on `/` |
-| Mobile Home | `/mobile` | URL |
-| Mobile Results | `/mobile/results` | Menu on `/mobile` |
+| Page               | URL               | Access From                    |
+| ------------------ | ----------------- | ------------------------------ |
+| Main Game Board    | `/`               | App start                      |
+| Game History (Web) | `/history`        | 📊 button on `/` or `/control` |
+| Control Panel      | `/control`        | ⚙️ button on `/`               |
+| Mobile Home        | `/mobile`         | URL                            |
+| Mobile Results     | `/mobile/results` | Menu on `/mobile`              |
 
 ## Sample Data Generator
 
@@ -38,6 +38,7 @@ python helpers/generate_sample_game_data.py
 ```
 
 Creates 5 sample games for testing:
+
 - ✅ bypass_user player
 - ✅ opponent1 and opponent2
 - ✅ Games with varied timestamps (1h, 3h, 5h, 24h, 48h ago)
@@ -46,17 +47,20 @@ Creates 5 sample games for testing:
 ## What You'll See
 
 ### Statistics (on `/history`)
+
 - Total games played: 5
-- Total wins: 3  
+- Total wins: 3
 - Win rate: 60%
 - Average score: varies
 
 ### Game Cards
+
 - Game type, date/time
 - All players with scores
 - Winner highlighted with 🏆
 
 ### Mobile Features (`/mobile/results`)
+
 - Tab 1: 📜 Your History
 - Tab 2: 🔥 Active Games
 - Filter by game type
@@ -65,6 +69,7 @@ Creates 5 sample games for testing:
 ## Navigation
 
 **From Main Game Board (`/`)**
+
 ```
 New buttons at bottom:
 📊 Game History → /history
@@ -72,6 +77,7 @@ New buttons at bottom:
 ```
 
 **From Control Panel (`/control`)**
+
 ```
 New links in header:
 🎮 Main Game → /
@@ -79,6 +85,7 @@ New links in header:
 ```
 
 **From Mobile (`/mobile`)**
+
 ```
 Menu items (unchanged):
 📊 Game Results → /mobile/results
@@ -86,12 +93,12 @@ Menu items (unchanged):
 
 ## Troubleshooting
 
-| Problem | Solution |
-|---------|----------|
-| No results showing | Run `python helpers/generate_sample_game_data.py` |
-| Auth page appears | Set `AUTH_DISABLED=true` environment variable |
-| Database error | Ensure `DATABASE_URL` is set and DB is running |
-| No navigation links | Refresh browser, clear cache |
+| Problem             | Solution                                          |
+| ------------------- | ------------------------------------------------- |
+| No results showing  | Run `python helpers/generate_sample_game_data.py` |
+| Auth page appears   | Set `AUTH_DISABLED=true` environment variable     |
+| Database error      | Ensure `DATABASE_URL` is set and DB is running    |
+| No navigation links | Refresh browser, clear cache                      |
 
 ## Files Changed
 
@@ -100,11 +107,12 @@ Menu items (unchanged):
 ✅ `static/css/style.css` - Added styling  
 ✅ `static/css/control.css` - Added styling  
 ✅ `helpers/generate_sample_game_data.py` - NEW helper  
-✅ `docs/RESULTS_PAGE_SETUP.md` - NEW documentation  
+✅ `docs/RESULTS_PAGE_SETUP.md` - NEW documentation
 
 ## Existing Features
 
 These were already in the codebase, now just accessible via links:
+
 - `/history` route with statistics
 - `/mobile/results` route with tabs
 - API endpoints for game data

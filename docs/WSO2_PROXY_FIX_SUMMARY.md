@@ -1,16 +1,20 @@
 # WSO2 Identity Server Reverse Proxy Configuration Fix
 
 ## Issue Summary
-When users clicked the login button on https://letsplaydarts.eu, they encountered two sequential issues:
+
+When users clicked the login button on <https://letsplaydarts.eu>, they encountered two sequential issues:
+
 1. **Initial Issue**: Redirect to port 9443 (e.g., `https://letsplaydarts.eu:9443/oauth2/authorize`)
 2. **Secondary Issue**: Missing `/auth` prefix causing 404 errors (e.g., `https://letsplaydarts.eu/authenticationendpoint/login.do`)
 
 ## Root Cause Analysis
 
 ### Issue 1: Port 9443 in URLs
+
 WSO2 Identity Server was not configured to recognize it's behind a reverse proxy. When generating OAuth2 URLs, it used its internal HTTPS port (9443) instead of the standard HTTPS port (443) exposed by nginx.
 
 ### Issue 2: Missing /auth Prefix
+
 The authentication endpoint URLs were configured with relative paths (e.g., `/authenticationendpoint/login.do`) instead of absolute paths that include the `/auth` prefix required by the nginx reverse proxy routing.
 
 ## Configuration Changes
@@ -18,19 +22,23 @@ The authentication endpoint URLs were configured with relative paths (e.g., `/au
 ### File Modified: `/data/dartserver-pythonapp/wso2is-config/deployment.toml`
 
 #### Change 1: Added Proxy Port Configuration
+
 ```toml
 [transport.https.properties]
 proxyPort = 443
 ```
+
 **Location**: After line 5 (after `base_path` configuration)
 **Purpose**: Tells WSO2 IS to use port 443 in all generated URLs instead of 9443
 
 #### Change 2: Updated Authentication Endpoint URLs
+
 ```toml
 [authentication.endpoints]
 login_url = "${carbon.protocol}://letsplaydarts.eu/auth/authenticationendpoint/login.do"
 retry_url = "${carbon.protocol}://letsplaydarts.eu/auth/authenticationendpoint/retry.do"
 ```
+
 **Location**: Lines 65-67
 **Changed From**: Relative paths (`/authenticationendpoint/login.do`)
 **Changed To**: Absolute URLs with `/auth` prefix
@@ -53,14 +61,16 @@ WSO2 IS Container (internal port 9443)
 
 ## How the Fix Works
 
-### Before Fix:
+### Before Fix
+
 1. User clicks login → Flask generates auth URL: `https://letsplaydarts.eu/auth/oauth2/authorize`
 2. Nginx proxies to WSO2 IS
 3. WSO2 IS redirects to: `https://letsplaydarts.eu:9443/authenticationendpoint/login.do` ❌
    - Wrong port (9443 instead of 443)
    - Missing /auth prefix
 
-### After Fix:
+### After Fix
+
 1. User clicks login → Flask generates auth URL: `https://letsplaydarts.eu/auth/oauth2/authorize`
 2. Nginx proxies to WSO2 IS
 3. WSO2 IS redirects to: `https://letsplaydarts.eu/auth/authenticationendpoint/login.do` ✅
@@ -72,6 +82,7 @@ WSO2 IS Container (internal port 9443)
 ## Deployment Instructions
 
 ### Step 1: Restart WSO2 IS Container
+
 The configuration file is already updated. You just need to restart the container:
 
 ```bash
@@ -80,6 +91,7 @@ docker-compose -f docker-compose-wso2.yml restart wso2is
 ```
 
 ### Step 2: Wait for Startup
+
 WSO2 IS takes approximately 2-3 minutes to fully start. Monitor the logs:
 
 ```bash
@@ -89,7 +101,8 @@ docker logs -f darts-wso2is
 Look for messages indicating the server has started successfully.
 
 ### Step 3: Verify the Fix
-1. Open browser and navigate to: https://letsplaydarts.eu
+
+1. Open browser and navigate to: <https://letsplaydarts.eu>
 2. Click the "Login" button
 3. Verify the URL stays on `https://letsplaydarts.eu/auth/...` (no port 9443)
 4. Verify the login page loads correctly (no 404 error)
@@ -112,11 +125,13 @@ If you need to rollback these changes:
 1. Edit `/data/dartserver-pythonapp/wso2is-config/deployment.toml`
 2. Remove the `[transport.https.properties]` section
 3. Change authentication endpoints back to relative paths:
+
    ```toml
    [authentication.endpoints]
    login_url = "/authenticationendpoint/login.do"
    retry_url = "/authenticationendpoint/retry.do"
    ```
+
 4. Restart WSO2 IS: `docker-compose -f docker-compose-wso2.yml restart wso2is`
 
 ## Related Files (No Changes Needed)

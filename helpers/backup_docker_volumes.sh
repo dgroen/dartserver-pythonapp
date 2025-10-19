@@ -2,7 +2,7 @@
 
 ################################################################################
 # Docker Volumes Backup Script
-# 
+#
 # This script backs up all Docker volumes used by the application:
 # - postgres_data (PostgreSQL database)
 # - rabbitmq_data (RabbitMQ message broker)
@@ -99,14 +99,14 @@ check_docker() {
 check_volumes_exist() {
     print_step "Checking if volumes exist..."
     local missing_volumes=()
-    
+
     for volume in "${VOLUMES[@]}"; do
         local full_volume_name="${PROJECT_NAME}_${volume}"
         if ! docker volume inspect "$full_volume_name" &> /dev/null; then
             missing_volumes+=("$full_volume_name")
         fi
     done
-    
+
     if [ ${#missing_volumes[@]} -gt 0 ]; then
         print_warning "The following volumes do not exist:"
         for vol in "${missing_volumes[@]}"; do
@@ -137,24 +137,24 @@ get_volume_size() {
 
 backup_postgres_database() {
     print_step "Backing up PostgreSQL database using pg_dump..."
-    
+
     # Find postgres container (handle different naming patterns)
     local postgres_container=$(docker ps --format '{{.Names}}' | grep -E "postgres|darts-postgres" | head -n 1)
-    
+
     if [ -z "$postgres_container" ]; then
         print_warning "PostgreSQL container is not running. Skipping pg_dump backup."
         print_warning "Volume backup will still be performed."
         return
     fi
-    
+
     print_step "Found PostgreSQL container: ${postgres_container}"
-    
+
     local sql_backup_file="${BACKUP_PATH}/postgres_dump.sql"
     local sql_backup_gz="${BACKUP_PATH}/postgres_dump.sql.gz"
-    
+
     # Create SQL dump
     docker exec "$postgres_container" pg_dump -U postgres dartsdb > "${sql_backup_file}" 2>/dev/null
-    
+
     if [ $? -eq 0 ]; then
         # Compress the SQL dump
         gzip "${sql_backup_file}"
@@ -170,25 +170,25 @@ backup_postgres_database() {
 backup_volume() {
     local volume=$1
     local full_volume_name="${PROJECT_NAME}_${volume}"
-    
+
     # Check if volume exists
     if ! docker volume inspect "$full_volume_name" &> /dev/null; then
         print_warning "Volume ${full_volume_name} does not exist, skipping..."
         return
     fi
-    
+
     local backup_file="${BACKUP_PATH}/${volume}.tar.gz"
     local volume_size=$(get_volume_size "$full_volume_name")
-    
+
     print_step "Backing up ${full_volume_name} (size: ${volume_size})..."
-    
+
     # Create backup using a temporary container
     docker run --rm \
         -v "${full_volume_name}:/data:ro" \
         -v "$(pwd)/${BACKUP_PATH}:/backup" \
         alpine \
         tar czf "/backup/${volume}.tar.gz" -C /data .
-    
+
     if [ $? -eq 0 ]; then
         local backup_size=$(du -sh "${backup_file}" | awk '{print $1}')
         print_success "Backed up ${volume} → ${backup_file} (${backup_size})"
@@ -200,9 +200,9 @@ backup_volume() {
 
 create_backup_manifest() {
     print_step "Creating backup manifest..."
-    
+
     local manifest_file="${BACKUP_PATH}/BACKUP_MANIFEST.txt"
-    
+
     cat > "$manifest_file" << EOF
 ================================================================================
 Docker Volumes Backup Manifest
@@ -217,7 +217,7 @@ Database Backups:
 ================================================================================
 
 EOF
-    
+
     # Check for PostgreSQL dump
     if [ -f "${BACKUP_PATH}/postgres_dump.sql.gz" ]; then
         local size=$(du -sh "${BACKUP_PATH}/postgres_dump.sql.gz" | awk '{print $1}')
@@ -230,14 +230,14 @@ EOF
         echo "✗ PostgreSQL Database (pg_dump not available)" >> "$manifest_file"
         echo "" >> "$manifest_file"
     fi
-    
+
     cat >> "$manifest_file" << EOF
 ================================================================================
 Volumes Backed Up:
 ================================================================================
 
 EOF
-    
+
     for volume in "${VOLUMES[@]}"; do
         local full_volume_name="${PROJECT_NAME}_${volume}"
         if docker volume inspect "$full_volume_name" &> /dev/null; then
@@ -254,7 +254,7 @@ EOF
             echo "" >> "$manifest_file"
         fi
     done
-    
+
     cat >> "$manifest_file" << EOF
 ================================================================================
 Restore Instructions:
@@ -338,34 +338,34 @@ docker-compose -f docker-compose-wso2.yml up -d
 
 ================================================================================
 EOF
-    
+
     print_success "Backup manifest created: ${manifest_file}"
 }
 
 backup_configuration_files() {
     print_step "Backing up configuration files..."
-    
+
     local config_backup_dir="${BACKUP_PATH}/config"
     mkdir -p "$config_backup_dir"
-    
+
     # Backup WSO2 IS configuration
     if [ -f "./wso2is-config/deployment.toml" ]; then
         cp "./wso2is-config/deployment.toml" "${config_backup_dir}/wso2is-deployment.toml"
         print_success "Backed up WSO2 IS deployment.toml"
     fi
-    
+
     # Backup docker-compose files
     if [ -f "./docker-compose-wso2.yml" ]; then
         cp "./docker-compose-wso2.yml" "${config_backup_dir}/docker-compose-wso2.yml"
         print_success "Backed up docker-compose-wso2.yml"
     fi
-    
+
     # Backup .env file if it exists
     if [ -f "./.env" ]; then
         cp "./.env" "${config_backup_dir}/.env"
         print_success "Backed up .env file"
     fi
-    
+
     # Backup nginx configuration
     if [ -d "./nginx" ]; then
         cp -r "./nginx" "${config_backup_dir}/"
@@ -398,11 +398,11 @@ print_summary() {
 
 main() {
     print_header
-    
+
     # Pre-flight checks
     check_docker
     check_volumes_exist
-    
+
     echo ""
     echo -e "${YELLOW}This will backup the following volumes:${NC}"
     for volume in "${VOLUMES[@]}"; do
@@ -415,7 +415,7 @@ main() {
     echo ""
     echo -e "${YELLOW}Backup will be saved to:${NC} ${BACKUP_PATH}"
     echo ""
-    
+
     if [ "$AUTO_CONFIRM" = false ]; then
         read -p "Continue with backup? (y/n): " -n 1 -r
         echo
@@ -426,30 +426,30 @@ main() {
     else
         print_success "Auto-confirm enabled, proceeding with backup..."
     fi
-    
+
     echo ""
-    
+
     # Create backup directory
     create_backup_directory
-    
+
     # Backup PostgreSQL database using pg_dump (if container is running)
     echo ""
     backup_postgres_database
-    
+
     # Backup each volume
     echo ""
     for volume in "${VOLUMES[@]}"; do
         backup_volume "$volume"
     done
-    
+
     # Backup configuration files
     echo ""
     backup_configuration_files
-    
+
     # Create manifest
     echo ""
     create_backup_manifest
-    
+
     # Print summary
     print_summary
 }

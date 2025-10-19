@@ -9,10 +9,11 @@ The gamemaster role was not working in the Darts UI despite being correctly conf
 The application's multi-tier role extraction approach was not reaching the SCIM2 API fallback:
 
 1. **Token Claims** - No roles present ❌
-2. **UserInfo Endpoint** - No groups returned ❌  
+2. **UserInfo Endpoint** - No groups returned ❌
 3. **SCIM2 API Fallback** - Not being triggered ❌
 
 The SCIM2 fallback was implemented but not being executed due to:
+
 - Missing `internal_login` scope in active user sessions
 - Docker container not reflecting code changes (build cache issue)
 
@@ -23,12 +24,14 @@ The SCIM2 fallback was implemented but not being executed due to:
 Removed excessive debug `print()` statements and improved logging:
 
 **Before:**
+
 ```python
 print(f"[DEBUG] Token claims for role extraction: {token_claims}")
 logger.info(f"Token claims for role extraction: {token_claims}")
 ```
 
 **After:**
+
 ```python
 logger.debug(f"Extracting roles from token claims: {list(token_claims.keys())}")
 ```
@@ -36,6 +39,7 @@ logger.debug(f"Extracting roles from token claims: {list(token_claims.keys())}")
 ### 2. Linting Compliance
 
 Fixed all linting issues in `auth.py`:
+
 - Combined nested `if` statements using `and` operator (SIM102)
 - Removed unnecessary `else` after `return` (RET505)
 - Improved code readability and maintainability
@@ -43,6 +47,7 @@ Fixed all linting issues in `auth.py`:
 ### 3. Docker Build Process
 
 Ensured proper container rebuild:
+
 ```bash
 docker-compose -f docker-compose-wso2.yml stop darts-app
 docker-compose -f docker-compose-wso2.yml rm -f darts-app
@@ -53,6 +58,7 @@ docker-compose -f docker-compose-wso2.yml up -d darts-app
 ### 4. Session Refresh
 
 Users must logout and login after code changes to:
+
 - Get fresh OAuth tokens with `internal_login` scope
 - Trigger the updated role extraction logic
 - Activate SCIM2 API fallback
@@ -102,6 +108,7 @@ Roles are normalized to ensure consistency:
 ## Testing
 
 All tests pass successfully:
+
 - ✅ 330 tests passed
 - ✅ Auth module tests: 38/38 passed
 - ✅ Integration tests: All passed
@@ -110,6 +117,7 @@ All tests pass successfully:
 ## Documentation
 
 Moved role management documentation to `docs/` folder:
+
 - `docs/README_ROLE_MANAGEMENT.md` - Quick start guide
 - `docs/WSO2_ROLE_MANAGEMENT.md` - Complete management guide
 - `docs/ROLE_CONFIGURATION_SUMMARY.md` - Configuration details
@@ -120,24 +128,27 @@ Moved role management documentation to `docs/` folder:
 To verify the fix is working:
 
 1. **Check WSO2 configuration:**
+
    ```bash
    python3 verify_wso2_roles.py
    ```
 
 2. **Logout and login:**
-   - Visit: https://letsplaydarts.eu/logout
-   - Visit: https://letsplaydarts.eu/login
+   - Visit: <https://letsplaydarts.eu/logout>
+   - Visit: <https://letsplaydarts.eu/login>
 
 3. **Test control panel access:**
-   - Visit: https://letsplaydarts.eu/control
+   - Visit: <https://letsplaydarts.eu/control>
    - Should load without 403 error ✅
 
 4. **Check application logs:**
+
    ```bash
    docker-compose -f docker-compose-wso2.yml logs -f darts-app | grep -E "roles|SCIM2"
    ```
 
 Expected log output:
+
 ```
 INFO - No roles in token claims, trying userinfo endpoint
 INFO - UserInfo response: {...}
@@ -153,7 +164,7 @@ INFO - Extracted and normalized roles: ['gamemaster']
 ✅ Roles are properly normalized  
 ✅ Control panel accessible without 403 error  
 ✅ All tests passing  
-✅ Linting compliance achieved  
+✅ Linting compliance achieved
 
 ## Future Improvements
 

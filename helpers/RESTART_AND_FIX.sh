@@ -60,11 +60,11 @@ while [ $retry_count -lt $max_retries ]; do
         echo -e "${GREEN}✅ WSO2 IS is ready!${NC}"
         break
     fi
-    
+
     echo -n "."
     sleep 3
     retry_count=$((retry_count + 1))
-    
+
     if [ $retry_count -eq $max_retries ]; then
         echo ""
         echo -e "${YELLOW}⚠️  Timeout waiting for WSO2 IS. Check logs:${NC}"

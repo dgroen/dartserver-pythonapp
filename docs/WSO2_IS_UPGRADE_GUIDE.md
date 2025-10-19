@@ -1,4 +1,5 @@
 # WSO2 Identity Server Upgrade Guide
+
 ## From 5.11.0 to 7.1.0
 
 ---
@@ -8,6 +9,7 @@
 This guide will help you upgrade WSO2 Identity Server from **5.11.0** to **7.1.0** (latest version as of October 2025).
 
 ### Current Setup
+
 - **Version**: WSO2 IS 5.11.0
 - **Deployment**: Docker container
 - **Configuration**: Custom `deployment.toml` mounted as volume
@@ -15,6 +17,7 @@ This guide will help you upgrade WSO2 Identity Server from **5.11.0** to **7.1.0
 - **Integration**: Flask app, nginx reverse proxy, WSO2 API Manager
 
 ### Target Version
+
 - **Version**: WSO2 IS 7.1.0
 - **Major Changes**: New architecture, improved reverse proxy support, modern UI
 
@@ -57,6 +60,7 @@ This guide will help you upgrade WSO2 Identity Server from **5.11.0** to **7.1.0
 **Best for**: Production environments, minimal downtime tolerance
 
 **Steps**:
+
 1. Export Service Provider configurations from 5.11.0
 2. Export users (if using embedded LDAP)
 3. Install WSO2 IS 7.1.0 in parallel
@@ -66,12 +70,14 @@ This guide will help you upgrade WSO2 Identity Server from **5.11.0** to **7.1.0
 7. Switch traffic to new instance
 
 **Pros**:
+
 - ✅ Clean installation
 - ✅ Easy rollback
 - ✅ No migration tool issues
 - ✅ Test before switching
 
 **Cons**:
+
 - ⚠️ Manual reconfiguration needed
 - ⚠️ Requires parallel infrastructure
 
@@ -82,6 +88,7 @@ This guide will help you upgrade WSO2 Identity Server from **5.11.0** to **7.1.0
 **Best for**: Development/testing environments
 
 **Steps**:
+
 1. Backup current data
 2. Run WSO2 migration tool
 3. Update Docker image
@@ -89,10 +96,12 @@ This guide will help you upgrade WSO2 Identity Server from **5.11.0** to **7.1.0
 5. Restart container
 
 **Pros**:
+
 - ✅ Preserves all data
 - ✅ Automated migration
 
 **Cons**:
+
 - ⚠️ More complex
 - ⚠️ Harder to rollback
 - ⚠️ Potential migration issues
@@ -122,7 +131,7 @@ docker run --rm -v wso2is_data:/data -v $(pwd):/backup \
 ```bash
 # Save current Service Provider details
 # - Client ID
-# - Client Secret  
+# - Client Secret
 # - Callback URLs
 # - Scopes
 # - Grant types
@@ -214,7 +223,7 @@ tag_requests = false
 services:
   # WSO2 Identity Server 7.1.0
   wso2is:
-    image: wso2/wso2is:7.1.0  # Changed from 5.11.0
+    image: wso2/wso2is:7.1.0 # Changed from 5.11.0
     container_name: darts-wso2is
     ports:
       - "9443:9443" # HTTPS port
@@ -222,16 +231,15 @@ services:
     environment:
       - JAVA_OPTS=-Xms512m -Xmx1024m
     volumes:
-      - wso2is_7_data:/home/wso2carbon/wso2is-7.1.0  # Changed path
+      - wso2is_7_data:/home/wso2carbon/wso2is-7.1.0 # Changed path
       - ./wso2is-7-config/deployment.toml:/home/wso2carbon/wso2is-7.1.0/repository/conf/deployment.toml:rw
     healthcheck:
-      test:
-        [
+      test: [
           "CMD",
           "curl",
           "-k",
           "-f",
-          "https://localhost:9443/api/health-check/v1.0/health",  # Changed endpoint
+          "https://localhost:9443/api/health-check/v1.0/health", # Changed endpoint
         ]
       interval: 30s
       timeout: 10s
@@ -261,6 +269,7 @@ Wait for: `WSO2 Identity Server started in X seconds`
 **NEW Console URL**: `https://letsplaydarts.eu:9443/console`
 
 **Credentials**:
+
 - Username: `admin`
 - Password: `admin`
 
@@ -281,35 +290,39 @@ Wait for: `WSO2 Identity Server started in X seconds`
    - **Allowed Grant Types**:
      - ✅ Authorization Code
      - ✅ Refresh Token
-   
+
    - **Authorized Redirect URLs**:
+
      ```
      https://letsplaydarts.eu/callback
      ```
-   
+
    - **Allowed Origins** (for CORS):
+
      ```
      https://letsplaydarts.eu
      ```
-   
+
    - **Access Token**:
      - Type: `JWT`
      - Expiry: `3600` seconds
-   
+
    - **Refresh Token**:
      - Expiry: `86400` seconds
      - Renew: ✅ Enabled
-   
+
    - **ID Token**:
      - Expiry: `3600` seconds
-   
+
    - **PKCE**: `Mandatory` (recommended for security)
-   
+
    - **Logout**:
      - **Post Logout Redirect URLs**:
+
        ```
        https://letsplaydarts.eu/
        ```
+
      - **Back Channel Logout**: ❌ Disabled (unless needed)
 
 5. **User Attributes** (Scopes):
@@ -368,14 +381,14 @@ docker-compose -f docker-compose-wso2.yml restart darts-app api-gateway
 
 ### WSO2 IS 5.11.0 vs 7.1.0
 
-| Feature | 5.11.0 | 7.1.0 |
-|---------|--------|-------|
-| **Console** | `/carbon` (old UI) | `/console` (modern UI) |
-| **Config Path** | `/home/wso2carbon/wso2is-5.11.0/` | `/home/wso2carbon/wso2is-7.1.0/` |
-| **Reverse Proxy** | `base_path` + `proxyPort` | `[proxy]` section |
-| **Health Check** | `/carbon/admin/login.jsp` | `/api/health-check/v1.0/health` |
-| **Service Provider** | XML-based export | JSON-based API |
-| **User Management** | SCIM 1.1 + 2.0 | SCIM 2.0 (primary) |
+| Feature              | 5.11.0                            | 7.1.0                            |
+| -------------------- | --------------------------------- | -------------------------------- |
+| **Console**          | `/carbon` (old UI)                | `/console` (modern UI)           |
+| **Config Path**      | `/home/wso2carbon/wso2is-5.11.0/` | `/home/wso2carbon/wso2is-7.1.0/` |
+| **Reverse Proxy**    | `base_path` + `proxyPort`         | `[proxy]` section                |
+| **Health Check**     | `/carbon/admin/login.jsp`         | `/api/health-check/v1.0/health`  |
+| **Service Provider** | XML-based export                  | JSON-based API                   |
+| **User Management**  | SCIM 1.1 + 2.0                    | SCIM 2.0 (primary)               |
 
 ---
 
@@ -429,6 +442,7 @@ docker-compose -f docker-compose-wso2.yml up -d wso2is
 **Problem**: Cannot access `https://letsplaydarts.eu:9443/console`
 
 **Solution**:
+
 ```bash
 # Check if WSO2 IS is running
 docker ps | grep wso2is
@@ -445,6 +459,7 @@ docker port darts-wso2is
 **Problem**: Redirects to `/oauth2/authorize` instead of `/auth/oauth2/authorize`
 
 **Solution**:
+
 - Verify `[proxy]` configuration in `deployment.toml`
 - Ensure `context_path = "/auth"` is set
 - Restart WSO2 IS
@@ -454,6 +469,7 @@ docker port darts-wso2is
 **Problem**: "Post logout URI does not match" error
 
 **Solution**:
+
 - Verify **Post Logout Redirect URLs** in Application settings
 - Must include: `https://letsplaydarts.eu/`
 - Save and test again
@@ -463,6 +479,7 @@ docker port darts-wso2is
 **Problem**: API Gateway cannot validate tokens
 
 **Solution**:
+
 - Verify introspection endpoint: `https://wso2is:9443/oauth2/introspect`
 - Check introspection credentials (admin/admin)
 - Verify SSL certificate trust
@@ -471,11 +488,11 @@ docker port darts-wso2is
 
 ## 📚 Additional Resources
 
-- **WSO2 IS 7.1.0 Documentation**: https://is.docs.wso2.com/en/7.1.0
-- **Docker Hub**: https://hub.docker.com/r/wso2/wso2is
-- **GitHub**: https://github.com/wso2/docker-is
-- **Migration Guide**: https://is.docs.wso2.com/en/latest/deploy/migrate/
-- **API Reference**: https://is.docs.wso2.com/en/latest/apis/
+- **WSO2 IS 7.1.0 Documentation**: <https://is.docs.wso2.com/en/7.1.0>
+- **Docker Hub**: <https://hub.docker.com/r/wso2/wso2is>
+- **GitHub**: <https://github.com/wso2/docker-is>
+- **Migration Guide**: <https://is.docs.wso2.com/en/latest/deploy/migrate/>
+- **API Reference**: <https://is.docs.wso2.com/en/latest/apis/>
 
 ---
 

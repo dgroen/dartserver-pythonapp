@@ -71,6 +71,7 @@ SESSION_COOKIE_SAMESITE=Lax
 ```
 
 The app will:
+
 - Auto-detect if you access via `http://` or `https://`
 - Generate correct callback URIs dynamically
 - Set SESSION_COOKIE_SECURE based on the actual scheme used
@@ -80,6 +81,7 @@ The app will:
 After changing schemes, you must also update WSO2 Identity Server:
 
 1. **Login to WSO2 Admin Console**:
+
    ```
    https://localhost:9443/carbon
    Username: admin
@@ -93,10 +95,11 @@ After changing schemes, you must also update WSO2 Identity Server:
      - For HTTP: `regexp=http://localhost:5000(/callback|/)`
 
 3. **Or use the helper script**:
+
    ```bash
    # For HTTP localhost
    python helpers/fix_callback_urls.py --scheme http --domain localhost:5000
-   
+
    # For HTTPS localhost
    python helpers/fix_callback_urls.py --scheme https --domain localhost:5000
    ```
@@ -104,46 +107,54 @@ After changing schemes, you must also update WSO2 Identity Server:
 ## Troubleshooting
 
 ### Cookies Not Being Set
+
 **Symptom**: Login redirects to `/` but session is lost immediately
 
 **Solution**: Ensure `SESSION_COOKIE_SECURE` matches your scheme:
+
 - Use `http://` → Set `SESSION_COOKIE_SECURE=False`
 - Use `https://` → Set `SESSION_COOKIE_SECURE=True`
 
 ### Callback URL Mismatch
+
 **Symptom**: "Callback URL mismatch" error from WSO2
 
-**Solution**: 
+**Solution**:
+
 1. Check what URL you're accessing (http:// or https://)
 2. Update WSO2 callback URLs to match that scheme
 3. Ensure APP_SCHEME environment variable matches
 
 ### State Parameter Mismatch
+
 **Symptom**: "Invalid state parameter" error
 
-**Solution**: 
+**Solution**:
+
 - Clear browser cookies: `Ctrl+Shift+Delete` or `Cmd+Shift+Delete`
 - Clear Flask session cache
 - Try logging in again
 
 ### HTTPS Certificate Warnings
+
 **Symptom**: "This site is not secure" warning
 
-**Solution**: 
+**Solution**:
+
 - The app uses self-signed certificates for localhost
 - Click "Advanced" and proceed (safe for local development)
 - Or import the certificate: `ssl/cert.pem` into your browser
 
 ## Environment Variables Reference
 
-| Variable | HTTP Localhost | HTTPS Localhost |
-|----------|---|---|
-| APP_SCHEME | `http` | `https` |
-| APP_DOMAIN | `localhost:5000` | `localhost:5000` |
-| FLASK_USE_SSL | `False` | `True` |
-| SESSION_COOKIE_SECURE | `False` | `True` |
-| SESSION_COOKIE_SAMESITE | `Lax` | `Lax` |
-| WSO2_REDIRECT_URI | `http://localhost:5000/callback` | `https://localhost:5000/callback` |
+| Variable                | HTTP Localhost                   | HTTPS Localhost                   |
+| ----------------------- | -------------------------------- | --------------------------------- |
+| APP_SCHEME              | `http`                           | `https`                           |
+| APP_DOMAIN              | `localhost:5000`                 | `localhost:5000`                  |
+| FLASK_USE_SSL           | `False`                          | `True`                            |
+| SESSION_COOKIE_SECURE   | `False`                          | `True`                            |
+| SESSION_COOKIE_SAMESITE | `Lax`                            | `Lax`                             |
+| WSO2_REDIRECT_URI       | `http://localhost:5000/callback` | `https://localhost:5000/callback` |
 
 ## Testing Login Flow
 

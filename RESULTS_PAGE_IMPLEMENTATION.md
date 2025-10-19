@@ -9,24 +9,28 @@ I've successfully added **links to the Game Results page** and created a helper 
 ### 1. Navigation Links Added
 
 #### Web Interface (index.html)
+
 - ✅ Added navigation link section with two buttons:
   - 📊 Game History (link to `/history`)
   - ⚙️ Control Panel (link to `/control`)
 - Updated CSS styling for modern, responsive navigation
 
 #### Control Panel (control.html)
+
 - ✅ Added header links for quick navigation:
   - 🎮 Main Game (link to `/`)
   - 📊 Game History (link to `/history`)
 - Styled to match control panel design
 
 #### Mobile Interface (mobile.html)
+
 - ✅ Already had navigation links - no changes needed
 - Mobile Results page accessible at `/mobile/results`
 
 ### 2. CSS Styling Updates
 
 #### style.css (Main game board)
+
 - Replaced old `.control-link` with new `.nav-links` class
 - Added modern button styling with:
   - Cyan color scheme (#00d4ff)
@@ -35,6 +39,7 @@ I've successfully added **links to the Game Results page** and created a helper 
   - Responsive flex layout
 
 #### control.css (Control panel)
+
 - Added `.header-links` and `.header-link` classes
 - Styled to match control panel color scheme (purple #667eea)
 - Positioned links in header for easy access
@@ -44,6 +49,7 @@ I've successfully added **links to the Game Results page** and created a helper 
 Created **`helpers/generate_sample_game_data.py`** utility script:
 
 **Features:**
+
 - ✅ Automatically creates bypass_user if not exists
 - ✅ Creates 2 sample opponents
 - ✅ Generates 5 sample games with varied timestamps:
@@ -56,11 +62,13 @@ Created **`helpers/generate_sample_game_data.py`** utility script:
 - ✅ Follows project linting rules
 
 **Usage:**
+
 ```bash
 python helpers/generate_sample_game_data.py
 ```
 
 **Output:**
+
 - Creates Player records for bypass_user, opponent1, opponent2
 - Creates GameResult records with proper timestamps
 - Creates Score records with mock data
@@ -69,6 +77,7 @@ python helpers/generate_sample_game_data.py
 ### 4. Documentation
 
 Created **`docs/RESULTS_PAGE_SETUP.md`**:
+
 - Quick start guide
 - Instructions for generating sample data
 - How to access results pages
@@ -79,15 +88,18 @@ Created **`docs/RESULTS_PAGE_SETUP.md`**:
 ## Existing Features (Already Implemented)
 
 ### API Endpoints (Available with AUTH_DISABLED)
+
 - `GET /api/player/history` - Get logged-in player's game history
 - `GET /api/player/statistics` - Get player statistics
 - `GET /api/active-games` - Get all active games
 
 ### Web Pages
+
 - `GET /history` - Game history with statistics dashboard
 - Already decorated with `@login_required` (bypassed when AUTH_DISABLED=true)
 
 ### Mobile Pages
+
 - `GET /mobile/results` - Mobile results page with tabs
 - Already decorated with `@login_required` (bypassed when AUTH_DISABLED=true)
 - Has "Your History" and "Active Games" tabs
@@ -95,25 +107,29 @@ Created **`docs/RESULTS_PAGE_SETUP.md`**:
 ## How to Use in Development
 
 ### 1. Set Auth Bypass
+
 ```bash
 # In .env file
 AUTH_DISABLED=true
 ```
 
 ### 2. Start Application
+
 ```bash
 python run.py
 ```
 
 ### 3. Generate Sample Games
+
 ```bash
 python helpers/generate_sample_game_data.py
 ```
 
 ### 4. Access Results
-- **Web**: http://localhost:5000/history
-- **Mobile**: http://localhost:5000/mobile/results
-- **API**: http://localhost:5000/api/player/history
+
+- **Web**: <http://localhost:5000/history>
+- **Mobile**: <http://localhost:5000/mobile/results>
+- **API**: <http://localhost:5000/api/player/history>
 
 ## Files Modified
 

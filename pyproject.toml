@@ -180,8 +180,10 @@ ignore = [
 "alembic/env.py" = ["E402"]
 "database_models.py" = ["A003"]
 "db_manage.py" = ["E402"]
-"helpers/*.py" = ["E402"]
+"helpers/*.py" = ["E402", "S113", "S501", "S110", "S314", "ERA001", "RUF001"]
 "test_ssl_error_handling.py" = ["PT028"]
+"fix_wso2_callback*.py" = ["S501", "S113"]
+"manage_user_roles.py" = ["S501", "S113"]
 
 [tool.mypy]
 python_version = "3.10"

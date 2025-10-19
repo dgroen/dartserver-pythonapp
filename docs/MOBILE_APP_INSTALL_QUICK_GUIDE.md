@@ -3,14 +3,17 @@
 ## 3 Simple Steps to Install
 
 ### Step 1: Open in Chrome
+
 ```
 https://letsplaydarts.eu/mobile
 ```
 
 ### Step 2: Tap Menu (⋮)
+
 Look for "Install app" or "Add to Home Screen"
 
 ### Step 3: Install
+
 Tap "Install" and you're done! 🎉
 
 ---
@@ -21,13 +24,14 @@ Tap "Install" and you're done! 🎉
 📱 **Home Screen Icon** - Launch like any app  
 🚀 **Full-Screen Mode** - No browser UI  
 🔄 **Works Offline** - Play without internet  
-⚡ **Super Fast** - Cached for speed  
+⚡ **Super Fast** - Cached for speed
 
 ---
 
 ## Quick Actions
 
 Long-press the app icon for:
+
 - 🎮 Start Game
 - 📊 View Results
 
@@ -36,6 +40,7 @@ Long-press the app icon for:
 ## Need Help?
 
 **Not seeing install option?**
+
 - Use Chrome browser
 - Make sure you're on HTTPS
 - Clear cache and try again

@@ -271,7 +271,14 @@ def callback():
     session.pop("oauth_state", None)
 
     # Redirect to original destination or home
-    next_url = request.args.get("next") or url_for("index")
+    # Use the "next" parameter if provided (now with correct proxy-aware URL from login_required)
+    # Otherwise redirect to home page using relative URL (preserves scheme/host from proxy)
+    next_url = request.args.get("next")
+    if not next_url:
+        # Use relative URL to preserve the external scheme/host from the proxy
+        next_url = "/"
+
+    app.logger.info(f"Callback redirecting to: {next_url}")
     return redirect(next_url)
 
 

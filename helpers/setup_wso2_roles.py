@@ -33,7 +33,11 @@ class WSO2RoleManager:
 
         print(f"🔍 Searching for user: {username}")
         response = requests.get(
-            url, auth=self.auth, headers=self.headers, params=params, verify=False
+            url,
+            auth=self.auth,
+            headers=self.headers,
+            params=params,
+            verify=False,
         )
 
         if response.status_code == 200:
@@ -55,7 +59,11 @@ class WSO2RoleManager:
 
         print(f"🔍 Searching for group: {group_name}")
         response = requests.get(
-            url, auth=self.auth, headers=self.headers, params=params, verify=False
+            url,
+            auth=self.auth,
+            headers=self.headers,
+            params=params,
+            verify=False,
         )
 
         if response.status_code == 200:
@@ -81,7 +89,11 @@ class WSO2RoleManager:
 
         print(f"➕ Creating group: {group_name}")
         response = requests.post(
-            url, auth=self.auth, headers=self.headers, json=payload, verify=False
+            url,
+            auth=self.auth,
+            headers=self.headers,
+            json=payload,
+            verify=False,
         )
 
         if response.status_code == 201:
@@ -114,7 +126,11 @@ class WSO2RoleManager:
 
         print(f"👤 Adding user '{user_name}' to group '{group_name}'")
         response = requests.patch(
-            url, auth=self.auth, headers=self.headers, json=payload, verify=False
+            url,
+            auth=self.auth,
+            headers=self.headers,
+            json=payload,
+            verify=False,
         )
 
         if response.status_code in [200, 204]:
@@ -197,7 +213,7 @@ def main():
 ╔══════════════════════════════════════════════════════════════╗
 ║   WSO2 Identity Server - Darts Game Role Configuration      ║
 ╚══════════════════════════════════════════════════════════════╝
-    """
+    """,
     )
 
     # Initialize manager

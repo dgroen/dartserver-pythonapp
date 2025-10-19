@@ -12,7 +12,8 @@ from urllib.parse import urlencode
 
 import jwt
 import requests
-from flask import current_app, jsonify, redirect, request, session, url_for
+from flask import current_app, has_request_context, jsonify, redirect, request, session
+from flask import url_for as flask_url_for
 
 from src.core.config import Config
 
@@ -60,7 +61,7 @@ def get_dynamic_redirect_uri() -> str:
     - http://dev.letsplaydarts.eu/callback (development)
     - http://localhost:5000/callback (local)
     """
-    if not request:
+    if not has_request_context():
         logger.debug(f"No active request, using default redirect URI: {WSO2_REDIRECT_URI_DEFAULT}")
         return WSO2_REDIRECT_URI_DEFAULT
 
@@ -129,6 +130,63 @@ def get_dynamic_post_logout_redirect_uri() -> str:
             f"Dynamic post-logout redirect URI: {post_logout_uri} (scheme={scheme}, host={host})",
         )
     return post_logout_uri
+
+
+def get_current_request_url() -> str:
+    """
+    Reconstruct the current request URL using X-Forwarded-* headers.
+
+    This ensures that when running behind a reverse proxy, the URL reflects
+    the external URL (e.g., https://letsplaydarts.eu) rather than the
+    internal address (e.g., http://localhost:5000).
+
+    Priority:
+    1. Use X-Forwarded-Proto and X-Forwarded-Host headers (from nginx proxy)
+    2. Fall back to request.scheme and request.host
+    """
+    if not request:
+        logger.debug("No active request context, cannot build current URL")
+        return ""
+
+    # Get scheme from X-Forwarded-Proto header (set by nginx), fallback to request.scheme
+    scheme = request.headers.get("X-Forwarded-Proto", request.scheme)
+
+    # Get host from X-Forwarded-Host header (set by nginx), fallback to request.host
+    host = request.headers.get("X-Forwarded-Host", request.host)
+
+    # Build the full URL preserving the path and query string
+    current_url = f"{scheme}://{host}{request.full_path}"
+
+    # Remove trailing question mark if no query string
+    if current_url.endswith("?"):
+        current_url = current_url[:-1]
+
+    logger.debug(
+        f"Built current request URL: {current_url} (scheme={scheme}, host={host})",
+    )
+    return current_url
+
+
+def url_for(endpoint, **values):
+    """
+    Enhanced url_for wrapper that ensures URLs use the correct scheme and host
+    when behind a reverse proxy (respects X-Forwarded-Proto and X-Forwarded-Host).
+
+    This prevents generating localhost URLs when the app is accessed via a proxy.
+    """
+    # Get the relative URL from Flask's url_for
+    relative_url = flask_url_for(endpoint, **values)
+
+    # If _external is explicitly set to True in values, build the full URL
+    # using the proxy headers
+    if values.get("_external"):
+        # Get scheme and host from proxy headers
+        scheme = request.headers.get("X-Forwarded-Proto", request.scheme)
+        host = request.headers.get("X-Forwarded-Host", request.host)
+        return f"{scheme}://{host}{relative_url}"
+
+    # For relative URLs, return as-is (the browser will use the current scheme/host)
+    return relative_url
 
 
 # Introspection credentials
@@ -388,7 +446,7 @@ def login_required(f):
             return f(*args, **kwargs)
 
         if "access_token" not in session:
-            return redirect(url_for("login", next=request.url))
+            return redirect(url_for("login", next=get_current_request_url()))
 
         # Validate token
         token = session.get("access_token")
@@ -397,7 +455,7 @@ def login_required(f):
         if not claims:
             # Token is invalid or expired, clear session and redirect to login
             session.clear()
-            return redirect(url_for("login", next=request.url))
+            return redirect(url_for("login", next=get_current_request_url()))
 
         # Store user info in request context
         request.user_claims = claims
