@@ -7,9 +7,11 @@ This document summarizes all fixes applied to resolve the OAuth2 localhost redir
 ## Issues Resolved
 
 ### 1. ✅ OAuth2 Localhost Redirect Issue
+
 **Problem**: Application was redirecting to `localhost` during OAuth2 login flow, and Flask app was getting 503 errors when communicating with WSO2.
 
 **Root Causes**:
+
 1. WSO2 IS was configured with `hostname = "localhost"` in `deployment.toml`
 2. Flask app was trying to reach WSO2 through external nginx URL, creating circular routing
 3. Flask container wasn't loading the `.env` file with `WSO2_IS_INTERNAL_URL`
@@ -18,6 +20,7 @@ This document summarizes all fixes applied to resolve the OAuth2 localhost redir
 **Solutions Applied**:
 
 #### A. WSO2 Configuration (`wso2is-7-config/deployment.toml`)
+
 ```toml
 [server]
 hostname = "letsplaydarts.eu"
@@ -34,6 +37,7 @@ proxy_context_path = "/auth/console"
 ```
 
 #### B. Environment Configuration (`.env`)
+
 ```bash
 WSO2_IS_URL=https://letsplaydarts.eu/auth
 WSO2_IS_INTERNAL_URL=https://wso2is:9443
@@ -41,6 +45,7 @@ WSO2_IS_VERIFY_SSL=False
 ```
 
 #### C. Docker Compose Configuration (`docker-compose.yml`)
+
 ```yaml
 darts-app:
   env_file:
@@ -50,39 +55,47 @@ darts-app:
 ```
 
 #### D. Container Network
+
 - Flask container must be on `dartserver-pythonapp_darts-network` to resolve `wso2is` hostname
 
-**Result**: 
+**Result**:
+
 - ✅ OAuth2 flow now works correctly
 - ✅ No more 503 errors
 - ✅ Flask communicates with WSO2 directly via Docker network
 - ✅ Users see correct URLs (letsplaydarts.eu)
 
 ### 2. ✅ Linting and Pre-commit Cleanup
+
 **Problem**: Multiple linting errors and pre-commit hook failures.
 
 **Solutions Applied**:
 
 #### A. Ruff Linting
+
 - Auto-fixed 22 errors (trailing commas, whitespace, blank lines)
 - Added per-file ignores in `pyproject.toml` for helper scripts
 - **Result**: All checks passing ✅
 
 #### B. Black Code Formatting
+
 - 90 Python files properly formatted
 - Line length: 100 characters
 - **Result**: All files properly formatted ✅
 
 #### C. isort Import Sorting
+
 - All imports properly sorted with black-compatible profile
 - **Result**: All checks passing ✅
 
 #### D. Flake8 Style Guide
+
 - Configured appropriate ignores for docstring formatting
 - Excluded test files and compatibility wrappers
 - **Result**: All checks passing ✅
 
 #### E. Pre-commit Hooks
+
 - Installed and configured with 14+ hooks
 - Fixed end-of-file issues in 80+ files
 - Fixed trailing whitespace in 25+ files
@@ -91,6 +104,7 @@ darts-app:
 ## Files Modified
 
 ### Configuration Files
+
 1. `/data/dartserver-pythonapp/.env` - Added WSO2 internal URL configuration
 2. `/data/dartserver-pythonapp/docker-compose.yml` - Added env_file directive
 3. `/data/dartserver-pythonapp/wso2is-7-config/deployment.toml` - Fixed hostname and proxy settings
@@ -98,6 +112,7 @@ darts-app:
 5. `/data/dartserver-pythonapp/.pre-commit-config.yaml` - Updated flake8 configuration
 
 ### Documentation Created
+
 1. `/data/dartserver-pythonapp/OAUTH_FIX_COMPLETE.md` - Comprehensive OAuth fix documentation
 2. `/data/dartserver-pythonapp/verify_oauth_fix.sh` - Automated verification script
 3. `/data/dartserver-pythonapp/LINTING_COMPLETE.md` - Linting fixes documentation
@@ -143,6 +158,7 @@ darts-app:
 ## Verification Results
 
 ### Container Status
+
 ```
 ✓ Flask app (darts-app) is running
 ✓ WSO2 IS (darts-wso2is) is running and healthy
@@ -150,6 +166,7 @@ darts-app:
 ```
 
 ### Environment Configuration
+
 ```
 ✓ .env file exists
 ✓ WSO2_IS_URL is set to https://letsplaydarts.eu/auth
@@ -158,17 +175,20 @@ darts-app:
 ```
 
 ### Internal Connectivity
+
 ```
 ✓ Flask app can reach WSO2 IS internally (Status: 405 - expected)
 ```
 
 ### Flask Configuration
+
 ```
 ✓ App URL is configured correctly: https://letsplaydarts.eu
 ✓ Callback URL is configured correctly: https://letsplaydarts.eu/callback
 ```
 
 ### WSO2 Configuration
+
 ```
 ✓ deployment.toml exists
 ✓ WSO2 hostname is set to letsplaydarts.eu
@@ -176,6 +196,7 @@ darts-app:
 ```
 
 ### Linting Status
+
 ```
 ✓ Ruff: All checks passing
 ✓ Black: All files properly formatted
@@ -217,6 +238,7 @@ docker run -d --name darts-app \
 ## Testing the OAuth Flow
 
 1. **Navigate to login page**:
+
    ```
    https://letsplaydarts.eu/login
    ```
@@ -228,22 +250,24 @@ docker run -d --name darts-app \
    - Completes authentication and redirects to: `https://letsplaydarts.eu/`
 
 3. **Monitor logs**:
+
    ```bash
    # Flask logs
    docker logs -f darts-app
-   
+
    # WSO2 logs
    docker logs -f darts-wso2is
-   
+
    # Nginx logs
    docker logs -f darts-nginx
    ```
 
 4. **Check for errors**:
+
    ```bash
    # Should show no 503 errors
    docker logs darts-nginx --since 5m | grep "503"
-   
+
    # Should show no connection errors
    docker logs darts-app --since 5m | grep -i "error"
    ```
@@ -251,21 +275,27 @@ docker run -d --name darts-app \
 ## Troubleshooting
 
 ### Issue: Flask app can't reach WSO2
+
 **Solution**: Verify the container is on the correct network:
+
 ```bash
 docker inspect darts-app | grep -A 10 "Networks"
 # Should show: dartserver-pythonapp_darts-network
 ```
 
 ### Issue: Environment variables not loaded
+
 **Solution**: Verify the .env file is being loaded:
+
 ```bash
 docker exec darts-app env | grep WSO2_IS_INTERNAL_URL
 # Should show: WSO2_IS_INTERNAL_URL=https://wso2is:9443
 ```
 
 ### Issue: 503 errors in nginx logs
+
 **Solution**: Check if Flask is trying to reach WSO2 through nginx:
+
 ```bash
 docker logs darts-app | grep "letsplaydarts.eu/auth"
 # Should NOT see requests to letsplaydarts.eu/auth for token/introspect
@@ -307,6 +337,6 @@ docker logs darts-app | grep "letsplaydarts.eu/auth"
 - OAuth2 Fix Documentation: `OAUTH_FIX_COMPLETE.md`
 - Linting Documentation: `LINTING_COMPLETE.md`
 - Verification Scripts: `verify_oauth_fix.sh`, `verify_linting.sh`
-- WSO2 IS 7.1.0 Documentation: https://is.docs.wso2.com/en/7.1.0/
-- OAuth2 RFC 6749: https://tools.ietf.org/html/rfc6749
-- OpenID Connect Core 1.0: https://openid.net/specs/openid-connect-core-1_0.html
+- WSO2 IS 7.1.0 Documentation: <https://is.docs.wso2.com/en/7.1.0/>
+- OAuth2 RFC 6749: <https://tools.ietf.org/html/rfc6749>
+- OpenID Connect Core 1.0: <https://openid.net/specs/openid-connect-core-1_0.html>

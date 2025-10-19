@@ -1,0 +1,57 @@
+[server]
+hostname = "letsplaydarts.eu"
+node_ip = "127.0.0.1"
+
+[transport.https.properties]
+proxyPort = 443
+
+[tomcat.management_console]
+proxy_context_path = "/auth/console"
+
+[authentication.endpoint]
+app_base_path = "https://letsplaydarts.eu/auth"
+
+[super_admin]
+username = "admin"
+password = "admin"
+create_admin_account = true
+
+[database.identity_db]
+type = "h2"
+url = "jdbc:h2:./repository/database/WSO2IDENTITY_DB;DB_CLOSE_ON_EXIT=FALSE;LOCK_TIMEOUT=60000"
+username = "wso2carbon"
+password = "wso2carbon"
+
+[database.shared_db]
+type = "h2"
+url = "jdbc:h2:./repository/database/WSO2SHARED_DB;DB_CLOSE_ON_EXIT=FALSE;LOCK_TIMEOUT=60000"
+username = "wso2carbon"
+password = "wso2carbon"
+
+[user_store]
+type = "database_unique_id"
+
+[oauth]
+prompt_consent = false
+
+[cors]
+allow_generic_http_requests = true
+allow_any_origin = false
+allowed_origins = [
+    "https://letsplaydarts.eu",
+    "http://localhost:5000"
+]
+allow_subdomains = false
+supported_methods = [
+    "GET",
+    "POST",
+    "HEAD",
+    "OPTIONS",
+    "PUT",
+    "DELETE"
+]
+support_any_header = true
+supported_headers = []
+exposed_headers = []
+supports_credentials = true
+max_age = 3600
