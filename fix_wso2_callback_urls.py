@@ -8,9 +8,10 @@ import os
 import sys
 
 import requests
+import urllib3
 
 # Disable SSL warnings for self-signed certificates
-requests.packages.urllib3.disable_warnings()
+urllib3.disable_warnings()
 
 # Configuration
 WSO2_IS_URL = "https://letsplaydarts.eu/auth"

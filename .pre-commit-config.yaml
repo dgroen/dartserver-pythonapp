@@ -1,0 +1,186 @@
+# Pre-commit hooks configuration
+# See https://pre-commit.com for more information
+
+default_language_version:
+  python: python3.10
+
+default_stages: [pre-commit]
+
+fail_fast: false
+
+repos:
+  # Pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-docstring-first
+      - id: debug-statements
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: name-tests-test
+        args: [--pytest-test-first]
+      - id: requirements-txt-fixer
+      - id: fix-byte-order-marker
+      - id: check-ast
+      - id: check-builtin-literals
+      - id: check-executables-have-shebangs
+      - id: detect-private-key
+        exclude: ^(ssl/|nginx/)
+
+  # Ruff - Fast Python linter (first attempt - check only)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.9
+    hooks:
+      - id: ruff
+        name: ruff-check-first-attempt
+        args: [--exit-non-zero-on-fix]
+        stages: [pre-commit]
+        verbose: true
+
+  # Ruff - Auto-fix on second attempt
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.9
+    hooks:
+      - id: ruff
+        name: ruff-fix-second-attempt
+        args: [--fix, --exit-zero]
+        stages: [pre-commit]
+        verbose: true
+
+  # Black - Code formatter (first attempt - check only)
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        name: black-check-first-attempt
+        args: [--check, --diff]
+        stages: [pre-commit]
+        verbose: true
+
+  # Black - Auto-format on second attempt
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        name: black-fix-second-attempt
+        stages: [pre-commit]
+        verbose: true
+
+  # isort - Import sorting (first attempt - check only)
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort-check-first-attempt
+        args: [--check-only, --diff]
+        stages: [pre-commit]
+        verbose: true
+
+  # isort - Auto-fix on second attempt
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort-fix-second-attempt
+        stages: [pre-commit]
+        verbose: true
+
+  # Flake8 - Style guide enforcement
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        additional_dependencies:
+          - flake8-docstrings
+          - flake8-bugbear
+          - flake8-comprehensions
+          - flake8-simplify
+        args:
+          [
+            "--max-line-length=100",
+            "--extend-ignore=E203,E266,E501,W503,D100,D101,D102,D103,D104,D105,D107,D200,D202,D205,D212,D405,D411,D415,E402,F401",
+          ]
+        exclude: ^tests/
+
+  # Bandit - Security linter
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.6
+    hooks:
+      - id: bandit
+        args: [-c, pyproject.toml]
+        additional_dependencies: ["bandit[toml]"]
+        exclude: ^(tests/|examples/|helpers/|fix_wso2_callback|manage_user_roles\.py|alembic/)
+
+  # MyPy - Static type checker
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - types-flask
+          - types-requests
+        args: [--ignore-missing-imports, --show-error-codes]
+        exclude: ^(tests/|examples/|helpers/|alembic/)
+
+  # Pylint - Code analysis
+  - repo: https://github.com/PyCQA/pylint
+    rev: v3.0.3
+    hooks:
+      - id: pylint
+        args: [--rcfile=pyproject.toml, "--disable=C0114,C0115,C0116"]
+        exclude: ^(tests/|examples/|helpers/|alembic/)
+
+  # YAML linter
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        args: [-c=.yamllint.yaml]
+
+  # Markdown linter
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.38.0
+    hooks:
+      - id: markdownlint
+        args: [--fix]
+
+  # # Check for secrets
+  # - repo: https://github.com/Yelp/detect-secrets
+  #   rev: v1.4.0
+  #   hooks:
+  #     - id: detect-secrets
+  #       args:
+  #         [--baseline, .secrets.baseline, --exclude-files, '\.(md|pem|key)$']
+  #       exclude: (package-lock.json|ssl/.*\.pem|ssl/.*\.key|nginx/.*\.key|nginx/ssl/.*\.key|.*\.md$|docs/.*)
+
+  # Prettier for JSON, YAML, Markdown
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        types_or: [json, yaml, markdown]
+        exclude: ^(package-lock.json|.*\.min\.json)$
+
+# CI configuration
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ""
+  autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false

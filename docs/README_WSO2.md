@@ -64,7 +64,7 @@ docker-compose -f docker-compose-wso2.yml ps
 
 ```bash
 CLIENT_ID="L2rvop0o4DfJsqpqsh44cUgVn_ga"
-CLIENT_SECRET="VhNFUK083Q2iUsu8GCWfcJTVCX8a"
+CLIENT_SECRET="VhNFUK083Q2iUsu8GCWfcJTVCX8a"  <!-- pragma: allowlist secret -->
 ```
 
 ### Available Scopes
@@ -81,11 +81,11 @@ CLIENT_SECRET="VhNFUK083Q2iUsu8GCWfcJTVCX8a"
 ### Get Access Token
 
 ```bash
-curl -k -X POST https://localhost:9443/oauth2/token \
+curl -k -X POST https://localhost:9443/oauth2/token \  # pragma: allowlist secret
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=client_credentials" \
-  -d "client_id=L2rvop0o4DfJsqpqsh44cUgVn_ga" \
-  -d "client_secret=VhNFUK083Q2iUsu8GCWfcJTVCX8a" \
+  -d "client_id=L2rvop0o4DfJsqpqsh44cUgVn_ga" \  # pragma: allowlist secret
+  -d "client_secret=VhNFUK083Q2iUsu8GCWfcJTVCX8a"  # pragma: allowlist secret
   -d "scope=score:write"
 ```
 
@@ -207,8 +207,8 @@ curl http://localhost:8080/health
 # Get token
 TOKEN=$(curl -k -s -X POST https://localhost:9443/oauth2/token \
   -d "grant_type=client_credentials" \
-  -d "client_id=L2rvop0o4DfJsqpqsh44cUgVn_ga" \
-  -d "client_secret=VhNFUK083Q2iUsu8GCWfcJTVCX8a" \
+  -d "client_id=L2rvop0o4DfJsqpqsh44cUgVn_ga" \  # pragma: allowlist secret
+  -d "client_secret=VhNFUK083Q2iUsu8GCWfcJTVCX8a" \  # pragma: allowlist secret
   -d "scope=score:write" | jq -r .access_token)
 
 # Submit score

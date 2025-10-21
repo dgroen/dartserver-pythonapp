@@ -9,7 +9,7 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: postgres # pragma: allowlist secret
       POSTGRES_DB: dartsdb
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -30,7 +30,7 @@ services:
       - "15672:15672" # Management UI
     environment:
       RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_PASS: guest # pragma: allowlist secret
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -178,7 +178,7 @@ services:
 
       # Database Configuration
       # Use postgres service name for Docker internal networking
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dartsdb
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dartsdb # pragma: allowlist secret
 
       # WSO2 Authentication Configuration
       # WSO2_IS_URL: Public URL for browser redirects (authorize, logout)
@@ -193,7 +193,7 @@ services:
       WSO2_IS_VERIFY_SSL: "False"
       JWT_VALIDATION_MODE: introspection
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
-      WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin}
+      WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin} # pragma: allowlist secret
       SESSION_COOKIE_SECURE: "True" # Enable secure cookies for HTTPS
     depends_on:
       postgres:

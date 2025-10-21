@@ -7,6 +7,7 @@ import uuid
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
+from sqlalchemy import desc, func
 
 from src.core.database_models import DatabaseManager, GameResult, GameType, Player, Score
 
@@ -26,7 +27,7 @@ class DatabaseService:
         if database_url is None:
             database_url = os.getenv(
                 "DATABASE_URL",
-                "postgresql://postgres:postgres@localhost:5432/dartsdb",
+                "postgresql://postgres:postgres@localhost:5432/dartsdb",  # pragma: allowlist secret
             )
 
         self.db_manager = DatabaseManager(database_url)
@@ -429,24 +430,26 @@ class DatabaseService:
         """
         session = self.db_manager.get_session()
         try:
-            # Get unique game sessions with their start times
-            # Use a subquery to get the max started_at for each game_session_id
-            from sqlalchemy import func
+            # Get unique game sessions with their finish times (or start times if not finished)
+            # Use a subquery to get the most recent timestamp for each game_session_id
+            max_timestamp_expr = func.max(
+                func.coalesce(GameResult.finished_at, GameResult.started_at),
+            )
 
             subquery = (
                 session.query(
                     GameResult.game_session_id,
-                    func.max(GameResult.started_at).label("max_started_at"),
+                    max_timestamp_expr.label("max_time"),
                 )
                 .group_by(GameResult.game_session_id)
-                .order_by(func.max(GameResult.started_at).desc())
+                .order_by(max_timestamp_expr.desc())
                 .limit(limit)
                 .subquery()
             )
 
             game_sessions = session.query(
                 subquery.c.game_session_id,
-                subquery.c.max_started_at,
+                subquery.c.max_time,
             ).all()
 
             results = []
@@ -488,42 +491,56 @@ class DatabaseService:
         finally:
             session.close()
 
-    def get_or_create_player(self, username, email=None, name=None):
+    def get_or_create_player(self, name, username=None, email=None):
         """
-        Get or create a player from username
+        Get an existing player or create a new one.
 
         Args:
-            username: Username from authentication
-            email: Email address (optional)
-            name: Display name (optional, defaults to username)
+            name: Player name
+            username: WSO2 username (optional)
+            email: Player email (optional)
 
         Returns:
-            Player object
+            Player object or None if error
         """
         session = self.db_manager.get_session()
         try:
-            # Try to find by username first
-            player = session.query(Player).filter_by(username=username).first()
+            # Try to find existing player by username if provided
+            if username:
+                existing = session.query(Player).filter_by(username=username).first()
+                if existing:
+                    # Update name and email if provided
+                    if name:
+                        existing.name = name
+                    if email:
+                        existing.email = email
+                    session.commit()
+                    return existing
 
-            if not player:
-                # Create new player
-                player = Player(
-                    name=name or username,
-                    username=username,
-                    email=email,
-                    created_at=datetime.now(tz=timezone.utc),
-                )
-                session.add(player)
-                session.commit()
-                print(f"New player created: {username} (name: {player.name})")
-            else:
-                print(f"Player found: {username}")
+            # Try to find by email if provided
+            if email:
+                existing = session.query(Player).filter_by(email=email).first()
+                if existing:
+                    if name:
+                        existing.name = name
+                    if username:
+                        existing.username = username
+                    session.commit()
+                    return existing
 
-            return player
+            # Create new player
+            player = Player(name=name, username=username, email=email)
+            session.add(player)
+            session.commit()
+            player_id = player.id
+            session.close()
 
+            # Reopen session to return fresh object
+            session = self.db_manager.get_session()
+            return session.query(Player).filter_by(id=player_id).first()
         except Exception as e:
             session.rollback()
-            print(f"Error getting or creating player: {e}")
+            print(f"Error in get_or_create_player: {e}")
             return None
         finally:
             session.close()
@@ -549,7 +566,15 @@ class DatabaseService:
                 if game_type_obj:
                     query = query.filter_by(game_type_id=game_type_obj.id)
 
-            game_results = query.order_by(GameResult.finished_at.desc()).limit(limit).all()
+            # Sort by finished_at (DESC, with NULLs last), then by started_at (DESC)
+            # This ensures completed games appear first, with most recent first
+            game_results = (
+                query.order_by(
+                    desc(func.coalesce(GameResult.finished_at, GameResult.started_at)),
+                )
+                .limit(limit)
+                .all()
+            )
 
             results = []
             for gr in game_results:
@@ -629,7 +654,7 @@ class DatabaseService:
             average_score = sum(gr.final_score or 0 for gr in all_game_results) / total_games
 
             # Stats by game type
-            by_game_type = {}
+            by_game_type: dict[str, dict[str, int | float | list[int]]] = {}
             for gr in all_game_results:
                 game_type = session.query(GameType).filter_by(id=gr.game_type_id).first()
                 game_type_name = game_type.name if game_type else "Unknown"
@@ -643,15 +668,15 @@ class DatabaseService:
                         "scores": [],
                     }
 
-                by_game_type[game_type_name]["games"] += 1
-                by_game_type[game_type_name]["wins"] += 1 if gr.is_winner else 0
-                by_game_type[game_type_name]["losses"] += 0 if gr.is_winner else 1
-                by_game_type[game_type_name]["scores"].append(gr.final_score or 0)
+                by_game_type[game_type_name]["games"] += 1  # type: ignore
+                by_game_type[game_type_name]["wins"] += 1 if gr.is_winner else 0  # type: ignore
+                by_game_type[game_type_name]["losses"] += 0 if gr.is_winner else 1  # type: ignore
+                by_game_type[game_type_name]["scores"].append(gr.final_score or 0)  # type: ignore
 
             # Calculate averages per game type
             for _game_type_name, stats in by_game_type.items():
                 if stats["scores"]:
-                    stats["average_score"] = sum(stats["scores"]) / len(stats["scores"])
+                    stats["average_score"] = sum(stats["scores"]) / len(stats["scores"])  # type: ignore
                 del stats["scores"]  # Remove scores list from final output
 
             return {
@@ -688,7 +713,7 @@ class DatabaseService:
                 .filter(
                     and_(
                         GameResult.started_at.isnot(None),
-                        GameResult.finished_at.isnull(),
+                        GameResult.finished_at.isna(),
                     ),
                 )
                 .group_by(GameResult.game_session_id)

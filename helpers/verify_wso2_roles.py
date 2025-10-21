@@ -11,7 +11,7 @@ import requests
 # WSO2 IS Configuration
 WSO2_IS_URL = "https://letsplaydarts.eu/auth"
 WSO2_ADMIN_USER = "admin"
-WSO2_ADMIN_PASSWORD = "admin"
+WSO2_ADMIN_PASSWORD = "admin"  # pragma: allowlist secret
 
 # Disable SSL warnings for self-signed certificates
 requests.packages.urllib3.disable_warnings()

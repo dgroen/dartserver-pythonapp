@@ -216,8 +216,8 @@ The script automatically creates groups if they don't exist. To create a custom 
 1. Check WSO2 admin credentials in the script:
 
    ```python
-   WSO2_ADMIN_USER = "admin"
-   WSO2_ADMIN_PASSWORD = "admin"
+   WSO2_ADMIN_USER = "admin"  # pragma: allowlist secret
+   WSO2_ADMIN_PASSWORD = "admin"  # pragma: allowlist secret
    ```
 
 2. Verify WSO2 IS is running: `docker-compose -f docker-compose-wso2.yml ps`

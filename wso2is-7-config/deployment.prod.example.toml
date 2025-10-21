@@ -13,20 +13,20 @@ app_base_path = "https://letsplaydarts.eu/auth"
 
 [super_admin]
 username = "admin"
-password = "admin"
+password = "admin"  # pragma: allowlist secret
 create_admin_account = true
 
 [database.identity_db]
 type = "h2"
 url = "jdbc:h2:./repository/database/WSO2IDENTITY_DB;DB_CLOSE_ON_EXIT=FALSE;LOCK_TIMEOUT=60000"
 username = "wso2carbon"
-password = "wso2carbon"
+password = "wso2carbon"  # pragma: allowlist secret
 
 [database.shared_db]
 type = "h2"
 url = "jdbc:h2:./repository/database/WSO2SHARED_DB;DB_CLOSE_ON_EXIT=FALSE;LOCK_TIMEOUT=60000"
 username = "wso2carbon"
-password = "wso2carbon"
+password = "wso2carbon"  # pragma: allowlist secret
 
 [user_store]
 type = "database_unique_id"

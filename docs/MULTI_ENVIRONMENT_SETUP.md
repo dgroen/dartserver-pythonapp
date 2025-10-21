@@ -170,7 +170,7 @@ FLASK_DEBUG=False
 FLASK_USE_SSL=True
 
 # Database (production)
-DATABASE_URL=postgresql://user:password@prod-db-host:5432/dartsdb
+DATABASE_URL=postgresql://user:password@prod-db-host:5432/dartsdb  # pragma: allowlist secret
 RABBITMQ_HOST=prod-rabbitmq-host
 RABBITMQ_PORT=5672
 RABBITMQ_USER=<production_user>
@@ -197,7 +197,7 @@ FLASK_USE_SSL=False
 SESSION_COOKIE_SECURE=False
 
 # Database (development)
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dartsdb_dev
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dartsdb_dev  # pragma: allowlist secret
 RABBITMQ_HOST=localhost
 RABBITMQ_PORT=5672
 RABBITMQ_USER=guest
@@ -225,7 +225,7 @@ FLASK_USE_SSL=False
 SESSION_COOKIE_SECURE=False
 
 # Local services
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dartsdb
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dartsdb  # pragma: allowlist secret
 RABBITMQ_HOST=localhost
 RABBITMQ_PORT=5672
 RABBITMQ_USER=guest

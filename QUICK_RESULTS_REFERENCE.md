@@ -123,7 +123,7 @@ These were already in the codebase, now just accessible via links:
 ```bash
 # .env file
 AUTH_DISABLED=true
-DATABASE_URL=postgresql://user:password@localhost/dartsgame
+DATABASE_URL=postgresql://user:password@localhost/dartsgame  # pragma: allowlist secret
 ```
 
 ## API Endpoints (Dev Use)

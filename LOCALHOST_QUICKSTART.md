@@ -115,7 +115,7 @@ python app.py
 2. Click **Login**
 3. Enter your WSO2 credentials:
    - Username: `testplayer` (or `testgamemaster`, `testadmin`)
-   - Password: `Player@123` (or `GameMaster@123`, `Admin@123`)
+   - Password: `Player@123` (or `GameMaster@123`, `Admin@123`) <!-- pragma: allowlist secret -->
 4. You should be redirected back to the app! ✅
 
 ---

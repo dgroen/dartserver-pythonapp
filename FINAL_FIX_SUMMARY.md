@@ -226,7 +226,7 @@ docker run -d --name darts-app \
   -e FLASK_HOST=0.0.0.0 \
   -e FLASK_PORT=5000 \
   -e FLASK_DEBUG=False \
-  -e DATABASE_URL=postgresql://postgres:postgres@postgres:5432/dartsdb \
+  -e DATABASE_URL=postgresql://postgres:postgres@postgres:5432/dartsdb \  # pragma: allowlist secret
   -e DARTBOARD_SENDS_ACTUAL_SCORE=True \
   -e TTS_ENABLED=true \
   -e TTS_ENGINE=gtts \

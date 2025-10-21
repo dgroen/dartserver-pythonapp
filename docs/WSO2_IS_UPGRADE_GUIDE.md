@@ -167,7 +167,7 @@ base_path = "https://letsplaydarts.eu/auth"
 
 [super_admin]
 username = "admin"
-password = "admin"
+password = "admin"  # pragma: allowlist secret
 create_admin_account = true
 
 # Reverse proxy configuration
@@ -181,13 +181,13 @@ https_port = 443
 type = "h2"
 url = "jdbc:h2:./repository/database/WSO2IDENTITY_DB;DB_CLOSE_ON_EXIT=FALSE;LOCK_TIMEOUT=60000"
 username = "wso2carbon"
-password = "wso2carbon"
+password = "wso2carbon"  # pragma: allowlist secret
 
 [database.shared_db]
 type = "h2"
 url = "jdbc:h2:./repository/database/WSO2SHARED_DB;DB_CLOSE_ON_EXIT=FALSE;LOCK_TIMEOUT=60000"
 username = "wso2carbon"
-password = "wso2carbon"
+password = "wso2carbon"  # pragma: allowlist secret
 
 # OAuth configurations
 [oauth]
@@ -270,8 +270,8 @@ Wait for: `WSO2 Identity Server started in X seconds`
 
 **Credentials**:
 
-- Username: `admin`
-- Password: `admin`
+- Username: `admin` <!-- pragma: allowlist secret -->
+- Password: `admin` <!-- pragma: allowlist secret -->
 
 **Note**: The old `/carbon` console is **removed** in 7.x. The new console is modern and web-based.
 

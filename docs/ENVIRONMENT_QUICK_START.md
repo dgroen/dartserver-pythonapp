@@ -47,7 +47,7 @@ APP_SCHEME=https
 WSO2_IS_URL=https://letsplaydarts.eu/auth
 WSO2_CLIENT_ID=your_client_id
 WSO2_CLIENT_SECRET=your_client_secret
-DATABASE_URL=postgresql://user:pass@host/db
+DATABASE_URL=postgresql://user:pass@host/db  # pragma: allowlist secret
 RABBITMQ_HOST=rabbitmq.host
 SECRET_KEY=your_secure_key
 ```
@@ -72,7 +72,7 @@ FLASK_DEBUG=True
 WSO2_IS_URL=https://dev-wso2:9443
 WSO2_CLIENT_ID=dev_client_id
 WSO2_CLIENT_SECRET=dev_client_secret
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dartsdb_dev
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dartsdb_dev  # pragma: allowlist secret
 ```
 
 3. Run the application
@@ -176,7 +176,7 @@ services:
       APP_DOMAIN: dev.letsplaydarts.eu
       APP_SCHEME: http
       FLASK_DEBUG: "True"
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dartsdb
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dartsdb # pragma: allowlist secret
       RABBITMQ_HOST: rabbitmq
       # ... other variables
     depends_on:

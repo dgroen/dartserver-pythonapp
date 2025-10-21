@@ -20,8 +20,8 @@ https://letsplaydarts.eu:9443/carbon
 
 **Credentials:**
 
-- Username: `admin`
-- Password: `admin`
+- Username: `admin` <!-- pragma: allowlist secret -->
+- Password: `admin` <!-- pragma: allowlist secret -->
 
 **Pros:**
 
@@ -181,8 +181,8 @@ Since you need to update the Service Provider callback URLs, use the direct port
    ```
 
 2. **Login:**
-   - Username: `admin`
-   - Password: `admin`
+   - Username: `admin` <!-- pragma: allowlist secret -->
+   - Password: `admin` <!-- pragma: allowlist secret -->
 
 3. **Navigate to Service Providers:**
 

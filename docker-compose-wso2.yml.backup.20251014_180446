@@ -158,7 +158,7 @@ services:
 
       # Database Configuration
       # Use host.docker.internal to access host's PostgreSQL from container
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:5432/dartsdb}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:5432/dartsdb}  # pragma: allowlist secret
 
       # WSO2 Authentication Configuration
       # WSO2_IS_URL: Public URL for browser redirects (authorize, logout)
@@ -173,7 +173,7 @@ services:
       WSO2_IS_VERIFY_SSL: "False"
       JWT_VALIDATION_MODE: introspection
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
-      WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin}
+      WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin}  # pragma: allowlist secret
       SESSION_COOKIE_SECURE: "True" # Enable secure cookies for HTTPS
     extra_hosts:
       - "host.docker.internal:host-gateway"  # Allow container to access host services

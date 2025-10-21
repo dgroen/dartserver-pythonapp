@@ -40,6 +40,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler()],
 )
+logger = logging.getLogger(__name__)
 
 # Initialize Flask app with correct template and static folder paths
 # Since app.py is in src/app/, we need to go up 2 levels to reach root templates/static
@@ -54,7 +55,7 @@ app = Flask(
 # Configure Flask to trust proxy headers from nginx
 # This allows Flask to correctly detect the original scheme (https) and host
 # when running behind a reverse proxy
-app.wsgi_app = ProxyFix(
+app.wsgi_app = ProxyFix(  # type: ignore
     app.wsgi_app,
     x_for=1,  # Trust X-Forwarded-For
     x_proto=1,  # Trust X-Forwarded-Proto
@@ -201,6 +202,12 @@ def login():
     session["oauth_state"] = state
     session.permanent = True  # Make session persistent across requests
 
+    # Store the "next" parameter to redirect after login
+    next_url = request.args.get("next")
+    if next_url:
+        session["login_next_url"] = next_url
+        app.logger.info(f"Storing redirect URL in session: {next_url}")
+
     # Debug logging
     app.logger.info(f"Login - Generated state: {state}")
     app.logger.info(f"Login - Session ID: {session.get('_id', 'No session ID')}")
@@ -271,12 +278,9 @@ def callback():
     session.pop("oauth_state", None)
 
     # Redirect to original destination or home
-    # Use the "next" parameter if provided (now with correct proxy-aware URL from login_required)
-    # Otherwise redirect to home page using relative URL (preserves scheme/host from proxy)
-    next_url = request.args.get("next")
-    if not next_url:
-        # Use relative URL to preserve the external scheme/host from the proxy
-        next_url = "/"
+    # First, try to get the redirect URL from session (set during login)
+    # Otherwise fall back to home page using relative URL (preserves scheme/host from proxy)
+    next_url = session.pop("login_next_url", None) or "/"
 
     app.logger.info(f"Callback redirecting to: {next_url}")
     return redirect(next_url)
@@ -325,7 +329,7 @@ def debug_auth():
     token_claims = validate_token(access_token) if access_token else {}
 
     # Extract roles
-    extracted_roles = get_user_roles(token_claims, access_token=access_token)
+    extracted_roles = get_user_roles(token_claims or {}, access_token=access_token)
 
     # Try to get SCIM2 groups directly
     scim2_groups = []
@@ -509,6 +513,57 @@ def get_players():
     return jsonify(game_manager.get_players())
 
 
+@app.route("/api/wso2/users/search", methods=["GET"])
+@login_required
+def search_wso2_users_endpoint():
+    """Search for WSO2 users (autocomplete)
+    ---
+    tags:
+      - WSO2
+    summary: Search WSO2 users
+    description: Search for users in WSO2 by username, email, or name
+    parameters:
+      - in: query
+        name: q
+        type: string
+        required: true
+        description: Search query (username, email, or name)
+    responses:
+      200:
+        description: List of matching users
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            users:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  username:
+                    type: string
+                  email:
+                    type: string
+                  name:
+                    type: string
+    """
+    try:
+        query = request.args.get("q", "").strip()
+        if not query or len(query) < 1:
+            return jsonify({"success": False, "error": "Search query too short"}), 400
+
+        from src.core.auth import search_wso2_users as wso2_search
+
+        users = wso2_search(query)
+        return jsonify({"success": True, "users": users})
+    except Exception as e:
+        logger.exception("Error searching WSO2 users")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/players", methods=["POST"])
 @login_required
 @permission_required("player:add")
@@ -518,7 +573,7 @@ def add_player():
     tags:
       - Players
     summary: Add a new player
-    description: Adds a new player to the current game
+    description: Adds a new player to the current game. Can add either a WSO2 user or manual player.
     parameters:
       - in: body
         name: body
@@ -529,8 +584,12 @@ def add_player():
           properties:
             name:
               type: string
-              description: Player name
+              description: Player name (for manual entry)
               example: Charlie
+            username:
+              type: string
+              description: WSO2 username (alternative to name)
+              example: charlie
     responses:
       200:
         description: Player added successfully
@@ -543,12 +602,69 @@ def add_player():
             message:
               type: string
               example: Player added
+            player:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+      400:
+        description: Invalid input
+      500:
+        description: Server error
     """
-    data = request.json
-    player_name = data.get("name", f"Player {len(game_manager.players) + 1}")
-    game_manager.add_player(player_name)
-    # Game state is automatically emitted by game_manager.add_player()
-    return jsonify({"status": "success", "message": "Player added"})
+    try:
+        data = request.json or {}
+        username = data.get("username", "").strip()
+        player_name = data.get("name", "").strip()
+
+        # If username provided, lookup WSO2 user
+        if username:
+            from src.core.auth import get_wso2_user_info
+
+            wso2_user = get_wso2_user_info(username)
+            if not wso2_user:
+                return (
+                    jsonify({"success": False, "error": f"User '{username}' not found in WSO2"}),
+                    404,
+                )
+
+            # Use WSO2 user info
+            player_name = wso2_user.get("name") or wso2_user.get("username")
+            email = wso2_user.get("email")
+
+            # Add to database with email and username
+            player = game_manager.db_service.get_or_create_player(
+                name=player_name,
+                username=username,
+                email=email,
+            )
+
+            # Add to game with player database ID
+            game_manager.add_player_with_id(player_name, player.id if player else None)
+        else:
+            # Manual entry
+            if not player_name:
+                player_name = f"Player {len(game_manager.players) + 1}"
+
+            # Still create database record for manual players
+            player = game_manager.db_service.get_or_create_player(name=player_name)
+            game_manager.add_player_with_id(player_name, player.id if player else None)
+
+        return jsonify(
+            {
+                "status": "success",
+                "message": "Player added",
+                "player": {
+                    "name": player_name,
+                    "email": email if username else None,
+                },
+            },
+        )
+    except Exception as e:
+        logger.exception("Error adding player")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/players/<int:player_id>", methods=["DELETE"])
@@ -1079,7 +1195,7 @@ def api_key_required(f):
             return jsonify({"success": False, "error": "Invalid API key"}), 401
 
         # Add player info to request context
-        request.player_info = player_info
+        request.player_info = player_info  # type: ignore
         return f(*args, **kwargs)
 
     return decorated_function
@@ -1224,7 +1340,9 @@ def get_api_keys():
                 type: object
     """
     mobile_service = get_mobile_service()
-    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+    player_id = session.get("player_id")
+    if not player_id:
+        return jsonify({"success": False, "error": "Player ID not available"}), 401
     api_keys = mobile_service.get_user_api_keys(player_id)
     return jsonify({"success": True, "api_keys": api_keys})
 
@@ -1261,7 +1379,9 @@ def create_api_key():
     """
     data = request.json
     key_name = data.get("key_name", "Default Key")
-    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+    player_id = session.get("player_id")
+    if not player_id:
+        return jsonify({"success": False, "error": "Player ID not available"}), 401
 
     mobile_service = get_mobile_service()
     result = mobile_service.create_api_key(player_id, key_name)
@@ -1291,7 +1411,9 @@ def revoke_api_key(key_id):
             success:
               type: boolean
     """
-    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+    player_id = session.get("player_id")
+    if not player_id:
+        return jsonify({"success": False, "error": "Player ID not available"}), 401
     mobile_service = get_mobile_service()
     result = mobile_service.revoke_api_key(key_id, player_id)
     return jsonify(result)
@@ -1323,7 +1445,9 @@ def get_dartboards():
                 type: object
     """
     mobile_service = get_mobile_service()
-    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+    player_id = session.get("player_id")
+    if not player_id:
+        return jsonify({"success": False, "error": "Player ID not available"}), 401
     dartboards = mobile_service.get_user_dartboards(player_id)
     return jsonify({"success": True, "dartboards": dartboards})
 
@@ -1368,7 +1492,9 @@ def register_dartboard():
     dartboard_id = data.get("dartboard_id")
     name = data.get("name")
     wpa_key = data.get("wpa_key")
-    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+    player_id = session.get("player_id")
+    if not player_id:
+        return jsonify({"success": False, "error": "Player ID not available"}), 401
 
     if not all([dartboard_id, name, wpa_key]):
         return jsonify({"success": False, "error": "Missing required fields"}), 400
@@ -1401,7 +1527,9 @@ def delete_dartboard(dartboard_id):
             success:
               type: boolean
     """
-    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+    player_id = session.get("player_id")
+    if not player_id:
+        return jsonify({"success": False, "error": "Player ID not available"}), 401
     mobile_service = get_mobile_service()
     result = mobile_service.delete_dartboard(dartboard_id, player_id)
     return jsonify(result)
@@ -1433,7 +1561,9 @@ def get_hotspot_configs():
                 type: object
     """
     mobile_service = get_mobile_service()
-    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+    player_id = session.get("player_id")
+    if not player_id:
+        return jsonify({"success": False, "error": "Player ID not available"}), 401
     configs = mobile_service.get_hotspot_configs(player_id)
     return jsonify({"success": True, "configs": configs})
 
@@ -1478,7 +1608,9 @@ def create_hotspot_config():
     dartboard_id = data.get("dartboard_id")
     ssid = data.get("ssid")
     password = data.get("password")
-    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+    player_id = session.get("player_id")
+    if not player_id:
+        return jsonify({"success": False, "error": "Player ID not available"}), 401
 
     if not all([dartboard_id, ssid, password]):
         return jsonify({"success": False, "error": "Missing required fields"}), 400
@@ -1524,7 +1656,9 @@ def toggle_hotspot(config_id):
     """
     data = request.json
     enabled = data.get("enabled", False)
-    player_id = session.get("user_id", 1)  # TODO: Get from actual session
+    player_id = session.get("player_id")
+    if not player_id:
+        return jsonify({"success": False, "error": "Player ID not available"}), 401
 
     mobile_service = get_mobile_service()
     result = mobile_service.toggle_hotspot(config_id, player_id, enabled)
@@ -1638,8 +1772,9 @@ def get_current_game():
     tags:
       - Mobile
     summary: Get current game state
-    description: Returns the complete current state including players,
-    scores, and game type (mobile-friendly endpoint)
+    description: "Returns the complete current state including players,
+    scores,
+    and game type (mobile-friendly endpoint)"
     responses:
       200:
         description: Current game state
@@ -1665,8 +1800,8 @@ def start_game():
     tags:
       - Mobile
     summary: Start a new game
-    description: Initializes a new darts game with specified type and
-    players (mobile-friendly endpoint)
+    description: "Initializes a new darts game with specified type and
+    players (mobile-friendly endpoint)"
     parameters:
       - in: body
         name: body
@@ -1771,7 +1906,7 @@ def get_game_results():
     tags:
       - Mobile
     summary: Get game results
-    description: Returns a list of recent games with results (mobile-friendly endpoint)
+    description: "Returns a list of recent games with results (mobile-friendly endpoint)"
     parameters:
       - in: query
         name: limit
@@ -1946,7 +2081,7 @@ def handle_connect():
     """Handle client connection"""
     print("Client connected")
     # Use socketio.emit to ensure the message reaches the test client
-    socketio.emit("game_state", game_manager.get_game_state(), namespace="/", to=request.sid)
+    socketio.emit("game_state", game_manager.get_game_state(), namespace="/", to=request.sid)  # type: ignore
 
 
 @socketio.on("disconnect", namespace="/")
@@ -2047,7 +2182,7 @@ def patch_eventlet_ssl_error_handling():
     original_handle = wsgi.HttpProtocol.handle
 
     # Rate limiting state
-    ssl_error_state = {"count": 0, "last_logged": 0}
+    ssl_error_state = {"count": 0, "last_logged": 0.0}
 
     def custom_handle(self):
         """Handle requests with special treatment for SSL protocol errors"""

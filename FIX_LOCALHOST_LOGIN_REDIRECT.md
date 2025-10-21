@@ -46,7 +46,7 @@ This script will:
 1. **Open WSO2 Admin Console**
    - URL: <https://localhost:9443/carbon>
    - Username: `admin`
-   - Password: `admin`
+   - Password: `admin` <!-- pragma: allowlist secret -->
 
 2. **Navigate to Service Providers**
    - Click: Main → Identity → Service Providers

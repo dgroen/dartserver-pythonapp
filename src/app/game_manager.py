@@ -149,6 +149,20 @@ class GameManager:
             players (double-out: {double_out})",
         )
 
+    def reset_game(self):
+        """Reset the game state to initial state"""
+        self.players = []
+        self.current_player = 0
+        self.game_type = "301"
+        self.game = None
+        self.is_started = False
+        self.is_paused = True
+        self.current_throw = 1
+        self.is_winner = False
+        self.turn_throws = []
+        self.turn_start_state = None
+        self.turn_number = {}
+
     def add_player(self, name=None):
         """Add a new player"""
         if not name:
@@ -168,6 +182,30 @@ class GameManager:
         self._emit_game_state()
         self._emit_sound("addPlayer", f"Player {name} added")
         print(f"Player added: {name}")
+
+    def add_player_with_id(self, name=None, db_player_id=None):
+        """Add a new player with database player ID tracking"""
+        if not name:
+            name = f"Player {len(self.players) + 1}"
+
+        # Cricket supports max 4 players
+        if self.game_type == "cricket" and len(self.players) >= 4:
+            print("Cricket game supports maximum 4 players")
+            return
+
+        player_id = len(self.players)
+        player_data = {"name": name, "id": player_id}
+        if db_player_id:
+            player_data["db_id"] = db_player_id
+
+        self.players.append(player_data)
+
+        if self.game:
+            self.game.add_player(player_data)
+
+        self._emit_game_state()
+        self._emit_sound("addPlayer", f"Player {name} added")
+        print(f"Player added: {name} (db_id={db_player_id})")
 
     def remove_player(self, player_id):
         """Remove a player"""
@@ -738,7 +776,7 @@ class GameManager:
             audio_data = self.tts.speak(text, generate_audio=True)
             if audio_data:
                 # Encode audio data as base64 for transmission
-                audio_base64 = base64.b64encode(audio_data).decode("utf-8")
+                audio_base64 = base64.b64encode(audio_data).decode("utf-8")  # type: ignore
                 self.socketio.emit(
                     "play_tts",
                     {

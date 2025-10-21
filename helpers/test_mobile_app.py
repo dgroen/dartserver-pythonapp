@@ -12,7 +12,7 @@ import requests
 # Configuration
 BASE_URL = "http://localhost:5000"
 TEST_USERNAME = "test_user"
-TEST_PASSWORD = "test_password"
+TEST_PASSWORD = "test_password"  # pragma: allowlist secret
 
 
 class Colors:

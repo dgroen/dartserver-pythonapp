@@ -175,13 +175,13 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101", "PLR2004", "ARG001", "ARG002", "S603", "S607", "PTH116", "PTH123"]
 "examples/*" = ["T201", "S105", "S106", "S113", "E402"]
-"test_*.py" = ["S101", "PLR2004", "ARG001", "ARG002", "S113", "S603", "S607", "PT028", "PTH116", "PTH123"]
+"test_*.py" = ["S101", "PLR2004", "ARG001", "ARG002", "S113", "S603", "S607", "PTH116", "PTH123"]
 "verify_installation.py" = ["T201", "S105", "S106"]
 "alembic/env.py" = ["E402"]
 "database_models.py" = ["A003"]
 "db_manage.py" = ["E402"]
 "helpers/*.py" = ["E402", "S113", "S501", "S110", "S314", "ERA001", "RUF001"]
-"test_ssl_error_handling.py" = ["PT028"]
+"test_ssl_error_handling.py" = []
 "fix_wso2_callback*.py" = ["S501", "S113"]
 "manage_user_roles.py" = ["S501", "S113"]
 
@@ -211,6 +211,7 @@ exclude = [
     ".venv/",
     "venv/",
     "__pycache__/",
+    "*.md",
 ]
 
 [[tool.mypy.overrides]]

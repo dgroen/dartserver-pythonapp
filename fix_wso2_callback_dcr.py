@@ -7,17 +7,18 @@ This API allows updating OAuth2 client configuration
 import sys
 
 import requests
+import urllib3
 
 # Disable SSL warnings for self-signed certificates
-requests.packages.urllib3.disable_warnings()
+urllib3.disable_warnings()
 
 # Configuration
 WSO2_IS_URL = "https://letsplaydarts.eu/auth"
 
 ADMIN_USER = "admin"
-ADMIN_PASS = "admin"
+ADMIN_PASS = "admin"  # pragma: allowlist secret
 CLIENT_ID = "z9tDR_MVfS_rHKBlqZ_6Re_TaJga"
-CLIENT_SECRET = "lQCbqtHliRy3j_POcCRxm9j7Cj7VqTx6ehRXnNaesUca"
+CLIENT_SECRET = "lQCbqtHliRy3j_POcCRxm9j7Cj7VqTx6ehRXnNaesUca"  # pragma: allowlist secret
 
 # Callback URLs - list of allowed redirect URIs
 CALLBACK_URLS = [

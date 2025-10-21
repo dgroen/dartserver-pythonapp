@@ -72,21 +72,21 @@ echo "-------------------------------------------"
 # Check .env file
 if [ -f ".env" ]; then
     success ".env file exists"
-    
+
     # Check WSO2_IS_URL
     if grep -q "^WSO2_IS_URL=https://letsplaydarts.eu/auth" .env; then
         success "WSO2_IS_URL is set to https://letsplaydarts.eu/auth"
     else
         error "WSO2_IS_URL is not configured correctly"
     fi
-    
+
     # Check WSO2_IS_INTERNAL_URL
     if grep -q "^WSO2_IS_INTERNAL_URL=https://wso2is:9443" .env; then
         success "WSO2_IS_INTERNAL_URL is set to https://wso2is:9443"
     else
         error "WSO2_IS_INTERNAL_URL is not configured correctly"
     fi
-    
+
     # Check WSO2_IS_VERIFY_SSL
     if grep -q "^WSO2_IS_VERIFY_SSL=False" .env; then
         success "WSO2_IS_VERIFY_SSL is set to False (correct for internal communication)"
@@ -164,14 +164,14 @@ echo "-------------------------------------------"
 # Check deployment.toml
 if [ -f "wso2is-7-config/deployment.toml" ]; then
     success "deployment.toml exists"
-    
+
     # Check hostname
     if grep -q 'hostname = "letsplaydarts.eu"' wso2is-7-config/deployment.toml; then
         success "WSO2 hostname is set to letsplaydarts.eu"
     else
         error "WSO2 hostname is not configured correctly"
     fi
-    
+
     # Check proxyPort
     if grep -q 'proxyPort = 443' wso2is-7-config/deployment.toml; then
         success "WSO2 proxyPort is set to 443"

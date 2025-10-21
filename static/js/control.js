@@ -7,6 +7,7 @@ const doubleOutCheckbox = document.getElementById('double-out');
 const newGameBtn = document.getElementById('new-game-btn');
 const playersList = document.getElementById('players-list');
 const playerNameInput = document.getElementById('player-name');
+const playerSearchResults = document.getElementById('player-search-results');
 const addPlayerBtn = document.getElementById('add-player-btn');
 const nextPlayerBtn = document.getElementById('next-player-btn');
 const pauseBtn = document.getElementById('pause-btn');
@@ -17,6 +18,7 @@ const gameStateJson = document.getElementById('game-state-json');
 const showThrowoutAdviceCheckbox = document.getElementById('show-throwout-advice');
 
 let currentGameState = null;
+let selectedUser = null;
 
 // Initialize
 socket.on('connect', () => {
@@ -65,11 +67,92 @@ newGameBtn.addEventListener('click', () => {
     });
 });
 
-addPlayerBtn.addEventListener('click', () => {
+// WSO2 User search
+let searchTimeout;
+playerNameInput.addEventListener('input', (e) => {
+    const query = e.target.value.trim();
+    clearTimeout(searchTimeout);
+
+    if (query.length < 2) {
+        playerSearchResults.style.display = 'none';
+        selectedUser = null;
+        return;
+    }
+
+    // Debounce the search
+    searchTimeout = setTimeout(async () => {
+        try {
+            const response = await fetch(`/api/wso2/users/search?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+
+            if (data.success && data.users && data.users.length > 0) {
+                const html = data.users.map(user => `
+                    <div class="search-result-item" style="padding: 0.75rem; border-bottom: 1px solid rgba(0, 212, 255, 0.1); cursor: pointer; transition: background 0.2s;"
+                         onclick="selectUser('${user.username}', '${user.name || user.username}', '${user.email || ''}')">
+                        <div style="font-weight: 500; color: #00d4ff;">${user.name || user.username}</div>
+                        <div style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.6);">${user.email || user.username}</div>
+                    </div>
+                `).join('');
+                playerSearchResults.innerHTML = html;
+                playerSearchResults.style.display = 'block';
+            } else {
+                playerSearchResults.style.display = 'none';
+                selectedUser = null;
+            }
+        } catch (error) {
+            console.error('Search error:', error);
+            playerSearchResults.style.display = 'none';
+        }
+    }, 300);
+});
+
+// Select WSO2 user from search results
+window.selectUser = function(username, displayName, email) {
+    selectedUser = { username, displayName, email };
+    playerNameInput.value = displayName;
+    playerSearchResults.style.display = 'none';
+};
+
+// Hide search results when clicking outside
+document.addEventListener('click', (e) => {
+    if (e.target !== playerNameInput) {
+        playerSearchResults.style.display = 'none';
+    }
+});
+
+addPlayerBtn.addEventListener('click', async () => {
     const name = playerNameInput.value.trim();
-    if (name) {
-        socket.emit('add_player', { name: name });
-        playerNameInput.value = '';
+    if (!name) {
+        alert('Please enter a player name');
+        return;
+    }
+
+    try {
+        const payload = selectedUser
+            ? { username: selectedUser.username }
+            : { name: name };
+
+        const response = await fetch('/api/players', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            console.log('Player added:', data);
+            playerNameInput.value = '';
+            selectedUser = null;
+            playerSearchResults.style.display = 'none';
+            // Note: The API endpoint already broadcasts the game state via add_player_with_id,
+            // so we don't need to emit a socket event here. Emitting would duplicate the player.
+        } else {
+            const error = await response.json();
+            alert('Error adding player: ' + (error.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to add player: ' + error.message);
     }
 });
 
@@ -133,6 +216,21 @@ function updateDisplay(state) {
     // Update throwout advice checkbox state
     if (state.show_throwout_advice !== undefined) {
         showThrowoutAdviceCheckbox.checked = state.show_throwout_advice;
+    }
+
+    // Update throwout advice display
+    const adviceContent = document.getElementById('throwout-advice-content');
+    if (adviceContent) {
+        if (state.throwout_advice && state.show_throwout_advice) {
+            const adviceText = Array.isArray(state.throwout_advice)
+                ? state.throwout_advice.join(' or ')
+                : state.throwout_advice;
+            adviceContent.textContent = adviceText;
+        } else if (state.is_started) {
+            adviceContent.textContent = state.throwout_advice ? '(No finishing needed yet)' : 'No advice available';
+        } else {
+            adviceContent.textContent = 'No active game';
+        }
     }
 }
 

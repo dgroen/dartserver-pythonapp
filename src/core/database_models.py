@@ -4,12 +4,13 @@ Database models for storing game data in PostgreSQL
 
 import secrets
 from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
-Base = declarative_base()
+Base: Any = declarative_base()
 
 
 def utc_now():

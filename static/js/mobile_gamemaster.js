@@ -119,8 +119,8 @@ async function startNewGame(e) {
         .map(name => name.trim())
         .filter(name => name.length > 0);
 
-    if (playerNames.length < 2) {
-        showToast('Please enter at least 2 players', 'error');
+    if (playerNames.length < 1) {
+        showToast('Please enter at least 1 player', 'error');
         return;
     }
 
