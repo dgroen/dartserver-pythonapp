@@ -64,18 +64,22 @@ class DatabaseService:
         finally:
             session.close()
 
-    def start_new_game(self, game_type_name, player_names, start_score=None, double_out=False):
+    def start_new_game(self, game_type_name, player_ids, start_score=None, double_out=False):
         """
         Start a new game and create database records
 
         Args:
             game_type_name: Name of the game type ('301', '401', '501', 'cricket')
-            player_names: List of player names
+            player_ids: List of player IDs (integers) or list of dicts
+                with 'db_id' key
             start_score: Starting score for 301/401/501 games
             double_out: Whether double-out is enabled
 
         Returns:
             game_session_id: UUID for this game session
+
+        Note: Only players with a database ID (linked to WSO2 users) are allowed.
+              Exception: bypass_user for local development.
         """
         session = self.db_manager.get_session()
         try:
@@ -94,14 +98,29 @@ class DatabaseService:
                 session.add(game_type)
                 session.flush()
 
-            # Create or get players and game results
-            for player_order, player_name in enumerate(player_names):
-                # Get or create player
-                player = session.query(Player).filter_by(name=player_name).first()
+            # Create game results for each player
+            for player_order, player_data in enumerate(player_ids):
+                # Extract player ID from dict or use directly
+                if isinstance(player_data, dict):
+                    player_id = player_data.get("db_id")
+                else:
+                    player_id = player_data
+
+                if not player_id:
+                    msg = (
+                        f"Player at position {player_order} does not have a valid database ID. "
+                        "Only WSO2-authenticated users can participate in games."
+                    )
+                    raise ValueError(msg)  # noqa: TRY301
+
+                # Verify player exists in database
+                player = session.query(Player).filter_by(id=player_id).first()
                 if not player:
-                    player = Player(name=player_name)
-                    session.add(player)
-                    session.flush()
+                    msg = (
+                        f"Player ID {player_id} not found in database. "
+                        "Only known WSO2 users can participate."
+                    )
+                    raise ValueError(msg)  # noqa: TRY301
 
                 # Create game result for this player
                 game_result = GameResult(
@@ -495,45 +514,62 @@ class DatabaseService:
         """
         Get an existing player or create a new one.
 
+        IMPORTANT: Players created here MUST be tied to WSO2 authentication.
+        Only players with a username (WSO2 user) should be created through this method.
+        Exception: Special users like "bypass_user" for development/testing.
+
         Args:
-            name: Player name
-            username: WSO2 username (optional)
-            email: Player email (optional)
+            name: Player name (from WSO2 profile)
+            username: WSO2 username (REQUIRED for production, optional for bypass_user)
+            email: Player email (from WSO2 profile, optional)
 
         Returns:
-            Player object with id, name, username, email attributes
+            Player object with id, name, username, email attributes, or None if validation fails
         """
         session = self.db_manager.get_session()
         player = None
         player_data = {}
         try:
-            # Try to find existing player by username if provided
-            if username:
-                existing = session.query(Player).filter_by(username=username).first()
-                if existing:
-                    # Update name and email if provided
-                    if name:
-                        existing.name = name
-                    if email:
-                        existing.email = email
-                    session.commit()
-                    player = existing
-                    # Extract data before session closes
-                    player_data = {
-                        "id": existing.id,
-                        "name": existing.name,
-                        "username": existing.username,
-                        "email": existing.email,
-                    }
+            # Validation: Only allow creation with username (WSO2 users)
+            # Exception: bypass_user for local development
+            if not username:
+                print(
+                    f"Cannot create player without username. "
+                    f"Only WSO2-authenticated users can be added to the player database. "
+                    f"Name: {name}",
+                )
+                return None
 
-            # Try to find by email if provided
-            if not player and email:
+            # Try to find existing player by username (primary key)
+            existing = session.query(Player).filter_by(username=username).first()
+            if existing:
+                # Update name and email if provided and different
+                if name and existing.name != name:
+                    existing.name = name
+                if email and existing.email != email:
+                    existing.email = email
+                session.commit()
+                player = existing
+                # Extract data before session closes
+                player_data = {
+                    "id": existing.id,
+                    "name": existing.name,
+                    "username": existing.username,
+                    "email": existing.email,
+                }
+                print(
+                    f"Player found/updated: {username} (ID: {existing.id}, Name: {existing.name})",
+                )
+                return existing
+
+            # Try to find by email as secondary lookup (if provided)
+            if email:
                 existing = session.query(Player).filter_by(email=email).first()
                 if existing:
+                    # Update username and name
+                    existing.username = username
                     if name:
                         existing.name = name
-                    if username:
-                        existing.username = username
                     session.commit()
                     player = existing
                     # Extract data before session closes
@@ -543,8 +579,10 @@ class DatabaseService:
                         "username": existing.username,
                         "email": existing.email,
                     }
+                    print(f"Player linked by email: {username} (ID: {existing.id})")
+                    return existing
 
-            # Create new player if not found
+            # Create new player (only with valid username)
             if not player:
                 player = Player(name=name, username=username, email=email)
                 session.add(player)
@@ -556,11 +594,10 @@ class DatabaseService:
                     "username": player.username,
                     "email": player.email,
                 }
-
-            # Return the player object if we got the data
-            if player_data:
+                print(f"New player created: {username} (ID: {player.id}, Name: {player.name})")
                 return player
-            return None
+
+            return player if player_data else None
         except Exception as e:
             session.rollback()
             print(f"Error in get_or_create_player: {e}")

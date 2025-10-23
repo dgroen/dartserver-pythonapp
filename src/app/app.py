@@ -593,7 +593,10 @@ def add_player():
     tags:
       - Players
     summary: Add a new player
-    description: Adds a new player to the current game. Can add either a WSO2 user or manual player.
+    description: |
+      Adds a new WSO2-authenticated player to the current game.
+      IMPORTANT: Only players registered in WSO2 can be added.
+      Exception: bypass_user for local development/testing.
     parameters:
       - in: body
         name: body
@@ -602,13 +605,9 @@ def add_player():
         schema:
           type: object
           properties:
-            name:
-              type: string
-              description: Player name (for manual entry)
-              example: Charlie
             username:
               type: string
-              description: WSO2 username (alternative to name)
+              description: WSO2 username (REQUIRED)
               example: charlie
     responses:
       200:
@@ -629,56 +628,70 @@ def add_player():
                   type: string
                 email:
                   type: string
+                player_id:
+                  type: integer
       400:
-        description: Invalid input
+        description: Invalid input - username required or WSO2 user not found
       500:
         description: Server error
     """
     try:
         data = request.json or {}
         username = data.get("username", "").strip()
-        player_name = data.get("name", "").strip()
 
-        # If username provided, lookup WSO2 user
-        if username:
-            from src.core.auth import get_wso2_user_info
-
-            wso2_user = get_wso2_user_info(username)
-            if not wso2_user:
-                return (
-                    jsonify({"success": False, "error": f"User '{username}' not found in WSO2"}),
-                    404,
-                )
-
-            # Use WSO2 user info
-            player_name = wso2_user.get("name") or wso2_user.get("username")
-            email = wso2_user.get("email")
-
-            # Add to database with email and username
-            player = game_manager.db_service.get_or_create_player(
-                name=player_name,
-                username=username,
-                email=email,
+        # Username is REQUIRED (WSO2 user lookup)
+        if not username:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": (
+                            "Username is required. "
+                            "Only WSO2-authenticated users can be added to games."
+                        ),
+                    },
+                ),
+                400,
             )
 
-            # Add to game with player database ID
-            game_manager.add_player_with_id(player_name, player.id if player else None)
-        else:
-            # Manual entry
-            if not player_name:
-                player_name = f"Player {len(game_manager.players) + 1}"
+        # Lookup WSO2 user
+        from src.core.auth import get_wso2_user_info
 
-            # Still create database record for manual players
-            player = game_manager.db_service.get_or_create_player(name=player_name)
-            game_manager.add_player_with_id(player_name, player.id if player else None)
+        wso2_user = get_wso2_user_info(username)
+        if not wso2_user:
+            return (
+                jsonify({"success": False, "error": f"User '{username}' not found in WSO2"}),
+                404,
+            )
+
+        # Use WSO2 user info
+        player_name = wso2_user.get("name") or wso2_user.get("username")
+        email = wso2_user.get("email")
+
+        # Add to database with email and username (enforces WSO2 users only)
+        player = game_manager.db_service.get_or_create_player(
+            name=player_name,
+            username=username,
+            email=email,
+        )
+
+        if not player:
+            return (
+                jsonify({"success": False, "error": "Failed to create/retrieve player"}),
+                500,
+            )
+
+        # Add to game with player database ID
+        game_manager.add_player_with_id(player_name, player.id)
 
         return jsonify(
             {
                 "status": "success",
-                "message": "Player added",
+                "message": f"Player {player_name} added to game",
                 "player": {
                     "name": player_name,
-                    "email": email if username else None,
+                    "email": email,
+                    "player_id": player.id,
                 },
             },
         )

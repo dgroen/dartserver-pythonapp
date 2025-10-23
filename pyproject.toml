@@ -211,7 +211,7 @@ exclude = [
     ".venv/",
     "venv/",
     "__pycache__/",
-    "*.md",
+    ".*\\.md$",
 ]
 
 [[tool.mypy.overrides]]

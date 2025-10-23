@@ -10,14 +10,14 @@ import socket
 import time
 
 
-def test_http_to_https_connection(host="127.0.0.1", port=5000, num_requests=5):
+def check_http_to_https_connection(host="127.0.0.1", port=5000, num_requests=5):
     """
     Send HTTP requests to an HTTPS server to trigger SSL errors
 
     Args:
-        host: Server hostname
-        port: Server port
-        num_requests: Number of requests to send
+        host: Server hostname (default: "127.0.0.1")
+        port: Server port (default: 5000)
+        num_requests: Number of requests to send (default: 5)
     """
     print("=" * 80)
     print("SSL Error Handling Test")
@@ -74,4 +74,4 @@ if __name__ == "__main__":
     port = int(sys.argv[2]) if len(sys.argv) > 2 else 5000
     num_requests = int(sys.argv[3]) if len(sys.argv) > 3 else 5
 
-    test_http_to_https_connection(host, port, num_requests)
+    check_http_to_https_connection(host, port, num_requests)

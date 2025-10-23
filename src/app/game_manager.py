@@ -76,20 +76,34 @@ class GameManager:
         if not tts_enabled:
             self.tts.disable()
 
-    def new_game(self, game_type="301", player_names=None, double_out=False):
+    def new_game(self, game_type="301", player_names=None, player_ids=None, double_out=False):
         """
         Start a new game
 
         Args:
             game_type: Type of game ('301', '401', '501', 'cricket')
-            player_names: List of player names
-            double_out: Whether to require double-out to finish (only for 301/401/501)
+            player_names: List of player names (DEPRECATED - use player_ids instead)
+            player_ids: List of player database IDs or list of player dicts
+                with 'db_id' key
+            double_out: Whether to require double-out to finish
+                (only for 301/401/501)
         """
         self.game_type = game_type.lower()
         self.double_out = double_out
 
         # Initialize players
-        if player_names:
+        if player_ids:
+            # Use player IDs (WSO2 authenticated users)
+            self.players = [
+                {
+                    "name": f"Player {i+1}",
+                    "id": i,
+                    "db_id": pid if isinstance(pid, int) else pid.get("db_id"),
+                }
+                for i, pid in enumerate(player_ids)
+            ]
+        elif player_names:
+            # Fallback to player names (DEPRECATED - for backwards compatibility)
             self.players = [{"name": name, "id": i} for i, name in enumerate(player_names)]
         elif not self.players:
             self.players = [
@@ -125,11 +139,25 @@ class GameManager:
         self._save_turn_start_state()
 
         # Start new game in database
+        # Pass player database IDs to ensure proper tracking
+        # Each player MUST have a db_id (WSO2 authenticated)
+        player_ids = [p.get("db_id") for p in self.players]
+
+        # Validate that all players have database IDs
+        missing_ids = [i for i, pid in enumerate(player_ids) if not pid]
+        if missing_ids:
+            player_names = [f"{self.players[i]['name']} (pos {i})" for i in missing_ids]
+            msg = (
+                "Cannot save game: Players missing database IDs "
+                f"(only WSO2 users allowed): {', '.join(player_names)}"
+            )
+            raise ValueError(msg)
+
         try:
-            player_name_list = [p["name"] for p in self.players]
+
             self.db_service.start_new_game(
                 game_type_name=self.game_type,
-                player_names=player_name_list,
+                player_ids=player_ids,
                 start_score=self.start_score if self.game_type != "cricket" else None,
                 double_out=double_out,
             )
