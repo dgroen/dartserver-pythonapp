@@ -55,4 +55,4 @@ echo "  https://localhost:${FLASK_PORT:-5000}/callback"
 echo ""
 
 # Start the application
-python app.py
+python run.py

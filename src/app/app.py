@@ -207,10 +207,19 @@ def login():
     if next_url:
         session["login_next_url"] = next_url
         app.logger.info(f"Storing redirect URL in session: {next_url}")
+    else:
+        app.logger.warning("No 'next' parameter found in login request")
+
+    # Ensure session changes are persisted
+    session.modified = True
 
     # Debug logging
     app.logger.info(f"Login - Generated state: {state}")
     app.logger.info(f"Login - Session ID: {session.get('_id', 'No session ID')}")
+    app.logger.info(
+        f"Login - Session data: oauth_state={session.get('oauth_state', 'MISSING')}, "
+        f"login_next_url={session.get('login_next_url', 'MISSING')}",
+    )
 
     # Get authorization URL
     auth_url = get_authorization_url(state)
@@ -280,7 +289,18 @@ def callback():
     # Redirect to original destination or home
     # First, try to get the redirect URL from session (set during login)
     # Otherwise fall back to home page using relative URL (preserves scheme/host from proxy)
-    next_url = session.pop("login_next_url", None) or "/"
+    next_url = session.pop("login_next_url", None)
+
+    app.logger.info(f"Callback - Retrieved login_next_url from session: {next_url}")
+    app.logger.info(f"Callback - Session contents: {dict(session)}")
+
+    # Use "/" as fallback if no next_url was stored
+    if not next_url:
+        app.logger.warning("No login_next_url found in session, redirecting to home page")
+        next_url = "/"
+
+    # Mark session as modified to ensure changes are persisted
+    session.modified = True
 
     app.logger.info(f"Callback redirecting to: {next_url}")
     return redirect(next_url)

@@ -501,9 +501,11 @@ class DatabaseService:
             email: Player email (optional)
 
         Returns:
-            Player object or None if error
+            Player object with id, name, username, email attributes
         """
         session = self.db_manager.get_session()
+        player = None
+        player_data = {}
         try:
             # Try to find existing player by username if provided
             if username:
@@ -515,10 +517,17 @@ class DatabaseService:
                     if email:
                         existing.email = email
                     session.commit()
-                    return existing
+                    player = existing
+                    # Extract data before session closes
+                    player_data = {
+                        "id": existing.id,
+                        "name": existing.name,
+                        "username": existing.username,
+                        "email": existing.email,
+                    }
 
             # Try to find by email if provided
-            if email:
+            if not player and email:
                 existing = session.query(Player).filter_by(email=email).first()
                 if existing:
                     if name:
@@ -526,18 +535,32 @@ class DatabaseService:
                     if username:
                         existing.username = username
                     session.commit()
-                    return existing
+                    player = existing
+                    # Extract data before session closes
+                    player_data = {
+                        "id": existing.id,
+                        "name": existing.name,
+                        "username": existing.username,
+                        "email": existing.email,
+                    }
 
-            # Create new player
-            player = Player(name=name, username=username, email=email)
-            session.add(player)
-            session.commit()
-            player_id = player.id
-            session.close()
+            # Create new player if not found
+            if not player:
+                player = Player(name=name, username=username, email=email)
+                session.add(player)
+                session.commit()
+                # Extract data before session closes
+                player_data = {
+                    "id": player.id,
+                    "name": player.name,
+                    "username": player.username,
+                    "email": player.email,
+                }
 
-            # Reopen session to return fresh object
-            session = self.db_manager.get_session()
-            return session.query(Player).filter_by(id=player_id).first()
+            # Return the player object if we got the data
+            if player_data:
+                return player
+            return None
         except Exception as e:
             session.rollback()
             print(f"Error in get_or_create_player: {e}")

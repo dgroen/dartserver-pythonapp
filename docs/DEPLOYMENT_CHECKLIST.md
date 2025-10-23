@@ -1,508 +1,385 @@
-# Deployment Checklist - letsplaydarts.eu
+# Docker Deployment Checklist
 
-## Pre-Deployment
+## Pre-Deployment Verification
 
-### ✅ Code Changes
+### Code Quality Checks
 
-- [x] SSL error handling implemented
-- [x] Dynamic redirect URIs implemented
-- [x] All tests passing (38/38)
-- [x] Code linting passed
-- [x] Documentation created
+- [ ] Run verification script: `python verify_docker_config.py`
+  - Expected: All 5/5 checks pass ✅
+- [ ] Review `.env` file for production credentials
+- [ ] Ensure no sensitive data is committed to git
 
-### ⬜ WSO2 Identity Server Configuration
+### Configuration Verification
 
-- [ ] Log in to WSO2 IS Management Console: `https://your-wso2-server:9443/carbon`
-- [ ] Navigate to: Main > Identity > Service Providers
-- [ ] Select/Create your application
-- [ ] Add redirect URIs (use regex pattern):
+- [ ] `.env` database uses `postgres` service name (not localhost)
+- [ ] `.env` RabbitMQ uses `rabbitmq` service name (not localhost)
+- [ ] `.env` WSO2 internal URL uses `wso2is` service name
+- [ ] `.env` ENVIRONMENT set to `production`
+- [ ] All required env vars are present in `.env`
 
-  ```
-  regexp=(https://localhost:5000/callback|https://letsplaydarts\.eu:5001/callback|https://letsplaydarts\.eu/callback)
-  ```
+### Code Review
 
-- [ ] Add post-logout redirect URIs:
-
-  ```
-  regexp=(https://localhost:5000/|https://letsplaydarts\.eu:5001/|https://letsplaydarts\.eu/)
-  ```
-
-- [ ] Save configuration
-- [ ] Copy Client ID and Client Secret
-
-### ⬜ Environment Configuration
-
-- [ ] Update `.env` file with WSO2 credentials:
-
-  ```bash
-  WSO2_IS_URL=https://your-wso2-server:9443
-  WSO2_CLIENT_ID=<from-wso2>
-  WSO2_CLIENT_SECRET=<from-wso2>
-  WSO2_IS_VERIFY_SSL=False  # or True if using valid cert
-  ```
-
-- [ ] Enable SSL:
-
-  ```bash
-  FLASK_USE_SSL=True
-  FLASK_HOST=0.0.0.0
-  FLASK_PORT=5000
-  ```
-
-- [ ] Set strong secret key:
-
-  ```bash
-  SECRET_KEY=$(openssl rand -hex 32)
-  ```
-
-- [ ] Configure token validation:
-
-  ```bash
-  JWT_VALIDATION_MODE=introspection
-  WSO2_IS_INTROSPECT_USER=admin
-  WSO2_IS_INTROSPECT_PASSWORD=<strong-password>
-  ```
-
-- [ ] Secure .env file:
-
-  ```bash
-  chmod 600 .env
-  ```
-
-### ⬜ SSL Certificates
-
-**Option 1: Let's Encrypt (Recommended for Production)**
-
-- [ ] Install Certbot:
-
-  ```bash
-  sudo apt-get install certbot python3-certbot-nginx
-  ```
-
-- [ ] Generate certificate:
-
-  ```bash
-  sudo certbot --nginx -d letsplaydarts.eu
-  ```
-
-- [ ] Verify auto-renewal:
-
-  ```bash
-  sudo certbot renew --dry-run
-  ```
-
-- [ ] Copy certificates to application:
-
-  ```bash
-  sudo cp /etc/letsencrypt/live/letsplaydarts.eu/fullchain.pem ssl/cert.pem
-  sudo cp /etc/letsencrypt/live/letsplaydarts.eu/privkey.pem ssl/key.pem
-  sudo chown $USER:$USER ssl/*.pem
-  ```
-
-**Option 2: Self-Signed (Development Only)**
-
-- [ ] Generate self-signed certificate:
-
-  ```bash
-  mkdir -p ssl
-  openssl req -x509 -newkey rsa:4096 -nodes \
-    -keyout ssl/key.pem -out ssl/cert.pem -days 365 \
-    -subj "/CN=letsplaydarts.eu" \
-    -addext "subjectAltName=DNS:letsplaydarts.eu,DNS:localhost"
-  ```
-
-### ⬜ Network Configuration
-
-**DNS**
-
-- [ ] Verify DNS A record:
-
-  ```bash
-  nslookup letsplaydarts.eu
-  # Should return your public IP
-  ```
-
-**Firewall**
-
-- [ ] Allow required ports:
-
-  ```bash
-  sudo ufw allow 5000/tcp
-  sudo ufw allow 5001/tcp
-  sudo ufw allow 443/tcp
-  sudo ufw allow 22/tcp  # SSH
-  ```
-
-- [ ] Enable firewall:
-
-  ```bash
-  sudo ufw enable
-  ```
-
-- [ ] Verify status:
-
-  ```bash
-  sudo ufw status
-  ```
-
-**Router/Port Forwarding**
-
-- [ ] Forward port 5000 → Internal server IP
-- [ ] Forward port 5001 → Internal server IP
-- [ ] Forward port 443 → Internal server IP
-- [ ] Test from external network
+- [ ] `src/app/app.py` line 1685: Multi-line YAML fixed ✅
+- [ ] `static/js/mobile_gamemaster.js` line 122: Single-player validation `< 1` ✅
+- [ ] `templates/mobile_gamemaster.html` line 84: Help text updated ✅
 
 ---
 
-## Deployment
+## Files Modified (4 files)
 
-### ⬜ Application Deployment
+```
+✅ .env
+   └─ Updated database and service URLs for Docker network
 
-- [ ] Pull latest code:
+✅ src/app/app.py
+   └─ Line 1685: Fixed Swagger YAML docstring
 
-  ```bash
-  cd /data/dartserver-pythonapp
-  git pull origin main
-  ```
+✅ static/js/mobile_gamemaster.js
+   └─ Line 122: Changed validation from (< 2) to (< 1) for single-player support
 
-- [ ] Install dependencies:
-
-  ```bash
-  pip install -r requirements.txt
-  ```
-
-- [ ] Run tests:
-
-  ```bash
-  pytest tests/unit/test_auth.py -v
-  ```
-
-- [ ] Start application:
-
-  ```bash
-  python app.py
-  ```
-
-- [ ] Verify startup messages:
-
-  ```
-  ✅ SSL error handling patch applied
-  🔒 Starting Darts Game Server with SSL/HTTPS
-  ```
-
-### ⬜ Reverse Proxy (Optional but Recommended)
-
-**Nginx Configuration**
-
-- [ ] Install Nginx:
-
-  ```bash
-  sudo apt-get install nginx
-  ```
-
-- [ ] Create configuration:
-
-  ```bash
-  sudo nano /etc/nginx/sites-available/letsplaydarts
-  ```
-
-- [ ] Add configuration (see docs/WSO2_MULTI_DOMAIN_SETUP.md)
-- [ ] Enable site:
-
-  ```bash
-  sudo ln -s /etc/nginx/sites-available/letsplaydarts /etc/nginx/sites-enabled/
-  ```
-
-- [ ] Test configuration:
-
-  ```bash
-  sudo nginx -t
-  ```
-
-- [ ] Reload Nginx:
-
-  ```bash
-  sudo systemctl reload nginx
-  ```
-
-### ⬜ Process Management (Production)
-
-**Systemd Service**
-
-- [ ] Create service file:
-
-  ```bash
-  sudo nano /etc/systemd/system/darts-app.service
-  ```
-
-- [ ] Add service configuration:
-
-  ```ini
-  [Unit]
-  Description=Darts Game Server
-  After=network.target
-
-  [Service]
-  Type=simple
-  User=your-user
-  WorkingDirectory=/data/dartserver-pythonapp
-  Environment="PATH=/data/dartserver-pythonapp/.venv/bin"
-  ExecStart=/data/dartserver-pythonapp/.venv/bin/python app.py
-  Restart=always
-  RestartSec=10
-
-  [Install]
-  WantedBy=multi-user.target
-  ```
-
-- [ ] Enable and start service:
-
-  ```bash
-  sudo systemctl daemon-reload
-  sudo systemctl enable darts-app
-  sudo systemctl start darts-app
-  ```
-
-- [ ] Check status:
-
-  ```bash
-  sudo systemctl status darts-app
-  ```
+✅ templates/mobile_gamemaster.html
+   └─ Line 84: Updated help text from "at least 2" to "at least 1"
+```
 
 ---
 
-## Testing
+## Deployment Steps
 
-### ⬜ Local Testing
+### Step 1: Pre-Flight Checks
 
-- [ ] Test HTTPS access:
+```bash
+cd /data/dartserver-pythonapp
 
-  ```bash
-  curl -k https://localhost:5000
-  ```
+# Verify fixes
+python verify_docker_config.py
 
-- [ ] Test HTTP rejection (should see clean error):
+# Check git status
+git status
+# (Should show the 4 modified files above)
 
-  ```bash
-  curl http://localhost:5000
-  ```
+# Review critical file changes
+git diff .env | head -50
+git diff src/app/app.py | grep -A 3 -B 3 "1685"
+```
 
-- [ ] Verify error message in console:
+### Step 2: Build Docker Images
 
-  ```
-  ⚠️  SSL Protocol Mismatch Detected
-  ```
+```bash
+# Rebuild containers with all fixes
+docker-compose -f docker-compose-wso2.yml build --no-cache
 
-### ⬜ Public Domain Testing
+# Verify build completed successfully
+# Look for "Successfully tagged" or "Successfully built"
+```
 
-**From External Network:**
+### Step 3: Start Services
 
-- [ ] Test custom port: `https://letsplaydarts.eu:5001`
-- [ ] Test standard HTTPS: `https://letsplaydarts.eu`
-- [ ] Verify SSL certificate is valid (no browser warnings for Let's Encrypt)
+```bash
+# Start all services in background
+docker-compose -f docker-compose-wso2.yml up -d
 
-### ⬜ WSO2 Login Testing
+# Wait for services to be healthy (30-60 seconds)
+sleep 30
 
-**Test from localhost:**
+# Check service status
+docker-compose -f docker-compose-wso2.yml ps
+# Expected: All services showing "Up" status
+```
 
-- [ ] Navigate to: `https://localhost:5000`
-- [ ] Click "Login"
-- [ ] Should redirect to WSO2 IS
-- [ ] Enter credentials
-- [ ] Should redirect back to application
-- [ ] Verify logged in successfully
-- [ ] Check logs for: `Dynamic redirect URI: https://localhost:5000/callback`
+### Step 4: Monitor Startup
 
-**Test from custom port:**
+```bash
+# Watch logs in real-time
+docker-compose -f docker-compose-wso2.yml logs -f darts-app
 
-- [ ] Navigate to: `https://letsplaydarts.eu:5001`
-- [ ] Click "Login"
-- [ ] Complete login flow
-- [ ] Verify success
-- [ ] Check logs for: `Dynamic redirect URI: https://letsplaydarts.eu:5001/callback`
+# Look for these success messages:
+# ✅ "Database connection OK!"
+# ✅ "Running on" (Flask started)
+# ✅ "* Debugger PIN:" (if FLASK_DEBUG=True)
 
-**Test from standard HTTPS:**
+# Press Ctrl+C to exit logs
+```
 
-- [ ] Navigate to: `https://letsplaydarts.eu`
-- [ ] Click "Login"
-- [ ] Complete login flow
-- [ ] Verify success
-- [ ] Check logs for: `Dynamic redirect URI: https://letsplaydarts.eu/callback`
+### Step 5: Verify Connectivity
 
-### ⬜ Logout Testing
+```bash
+# Test database connection
+docker-compose -f docker-compose-wso2.yml exec darts-app \
+  python -c "from src.core.database_service import DatabaseService; \
+  db = DatabaseService(); \
+  print('✅ Database OK' if db.check_connection() else '❌ DB Failed')"
 
-- [ ] Click "Logout" from each domain
-- [ ] Verify redirected to correct post-logout URI
-- [ ] Verify session cleared
+# Test API endpoints are accessible
+curl -s http://localhost:5000/api/game/current -H "Cookie: session=test"
 
----
-
-## Monitoring
-
-### ⬜ Log Monitoring
-
-- [ ] Set up log rotation:
-
-  ```bash
-  sudo nano /etc/logrotate.d/darts-app
-  ```
-
-- [ ] Monitor application logs:
-
-  ```bash
-  tail -f logs/app.log
-  ```
-
-- [ ] Monitor Nginx logs (if using):
-
-  ```bash
-  tail -f /var/log/nginx/access.log
-  tail -f /var/log/nginx/error.log
-  ```
-
-### ⬜ Health Checks
-
-- [ ] Create health check endpoint monitoring
-- [ ] Set up uptime monitoring (e.g., UptimeRobot)
-- [ ] Configure alerts for downtime
+# Test Swagger loads
+curl -s http://localhost:5000/api/docs/ | grep -q "swagger" && echo "✅ Swagger OK" || echo "❌ Swagger Failed"
+```
 
 ---
 
-## Security Hardening
+## Feature Testing
 
-### ⬜ Application Security
+### Test 1: Single-Player Games
 
-- [ ] Verify HTTPS enforced (no HTTP access)
-- [ ] Check .env file permissions: `ls -la .env` (should be 600)
-- [ ] Verify strong secrets in use
-- [ ] Enable HSTS headers (if using Nginx)
-- [ ] Configure rate limiting (if using Nginx)
+```
+Location: https://letsplaydarts.eu/mobile/gamemaster
+Steps:
+  1. Scroll to "Start New Game"
+  2. In "Players" textarea, enter only ONE name (e.g., "Alice")
+  3. Click "Start Game"
+  4. Go to Gameplay tab
+  5. Verify game displays with 1 player
 
-### ⬜ Server Security
+✅ PASS if: Game starts and displays correctly
+❌ FAIL if: Error message "at least 2 players" appears
+```
 
-- [ ] Update system packages:
+### Test 2: History Page
 
-  ```bash
-  sudo apt-get update && sudo apt-get upgrade
-  ```
+```
+Location: https://letsplaydarts.eu/history
+Steps:
+  1. Play a complete game (start → finish)
+  2. Navigate to History page
+  3. Wait for page to load (check browser console for errors)
+  4. Look for recently played game
+  5. Test filter by game type
 
-- [ ] Configure fail2ban:
+✅ PASS if: Recent games appear with statistics
+❌ FAIL if: Page stays empty or shows "No games found"
+```
 
-  ```bash
-  sudo apt-get install fail2ban
-  sudo systemctl enable fail2ban
-  ```
+### Test 3: Swagger Documentation
 
-- [ ] Disable root SSH login
-- [ ] Use SSH keys instead of passwords
-- [ ] Keep only necessary ports open
+```
+Location: https://letsplaydarts.eu/api/docs/
+Steps:
+  1. Navigate to URL
+  2. Verify page loads without errors
+  3. Scroll through endpoints
+  4. Click "Try it out" on an endpoint
+  5. Verify request/response work
+
+✅ PASS if: All endpoints documented and "Try it out" works
+❌ FAIL if: YAML errors appear or page doesn't load
+```
+
+### Test 4: Throwout Advice
+
+```
+Location: Start a game → Control Panel or Mobile Gameplay
+Steps:
+  1. Start a 301/401/501 game with 2+ players
+  2. In Game Master panel, check "Show Throw-out Advice"
+  3. Play until one player's score is < 50
+  4. Note the displayed finishing tip
+
+✅ PASS if: Tips like "[T20, Double 10]" appear when close to finish
+❌ FAIL if: No tips display or checkbox doesn't work
+```
+
+### Test 5: Mobile Gameplay
+
+```
+Location: https://letsplaydarts.eu/mobile/gameplay
+Steps:
+  1. Start an active game
+  2. Go to Gameplay page
+  3. View "Current Player" card
+  4. Check Scoreboard displays all players
+  5. Switch to "Active Games" tab
+
+✅ PASS if: Current game displays with all details
+❌ FAIL if: Page stays blank or shows "No Active Game"
+```
 
 ---
 
-## Backup
+## Monitoring & Logs
 
-### ⬜ Backup Configuration
+### View Application Logs
 
-- [ ] Backup .env file (securely)
-- [ ] Backup SSL certificates
-- [ ] Backup database (if applicable)
-- [ ] Document WSO2 IS configuration
-- [ ] Create restore procedure documentation
+```bash
+# Real-time logs
+docker-compose -f docker-compose-wso2.yml logs -f darts-app
 
----
+# Last 100 lines
+docker-compose -f docker-compose-wso2.yml logs --tail=100 darts-app
 
-## Documentation
+# Logs for specific time period
+docker-compose -f docker-compose-wso2.yml logs --since 5m darts-app
+```
 
-### ⬜ Team Documentation
+### View Database Logs
 
-- [ ] Share access credentials (securely)
-- [ ] Document deployment process
-- [ ] Create runbook for common issues
-- [ ] Document rollback procedure
+```bash
+docker-compose -f docker-compose-wso2.yml logs postgres
+```
 
----
+### View RabbitMQ Logs
 
-## Post-Deployment
+```bash
+docker-compose -f docker-compose-wso2.yml logs rabbitmq
+```
 
-### ⬜ Verification
+### Check Container Health
 
-- [ ] All access methods working (localhost, custom port, standard HTTPS)
-- [ ] WSO2 login working from all domains
-- [ ] SSL error handling working (clean messages, no stack traces)
-- [ ] Logs showing dynamic redirect URIs
-- [ ] No errors in application logs
-- [ ] Performance acceptable
+```bash
+# Detailed status
+docker-compose -f docker-compose-wso2.yml ps -a
 
-### ⬜ User Acceptance Testing
-
-- [ ] Test with real users
-- [ ] Verify mobile access
-- [ ] Test different browsers
-- [ ] Verify WebSocket connections (if applicable)
+# Health check status
+docker ps --format "table {{.Names}}\t{{.Status}}" | grep darts
+```
 
 ---
 
 ## Rollback Plan
 
-### ⬜ If Issues Occur
+If something goes wrong:
 
-- [ ] Stop application:
+### Quick Rollback
 
-  ```bash
-  sudo systemctl stop darts-app
-  ```
+```bash
+# Stop current deployment
+docker-compose -f docker-compose-wso2.yml down
 
-- [ ] Revert to previous version:
+# Revert file changes if needed
+git checkout .env
+git checkout src/app/app.py
+git checkout static/js/mobile_gamemaster.js
+git checkout templates/mobile_gamemaster.html
 
-  ```bash
-  git checkout <previous-commit>
-  ```
+# Restart with previous configuration
+docker-compose -f docker-compose-wso2.yml up -d
+```
 
-- [ ] Restart application:
+### Data Preservation
 
-  ```bash
-  sudo systemctl start darts-app
-  ```
+```bash
+# Database volumes are persistent by default
+# Even after stopping containers, data remains:
+docker volume ls | grep darts
 
-- [ ] Verify rollback successful
-- [ ] Investigate issues
-- [ ] Document problems
+# If needed, backup database before deployment:
+docker-compose -f docker-compose-wso2.yml exec postgres \
+  pg_dump -U postgres dartsdb > backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+---
+
+## Performance Optimization
+
+### CPU/Memory Monitoring
+
+```bash
+# Monitor container resource usage
+docker stats darts-app --no-stream
+
+# Monitor over time
+docker stats darts-app
+```
+
+### Database Performance
+
+```bash
+# Check database connections
+docker-compose -f docker-compose-wso2.yml exec postgres \
+  psql -U postgres -c "SELECT datname, count(*) FROM pg_stat_activity GROUP BY datname;"
+
+# Check slow queries (if logging enabled)
+docker-compose -f docker-compose-wso2.yml exec postgres \
+  tail -f /var/log/postgresql/postgresql.log
+```
+
+---
+
+## Post-Deployment Verification
+
+### 24-Hour Stability Check
+
+- [ ] Application running without restarts
+- [ ] No error spikes in logs
+- [ ] Database queries responding normally
+- [ ] All API endpoints accessible
+- [ ] WebSocket connections stable
+
+### Week-Long Monitoring
+
+- [ ] Error logs reviewed and addressed
+- [ ] Performance metrics collected
+- [ ] User reports collected (if applicable)
+- [ ] Security logs reviewed
+
+---
+
+## Troubleshooting Matrix
+
+| Issue                           | Check          | Solution                                                                                                     |
+| ------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Swagger won't load**          | Browser cache  | Hard refresh (Ctrl+Shift+R) or incognito mode                                                                |
+| **History page empty**          | Database query | Play a game first, then reload page                                                                          |
+| **Single-player still blocked** | Cache          | Clear `localStorage` and reload                                                                              |
+| **Mobile not updating**         | WebSocket      | Check browser DevTools → Network                                                                             |
+| **Database connection failed**  | .env file      | Verify `DATABASE_URL=postgresql://postgres:postgres@postgres:5432/dartsdb` <!-- pragma: allowlist secret --> |
+| **RabbitMQ not connecting**     | .env file      | Verify `RABBITMQ_HOST=rabbitmq`                                                                              |
+| **Services won't start**        | Build cache    | Rebuild: `docker-compose build --no-cache`                                                                   |
 
 ---
 
 ## Success Criteria
 
-✅ Application starts without errors  
-✅ SSL error handling active (clean messages)  
-✅ Login works from all domains  
-✅ Dynamic redirect URIs working  
-✅ SSL certificates valid  
-✅ All tests passing  
-✅ No security warnings  
-✅ Performance acceptable  
-✅ Monitoring in place  
-✅ Documentation complete
+✅ **Deployment is successful when:**
+
+1. All 5 verification checks pass: `python verify_docker_config.py`
+2. Docker services start without errors: `docker-compose ps` shows all "Up"
+3. Swagger/API Docs loads: `/api/docs/` accessible and no YAML errors
+4. Single-player games work: Can create game with 1 player
+5. History page shows data: Recent games displayed after playing
+6. Throwout advice displays: Tips show when toggled on near finish
+7. Mobile gameplay updates: Current player and scores display real-time
+8. No critical errors in logs: `docker-compose logs darts-app` shows no errors
 
 ---
 
-## Support Contacts
+## Post-Deployment Tasks
 
-- **WSO2 IS Admin**: [contact info]
-- **Server Admin**: [contact info]
-- **DNS Provider**: [contact info]
-- **SSL Certificate Provider**: [contact info]
-
----
-
-## Notes
-
-- Keep this checklist updated as deployment evolves
-- Document any deviations from the plan
-- Record any issues encountered and solutions
-- Update documentation based on lessons learned
+- [ ] Update documentation with deployment date
+- [ ] Notify users of new features (single-player games)
+- [ ] Monitor logs for first 24 hours
+- [ ] Document any issues encountered
+- [ ] Update backup schedule if database size changed
 
 ---
 
-**Deployment Date**: **\*\***\_\_\_**\*\***  
-**Deployed By**: **\*\***\_\_\_**\*\***  
-**Status**: ⬜ In Progress / ⬜ Complete / ⬜ Rolled Back
+## Quick Commands Reference
+
+```bash
+# Start services
+docker-compose -f docker-compose-wso2.yml up -d
+
+# Stop services
+docker-compose -f docker-compose-wso2.yml down
+
+# Restart single service
+docker-compose -f docker-compose-wso2.yml restart darts-app
+
+# View logs
+docker-compose -f docker-compose-wso2.yml logs -f darts-app
+
+# Run one-off command
+docker-compose -f docker-compose-wso2.yml exec darts-app bash
+
+# Rebuild images
+docker-compose -f docker-compose-wso2.yml build --no-cache
+
+# Verify fixes
+python verify_docker_config.py
+```
+
+---
+
+**Status**: Ready for Production Deployment ✅  
+**Last Updated**: 2025-10-19  
+**Critical Issues Fixed**: 5/5 ✅

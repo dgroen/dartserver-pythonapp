@@ -1,7 +1,138 @@
-docker-backups
-docs
-.tox
+# Version control
+.git
+.gitignore
+.git-hooks
+
+# IDE and editor files
 .vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Environment and configuration files
+.env*
+!.env.example
+.secrets.baseline
+.secrets.baseline.new
+
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
 .venv
-helpers
-examples
+venv/
+ENV/
+env/
+
+# Testing and coverage
+.tox
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Linting and code quality
+.mypy_cache/
+.ruff_cache/
+.pre-commit-config.yaml
+.pre-commit-config.yaml_
+
+# Documentation
+docs/
+
+# Examples and helpers
+examples/
+helpers/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+*.backup
+docker-backups
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker files (not needed in build context)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# SSL certificates and keys
+ssl/
+
+# WSO2 configuration (if not needed in container)
+wso2is-config/
+wso2is-7-config/
+
+# Database dumps and backups
+postgres_dump.sql.gz
+
+# Scripts and setup files (if not needed)
+scripts/
+setup-dev.sh
+start-with-https.sh
+verify_linting.sh
+verify_oauth_fix.sh
+
+# Test directories
+tests/
+
+# Build artifacts
+.zencoder/
+
+# Markdown linting
+.markdownlint.yaml
+.yamllint.yaml
+
+# Tox configuration
+tox.ini
+
+# Alembic (if migrations are handled outside)
+alembic/
+
+# Node.js (if any)
+node_modules/
+npm-debug.log*
+
+# Miscellaneous
+BANNER.txt
+FIX_*.txt
+IMPLEMENTATION_COMPLETE.txt
+QUICK_SUMMARY.txt
+FIXES_SUMMARY.txt
+LOGIN_REDIRECT_QUICK_FIX.txt
+FIX_COMPLETE_SUMMARY.txt
+FIX_SUMMARY_502_GATEWAY.txt

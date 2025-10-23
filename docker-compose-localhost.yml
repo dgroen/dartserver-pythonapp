@@ -1,6 +1,26 @@
 version: "3.8"
 
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: darts-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres # pragma: allowlist secret
+      POSTGRES_DB: dartsdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - darts-network
+
   # RabbitMQ Message Broker
   rabbitmq:
     image: rabbitmq:3-management
@@ -10,7 +30,7 @@ services:
       - "15672:15672" # Management UI
     environment:
       RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_PASS: guest # pragma: allowlist secret
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -23,7 +43,7 @@ services:
 
   # WSO2 Identity Server
   wso2is:
-    image: wso2/wso2is:5.11.0
+    image: wso2/wso2is:7.1.0
     container_name: darts-wso2is
     ports:
       - "9443:9443" # HTTPS port
@@ -31,8 +51,8 @@ services:
     environment:
       - JAVA_OPTS=-Xms512m -Xmx1024m
     volumes:
-      - wso2is_data:/home/wso2carbon/wso2is-5.11.0
-      - ./wso2is-config/deployment.toml:/home/wso2carbon/wso2is-5.11.0/repository/conf/deployment.toml:rw
+      - wso2is_data:/home/wso2carbon/wso2is-7.1.0
+      - ./wso2is-7-config/deployment.toml:/home/wso2carbon/wso2is-7.1.0/repository/conf/deployment.toml:ro
     healthcheck:
       test:
         [
@@ -40,7 +60,7 @@ services:
           "curl",
           "-k",
           "-f",
-          "https://localhost:9443/carbon/admin/login.jsp",
+          "https://localhost:9443/api/health-check/v1.0/health",
         ]
       interval: 30s
       timeout: 10s
@@ -71,7 +91,7 @@ services:
           "curl",
           "-k",
           "-f",
-          "https://localhost:9443/carbon/admin/login.jsp",
+          "https://localhost:9443/api/health-check/v1.0/health",
         ]
       interval: 30s
       timeout: 10s
@@ -157,14 +177,14 @@ services:
       TTS_VOICE: ${TTS_VOICE:-default}
 
       # Database Configuration
-      # Use host.docker.internal to access host's PostgreSQL from container
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:5432/dartsdb}  # pragma: allowlist secret
+      # Use postgres service name for Docker internal networking
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dartsdb # pragma: allowlist secret
 
       # WSO2 Authentication Configuration
       # WSO2_IS_URL: Public URL for browser redirects (authorize, logout)
-      WSO2_IS_URL: https://letsplaydarts.eu/auth
+      WSO2_IS_URL: https://localhost:9443
       # WSO2_IS_INTERNAL_URL: Internal Docker network URL for backend API calls
-      WSO2_IS_INTERNAL_URL: https://wso2is:9443
+      #      WSO2_IS_INTERNAL_URL: https://wso2is:9443
       WSO2_CLIENT_ID: ${WSO2_CLIENT_ID:-your_client_id_here}
       WSO2_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-your_client_secret_here}
       # Use dynamic redirect URIs - these are fallbacks only, app will use X-Forwarded headers
@@ -173,11 +193,11 @@ services:
       WSO2_IS_VERIFY_SSL: "False"
       JWT_VALIDATION_MODE: introspection
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
-      WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin}  # pragma: allowlist secret
+      WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin} # pragma: allowlist secret
       SESSION_COOKIE_SECURE: "True" # Enable secure cookies for HTTPS
-    extra_hosts:
-      - "host.docker.internal:host-gateway"  # Allow container to access host services
     depends_on:
+      postgres:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
       wso2is:
@@ -205,6 +225,8 @@ services:
       - darts-network
 
 volumes:
+  postgres_data:
+  wso2is_7_data:
   rabbitmq_data:
   wso2is_data:
   wso2apim_data:

@@ -496,7 +496,12 @@ def login_required(f):
             return f(*args, **kwargs)
 
         if "access_token" not in session:
-            return redirect(url_for("login", next=get_current_request_url()))
+            current_url = get_current_request_url()
+            logger.info(
+                f"login_required: No access token, "
+                f"redirecting to login. Current URL: {current_url}",
+            )
+            return redirect(url_for("login", next=current_url))
 
         # Validate token
         token = session.get("access_token")
@@ -505,7 +510,12 @@ def login_required(f):
         if not claims:
             # Token is invalid or expired, clear session and redirect to login
             session.clear()
-            return redirect(url_for("login", next=get_current_request_url()))
+            current_url = get_current_request_url()
+            logger.info(
+                f"login_required: Token validation failed, "
+                f"redirecting to login. Current URL: {current_url}",
+            )
+            return redirect(url_for("login", next=current_url))
 
         # Store user info in request context
         request.user_claims = claims  # type: ignore
