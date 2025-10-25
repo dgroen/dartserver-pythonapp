@@ -513,6 +513,7 @@ def create_new_game_session():
             }
         )
     except ValueError as e:
+        # ValueError is raised with a user-friendly message about duplicate game ID
         return jsonify({"status": "error", "message": str(e)}), 400
 
 
