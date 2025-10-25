@@ -2,7 +2,6 @@
 Unit tests for checkout advice module
 """
 
-import pytest
 
 from checkout_advice import CheckoutAdvice
 
@@ -120,7 +119,7 @@ class TestCheckoutAdvice:
 
     def test_all_checkout_scores_valid(self):
         """Test that all scores in CHECKOUTS dict return valid advice"""
-        for score in CheckoutAdvice.CHECKOUTS.keys():
+        for score in CheckoutAdvice.CHECKOUTS:
             advice = CheckoutAdvice.get_advice(score)
             assert advice is not None
             assert advice["possible"] is True
