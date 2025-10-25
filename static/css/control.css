@@ -236,6 +236,57 @@ header h1 {
     flex: 1;
 }
 
+.user-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 5px 5px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.user-suggestion-item {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.2s;
+}
+
+.user-suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.user-suggestion-item:hover {
+    background-color: #f0f0f0;
+}
+
+.user-suggestion-item.selected {
+    background-color: #e8f5e9;
+}
+
+.suggestion-username {
+    font-weight: bold;
+    color: #667eea;
+}
+
+.suggestion-name {
+    font-size: 0.9em;
+    color: #666;
+    margin-left: 5px;
+}
+
+.suggestion-no-results {
+    padding: 10px;
+    color: #999;
+    text-align: center;
+}
+
 #game-state-display {
     background: #fff;
     padding: 15px;

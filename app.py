@@ -22,6 +22,7 @@ from auth import (
     logout_user,
     permission_required,
     role_required,
+    search_users,
 )
 from game_manager import GameManager
 from rabbitmq_consumer import RabbitMQConsumer
@@ -389,6 +390,57 @@ def get_players():
                 example: Alice
     """
     return jsonify(game_manager.get_players())
+
+
+@app.route("/api/users/search", methods=["GET"])
+@login_required
+@permission_required("player:add")
+def search_wso2_users():
+    """Search for registered users in WSO2 - requires player:add permission
+    ---
+    tags:
+      - Players
+    summary: Search for registered WSO2 users
+    description: Search for users registered in WSO2 Identity Server to add as players
+    parameters:
+      - in: query
+        name: q
+        type: string
+        description: Search term (username or name)
+        required: false
+      - in: query
+        name: limit
+        type: integer
+        description: Maximum number of results (default 10, max 50)
+        required: false
+    responses:
+      200:
+        description: List of matching users
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: User ID
+                example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              username:
+                type: string
+                description: Username
+                example: "john_doe"
+              name:
+                type: string
+                description: Display name
+                example: "John Doe"
+      403:
+        description: Forbidden - requires player:add permission
+    """
+    search_term = request.args.get("q", "")
+    limit = min(int(request.args.get("limit", 10)), 50)  # Cap at 50 results
+
+    users = search_users(search_term, max_results=limit)
+    return jsonify(users)
 
 
 @app.route("/api/players", methods=["POST"])
