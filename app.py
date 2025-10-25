@@ -136,6 +136,24 @@ def control():
     return render_template("control.html", user_roles=user_roles, user_claims=user_claims)
 
 
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    """Game history dashboard - all authenticated users
+    ---
+    tags:
+      - UI
+    summary: Game history dashboard
+    description: Renders the dashboard interface for viewing and analyzing historical games
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template("dashboard.html", user_roles=user_roles, user_claims=user_claims)
+
+
 @app.route("/login")
 def login():
     """Login page"""

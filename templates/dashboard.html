@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game History Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Game History Dashboard</h1>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Game Board</a>
+                <a href="/control" class="nav-link">Control Panel</a>
+            </div>
+            <div class="user-info">
+                {% if user_claims %}
+                <span class="username">👤 {{ user_claims.get('username', user_claims.get('sub', 'User')) }}</span>
+                {% if user_roles %}
+                <span class="user-roles">
+                    {% for role in user_roles %}
+                    <span class="role-badge role-{{ role }}">{{ role }}</span>
+                    {% endfor %}
+                </span>
+                {% endif %}
+                <a href="/logout" class="logout-btn">Logout</a>
+                {% endif %}
+            </div>
+        </header>
+
+        <div class="dashboard-content">
+            <!-- Summary Cards -->
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <h3>Total Games</h3>
+                    <div class="stat-value" id="total-games">-</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Completed Games</h3>
+                    <div class="stat-value" id="completed-games">-</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Most Popular Game</h3>
+                    <div class="stat-value" id="popular-game">-</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Total Players</h3>
+                    <div class="stat-value" id="total-players">-</div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters">
+                <label>
+                    Show:
+                    <select id="limit-select">
+                        <option value="10">Last 10 games</option>
+                        <option value="25">Last 25 games</option>
+                        <option value="50">Last 50 games</option>
+                        <option value="100">Last 100 games</option>
+                    </select>
+                </label>
+                <button id="refresh-btn" class="btn-primary">🔄 Refresh</button>
+            </div>
+
+            <!-- Games List -->
+            <div class="games-section">
+                <h2>Recent Games</h2>
+                <div id="loading-message" class="loading">Loading games...</div>
+                <div id="error-message" class="error-message" style="display: none;"></div>
+                <div id="games-list" class="games-list"></div>
+            </div>
+
+            <!-- Game Detail Modal -->
+            <div id="game-detail-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close-btn">&times;</span>
+                    <h2>Game Details</h2>
+                    <div id="game-detail-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
