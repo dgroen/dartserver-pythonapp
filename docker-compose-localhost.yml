@@ -1,0 +1,236 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: darts-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres # pragma: allowlist secret
+      POSTGRES_DB: dartsdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - darts-network
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: darts-rabbitmq
+    ports:
+      - "5672:5672" # AMQP port
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest # pragma: allowlist secret
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - darts-network
+
+  # WSO2 Identity Server
+  wso2is:
+    image: wso2/wso2is:7.1.0
+    container_name: darts-wso2is
+    ports:
+      - "9443:9443" # HTTPS port
+      - "9763:9763" # HTTP port
+    environment:
+      - JAVA_OPTS=-Xms512m -Xmx1024m
+    volumes:
+      - wso2is_data:/home/wso2carbon/wso2is-7.1.0
+      - ./wso2is-7-config/deployment.toml:/home/wso2carbon/wso2is-7.1.0/repository/conf/deployment.toml:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-k",
+          "-f",
+          "https://localhost:9443/api/health-check/v1.0/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - darts-network
+
+  # WSO2 API Manager
+  wso2apim:
+    image: wso2/wso2am:4.0.0
+    container_name: darts-wso2apim
+    ports:
+      - "9444:9443" # HTTPS port (Publisher/DevPortal)
+      - "8280:8280" # HTTP Gateway
+      - "8243:8243" # HTTPS Gateway
+    environment:
+      - JAVA_OPTS=-Xms512m -Xmx1024m
+    volumes:
+      - wso2apim_data:/home/wso2carbon/wso2am-4.0.0
+    depends_on:
+      wso2is:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-k",
+          "-f",
+          "https://localhost:9443/api/health-check/v1.0/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - darts-network
+
+  # API Gateway Service
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    container_name: darts-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      # RabbitMQ Configuration
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      RABBITMQ_VHOST: /
+      RABBITMQ_EXCHANGE: darts_exchange
+
+      # WSO2 Identity Server Configuration
+      WSO2_IS_URL: https://wso2is:9443
+      WSO2_IS_CLIENT_ID: ${WSO2_IS_CLIENT_ID:-L2rvop0o4DfJsqpqsh44cUgVn_ga}
+      WSO2_IS_CLIENT_SECRET: ${WSO2_IS_CLIENT_SECRET:-VhNFUK083Q2iUsu8GCWfcJTVCX8a}
+
+      # Introspection credentials (required for token validation)
+      WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
+      WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin}
+
+      # JWT Validation Mode: 'jwks' or 'introspection'
+      JWT_VALIDATION_MODE: introspection
+
+      # Flask Configuration
+      API_GATEWAY_HOST: 0.0.0.0
+      API_GATEWAY_PORT: 8080
+      FLASK_DEBUG: "False"
+      SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      wso2is:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - darts-network
+
+  # Main Darts Application
+  darts-app:
+    build: .
+    container_name: darts-app
+    ports:
+      - "5000:5000"
+    environment:
+      # RabbitMQ Configuration
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      RABBITMQ_VHOST: /
+      RABBITMQ_EXCHANGE: darts_exchange
+      RABBITMQ_TOPIC: darts.scores.#
+
+      # Flask Configuration
+      FLASK_HOST: 0.0.0.0
+      FLASK_PORT: 5000
+      FLASK_DEBUG: "False"
+      FLASK_USE_SSL: "False"
+      SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
+
+      # Dartboard Configuration
+      DARTBOARD_SENDS_ACTUAL_SCORE: "True"
+
+      # Text-to-Speech Configuration
+      TTS_ENABLED: ${TTS_ENABLED:-true}
+      TTS_ENGINE: ${TTS_ENGINE:-gtts}
+      TTS_SPEED: ${TTS_SPEED:-150}
+      TTS_VOLUME: ${TTS_VOLUME:-0.9}
+      TTS_VOICE: ${TTS_VOICE:-default}
+
+      # Database Configuration
+      # Use postgres service name for Docker internal networking
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dartsdb # pragma: allowlist secret
+
+      # WSO2 Authentication Configuration
+      # WSO2_IS_URL: Public URL for browser redirects (authorize, logout)
+      WSO2_IS_URL: https://localhost:9443
+      # WSO2_IS_INTERNAL_URL: Internal Docker network URL for backend API calls
+      #      WSO2_IS_INTERNAL_URL: https://wso2is:9443
+      WSO2_CLIENT_ID: ${WSO2_CLIENT_ID:-your_client_id_here}
+      WSO2_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-your_client_secret_here}
+      # Use dynamic redirect URIs - these are fallbacks only, app will use X-Forwarded headers
+      WSO2_REDIRECT_URI: ${WSO2_REDIRECT_URI:-https://letsplaydarts.eu/callback}
+      WSO2_POST_LOGOUT_REDIRECT_URI: ${WSO2_POST_LOGOUT_REDIRECT_URI:-https://letsplaydarts.eu/}
+      WSO2_IS_VERIFY_SSL: "False"
+      JWT_VALIDATION_MODE: introspection
+      WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
+      WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin} # pragma: allowlist secret
+      SESSION_COOKIE_SECURE: "True" # Enable secure cookies for HTTPS
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      wso2is:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - darts-network
+
+  # Nginx Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    container_name: darts-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.crt:/etc/nginx/nginx.crt:ro
+      - ./nginx/nginx.key:/etc/nginx/nginx.key:ro
+    depends_on:
+      - api-gateway
+      - darts-app
+      - wso2apim
+    networks:
+      - darts-network
+
+volumes:
+  postgres_data:
+  wso2is_7_data:
+  rabbitmq_data:
+  wso2is_data:
+  wso2apim_data:
+
+networks:
+  darts-network:
+    driver: bridge

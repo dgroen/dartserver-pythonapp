@@ -5,14 +5,14 @@ from unittest.mock import patch
 
 import pytest
 
-from app import app as flask_app
+from src.app.app import app as flask_app
 
 
 @pytest.fixture
 def mock_auth():
     """Mock authentication decorators."""
     # Mock validate_token to return valid claims
-    with patch("auth.validate_token") as mock_validate:
+    with patch("src.core.auth.validate_token") as mock_validate:
         mock_validate.return_value = {
             "sub": "test-user",
             "username": "testuser",
@@ -25,7 +25,7 @@ def mock_auth():
 @pytest.fixture
 def app(mock_auth):
     """Create Flask app for testing."""
-    with patch("app.start_rabbitmq_consumer"):
+    with patch("src.app.app.start_rabbitmq_consumer"):
         flask_app.config["TESTING"] = True
         yield flask_app
 

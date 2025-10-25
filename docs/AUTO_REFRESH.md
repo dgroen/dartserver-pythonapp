@@ -44,12 +44,14 @@ The UI automatically refreshes when any of the following actions occur:
 ### 1. Score Submission
 
 **Via RabbitMQ:**
+
 ```python
 # Scores received from RabbitMQ automatically trigger refresh
 # Message format: {"score": 20, "multiplier": "TRIPLE"}
 ```
 
 **Via REST API:**
+
 ```bash
 curl -X POST http://localhost:5000/api/score \
   -H "Content-Type: application/json" \
@@ -57,16 +59,18 @@ curl -X POST http://localhost:5000/api/score \
 ```
 
 **Via WebSocket:**
+
 ```javascript
-socket.emit('manual_score', {
-    score: 20,
-    multiplier: 'TRIPLE'
+socket.emit("manual_score", {
+  score: 20,
+  multiplier: "TRIPLE",
 });
 ```
 
 ### 2. New Game
 
 **Via REST API:**
+
 ```bash
 curl -X POST http://localhost:5000/api/game/new \
   -H "Content-Type: application/json" \
@@ -78,17 +82,19 @@ curl -X POST http://localhost:5000/api/game/new \
 ```
 
 **Via WebSocket:**
+
 ```javascript
-socket.emit('new_game', {
-    game_type: '301',
-    players: ['Alice', 'Bob'],
-    double_out: false
+socket.emit("new_game", {
+  game_type: "301",
+  players: ["Alice", "Bob"],
+  double_out: false,
 });
 ```
 
 ### 3. Player Management
 
 **Add Player (REST API):**
+
 ```bash
 curl -X POST http://localhost:5000/api/players \
   -H "Content-Type: application/json" \
@@ -96,64 +102,70 @@ curl -X POST http://localhost:5000/api/players \
 ```
 
 **Remove Player (REST API):**
+
 ```bash
 curl -X DELETE http://localhost:5000/api/players/2
 ```
 
 **Via WebSocket:**
+
 ```javascript
 // Add player
-socket.emit('add_player', { name: 'Charlie' });
+socket.emit("add_player", { name: "Charlie" });
 
 // Remove player
-socket.emit('remove_player', { player_id: 2 });
+socket.emit("remove_player", { player_id: 2 });
 ```
 
 ### 4. Game Control
 
 **Next Player:**
+
 ```javascript
-socket.emit('next_player');
+socket.emit("next_player");
 ```
 
 **Skip to Player:**
+
 ```javascript
-socket.emit('skip_to_player', { player_id: 1 });
+socket.emit("skip_to_player", { player_id: 1 });
 ```
 
 ## WebSocket Events
 
 ### Client → Server Events
 
-| Event | Data | Description |
-|-------|------|-------------|
-| `new_game` | `{game_type, players, double_out}` | Start a new game |
-| `add_player` | `{name}` | Add a player |
-| `remove_player` | `{player_id}` | Remove a player |
-| `next_player` | - | Move to next player |
-| `skip_to_player` | `{player_id}` | Skip to specific player |
-| `manual_score` | `{score, multiplier}` | Submit a score |
+| Event            | Data                               | Description             |
+| ---------------- | ---------------------------------- | ----------------------- |
+| `new_game`       | `{game_type, players, double_out}` | Start a new game        |
+| `add_player`     | `{name}`                           | Add a player            |
+| `remove_player`  | `{player_id}`                      | Remove a player         |
+| `next_player`    | -                                  | Move to next player     |
+| `skip_to_player` | `{player_id}`                      | Skip to specific player |
+| `manual_score`   | `{score, multiplier}`              | Submit a score          |
 
 ### Server → Client Events
 
-| Event | Data | Description |
-|-------|------|-------------|
-| `game_state` | `{players, current_player, game_type, ...}` | **Main event for auto-refresh** |
-| `message` | `{text}` | Display a message |
-| `big_message` | `{text}` | Display a big message (auto-clears) |
-| `play_sound` | `{sound}` | Play a sound effect |
-| `play_video` | `{video, angle}` | Play a video effect |
+| Event         | Data                                        | Description                         |
+| ------------- | ------------------------------------------- | ----------------------------------- |
+| `game_state`  | `{players, current_player, game_type, ...}` | **Main event for auto-refresh**     |
+| `message`     | `{text}`                                    | Display a message                   |
+| `big_message` | `{text}`                                    | Display a big message (auto-clears) |
+| `play_sound`  | `{sound}`                                   | Play a sound effect                 |
+| `play_video`  | `{video, angle}`                            | Play a video effect                 |
 
 ## Testing Automatic Refresh
 
 ### Method 1: Use the Test Page
 
 1. Start the application:
+
    ```bash
    python app.py
    ```
 
 2. Open the test page in your browser:
+
    ```
    http://localhost:5000/test-refresh
    ```
@@ -163,16 +175,19 @@ socket.emit('skip_to_player', { player_id: 1 });
 ### Method 2: Use the Test Script
 
 1. Start the application in one terminal:
+
    ```bash
    python app.py
    ```
 
 2. Open the game UI in a browser:
+
    ```
    http://localhost:5000
    ```
 
 3. Run the test script in another terminal:
+
    ```bash
    python examples/test_auto_refresh.py
    ```
@@ -199,6 +214,7 @@ def _emit_game_state(self):
 ```
 
 This is called in:
+
 - `new_game()` - When starting a new game
 - `add_player()` - When adding a player
 - `remove_player()` - When removing a player
@@ -211,9 +227,9 @@ This is called in:
 The client JavaScript listens for the `game_state` event:
 
 ```javascript
-socket.on('game_state', (state) => {
-    console.log('Game state:', state);
-    updateGameDisplay(state);
+socket.on("game_state", (state) => {
+  console.log("Game state:", state);
+  updateGameDisplay(state);
 });
 ```
 
@@ -244,6 +260,7 @@ def on_score_received(score_data):
 
 3. **Verify Socket.IO Library:**
    - Make sure the Socket.IO client library is loaded:
+
      ```html
      <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
      ```
@@ -259,6 +276,7 @@ def on_score_received(score_data):
 ### RabbitMQ Scores Not Working?
 
 1. **Verify RabbitMQ is Running:**
+
    ```bash
    # Check if RabbitMQ is running
    sudo systemctl status rabbitmq-server
@@ -274,6 +292,7 @@ def on_score_received(score_data):
 
 4. **Test Message Format:**
    - Ensure messages have the correct format:
+
      ```json
      {
        "score": 20,

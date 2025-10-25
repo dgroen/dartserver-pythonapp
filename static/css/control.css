@@ -93,6 +93,29 @@ header h1 {
     background: #c82333;
 }
 
+.header-links {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.header-link {
+    color: #667eea;
+    text-decoration: none;
+    padding: 8px 16px;
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 6px;
+    font-size: 0.95em;
+    transition: all 0.3s ease;
+}
+
+.header-link:hover {
+    background: rgba(102, 126, 234, 0.2);
+    border-color: rgba(102, 126, 234, 0.6);
+}
+
 .control-sections {
     display: grid;
     gap: 20px;
@@ -256,11 +279,11 @@ header h1 {
     .container {
         padding: 15px;
     }
-    
+
     header h1 {
         font-size: 1.8em;
     }
-    
+
     .player-controls {
         flex-direction: column;
     }

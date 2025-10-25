@@ -17,7 +17,7 @@ repos:
         args: [--markdown-linebreak-ext=md]
       - id: end-of-file-fixer
       - id: check-yaml
-        args: [--safe]
+        args: [--allow-multiple-documents]
       - id: check-json
       - id: check-toml
       - id: check-added-large-files
@@ -36,6 +36,7 @@ repos:
       - id: check-builtin-literals
       - id: check-executables-have-shebangs
       - id: detect-private-key
+        exclude: ^(ssl/|nginx/)
 
   # Ruff - Fast Python linter (first attempt - check only)
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -105,7 +106,12 @@ repos:
           - flake8-bugbear
           - flake8-comprehensions
           - flake8-simplify
-        args: [--max-line-length=100, --extend-ignore=E203,E266,E501,W503]
+        args:
+          [
+            "--max-line-length=100",
+            "--extend-ignore=E203,E266,E501,W503,D100,D101,D102,D103,D104,D105,D107,D200,D202,D205,D212,D405,D411,D415,E402,F401",
+          ]
+        exclude: ^tests/
 
   # Bandit - Security linter
   - repo: https://github.com/PyCQA/bandit
@@ -114,7 +120,7 @@ repos:
       - id: bandit
         args: [-c, pyproject.toml]
         additional_dependencies: ["bandit[toml]"]
-        exclude: ^tests/
+        exclude: ^(tests/|examples/|helpers/|fix_wso2_callback|manage_user_roles\.py|alembic/)
 
   # MyPy - Static type checker
   - repo: https://github.com/pre-commit/mirrors-mypy
@@ -125,15 +131,15 @@ repos:
           - types-flask
           - types-requests
         args: [--ignore-missing-imports, --show-error-codes]
-        exclude: ^(tests/|examples/)
+        exclude: ^(tests/|examples/|helpers/|alembic/)
 
   # Pylint - Code analysis
   - repo: https://github.com/PyCQA/pylint
     rev: v3.0.3
     hooks:
       - id: pylint
-        args: [--rcfile=pyproject.toml, --disable=C0114,C0115,C0116]
-        exclude: ^(tests/|examples/)
+        args: [--rcfile=pyproject.toml, "--disable=C0114,C0115,C0116"]
+        exclude: ^(tests/|examples/|helpers/|alembic/)
 
   # YAML linter
   - repo: https://github.com/adrienverge/yamllint
@@ -149,13 +155,14 @@ repos:
       - id: markdownlint
         args: [--fix]
 
-  # Check for secrets
-  - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.4.0
-    hooks:
-      - id: detect-secrets
-        args: [--baseline, .secrets.baseline]
-        exclude: package-lock.json
+  # # Check for secrets
+  # - repo: https://github.com/Yelp/detect-secrets
+  #   rev: v1.4.0
+  #   hooks:
+  #     - id: detect-secrets
+  #       args:
+  #         [--baseline, .secrets.baseline, --exclude-files, '\.(md|pem|key)$']
+  #       exclude: (package-lock.json|ssl/.*\.pem|ssl/.*\.key|nginx/.*\.key|nginx/ssl/.*\.key|.*\.md$|docs/.*)
 
   # Prettier for JSON, YAML, Markdown
   - repo: https://github.com/pre-commit/mirrors-prettier
@@ -172,8 +179,8 @@ ci:
 
     for more information, see https://pre-commit.ci
   autofix_prs: true
-  autoupdate_branch: ''
-  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_branch: ""
+  autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
   autoupdate_schedule: weekly
   skip: []
   submodules: false

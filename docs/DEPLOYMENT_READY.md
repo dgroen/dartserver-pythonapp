@@ -9,6 +9,7 @@ Your Darts Game System now has **full WSO2 Identity Server authentication** with
 ## 🎉 What You Have Now
 
 ### ✅ **Three-Tier Role Model**
+
 ```
 🔴 ADMIN
   └─ Full system access
@@ -28,6 +29,7 @@ Your Darts Game System now has **full WSO2 Identity Server authentication** with
 ```
 
 ### ✅ **Security Features**
+
 - ✅ OAuth2 Authorization Code Flow
 - ✅ CSRF Protection (state parameter)
 - ✅ Token Validation (JWKS + Introspection)
@@ -36,6 +38,7 @@ Your Darts Game System now has **full WSO2 Identity Server authentication** with
 - ✅ Permission-Based Route Protection
 
 ### ✅ **User Interface**
+
 - ✅ Professional login page with WSO2 branding
 - ✅ User info display with color-coded role badges
 - ✅ Logout functionality
@@ -43,6 +46,7 @@ Your Darts Game System now has **full WSO2 Identity Server authentication** with
 - ✅ Protected routes with automatic redirects
 
 ### ✅ **Documentation** (1500+ lines!)
+
 - ✅ Quick Start Guide
 - ✅ Complete Setup Guide
 - ✅ Visual Flow Diagrams
@@ -51,6 +55,7 @@ Your Darts Game System now has **full WSO2 Identity Server authentication** with
 - ✅ Production Deployment Checklist
 
 ### ✅ **Helper Scripts**
+
 - ✅ `start-with-auth.sh` - Quick start with health checks
 - ✅ `configure-wso2-roles.sh` - Interactive WSO2 setup
 - ✅ `test-authentication.sh` - Automated testing
@@ -60,26 +65,33 @@ Your Darts Game System now has **full WSO2 Identity Server authentication** with
 ## 🚀 How to Start (3 Simple Steps!)
 
 ### Step 1: Start Services
+
 ```bash
 ./start-with-auth.sh
 ```
+
 This will:
+
 - ✅ Check configuration
 - ✅ Start all Docker services
 - ✅ Wait for services to be healthy
 - ✅ Display service URLs and status
 
 ### Step 2: Configure WSO2
+
 ```bash
 ./configure-wso2-roles.sh
 ```
+
 This interactive script will guide you through:
+
 - ✅ Creating OAuth2 application
 - ✅ Creating roles (player, gamemaster, admin)
 - ✅ Creating test users
 - ✅ Assigning roles to users
 
 ### Step 3: Access the Application
+
 ```bash
 # Open in your browser:
 http://localhost:5000
@@ -95,6 +107,7 @@ http://localhost:5000
 ## 📊 Implementation Statistics
 
 ### Code Changes
+
 ```
 Files Created:     11
 Files Modified:    8
@@ -106,6 +119,7 @@ Helper Scripts:    3 scripts
 ```
 
 ### Features Implemented
+
 ```
 Roles:             3 (Player, GameMaster, Admin)
 Permissions:       7 distinct permissions
@@ -161,21 +175,24 @@ Decorators:        3 (@login_required, @role_required, @permission_required)
 ## 🔍 Quick Reference
 
 ### Service URLs
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| 🎯 Darts Game | http://localhost:5000 | See test users below |
-| 🔐 WSO2 Console | https://localhost:9443/carbon | admin / admin |
-| 🐰 RabbitMQ | http://localhost:15672 | guest / guest |
-| 🚪 API Gateway | http://localhost:8080 | Token required |
+
+| Service         | URL                             | Credentials          |
+| --------------- | ------------------------------- | -------------------- |
+| 🎯 Darts Game   | <http://localhost:5000>         | See test users below |
+| 🔐 WSO2 Console | <https://localhost:9443/carbon> | admin / admin        |
+| 🐰 RabbitMQ     | <http://localhost:15672>        | guest / guest        |
+| 🚪 API Gateway  | <http://localhost:8080>         | Token required       |
 
 ### Test Users (Create in WSO2)
-| Username | Password | Role | Badge |
-|----------|----------|------|-------|
-| testplayer | Player@123 | player | 🟢 |
-| testgamemaster | GameMaster@123 | gamemaster | 🟡 |
-| testadmin | Admin@123 | admin | 🔴 |
+
+| Username       | Password       | Role       | Badge |
+| -------------- | -------------- | ---------- | ----- |
+| testplayer     | Player@123     | player     | 🟢    |
+| testgamemaster | GameMaster@123 | gamemaster | 🟡    |
+| testadmin      | Admin@123      | admin      | 🔴    |
 
 ### Common Commands
+
 ```bash
 # Start services
 ./start-with-auth.sh
@@ -201,16 +218,20 @@ docker-compose -f docker-compose-wso2.yml down
 ## 🧪 Testing
 
 ### Automated Tests
+
 ```bash
 ./test-authentication.sh
 ```
+
 This will verify:
+
 - ✅ All services are running
 - ✅ Unauthenticated access is blocked
 - ✅ Login page is accessible
 - ✅ WSO2 endpoints are reachable
 
 ### Manual Tests
+
 1. **Test Player Role** (🟢)
    - Login as `testplayer`
    - ✅ Can view game board
@@ -235,19 +256,25 @@ This will verify:
 ## 📖 Documentation Guide
 
 ### For First-Time Users
+
 **Start here:** [QUICK_START.md](QUICK_START.md)
+
 - 5-step quick start process
 - Service URLs and credentials
 - Common troubleshooting
 
 ### For Developers
+
 **Read these:**
+
 1. [AUTHENTICATION_SUMMARY.md](AUTHENTICATION_SUMMARY.md) - Implementation overview
 2. [docs/AUTHENTICATION_FLOW.md](docs/AUTHENTICATION_FLOW.md) - Visual flow diagrams
 3. [docs/AUTHENTICATION_SETUP.md](docs/AUTHENTICATION_SETUP.md) - Detailed setup
 
 ### For System Administrators
+
 **Important:**
+
 1. [docs/AUTHENTICATION_SETUP.md](docs/AUTHENTICATION_SETUP.md#production-deployment) - Production checklist
 2. [AUTHENTICATION_SUMMARY.md](AUTHENTICATION_SUMMARY.md#security-considerations) - Security notes
 3. [docs/README.md](docs/README.md) - Complete documentation index
@@ -257,7 +284,9 @@ This will verify:
 ## ⚠️ Important Security Notes
 
 ### 🟡 Development Mode (Current Configuration)
+
 The system is currently configured for **development**:
+
 - ⚠️ Self-signed SSL certificates (verification disabled)
 - ⚠️ HTTP instead of HTTPS for the app
 - ⚠️ Default admin credentials for introspection
@@ -267,7 +296,9 @@ The system is currently configured for **development**:
 **This is PERFECT for development and testing!**
 
 ### 🔴 Production Mode (Required Changes)
+
 Before deploying to production, you **MUST**:
+
 1. ✅ Enable HTTPS with valid SSL certificates
 2. ✅ Set `SESSION_COOKIE_SECURE=True`
 3. ✅ Generate strong `SECRET_KEY`
@@ -283,24 +314,26 @@ Before deploying to production, you **MUST**:
 
 ## 🎯 Access Control Matrix
 
-| Route | Public | Player | GameMaster | Admin |
-|-------|--------|--------|------------|-------|
-| `/login` | ✅ | ✅ | ✅ | ✅ |
-| `/callback` | ✅ | ✅ | ✅ | ✅ |
-| `/` (game board) | ❌ | ✅ | ✅ | ✅ |
-| `/control` (panel) | ❌ | ❌ | ✅ | ✅ |
-| `/api/score` (POST) | ❌ | ✅ | ✅ | ✅ |
-| `/api/game` (POST) | ❌ | ❌ | ✅ | ✅ |
-| `/api/game` (DELETE) | ❌ | ❌ | ❌ | ✅ |
-| `/profile` | ❌ | ✅ | ✅ | ✅ |
-| `/logout` | ❌ | ✅ | ✅ | ✅ |
+| Route                | Public | Player | GameMaster | Admin |
+| -------------------- | ------ | ------ | ---------- | ----- |
+| `/login`             | ✅     | ✅     | ✅         | ✅    |
+| `/callback`          | ✅     | ✅     | ✅         | ✅    |
+| `/` (game board)     | ❌     | ✅     | ✅         | ✅    |
+| `/control` (panel)   | ❌     | ❌     | ✅         | ✅    |
+| `/api/score` (POST)  | ❌     | ✅     | ✅         | ✅    |
+| `/api/game` (POST)   | ❌     | ❌     | ✅         | ✅    |
+| `/api/game` (DELETE) | ❌     | ❌     | ❌         | ✅    |
+| `/profile`           | ❌     | ✅     | ✅         | ✅    |
+| `/logout`            | ❌     | ✅     | ✅         | ✅    |
 
 ---
 
 ## 🔧 Troubleshooting
 
-### Issue: Cannot access http://localhost:5000
+### Issue: Cannot access <http://localhost:5000>
+
 **Solution:**
+
 ```bash
 # Check if services are running
 docker-compose -f docker-compose-wso2.yml ps
@@ -313,21 +346,27 @@ docker-compose -f docker-compose-wso2.yml logs -f darts-app
 ```
 
 ### Issue: Login redirects to WSO2 but fails
+
 **Solution:**
+
 1. Verify OAuth2 application is created in WSO2
 2. Check callback URL is correct: `http://localhost:5000/callback`
 3. Verify client ID and secret in `.env` file
 4. Check WSO2 logs: `docker-compose -f docker-compose-wso2.yml logs -f wso2is`
 
 ### Issue: User logged in but gets 403 Forbidden
+
 **Solution:**
+
 1. Verify user has correct role assigned in WSO2
 2. Check role name matches exactly: `player`, `gamemaster`, or `admin`
 3. Logout and login again to refresh token
 4. Check app logs: `docker-compose -f docker-compose-wso2.yml logs -f darts-app`
 
 ### Issue: WSO2 service won't start
+
 **Solution:**
+
 ```bash
 # WSO2 needs time to start (2-3 minutes)
 # Check health status
@@ -346,6 +385,7 @@ docker-compose -f docker-compose-wso2.yml logs -f wso2is
 ## 🎓 Understanding the Implementation
 
 ### OAuth2 Flow
+
 ```
 1. User visits http://localhost:5000
 2. Not authenticated → Redirect to /login
@@ -360,6 +400,7 @@ docker-compose -f docker-compose-wso2.yml logs -f wso2is
 ```
 
 ### Role-Based Access Control
+
 ```
 Request → @login_required → Check session
                           ↓
@@ -383,6 +424,7 @@ Request → @login_required → Check session
 ## 🚀 Next Steps
 
 ### Immediate (Get Started!)
+
 1. ✅ Run `./start-with-auth.sh`
 2. ✅ Run `./configure-wso2-roles.sh`
 3. ✅ Update `.env` with credentials
@@ -390,6 +432,7 @@ Request → @login_required → Check session
 5. ✅ Review documentation
 
 ### Short Term (Customize)
+
 1. Customize login page branding
 2. Add more roles if needed
 3. Fine-tune permissions
@@ -397,6 +440,7 @@ Request → @login_required → Check session
 5. Implement token refresh
 
 ### Long Term (Production)
+
 1. Set up HTTPS with valid certificates
 2. Harden security configuration
 3. Set up monitoring and alerting
@@ -409,11 +453,13 @@ Request → @login_required → Check session
 ## 📞 Getting Help
 
 ### Documentation
+
 - 📖 [QUICK_START.md](QUICK_START.md) - Quick start guide
 - 📖 [docs/README.md](docs/README.md) - Documentation index
 - 📖 [AUTHENTICATION_SUMMARY.md](AUTHENTICATION_SUMMARY.md) - Implementation details
 
 ### Logs
+
 ```bash
 # Application logs
 docker-compose -f docker-compose-wso2.yml logs -f darts-app
@@ -426,6 +472,7 @@ docker-compose -f docker-compose-wso2.yml logs -f
 ```
 
 ### Testing
+
 ```bash
 # Run automated tests
 ./test-authentication.sh
@@ -439,6 +486,7 @@ docker-compose -f docker-compose-wso2.yml ps
 ## ✅ Pre-Flight Checklist
 
 Before you start, make sure you have:
+
 - [ ] Docker and Docker Compose installed
 - [ ] At least 4GB RAM available for Docker
 - [ ] Ports available: 5000, 9443, 9763, 15672, 5672
@@ -447,7 +495,7 @@ Before you start, make sure you have:
 
 ---
 
-## 🎉 You're Ready!
+## 🎉 You're Ready
 
 Everything is implemented and ready to go! Just run:
 
@@ -479,10 +527,10 @@ STATUS: 🎉 100% COMPLETE AND READY FOR DEPLOYMENT! 🎉
 
 **🎯 Happy Darting! 🎯**
 
-*For questions or issues, refer to the comprehensive documentation in the `docs/` directory.*
+_For questions or issues, refer to the comprehensive documentation in the `docs/` directory._
 
 ---
 
-*Last Updated: 2024*
-*Version: 1.0*
-*Status: Production Ready (after security hardening)*
+_Last Updated: 2024_
+_Version: 1.0_
+_Status: Production Ready (after security hardening)_

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="/static/manifest.json">
+    <title>Game Results - Darts Mobile</title>
+    <link rel="stylesheet" href="/static/css/mobile.css">
+    <style>
+        .tab-container {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .tab-button.active {
+            background: transparent;
+            color: #00d4ff;
+            border-bottom: 2px solid #00d4ff;
+            margin-bottom: -2px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .leaderboard-section {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .leaderboard-title {
+            font-weight: bold;
+            margin-bottom: 0.75rem;
+            color: #00d4ff;
+            font-size: 0.95rem;
+        }
+
+        .leaderboard-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+            font-size: 0.85rem;
+        }
+
+        .leaderboard-row:last-child {
+            border-bottom: none;
+        }
+
+        .leaderboard-position {
+            font-weight: bold;
+            color: #00d4ff;
+            min-width: 2rem;
+        }
+
+        .leaderboard-name {
+            flex: 1;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .leaderboard-score {
+            font-weight: bold;
+            color: #00d4ff;
+            text-align: right;
+            min-width: 3rem;
+        }
+
+        .filters {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-select {
+            flex: 1;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            color: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        .stat-badges {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-badge {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 4px;
+            padding: 0.5rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #00d4ff;
+            font-size: 1.1rem;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-app">
+        <header class="mobile-header">
+            <a href="/mobile" class="back-btn">←</a>
+            <h1>📊 Game Results</h1>
+        </header>
+
+        <main class="mobile-content">
+            <!-- Debug Info (hidden by default) -->
+            <div id="debugInfo" style="display: none; background: rgba(255, 0, 0, 0.2); padding: 1rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.8rem; color: #ff6b6b; white-space: pre-wrap; word-break: break-all; font-family: monospace;"></div>
+
+            <!-- Tab Buttons -->
+            <div class="tab-container">
+                <button class="tab-button active" data-tab="history">📜 Your History</button>
+                <button class="tab-button" data-tab="active">🔥 Active Games</button>
+            </div>
+
+            <!-- Your History Tab -->
+            <div id="history" class="tab-content active">
+                <!-- Statistics -->
+                <div class="stat-badges" id="statBadges">
+                    <div class="stat-badge">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Games</div>
+                    </div>
+                    <div class="stat-badge">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Wins</div>
+                    </div>
+                </div>
+
+                <!-- Filter -->
+                <div class="filters">
+                    <select id="gameTypeFilter" class="filter-select">
+                        <option value="">All Game Types</option>
+                        <option value="301">301</option>
+                        <option value="401">401</option>
+                        <option value="501">501</option>
+                        <option value="cricket">Cricket</option>
+                    </select>
+                </div>
+
+                <!-- History List -->
+                <div id="resultsList" class="results-list">
+                    <div class="loading">Loading game history...</div>
+                </div>
+            </div>
+
+            <!-- Active Games Tab -->
+            <div id="active" class="tab-content">
+                <div id="activeGamesList" class="results-list">
+                    <div class="loading">Loading active games...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/mobile_results.js"></script>
+</body>
+</html>

@@ -12,13 +12,13 @@ import sys
 from pathlib import Path
 
 # Add current directory to path
-sys.path.insert(0, Path.dirname(Path.abspath(__file__)))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from database_models import GameType, Player
+from src.core.database_models import GameType, Player
 
 # Load environment variables
 load_dotenv()
@@ -41,22 +41,22 @@ def seed_game_types():
         GameType(
             name="301",
             description="Standard 301 game - race to zero from 301 points",
-            created_at=datetime.now(tz=datetime.timezone.utc),
+            created_at=datetime.datetime.now(tz=datetime.timezone.utc),
         ),
         GameType(
             name="401",
             description="Standard 401 game - race to zero from 401 points",
-            created_at=datetime.now(tz=datetime.timezone.utc),
+            created_at=datetime.datetime.now(tz=datetime.timezone.utc),
         ),
         GameType(
             name="501",
             description="Standard 501 game - race to zero from 501 points",
-            created_at=datetime.now(tz=datetime.timezone.utc),
+            created_at=datetime.datetime.now(tz=datetime.timezone.utc),
         ),
         GameType(
             name="cricket",
             description="Cricket game - close numbers 15-20 and bullseye",
-            created_at=datetime.now(tz=datetime.timezone.utc),
+            created_at=datetime.datetime.now(tz=datetime.timezone.utc),
         ),
     ]
 

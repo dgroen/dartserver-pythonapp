@@ -24,6 +24,10 @@
                 <a href="/logout" class="logout-btn">Logout</a>
                 {% endif %}
             </div>
+            <div class="header-links">
+                <a href="/" class="header-link">🎮 Main Game</a>
+                <a href="/history" class="header-link">📊 Game History</a>
+            </div>
         </header>
 
         <div class="control-sections">
@@ -55,7 +59,12 @@
                     <!-- Players will be dynamically added here -->
                 </div>
                 <div class="player-controls">
-                    <input type="text" id="player-name" placeholder="Player Name">
+                    <div style="position: relative; margin-bottom: 1rem;">
+                        <input type="text" id="player-name" placeholder="Search WSO2 users or enter manual name...">
+                        <div id="player-search-results" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #1a1a2e; border: 1px solid #00d4ff; border-top: none; max-height: 200px; overflow-y: auto; z-index: 1000; border-radius: 0 0 4px 4px;">
+                            <!-- Search results will appear here -->
+                        </div>
+                    </div>
                     <button id="add-player-btn" class="btn btn-success">Add Player</button>
                 </div>
             </section>
@@ -65,6 +74,25 @@
                 <h2>Game Controls</h2>
                 <button id="next-player-btn" class="btn btn-secondary">Next Player</button>
                 <button id="pause-btn" class="btn btn-warning">Pause/Resume</button>
+            </section>
+
+            <!-- Display Settings -->
+            <section class="control-section">
+                <h2>Display Settings</h2>
+                <div class="form-group">
+                    <label for="show-throwout-advice">
+                        <input type="checkbox" id="show-throwout-advice">
+                        Show Throw-out Advice
+                    </label>
+                </div>
+            </section>
+
+            <!-- Throwout Advice Display -->
+            <section class="control-section">
+                <h2>💡 Finishing Tip</h2>
+                <div id="throwout-advice-display" style="min-height: 2rem; padding: 1rem; background: rgba(0, 212, 255, 0.1); border-radius: 4px; border: 1px solid rgba(0, 212, 255, 0.3);">
+                    <div id="throwout-advice-content" style="color: #00d4ff; font-weight: 500;">No active game</div>
+                </div>
             </section>
 
             <!-- Manual Score Entry -->

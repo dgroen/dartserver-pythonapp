@@ -7,6 +7,7 @@ This document describes the integration of WSO2 Identity Server (IS) and WSO2 AP
 ## Architecture Components
 
 ### 1. WSO2 Identity Server (WSO2 IS)
+
 - **Purpose:** Centralized identity and access management
 - **Port:** 9443 (HTTPS)
 - **Features:**
@@ -17,8 +18,9 @@ This document describes the integration of WSO2 Identity Server (IS) and WSO2 AP
   - Multi-factor authentication support
 
 ### 2. WSO2 API Manager (WSO2 APIM)
+
 - **Purpose:** API lifecycle management and developer portal
-- **Ports:** 
+- **Ports:**
   - 9444 (Publisher/DevPortal)
   - 8280 (HTTP Gateway)
   - 8243 (HTTPS Gateway)
@@ -30,6 +32,7 @@ This document describes the integration of WSO2 Identity Server (IS) and WSO2 AP
   - Subscription management
 
 ### 3. API Gateway Service
+
 - **Purpose:** Secure REST API for score submission and game management
 - **Port:** 8080
 - **Features:**
@@ -111,32 +114,34 @@ This document describes the integration of WSO2 Identity Server (IS) and WSO2 AP
 
 ### User Roles
 
-| Role | Description | Scopes |
-|------|-------------|--------|
-| `dartboard_device` | Electronic dartboard devices | `score:write` |
-| `game_admin` | Game administrators | `score:write`, `score:read`, `game:write`, `game:read`, `player:write`, `player:read` |
-| `player` | Regular players | `score:write`, `game:read`, `player:read` |
-| `spectator` | Read-only access | `game:read` |
+| Role               | Description                  | Scopes                                                                                |
+| ------------------ | ---------------------------- | ------------------------------------------------------------------------------------- |
+| `dartboard_device` | Electronic dartboard devices | `score:write`                                                                         |
+| `game_admin`       | Game administrators          | `score:write`, `score:read`, `game:write`, `game:read`, `player:write`, `player:read` |
+| `player`           | Regular players              | `score:write`, `game:read`, `player:read`                                             |
+| `spectator`        | Read-only access             | `game:read`                                                                           |
 
 ### OAuth2 Scopes
 
-| Scope | Description | Required Role |
-|-------|-------------|---------------|
-| `score:write` | Submit scores | dartboard_device, game_admin, player |
-| `score:read` | Read score information | game_admin |
-| `game:write` | Create and manage games | game_admin |
-| `game:read` | Read game information | game_admin, player, spectator |
-| `player:write` | Add and manage players | game_admin |
-| `player:read` | Read player information | game_admin, player |
+| Scope          | Description             | Required Role                        |
+| -------------- | ----------------------- | ------------------------------------ |
+| `score:write`  | Submit scores           | dartboard_device, game_admin, player |
+| `score:read`   | Read score information  | game_admin                           |
+| `game:write`   | Create and manage games | game_admin                           |
+| `game:read`    | Read game information   | game_admin, player, spectator        |
+| `player:write` | Add and manage players  | game_admin                           |
+| `player:read`  | Read player information | game_admin, player                   |
 
 ### Token Types
 
 **Client Credentials Grant:**
+
 - Used by: Electronic dartboards, automated systems
 - Lifetime: 1 hour (configurable)
 - Refresh: Automatic on expiry
 
 **Password Grant:**
+
 - Used by: Mobile apps, web applications
 - Lifetime: 1 hour (configurable)
 - Refresh: Using refresh token
@@ -144,12 +149,15 @@ This document describes the integration of WSO2 Identity Server (IS) and WSO2 AP
 ## API Endpoints
 
 ### Health Check
+
 ```
 GET /health
 ```
+
 No authentication required. Returns service health status.
 
 ### Score Submission
+
 ```
 POST /api/v1/scores
 Authorization: Bearer <token>
@@ -168,6 +176,7 @@ Content-Type: application/json
 **Rate Limit:** 100 requests/minute
 
 ### Game Creation
+
 ```
 POST /api/v1/games
 Authorization: Bearer <token>
@@ -185,6 +194,7 @@ Content-Type: application/json
 **Rate Limit:** 10 requests/minute
 
 ### Player Addition
+
 ```
 POST /api/v1/players
 Authorization: Bearer <token>
@@ -202,6 +212,7 @@ Content-Type: application/json
 ## Message Format
 
 ### Score Message (Published to RabbitMQ)
+
 ```json
 {
   "score": 20,
@@ -216,6 +227,7 @@ Content-Type: application/json
 **Routing Key:** `darts.scores.api`
 
 ### Game Creation Message
+
 ```json
 {
   "action": "new_game",
@@ -230,6 +242,7 @@ Content-Type: application/json
 **Routing Key:** `darts.games.create`
 
 ### Player Addition Message
+
 ```json
 {
   "action": "add_player",
@@ -246,11 +259,13 @@ Content-Type: application/json
 ### Quick Start
 
 1. **Start all services:**
+
 ```bash
 docker-compose -f docker-compose-wso2.yml up -d
 ```
 
 2. **Wait for services to start:**
+
 ```bash
 # Check service status
 docker-compose -f docker-compose-wso2.yml ps
@@ -260,13 +275,15 @@ docker-compose -f docker-compose-wso2.yml logs -f
 ```
 
 3. **Access WSO2 consoles:**
-- WSO2 IS: https://localhost:9443/carbon (admin/admin)
-- WSO2 APIM Publisher: https://localhost:9444/publisher (admin/admin)
-- WSO2 APIM DevPortal: https://localhost:9444/devportal (admin/admin)
+
+- WSO2 IS: <https://localhost:9443/carbon> (admin/admin)
+- WSO2 APIM Publisher: <https://localhost:9444/publisher> (admin/admin)
+- WSO2 APIM DevPortal: <https://localhost:9444/devportal> (admin/admin)
 
 4. **Configure WSO2 (see WSO2_SETUP_GUIDE.md)**
 
 5. **Test API Gateway:**
+
 ```bash
 curl http://localhost:8080/health
 ```
@@ -274,6 +291,7 @@ curl http://localhost:8080/health
 ### Environment Variables
 
 **API Gateway:**
+
 ```bash
 # WSO2 Identity Server
 WSO2_IS_URL=https://wso2is:9443
@@ -343,12 +361,12 @@ String accessToken = "";
 void setup() {
   Serial.begin(115200);
   WiFi.begin(ssid, password);
-  
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.println("Connecting to WiFi...");
   }
-  
+
   Serial.println("Connected to WiFi");
   getAccessToken();
 }
@@ -357,14 +375,14 @@ void getAccessToken() {
   HTTPClient http;
   http.begin(tokenUrl);
   http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-  
+
   String auth = String(clientId) + ":" + String(clientSecret);
   String authEncoded = base64::encode(auth);
   http.addHeader("Authorization", "Basic " + authEncoded);
-  
+
   String payload = "grant_type=client_credentials&scope=score:write";
   int httpCode = http.POST(payload);
-  
+
   if (httpCode == 200) {
     String response = http.getString();
     DynamicJsonDocument doc(1024);
@@ -372,7 +390,7 @@ void getAccessToken() {
     accessToken = doc["access_token"].as<String>();
     Serial.println("Access token obtained");
   }
-  
+
   http.end();
 }
 
@@ -381,17 +399,17 @@ void submitScore(int score, String multiplier) {
   http.begin(apiUrl);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + accessToken);
-  
+
   DynamicJsonDocument doc(256);
   doc["score"] = score;
   doc["multiplier"] = multiplier;
   doc["player_id"] = "dartboard-001";
-  
+
   String payload;
   serializeJson(doc, payload);
-  
+
   int httpCode = http.POST(payload);
-  
+
   if (httpCode == 201) {
     Serial.println("Score submitted successfully");
   } else if (httpCode == 401) {
@@ -399,7 +417,7 @@ void submitScore(int score, String multiplier) {
     getAccessToken();
     submitScore(score, multiplier);
   }
-  
+
   http.end();
 }
 
@@ -416,7 +434,8 @@ void loop() {
 ### WSO2 API Manager Analytics
 
 Access analytics dashboard:
-- URL: https://localhost:9444/analytics
+
+- URL: <https://localhost:9444/analytics>
 - Metrics available:
   - API usage statistics
   - Response times
@@ -427,6 +446,7 @@ Access analytics dashboard:
 ### Custom Metrics
 
 The API Gateway logs all requests with:
+
 - Timestamp
 - User/client identifier
 - Endpoint accessed
@@ -440,22 +460,26 @@ Logs can be aggregated using ELK stack or similar tools.
 ### Common Issues
 
 **1. Token Validation Fails**
+
 - Verify JWKS endpoint is accessible
 - Check token expiration
 - Ensure scopes match requirements
 - Try introspection mode instead of JWKS
 
 **2. RabbitMQ Connection Failed**
+
 - Verify RabbitMQ is running
 - Check network connectivity
 - Verify credentials
 
 **3. WSO2 Services Not Starting**
+
 - Increase Docker memory limit (minimum 8GB)
 - Wait longer for startup (3-5 minutes)
 - Check logs for errors
 
 **4. Certificate Errors**
+
 - For development, SSL verification is disabled
 - For production, use proper certificates
 - Add WSO2 certificates to trusted store
@@ -463,6 +487,7 @@ Logs can be aggregated using ELK stack or similar tools.
 ## Best Practices
 
 ### Security
+
 1. Use strong, unique passwords for all services
 2. Enable HTTPS for all communications
 3. Rotate client secrets regularly
@@ -471,6 +496,7 @@ Logs can be aggregated using ELK stack or similar tools.
 6. Use network segmentation
 
 ### Performance
+
 1. Cache access tokens until expiry
 2. Use connection pooling for RabbitMQ
 3. Implement exponential backoff for retries
@@ -478,6 +504,7 @@ Logs can be aggregated using ELK stack or similar tools.
 5. Scale services horizontally as needed
 
 ### Reliability
+
 1. Implement health checks
 2. Use circuit breakers for external calls
 3. Handle token expiration gracefully
@@ -496,6 +523,7 @@ Logs can be aggregated using ELK stack or similar tools.
 ## Support
 
 For issues and questions:
+
 1. Check the troubleshooting section
 2. Review WSO2 documentation
 3. Check Docker logs: `docker-compose -f docker-compose-wso2.yml logs`

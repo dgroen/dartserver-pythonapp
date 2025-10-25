@@ -1,6 +1,6 @@
 # Text-to-Speech (TTS) Setup Guide
 
-## ✅ Status: TTS System Fully Integrated!
+## ✅ Status: TTS System Fully Integrated
 
 The Text-to-Speech system has been **successfully integrated** into your darts game application. This guide will help you install the required dependencies and configure the system.
 
@@ -9,12 +9,14 @@ The Text-to-Speech system has been **successfully integrated** into your darts g
 ## 🎯 What's Already Done
 
 ✅ **TTS Service Created** (`tts_service.py`)
+
 - Supports both `pyttsx3` (offline) and `gTTS` (online) engines
 - Configurable speed, voice type, and volume
 - Enable/disable functionality
 - Graceful fallback when engines aren't available
 
 ✅ **GameManager Integration** (`game_manager.py`)
+
 - TTS initialized in `__init__` method
 - `_emit_sound()` method enhanced with optional `text` parameter
 - TTS announcements added throughout game events:
@@ -25,11 +27,13 @@ The Text-to-Speech system has been **successfully integrated** into your darts g
   - Winner: "We have a winner! {Player name} wins!"
 
 ✅ **API Endpoints** (`app.py`)
+
 - `GET /api/tts/config` - Get current TTS configuration
 - `POST /api/tts/config` - Update TTS settings
 - `POST /api/tts/test` - Test TTS with custom text
 
 ✅ **Environment Configuration** (`.env`)
+
 - All TTS settings configurable via environment variables
 
 ---
@@ -148,6 +152,7 @@ for voice in voices:
 ```
 
 Common voice options:
+
 - `default` - System default voice
 - `male` - Male voice (if available)
 - `female` - Female voice (if available)
@@ -219,6 +224,7 @@ tts.speak("Faster and quieter!")
 #### 3. During Gameplay
 
 TTS will automatically announce:
+
 - **Game Start**: "Welcome to the game"
 - **Player Turns**: "Player 1, Throw Darts"
 - **Scores**: "Triple! 60 points"
@@ -238,7 +244,7 @@ TTS will automatically announce:
 pip install pyttsx3 gtts
 ```
 
-### Issue: pyttsx3 fails with "No module named '_espeak'"
+### Issue: pyttsx3 fails with "No module named '\_espeak'"
 
 **Solution**: Install espeak on Linux
 
@@ -324,10 +330,10 @@ sudo apt-get install espeak
 
 def custom_event(self):
     """Example of adding TTS to a custom event"""
-    
+
     # Play sound with TTS
     self._emit_sound("customSound", "This is a custom announcement")
-    
+
     # Play sound without TTS
     self._emit_sound("customSound")
 ```
@@ -359,17 +365,17 @@ self._emit_sound("celebration", message)
 
 The TTS system is integrated at these key points:
 
-| Event | Sound | TTS Message |
-|-------|-------|-------------|
-| Game Start | `intro` | "Welcome to the game" |
-| Player Turn | `Player1`, `Player2`, etc. | "{Player name}, Throw Darts" |
-| Triple Hit | `Triple` | "Triple! {score} points" |
-| Double Hit | `Dbl` | "Double! {score} points" |
-| Bullseye | `Bullseye` | "Bullseye! {score} points" |
-| Double Bull | `DblBullseye` | "Double Bullseye! {score} points" |
-| Bust | `Bust` | "Bust!" |
-| Winner | `WeHaveAWinner` | "We have a winner! {name} wins!" |
-| End Turn | `RemoveDarts` | (No TTS by default) |
+| Event       | Sound                      | TTS Message                       |
+| ----------- | -------------------------- | --------------------------------- |
+| Game Start  | `intro`                    | "Welcome to the game"             |
+| Player Turn | `Player1`, `Player2`, etc. | "{Player name}, Throw Darts"      |
+| Triple Hit  | `Triple`                   | "Triple! {score} points"          |
+| Double Hit  | `Dbl`                      | "Double! {score} points"          |
+| Bullseye    | `Bullseye`                 | "Bullseye! {score} points"        |
+| Double Bull | `DblBullseye`              | "Double Bullseye! {score} points" |
+| Bust        | `Bust`                     | "Bust!"                           |
+| Winner      | `WeHaveAWinner`            | "We have a winner! {name} wins!"  |
+| End Turn    | `RemoveDarts`              | (No TTS by default)               |
 
 ---
 
@@ -383,6 +389,7 @@ python3 test_tts_integration.py
 ```
 
 Expected output:
+
 ```
 ✓ TTS Service imported successfully
 ✓ TTS Service initialized
@@ -400,31 +407,31 @@ Expected output:
 
 ```python
 class TTSService:
-    def __init__(self, engine='pyttsx3', voice_type='default', 
+    def __init__(self, engine='pyttsx3', voice_type='default',
                  speed=150, volume=1.0):
         """Initialize TTS service"""
-        
+
     def speak(self, text: str) -> bool:
         """Speak the given text"""
-        
+
     def set_speed(self, speed: int):
         """Set speech speed"""
-        
+
     def set_volume(self, volume: float):
         """Set volume (0.0 to 1.0)"""
-        
+
     def set_voice(self, voice_type: str):
         """Set voice type"""
-        
+
     def enable(self):
         """Enable TTS"""
-        
+
     def disable(self):
         """Disable TTS"""
-        
+
     def is_enabled(self) -> bool:
         """Check if TTS is enabled"""
-        
+
     def get_available_voices(self) -> list:
         """Get list of available voices"""
 ```
@@ -436,6 +443,7 @@ class TTSService:
 Get current TTS configuration.
 
 **Response:**
+
 ```json
 {
   "enabled": true,
@@ -451,6 +459,7 @@ Get current TTS configuration.
 Update TTS configuration.
 
 **Request Body:**
+
 ```json
 {
   "enabled": true,
@@ -461,6 +470,7 @@ Update TTS configuration.
 ```
 
 **Response:**
+
 ```json
 {
   "status": "success",
@@ -473,6 +483,7 @@ Update TTS configuration.
 Test TTS with custom text.
 
 **Request Body:**
+
 ```json
 {
   "text": "Hello, this is a test!"
@@ -480,6 +491,7 @@ Test TTS with custom text.
 ```
 
 **Response:**
+
 ```json
 {
   "status": "success",
@@ -491,17 +503,19 @@ Test TTS with custom text.
 
 ## 🎉 Summary
 
-Your TTS system is **fully integrated and ready to use**! 
+Your TTS system is **fully integrated and ready to use**!
 
-### Next Steps:
+### Next Steps
 
 1. **Install Dependencies**:
+
    ```bash
    pip install pyttsx3 gtts
    sudo apt-get install espeak  # Linux only
    ```
 
 2. **Configure Settings** (already done in `.env`):
+
    ```bash
    TTS_ENABLED=true
    TTS_ENGINE=pyttsx3
@@ -509,11 +523,13 @@ Your TTS system is **fully integrated and ready to use**!
    ```
 
 3. **Start the Application**:
+
    ```bash
    python3 app.py
    ```
 
 4. **Test TTS**:
+
    ```bash
    curl -X POST http://localhost:5000/api/tts/test \
      -H "Content-Type: application/json" \

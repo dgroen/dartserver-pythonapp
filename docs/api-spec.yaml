@@ -2,22 +2,22 @@ openapi: 3.0.3
 info:
   title: Darts Game API
   description: |
-    REST API for the Darts Game System. This API allows electronic dartboards, 
-    mobile apps, and other clients to submit scores, manage games, and interact 
+    REST API for the Darts Game System. This API allows electronic dartboards,
+    mobile apps, and other clients to submit scores, manage games, and interact
     with the darts game system.
-    
+
     ## Authentication
     All endpoints (except /health) require OAuth2 authentication via WSO2 Identity Server.
     Include the access token in the Authorization header:
     ```
     Authorization: Bearer <access_token>
     ```
-    
+
     ## Rate Limiting
     - Score submission: 100 requests/minute
     - Game management: 10 requests/minute
     - Player management: 20 requests/minute
-    
+
   version: 1.0.0
   contact:
     name: Darts Game System
@@ -52,7 +52,7 @@ paths:
       operationId: healthCheck
       security: []
       responses:
-        '200':
+        "200":
           description: Service is healthy
           content:
             application/json:
@@ -68,7 +68,7 @@ paths:
                   timestamp:
                     type: string
                     format: date-time
-                    example: '2024-01-01T12:00:00.000000'
+                    example: "2024-01-01T12:00:00.000000"
 
   /scores:
     post:
@@ -76,7 +76,7 @@ paths:
         - Scores
       summary: Submit a score
       description: |
-        Submit a dart score to the game system. The score will be published to 
+        Submit a dart score to the game system. The score will be published to
         RabbitMQ and processed by the game logic.
       operationId: submitScore
       security:
@@ -87,7 +87,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ScoreSubmission'
+              $ref: "#/components/schemas/ScoreSubmission"
             examples:
               triple20:
                 summary: Triple 20
@@ -111,36 +111,36 @@ paths:
                   player_id: player-123
                   game_id: game-456
       responses:
-        '201':
+        "201":
           description: Score submitted successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
-        '400':
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
           description: Invalid request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
           description: Unauthorized - Invalid or missing token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden - Insufficient permissions
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /games:
     post:
@@ -158,12 +158,12 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GameCreation'
+              $ref: "#/components/schemas/GameCreation"
             examples:
               game301:
                 summary: 301 Game
                 value:
-                  game_type: '301'
+                  game_type: "301"
                   players:
                     - Player 1
                     - Player 2
@@ -178,36 +178,36 @@ paths:
                     - Charlie
                   double_out: false
       responses:
-        '201':
+        "201":
           description: Game created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
-        '400':
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
           description: Invalid request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /players:
     post:
@@ -224,43 +224,43 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PlayerAddition'
+              $ref: "#/components/schemas/PlayerAddition"
             examples:
               newPlayer:
                 summary: Add new player
                 value:
                   name: Player 3
       responses:
-        '201':
+        "201":
           description: Player added successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
-        '400':
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
           description: Invalid request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
 components:
   securitySchemes:
@@ -326,12 +326,12 @@ components:
         game_type:
           type: string
           enum:
-            - '301'
-            - '401'
-            - '501'
+            - "301"
+            - "401"
+            - "501"
             - cricket
           description: The type of game to create
-          example: '301'
+          example: "301"
         players:
           type: array
           minItems: 1

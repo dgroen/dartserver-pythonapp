@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game History - Darts</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .history-container {
+            margin-top: 2rem;
+        }
+
+        .statistics-section {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 10px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00d4ff;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            text-transform: uppercase;
+        }
+
+        .filters {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-select {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+            border-radius: 5px;
+            color: white;
+            padding: 0.75rem;
+            cursor: pointer;
+            font-size: 1rem;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .filter-select:hover {
+            background: rgba(0, 212, 255, 0.2);
+        }
+
+        .filter-select option {
+            background: #1a1a2e;
+            color: white;
+        }
+
+        .history-list {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .history-card {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(255, 71, 87, 0.1));
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .history-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 12px rgba(0, 212, 255, 0.2);
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .game-type-badge {
+            background: #00d4ff;
+            color: #1a1a2e;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .game-date {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+
+        .result-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .result-badge.win {
+            background: rgba(0, 212, 255, 0.3);
+            color: #00d4ff;
+            border: 1px solid #00d4ff;
+        }
+
+        .result-badge.loss {
+            background: rgba(255, 71, 87, 0.3);
+            color: #ff4757;
+            border: 1px solid #ff4757;
+        }
+
+        .game-players {
+            margin: 1rem 0;
+            padding: 1rem 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .player-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            font-size: 0.95rem;
+        }
+
+        .player-name {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .player-score {
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .player-row.winner {
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .player-row.winner::before {
+            content: "🏆 ";
+            margin-right: 0.5rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: #00d4ff;
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: #00a8cc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Game History</h1>
+            <div class="game-info">
+                <a href="/" class="back-link">← Back to Game</a>
+            </div>
+            <div class="user-info">
+                {% if user_claims %}
+                <span class="username">👤 {{ user_claims.get('username', user_claims.get('sub', 'User')) }}</span>
+                {% if user_roles %}
+                <span class="user-roles">
+                    {% for role in user_roles %}
+                    <span class="role-badge role-{{ role }}">{{ role }}</span>
+                    {% endfor %}
+                </span>
+                {% endif %}
+                <a href="/logout" class="logout-btn">Logout</a>
+                {% endif %}
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="history-container">
+                <!-- Statistics Section -->
+                <div class="statistics-section">
+                    <h2>Your Statistics</h2>
+                    <div class="stat-grid" id="statisticsGrid">
+                        <div class="stat-box">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">Total Games</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">Wins</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">0%</div>
+                            <div class="stat-label">Win Rate</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">Avg Score</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="filters">
+                    <select id="gameTypeFilter" class="filter-select">
+                        <option value="">All Game Types</option>
+                        <option value="301">301</option>
+                        <option value="401">401</option>
+                        <option value="501">501</option>
+                        <option value="cricket">Cricket</option>
+                    </select>
+                </div>
+
+                <!-- Game History -->
+                <div id="historyList" class="history-list">
+                    <div class="loading">Loading game history...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Helper function for API requests with debugging
+        async function apiRequest(url, options = {}) {
+            console.log(`🔵 API Request: ${url}`);
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers,
+                },
+            });
+
+            console.log(`🔵 API Response Status: ${response.status} from ${url}`);
+            
+            if (!response.ok && response.status === 401) {
+                console.error('❌ Unauthorized (401) - Redirecting to login');
+                window.location.href = '/login';
+                throw new Error('Unauthorized');
+            }
+
+            const data = await response.json();
+            console.log(`🔵 API Response Data:`, data);
+            return data;
+        }
+
+        // Load statistics
+        async function loadStatistics() {
+            console.log('📊 Loading statistics...');
+            try {
+                const response = await apiRequest('/api/player/statistics');
+                console.log('📊 Statistics Response:', response);
+                
+                if (response.success && response.statistics) {
+                    const stats = response.statistics;
+                    console.log('📊 Updating statistics grid with:', stats);
+                    document.getElementById('statisticsGrid').innerHTML = `
+                        <div class="stat-box">
+                            <div class="stat-value">${stats.total_games || 0}</div>
+                            <div class="stat-label">Total Games</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${stats.wins || 0}</div>
+                            <div class="stat-label">Wins</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${stats.win_rate || 0}%</div>
+                            <div class="stat-label">Win Rate</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${stats.average_score || 0}</div>
+                            <div class="stat-label">Avg Score</div>
+                        </div>
+                    `;
+                } else {
+                    console.warn('⚠️ Statistics response was not successful:', response);
+                }
+            } catch (error) {
+                console.error('❌ Failed to load statistics:', error);
+            }
+        }
+
+        // Load game history
+        async function loadHistory(gameType = '') {
+            console.log(`🎮 Loading history... Game Type: ${gameType || 'All'}`);
+            try {
+                const url = gameType
+                    ? `/api/player/history?game_type=${gameType}`
+                    : '/api/player/history';
+
+                const response = await apiRequest(url);
+                console.log('🎮 History Response:', response);
+                
+                if (response.success) {
+                    console.log(`🎮 Found ${response.games?.length || 0} games`);
+                    displayHistory(response.games);
+                } else {
+                    console.warn('⚠️ History response was not successful:', response.error);
+                    document.getElementById('historyList').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <p>No games found</p>
+                            <p style="font-size: 0.85rem; color: rgba(255,255,255,0.4); margin-top: 0.5rem;">Error: ${response.error || 'Unknown error'}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('❌ Failed to load history:', error);
+                document.getElementById('historyList').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <p>Failed to load game history</p>
+                        <p style="font-size: 0.85rem; color: rgba(255,255,255,0.4); margin-top: 0.5rem;">Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Display game history
+        function displayHistory(games) {
+            console.log('🎨 Displaying history. Games:', games);
+            const container = document.getElementById('historyList');
+
+            if (!games || games.length === 0) {
+                console.log('📭 No games to display');
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <p>No games found</p>
+                        <p style="font-size: 0.85rem; color: rgba(255,255,255,0.4); margin-top: 0.5rem;">Play a game to see it here!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            console.log(`🎨 Building HTML for ${games.length} games...`);
+            const historyHtml = games.map((game, index) => {
+                console.log(`🎨 Game ${index}:`, game);
+                
+                // Safely parse the start date
+                let dateStr = 'Date not available';
+                try {
+                    const startDate = new Date(game.started_at);
+                    if (!isNaN(startDate)) {
+                        dateStr = startDate.toLocaleDateString() + ' ' + startDate.toLocaleTimeString();
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Could not parse date:', game.started_at);
+                }
+                
+                const resultClass = game.is_winner ? 'win' : 'loss';
+                const resultText = game.is_winner ? '✓ Won' : '✗ Lost';
+
+                const playersHtml = (game.players && Array.isArray(game.players))
+                    ? game.players
+                        .map(player => `
+                            <div class="player-row ${player.is_winner ? 'winner' : ''}">
+                                <span class="player-name">${player.name || 'Unknown'}</span>
+                                <span class="player-score">${player.final_score || 0}</span>
+                            </div>
+                        `)
+                        .join('')
+                    : '<div class="player-row"><span>No player data</span></div>';
+
+                return `
+                    <div class="history-card">
+                        <div class="history-header">
+                            <span class="game-type-badge">${game.game_type || 'Unknown'}</span>
+                            <span class="result-badge ${resultClass}">${resultText}</span>
+                            <span class="game-date">${dateStr}</span>
+                        </div>
+                        <div class="game-players">
+                            ${playersHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            console.log('🎨 Updating HTML in container');
+            container.innerHTML = historyHtml;
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('✅ Page loaded - Starting to fetch data...');
+            loadStatistics();
+            loadHistory();
+
+            document.getElementById('gameTypeFilter').addEventListener('change', (e) => {
+                console.log(`🔄 Filter changed to: ${e.target.value}`);
+                loadHistory(e.target.value);
+            });
+        });
+    </script>
+</body>
+</html>

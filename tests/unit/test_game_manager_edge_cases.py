@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from game_manager import GameManager
+from src.app.game_manager import GameManager
 
 
 @pytest.fixture

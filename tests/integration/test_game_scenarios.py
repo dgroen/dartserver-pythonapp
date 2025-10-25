@@ -1,6 +1,6 @@
 """Integration tests for complete game scenarios."""
 
-from game_manager import GameManager
+from src.app.game_manager import GameManager
 
 
 class TestGame301Scenarios:

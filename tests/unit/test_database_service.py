@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from database_models import DatabaseManager
-from database_service import DatabaseService
+from src.core.database_models import DatabaseManager
+from src.core.database_service import DatabaseService
 
 
 class TestDatabaseManager:
@@ -385,3 +385,91 @@ class TestDatabaseService:
         # Undo 2 throws
         db_service.undo_throws_for_bust(player_id=0, throw_count=2)
         # Should not raise an error
+
+    def test_get_or_create_player_new_player(self, db_service):
+        """Test creating a new player via get_or_create_player."""
+        player = db_service.get_or_create_player(
+            name="Test Player",
+            username="testuser",
+            email="test@example.com",
+        )
+
+        assert player is not None
+        assert player.name == "Test Player"
+        assert player.username == "testuser"
+        assert player.email == "test@example.com"
+        assert player.id is not None
+        # Ensure the player object is accessible after session closure
+        player_id = player.id
+        assert player_id > 0
+
+    def test_get_or_create_player_existing_by_username(self, db_service):
+        """Test retrieving an existing player by username."""
+        # Create a player first
+        player1 = db_service.get_or_create_player(
+            name="Test Player",
+            username="testuser",
+            email="test@example.com",
+        )
+        player1_id = player1.id
+
+        # Get the same player using username
+        player2 = db_service.get_or_create_player(
+            name="Updated Name",
+            username="testuser",
+            email="newemail@example.com",
+        )
+
+        assert player2 is not None
+        assert player2.id == player1_id
+        assert player2.name == "Updated Name"  # Name should be updated
+        assert player2.email == "newemail@example.com"  # Email should be updated
+
+    def test_get_or_create_player_existing_by_email(self, db_service):
+        """Test retrieving an existing player by email."""
+        # Create a player first
+        player1 = db_service.get_or_create_player(
+            name="Test Player",
+            username="testuser1",
+            email="test@example.com",
+        )
+        player1_id = player1.id
+
+        # Get the same player using email (different username)
+        player2 = db_service.get_or_create_player(
+            name="Updated Name",
+            username="testuser2",
+            email="test@example.com",
+        )
+
+        assert player2 is not None
+        assert player2.id == player1_id
+        assert player2.name == "Updated Name"
+        assert player2.username == "testuser2"
+
+    def test_get_or_create_player_no_username_no_email(self, db_service):
+        """Test creating a player with only a name."""
+        player = db_service.get_or_create_player(name="Name Only")
+
+        assert player is not None
+        assert player.name == "Name Only"
+        assert player.username is None
+        assert player.email is None
+        assert player.id is not None
+
+    def test_get_or_create_player_multiple_separate_players(self, db_service):
+        """Test creating multiple separate players."""
+        player1 = db_service.get_or_create_player(
+            name="Player 1",
+            username="user1",
+            email="user1@example.com",
+        )
+        player2 = db_service.get_or_create_player(
+            name="Player 2",
+            username="user2",
+            email="user2@example.com",
+        )
+
+        assert player1.id != player2.id
+        assert player1.username == "user1"
+        assert player2.username == "user2"

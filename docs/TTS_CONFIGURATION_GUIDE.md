@@ -46,6 +46,7 @@ curl http://localhost:5000/api/tts/config
 ```
 
 Response:
+
 ```json
 {
   "enabled": true,
@@ -76,6 +77,7 @@ curl http://localhost:5000/api/tts/voices
 ```
 
 Response:
+
 ```json
 [
   {
@@ -106,35 +108,37 @@ curl -X POST http://localhost:5000/api/tts/test \
 
 ### Speed Settings
 
-| Speed | Description | Use Case |
-|-------|-------------|----------|
+| Speed | Description | Use Case                       |
+| ----- | ----------- | ------------------------------ |
 | 100   | Very Slow   | Maximum clarity, accessibility |
-| 125   | Slow        | Clear pronunciation |
-| 150   | Normal      | Default, balanced speed |
-| 175   | Fast        | Quick announcements |
-| 200   | Very Fast   | Rapid gameplay |
-| 250+  | Ultra Fast  | Expert players |
+| 125   | Slow        | Clear pronunciation            |
+| 150   | Normal      | Default, balanced speed        |
+| 175   | Fast        | Quick announcements            |
+| 200   | Very Fast   | Rapid gameplay                 |
+| 250+  | Ultra Fast  | Expert players                 |
 
 ### Engine Comparison
 
-| Feature | pyttsx3 | gTTS |
-|---------|---------|------|
-| **Connection** | Offline | Online (requires internet) |
-| **Speed** | Fast | Slower (API calls) |
-| **Voices** | 75+ system voices | Google voices |
-| **Quality** | Good | Excellent |
-| **Latency** | Low | Higher |
-| **Recommended For** | Local games | High-quality audio |
+| Feature             | pyttsx3           | gTTS                       |
+| ------------------- | ----------------- | -------------------------- |
+| **Connection**      | Offline           | Online (requires internet) |
+| **Speed**           | Fast              | Slower (API calls)         |
+| **Voices**          | 75+ system voices | Google voices              |
+| **Quality**         | Good              | Excellent                  |
+| **Latency**         | Low               | Higher                     |
+| **Recommended For** | Local games       | High-quality audio         |
 
 ## Game Event Announcements
 
 The TTS system automatically announces:
 
 ### Game Start
+
 - "Welcome to the game"
 - "[Player Name], Throw Darts"
 
 ### Score Announcements
+
 - **Single**: "[Score] points"
 - **Double**: "Double [base score]! [total] points"
 - **Triple**: "Triple [base score]! [total] points"
@@ -142,14 +146,17 @@ The TTS system automatically announces:
 - **Double Bullseye**: "Double Bullseye! [score] points"
 
 ### Turn Changes
+
 - "[Player Name], Throw Darts"
 
 ### Game Events
+
 - **Bust**: "Bust!"
 - **Winner**: "We have a winner! [Player Name] wins!"
 - **End Turn**: "Remove darts"
 
 ### Player Management
+
 - **Add Player**: "Player [name] added"
 - **Remove Player**: "Player [name] removed"
 
@@ -158,11 +165,13 @@ The TTS system automatically announces:
 ### Selecting a Specific Voice
 
 1. Get list of available voices:
+
 ```bash
 curl http://localhost:5000/api/tts/voices
 ```
 
 2. Choose a voice from the list and update configuration:
+
 ```bash
 curl -X POST http://localhost:5000/api/tts/config \
   -H "Content-Type: application/json" \
@@ -247,16 +256,19 @@ tts.speak("This is a different voice")
 ### TTS Not Working
 
 1. Check if TTS is enabled:
+
 ```bash
 curl http://localhost:5000/api/tts/config
 ```
 
 2. Verify dependencies are installed:
+
 ```bash
 .venv/bin/pip list | grep -E "(pyttsx3|gtts)"
 ```
 
 3. Test TTS directly:
+
 ```bash
 curl -X POST http://localhost:5000/api/tts/test \
   -H "Content-Type: application/json" \
@@ -268,6 +280,7 @@ curl -X POST http://localhost:5000/api/tts/test \
 If using gTTS and experiencing delays:
 
 1. Switch to pyttsx3 for lower latency:
+
 ```bash
 curl -X POST http://localhost:5000/api/tts/config \
   -H "Content-Type: application/json" \
@@ -281,6 +294,7 @@ Note: Changing engines requires restarting the application.
 If a specific voice isn't working:
 
 1. List available voices:
+
 ```bash
 curl http://localhost:5000/api/tts/voices
 ```
@@ -316,24 +330,24 @@ response = requests.post(
 
 ```javascript
 // Configure TTS
-fetch('http://localhost:5000/api/tts/config', {
-  method: 'POST',
-  headers: {'Content-Type': 'application/json'},
+fetch("http://localhost:5000/api/tts/config", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
     enabled: true,
     speed: 150,
     volume: 0.9,
-    voice: 'english'
-  })
+    voice: "english",
+  }),
 });
 
 // Test announcement
-fetch('http://localhost:5000/api/tts/test', {
-  method: 'POST',
-  headers: {'Content-Type': 'application/json'},
+fetch("http://localhost:5000/api/tts/test", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-    text: 'Player One, throw darts'
-  })
+    text: "Player One, throw darts",
+  }),
 });
 ```
 
@@ -355,11 +369,13 @@ fetch('http://localhost:5000/api/tts/test', {
 ## API Reference
 
 ### GET /api/tts/config
+
 Get current TTS configuration
 
 **Response**: `{enabled, engine, speed, volume, voice}`
 
 ### POST /api/tts/config
+
 Update TTS configuration
 
 **Body**: `{enabled?, speed?, volume?, voice?}`
@@ -367,11 +383,13 @@ Update TTS configuration
 **Response**: `{status, message}`
 
 ### GET /api/tts/voices
+
 Get available voices
 
 **Response**: Array of voice objects
 
 ### POST /api/tts/test
+
 Test TTS with custom text
 
 **Body**: `{text}`
@@ -381,6 +399,7 @@ Test TTS with custom text
 ## Support
 
 For issues or questions:
+
 1. Check the logs for error messages
 2. Verify dependencies are installed
 3. Test with the included test scripts

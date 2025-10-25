@@ -27,12 +27,12 @@ User → Darts App → WSO2 IS (OAuth2) → Token → Darts App → Protected Re
 
 ### Components
 
-| Component | Purpose | Technology |
-|-----------|---------|------------|
-| **auth.py** | Authentication module | Flask, PyJWT, OAuth2 |
-| **app.py** | Main application with protected routes | Flask, SocketIO |
-| **WSO2 IS** | Identity provider | OAuth2, OpenID Connect |
-| **Session** | Token and user info storage | Flask sessions |
+| Component   | Purpose                                | Technology             |
+| ----------- | -------------------------------------- | ---------------------- |
+| **auth.py** | Authentication module                  | Flask, PyJWT, OAuth2   |
+| **app.py**  | Main application with protected routes | Flask, SocketIO        |
+| **WSO2 IS** | Identity provider                      | OAuth2, OpenID Connect |
+| **Session** | Token and user info storage            | Flask sessions         |
 
 ---
 
@@ -41,14 +41,17 @@ User → Darts App → WSO2 IS (OAuth2) → Token → Darts App → Protected Re
 ### Three-Tier Role Model
 
 #### 🟢 Player Role
+
 **Purpose**: Basic game participation
 
 **Permissions**:
+
 - `game:view` - View game board and state
 - `score:submit` - Submit dart scores
 - `game:state` - View game status
 
 **Access**:
+
 - ✅ Game board (`/`)
 - ✅ Score submission
 - ✅ Game state API
@@ -59,9 +62,11 @@ User → Darts App → WSO2 IS (OAuth2) → Token → Darts App → Protected Re
 ---
 
 #### 🟡 Game Master Role
+
 **Purpose**: Game management and coordination
 
 **Permissions**:
+
 - All Player permissions
 - `game:create` - Create new games
 - `game:control` - Access control panel
@@ -69,6 +74,7 @@ User → Darts App → WSO2 IS (OAuth2) → Token → Darts App → Protected Re
 - `player:remove` - Remove players from games
 
 **Access**:
+
 - ✅ All Player features
 - ✅ Control panel (`/control`)
 - ✅ Game creation
@@ -78,12 +84,15 @@ User → Darts App → WSO2 IS (OAuth2) → Token → Darts App → Protected Re
 ---
 
 #### 🔴 Admin Role
+
 **Purpose**: Full system administration
 
 **Permissions**:
+
 - `*` (wildcard) - All permissions
 
 **Access**:
+
 - ✅ All features
 - ✅ Full system access
 - ✅ User management (via WSO2)
@@ -94,6 +103,7 @@ User → Darts App → WSO2 IS (OAuth2) → Token → Darts App → Protected Re
 ## Files Created
 
 ### Core Authentication
+
 - **`/auth.py`** (350+ lines)
   - OAuth2 Authorization Code Flow
   - Token validation (JWKS + Introspection)
@@ -101,6 +111,7 @@ User → Darts App → WSO2 IS (OAuth2) → Token → Darts App → Protected Re
   - Decorators: `@login_required`, `@role_required()`, `@permission_required()`
 
 ### Templates
+
 - **`/templates/login.html`**
   - Professional login page
   - WSO2 branding
@@ -108,6 +119,7 @@ User → Darts App → WSO2 IS (OAuth2) → Token → Darts App → Protected Re
   - OAuth2 redirect button
 
 ### Documentation
+
 - **`/docs/AUTHENTICATION_SETUP.md`** (500+ lines)
   - Complete setup guide
   - WSO2 configuration steps
@@ -116,6 +128,7 @@ User → Darts App → WSO2 IS (OAuth2) → Token → Darts App → Protected Re
   - Security best practices
 
 ### Scripts
+
 - **`/configure-wso2-roles.sh`**
   - Interactive configuration helper
   - Step-by-step WSO2 setup instructions
@@ -133,6 +146,7 @@ User → Darts App → WSO2 IS (OAuth2) → Token → Darts App → Protected Re
   - Manual test checklist
 
 ### Configuration
+
 - **`/QUICK_START.md`**
   - Quick start guide
   - Common commands
@@ -147,6 +161,7 @@ User → Darts App → WSO2 IS (OAuth2) → Token → Darts App → Protected Re
 ## Files Modified
 
 ### Application Core
+
 - **`/app.py`**
   - Added authentication imports
   - Protected all routes with `@login_required`
@@ -156,6 +171,7 @@ User → Darts App → WSO2 IS (OAuth2) → Token → Darts App → Protected Re
   - Pass user info to templates
 
 ### User Interface
+
 - **`/templates/index.html`**
   - Added user info display in header
   - Added role badge
@@ -169,6 +185,7 @@ User → Darts App → WSO2 IS (OAuth2) → Token → Darts App → Protected Re
   - Responsive design
 
 ### Styling
+
 - **`/static/css/style.css`**
   - User info section styles
   - Role badge styles (color-coded)
@@ -182,6 +199,7 @@ User → Darts App → WSO2 IS (OAuth2) → Token → Darts App → Protected Re
   - Responsive layout
 
 ### Configuration
+
 - **`/requirements.txt`**
   - Added: `PyJWT>=2.8.0`
   - Added: `cryptography>=41.0.0`
@@ -223,21 +241,25 @@ SESSION_COOKIE_SECURE=False  # Set to True in production with HTTPS
 ### WSO2 Configuration
 
 #### 1. Create Roles
+
 - `Internal/player`
 - `Internal/gamemaster`
 - `Internal/admin`
 
 #### 2. Create Test Users
+
 - `testplayer` (role: player)
 - `testgamemaster` (role: gamemaster)
 - `testadmin` (role: admin)
 
 #### 3. Register OAuth2 Application
+
 - Application Name: `DartsGameApp`
 - Grant Types: `authorization_code`, `refresh_token`
 - Callback URL: `http://localhost:5000/callback`
 
 #### 4. Configure Claims
+
 - Add `groups` claim to ID token
 - Add `roles` claim to ID token
 - Map to user roles
@@ -312,6 +334,7 @@ The following settings are for **development only** and must be changed for prod
 ```
 
 Verifies:
+
 - Services are running
 - Unauthenticated access is blocked
 - Login page is accessible
@@ -343,49 +366,58 @@ Verifies:
 ## Quick Start
 
 ### 1. Initial Setup
+
 ```bash
 ./start-with-auth.sh
 ```
 
 ### 2. Configure WSO2
+
 ```bash
 ./configure-wso2-roles.sh
 ```
 
 ### 3. Update .env
+
 ```bash
 nano .env
 # Add your WSO2_CLIENT_ID and WSO2_CLIENT_SECRET
 ```
 
 ### 4. Start Services
+
 ```bash
 ./start-with-auth.sh
 ```
 
 ### 5. Test
+
 ```bash
 ./test-authentication.sh
 ```
 
 ### 6. Access Application
-Open http://localhost:5000 and login!
+
+Open <http://localhost:5000> and login!
 
 ---
 
 ## API Endpoints
 
 ### Public Endpoints
+
 - `GET /login` - Login page
 - `GET /callback` - OAuth2 callback
 
 ### Protected Endpoints (Require Authentication)
+
 - `GET /` - Game board (all roles)
 - `GET /control` - Control panel (gamemaster, admin)
 - `GET /profile` - User profile (all roles)
 - `GET /logout` - Logout (all roles)
 
 ### API Endpoints (Require Permissions)
+
 - `GET /api/game` - Get game state (permission: `game:view`)
 - `POST /api/game` - Create game (permission: `game:create`)
 - `POST /api/player` - Add player (permission: `player:add`)
@@ -399,18 +431,23 @@ Open http://localhost:5000 and login!
 ### Common Issues
 
 #### "WSO2 Client ID not configured"
+
 **Solution**: Run `./configure-wso2-roles.sh` and update `.env`
 
 #### "Cannot connect to WSO2"
+
 **Solution**: Wait 2-3 minutes for WSO2 to start, check logs
 
 #### "Invalid redirect URI"
+
 **Solution**: Verify callback URL in WSO2 OAuth2 app configuration
 
 #### "User has no roles"
+
 **Solution**: Assign roles in WSO2, configure claims correctly
 
 #### "403 Forbidden"
+
 **Solution**: Verify user has required role/permission
 
 ---
@@ -435,6 +472,7 @@ Open http://localhost:5000 and login!
 ## Next Steps
 
 ### Enhancements
+
 1. **WebSocket Authentication** - Protect SocketIO connections
 2. **Token Refresh** - Implement automatic token refresh
 3. **Audit Logging** - Log authentication events
@@ -443,6 +481,7 @@ Open http://localhost:5000 and login!
 6. **User Profile Management** - Allow users to update profiles
 
 ### Testing
+
 1. **Unit Tests** - Test authentication functions
 2. **Integration Tests** - Test OAuth2 flow
 3. **Load Tests** - Test under high load
@@ -456,7 +495,7 @@ Open http://localhost:5000 and login!
 - **Detailed Setup**: [docs/AUTHENTICATION_SETUP.md](docs/AUTHENTICATION_SETUP.md)
 - **Configuration Helper**: `./configure-wso2-roles.sh`
 - **Testing Script**: `./test-authentication.sh`
-- **WSO2 Documentation**: https://is.docs.wso2.com/
+- **WSO2 Documentation**: <https://is.docs.wso2.com/>
 
 ---
 
@@ -468,11 +507,11 @@ Open http://localhost:5000 and login!
 ✅ **Security**: CSRF protection, token validation, session management  
 ✅ **UI**: Login page, user info display, role badges  
 ✅ **Documentation**: Complete setup and troubleshooting guides  
-✅ **Scripts**: Quick start, configuration, and testing helpers  
+✅ **Scripts**: Quick start, configuration, and testing helpers
 
 **Status**: Ready for deployment and testing! 🎯
 
 ---
 
-*Last Updated: 2024*
-*Version: 1.0*
+_Last Updated: 2024_
+_Version: 1.0_

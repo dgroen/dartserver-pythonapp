@@ -9,6 +9,7 @@ The Darts Game application now supports single-player games. You can remove play
 ### 1. Updated `game_manager.py`
 
 **Modified `remove_player()` method** (line 112-117):
+
 - **Before**: Required minimum of 2 players
 - **After**: Requires minimum of 1 player
 
@@ -67,19 +68,25 @@ All game features work in single-player mode:
 ## Use Cases
 
 ### Practice Mode
+
 Perfect for practicing your dart skills:
+
 - Work on specific finishes
 - Practice doubles
 - Improve consistency
 
 ### Solo Challenges
+
 Set personal goals:
+
 - Finish a 501 game in minimum darts
 - Close all Cricket numbers quickly
 - Practice specific checkout combinations
 
 ### Training
+
 Use single-player mode for:
+
 - Warm-up before multiplayer games
 - Testing new throwing techniques
 - Building muscle memory
@@ -99,6 +106,7 @@ Use single-player mode for:
 ### Adding Players Back
 
 You can add players back at any time:
+
 1. Enter a player name in the "Player Name" field
 2. Click "Add Player"
 3. The new player joins with the starting score
@@ -108,8 +116,8 @@ You can add players back at any time:
 ### Remove Player via WebSocket
 
 ```javascript
-socket.emit('remove_player', {
-    player_id: 0  // Index of player to remove
+socket.emit("remove_player", {
+  player_id: 0, // Index of player to remove
 });
 ```
 
@@ -120,14 +128,16 @@ curl -X DELETE http://localhost:5000/api/players/0
 ```
 
 **Response**:
+
 ```json
 {
-    "status": "success",
-    "message": "Player removed"
+  "status": "success",
+  "message": "Player removed"
 }
 ```
 
 **Error Cases**:
+
 - Trying to remove the last player returns without error but doesn't remove
 - Invalid player_id is ignored
 
@@ -156,6 +166,7 @@ python test_single_player.py
 ### Minimum Player Check
 
 The `remove_player()` method now checks:
+
 ```python
 if len(self.players) <= 1:
     print("Cannot remove player: at least 1 player required")
@@ -163,6 +174,7 @@ if len(self.players) <= 1:
 ```
 
 This ensures:
+
 - At least 1 player always remains
 - Game state stays valid
 - No crashes from empty player lists
@@ -172,11 +184,13 @@ This ensures:
 All game types support single player:
 
 **301/401/501 Games** (`games/game_301.py`):
+
 - Works with any number of players (1+)
 - Turn management handles single player correctly
 - Scoring and bust detection work normally
 
 **Cricket Games** (`games/game_cricket.py`):
+
 - Supports 1-4 players
 - Target tracking works for single player
 - Scoring logic unchanged
@@ -184,6 +198,7 @@ All game types support single player:
 ### Current Player Management
 
 When removing players, the `current_player` index is adjusted:
+
 ```python
 # Adjust current player if necessary
 if self.current_player >= len(self.players):
@@ -197,6 +212,7 @@ This ensures the game continues smoothly even after player removal.
 ### Cannot Remove Last Player
 
 You cannot remove the last remaining player. This is by design to:
+
 - Prevent empty game states
 - Ensure game logic always has a valid player
 - Avoid crashes and undefined behavior
@@ -204,6 +220,7 @@ You cannot remove the last remaining player. This is by design to:
 ### Turn Management
 
 In single-player mode:
+
 - The single player always has the turn
 - "Next Player" button has no effect (stays on same player)
 - Turn counter still increments normally
@@ -241,6 +258,7 @@ Potential improvements for single-player mode:
 **Problem**: Clicking "Remove" doesn't remove the player
 
 **Solutions**:
+
 1. Check if it's the last player (cannot be removed)
 2. Check browser console for errors
 3. Verify WebSocket connection is active
@@ -251,6 +269,7 @@ Potential improvements for single-player mode:
 **Problem**: Game seems stuck or doesn't progress
 
 **Solutions**:
+
 1. Submit a score to advance the turn
 2. Check if game is paused
 3. Start a new game if needed
@@ -261,6 +280,7 @@ Potential improvements for single-player mode:
 **Problem**: Player list doesn't update after removal
 
 **Solutions**:
+
 1. Check WebSocket connection status
 2. Open `/test-refresh` page to verify connectivity
 3. Check browser console for Socket.IO errors

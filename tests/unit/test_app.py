@@ -3,7 +3,7 @@
 import os
 from unittest.mock import MagicMock, patch
 
-from app import on_score_received
+from src.app.app import on_score_received
 
 
 class TestAppModule:
@@ -12,7 +12,7 @@ class TestAppModule:
     def test_on_score_received(self):
         """Test on_score_received callback function."""
         # Setup
-        with patch("app.game_manager") as mock_game_manager:
+        with patch("src.app.app.game_manager") as mock_game_manager:
             score_data = {"score": 20, "multiplier": "TRIPLE"}
 
             # Call callback
@@ -21,11 +21,11 @@ class TestAppModule:
             # Verify game_manager.process_score was called
             mock_game_manager.process_score.assert_called_once_with(score_data)
 
-    @patch("app.RabbitMQConsumer")
-    @patch("app.threading.Thread")
+    @patch("src.app.app.RabbitMQConsumer")
+    @patch("src.app.app.threading.Thread")
     def test_start_rabbitmq_consumer_success(self, mock_thread, mock_consumer_class):
         """Test successful RabbitMQ consumer start."""
-        from app import start_rabbitmq_consumer
+        from src.app.app import start_rabbitmq_consumer
 
         # Setup mocks
         mock_consumer_instance = MagicMock()
@@ -43,10 +43,10 @@ class TestAppModule:
         mock_thread.assert_called_once()
         mock_thread_instance.start.assert_called_once()
 
-    @patch("app.RabbitMQConsumer")
+    @patch("src.app.app.RabbitMQConsumer")
     def test_start_rabbitmq_consumer_failure(self, mock_consumer_class):
         """Test RabbitMQ consumer start with failure."""
-        from app import start_rabbitmq_consumer
+        from src.app.app import start_rabbitmq_consumer
 
         # Setup mock to raise exception
         mock_consumer_class.side_effect = Exception("Connection failed")
@@ -57,11 +57,11 @@ class TestAppModule:
         # Should not raise exception
 
     @patch.dict(os.environ, {}, clear=True)
-    @patch("app.RabbitMQConsumer")
-    @patch("app.threading.Thread")
+    @patch("src.app.app.RabbitMQConsumer")
+    @patch("src.app.app.threading.Thread")
     def test_start_rabbitmq_consumer_default_config(self, mock_thread, mock_consumer_class):
         """Test RabbitMQ consumer with default configuration."""
-        from app import start_rabbitmq_consumer
+        from src.app.app import start_rabbitmq_consumer
 
         # Setup mocks
         mock_consumer_instance = MagicMock()
@@ -96,11 +96,11 @@ class TestAppModule:
             "RABBITMQ_TOPIC": "custom.topic",
         },
     )
-    @patch("app.RabbitMQConsumer")
-    @patch("app.threading.Thread")
+    @patch("src.app.app.RabbitMQConsumer")
+    @patch("src.app.app.threading.Thread")
     def test_start_rabbitmq_consumer_custom_config(self, mock_thread, mock_consumer_class):
         """Test RabbitMQ consumer with custom configuration."""
-        from app import start_rabbitmq_consumer
+        from src.app.app import start_rabbitmq_consumer
 
         # Setup mocks
         mock_consumer_instance = MagicMock()

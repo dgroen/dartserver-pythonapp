@@ -9,23 +9,28 @@ This document summarizes the implementation of automatic UI refresh functionalit
 ### 1. Enhanced API Endpoints (`app.py`)
 
 #### Added New Endpoint
+
 - **`POST /api/score`**: New REST API endpoint for submitting scores
   - Accepts `score` and `multiplier` parameters
   - Processes score through game manager
   - Automatically triggers UI refresh via WebSocket
 
 #### Updated Existing Endpoints
+
 All existing API endpoints already trigger automatic refresh because they call game_manager methods that emit WebSocket events:
+
 - `POST /api/game/new` → calls `game_manager.new_game()` → emits `game_state`
 - `POST /api/players` → calls `game_manager.add_player()` → emits `game_state`
 - `DELETE /api/players/<id>` → calls `game_manager.remove_player()` → emits `game_state`
 
 #### Added Test Page Route
+
 - **`GET /test-refresh`**: New route for the auto-refresh test page
 
 ### 2. Created Test Page (`templates/test_refresh.html`)
 
 A comprehensive test page that:
+
 - Shows real-time WebSocket connection status
 - Displays detailed event logs
 - Provides test buttons for all game actions
@@ -33,6 +38,7 @@ A comprehensive test page that:
 - Demonstrates automatic UI refresh in action
 
 Features:
+
 - ✅ Connection status indicator
 - ✅ Real-time event logging with timestamps
 - ✅ Test buttons for all game actions
@@ -42,6 +48,7 @@ Features:
 ### 3. Created Test Script (`examples/test_auto_refresh.py`)
 
 An automated test script that:
+
 - Tests all API endpoints that should trigger UI refresh
 - Provides step-by-step verification
 - Includes timing delays to observe UI updates
@@ -50,6 +57,7 @@ An automated test script that:
 ### 4. Created Documentation (`docs/AUTO_REFRESH.md`)
 
 Comprehensive documentation covering:
+
 - Architecture overview with diagrams
 - How automatic refresh works
 - All triggers for UI refresh
@@ -62,6 +70,7 @@ Comprehensive documentation covering:
 ### 5. Updated Main README (`README.md`)
 
 Added sections for:
+
 - Automatic UI refresh feature in features list
 - Link to test page in usage section
 - New `/api/score` endpoint documentation
@@ -178,6 +187,7 @@ python examples/test_auto_refresh.py
 ## Existing Files (Already Working)
 
 These files already had the necessary code for auto-refresh:
+
 - `/game_manager.py` - Already emits `game_state` events
 - `/static/js/main.js` - Already listens for `game_state` events
 - `/static/js/control.js` - Already listens for `game_state` events
@@ -187,13 +197,13 @@ These files already had the necessary code for auto-refresh:
 
 ### WebSocket Events Emitted
 
-| Event | When | Data |
-|-------|------|------|
-| `game_state` | Any game state change | Complete game state object |
-| `message` | Game messages | `{text: string}` |
-| `big_message` | Important messages | `{text: string}` |
-| `play_sound` | Sound effects | `{sound: string}` |
-| `play_video` | Video effects | `{video: string, angle: number}` |
+| Event         | When                  | Data                             |
+| ------------- | --------------------- | -------------------------------- |
+| `game_state`  | Any game state change | Complete game state object       |
+| `message`     | Game messages         | `{text: string}`                 |
+| `big_message` | Important messages    | `{text: string}`                 |
+| `play_sound`  | Sound effects         | `{sound: string}`                |
+| `play_video`  | Video effects         | `{video: string, angle: number}` |
 
 ### Game State Object Structure
 
@@ -223,6 +233,7 @@ These files already had the necessary code for auto-refresh:
 ## Future Enhancements
 
 Potential improvements:
+
 1. **Room-based Updates**: Only send updates to clients viewing the same game
 2. **Diff-based Updates**: Send only changed fields instead of full state
 3. **Rate Limiting**: Throttle updates during rapid score submissions
@@ -253,6 +264,7 @@ Potential improvements:
 The automatic UI refresh feature is now fully implemented and tested. All game state changes automatically propagate to all connected clients via WebSocket, providing a seamless real-time experience.
 
 The implementation:
+
 - ✅ Works with API calls
 - ✅ Works with RabbitMQ messages
 - ✅ Works with WebSocket events

@@ -18,28 +18,33 @@ The dartserver-pythonapp project is now fully configured with a comprehensive de
 ## Quick Start for New Developers
 
 ### 1. Install UV (if not already installed)
+
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
 ### 2. Run Automated Setup
+
 ```bash
 ./setup-dev.sh
 ```
 
 This will:
+
 - Create a virtual environment at `.venv`
 - Install all dependencies using UV
 - Set up pre-commit hooks
 - Verify the installation
 
 ### 3. Activate Virtual Environment
+
 ```bash
 source .venv/bin/activate
 ```
 
 ### 4. Run Tests
+
 ```bash
 # Run all tests with coverage
 pytest tests/ --cov=. --cov-report=term --cov-report=html
@@ -53,6 +58,7 @@ make test
 ## Test Results
 
 ### Final Test Run (All Passing)
+
 ```
 ================================ tests coverage ================================
 Name                    Stmts   Miss Branch BrPart   Cover   Missing
@@ -72,6 +78,7 @@ Required test coverage of 80% reached. Total coverage: 80.17%
 ```
 
 ### Test Breakdown
+
 - **Unit Tests**: 75 tests across 5 test files
   - `test_game_301.py` - 15 tests for 301 game logic
   - `test_game_cricket.py` - 18 tests for Cricket game logic
@@ -84,11 +91,13 @@ Required test coverage of 80% reached. Total coverage: 80.17%
 ## Tools Configured
 
 ### 1. UV Package Manager (v0.8.22)
+
 - **10-100x faster** than pip
 - Configured in `pyproject.toml`
 - All dependencies managed through UV
 
 **Usage:**
+
 ```bash
 uv pip install <package>
 uv pip install -r requirements.txt
@@ -96,6 +105,7 @@ uv pip list
 ```
 
 ### 2. Testing Framework
+
 - **pytest** - Test runner
 - **pytest-cov** - Coverage reporting
 - **pytest-mock** - Mocking support
@@ -103,35 +113,37 @@ uv pip list
 
 ### 3. Linting Tools (7 tools)
 
-| Tool | Purpose | Configuration |
-|------|---------|---------------|
-| **Ruff** | Fast Python linter & formatter | `pyproject.toml` |
-| **Black** | Code formatter | `pyproject.toml` |
-| **isort** | Import sorter | `pyproject.toml` |
-| **Flake8** | Style guide enforcement | `.flake8` |
-| **MyPy** | Static type checker | `pyproject.toml` |
-| **Pylint** | Code analysis | `pyproject.toml` |
-| **Bandit** | Security linter | `pyproject.toml` |
+| Tool       | Purpose                        | Configuration    |
+| ---------- | ------------------------------ | ---------------- |
+| **Ruff**   | Fast Python linter & formatter | `pyproject.toml` |
+| **Black**  | Code formatter                 | `pyproject.toml` |
+| **isort**  | Import sorter                  | `pyproject.toml` |
+| **Flake8** | Style guide enforcement        | `.flake8`        |
+| **MyPy**   | Static type checker            | `pyproject.toml` |
+| **Pylint** | Code analysis                  | `pyproject.toml` |
+| **Bandit** | Security linter                | `pyproject.toml` |
 
 **All tools configured with 100-character line length for consistency**
 
 ### 4. Tox Environments
 
-| Environment | Python Version | Purpose |
-|-------------|----------------|---------|
-| `py310` | 3.10 | Run tests on Python 3.10 |
-| `py311` | 3.11 | Run tests on Python 3.11 |
-| `py312` | 3.12 | Run tests on Python 3.12 |
-| `lint` | 3.10 | Run all linting tools |
-| `type` | 3.10 | Run type checking (MyPy) |
-| `security` | 3.10 | Run security checks (Bandit) |
+| Environment | Python Version | Purpose                      |
+| ----------- | -------------- | ---------------------------- |
+| `py310`     | 3.10           | Run tests on Python 3.10     |
+| `py311`     | 3.11           | Run tests on Python 3.11     |
+| `py312`     | 3.12           | Run tests on Python 3.12     |
+| `lint`      | 3.10           | Run all linting tools        |
+| `type`      | 3.10           | Run type checking (MyPy)     |
+| `security`  | 3.10           | Run security checks (Bandit) |
 
 **Run all environments:**
+
 ```bash
 tox
 ```
 
 **Run specific environment:**
+
 ```bash
 tox -e py310
 tox -e lint
@@ -143,6 +155,7 @@ tox -e type
 **Unique Feature**: First commit checks and fails, second commit auto-fixes.
 
 **Hooks configured:**
+
 - Trailing whitespace removal
 - End-of-file fixer
 - YAML syntax check
@@ -155,6 +168,7 @@ tox -e type
 - detect-secrets
 
 **Usage:**
+
 ```bash
 # Install hooks
 pre-commit install
@@ -174,6 +188,7 @@ git commit -m "Your message"
 ## Daily Development Workflow
 
 ### 1. Start Development
+
 ```bash
 # Activate virtual environment
 source .venv/bin/activate
@@ -186,6 +201,7 @@ uv pip install -r requirements.txt
 ```
 
 ### 2. Make Changes
+
 ```bash
 # Write code
 # Write tests
@@ -198,6 +214,7 @@ pytest tests/ --cov=. --cov-report=term
 ```
 
 ### 3. Before Committing
+
 ```bash
 # Run linting
 make lint
@@ -210,6 +227,7 @@ tox -e py310,lint
 ```
 
 ### 4. Commit Changes
+
 ```bash
 # Stage changes
 git add .
@@ -228,6 +246,7 @@ git commit -m "Your descriptive message"
 The `Makefile` provides 40+ convenient commands:
 
 ### Essential Commands
+
 ```bash
 make help           # Show all available commands
 make test           # Run all tests with coverage
@@ -242,6 +261,7 @@ make install        # Install dependencies with UV
 ```
 
 ### Tox Commands
+
 ```bash
 make tox            # Run all tox environments
 make tox-py310      # Test on Python 3.10
@@ -251,6 +271,7 @@ make tox-lint       # Run linting environment
 ```
 
 ### Coverage Commands
+
 ```bash
 make coverage       # Generate HTML coverage report
 make coverage-report # Open coverage report in browser
@@ -295,7 +316,9 @@ dartserver-pythonapp/
 ## Configuration Files
 
 ### pyproject.toml
+
 Central configuration for:
+
 - Project metadata
 - Dependencies
 - pytest settings (80% coverage minimum)
@@ -307,12 +330,14 @@ Central configuration for:
 - Bandit configuration
 
 ### tox.ini
+
 - Multi-environment testing
 - Python 3.10, 3.11, 3.12 support
 - Separate environments for lint, type, security
 - UV-based dependency installation
 
 ### .pre-commit-config.yaml
+
 - Two-stage hook system
 - 10 different hooks
 - Auto-fix on second attempt
@@ -324,6 +349,7 @@ Central configuration for:
 ### Current Coverage: 80.17% ✅
 
 **Coverage by Module:**
+
 - `game_manager.py` - 92.27% ⭐
 - `games/game_cricket.py` - 94.85% ⭐
 - `games/game_301.py` - 96.61% ⭐
@@ -333,6 +359,7 @@ Central configuration for:
 **Minimum Required:** 80% (configured in `pyproject.toml`)
 
 **To view detailed coverage:**
+
 ```bash
 pytest tests/ --cov=. --cov-report=html
 open htmlcov/index.html
@@ -345,11 +372,13 @@ open htmlcov/index.html
 The project supports **Python 3.10, 3.11, and 3.12**.
 
 **Check your Python version:**
+
 ```bash
 python --version
 ```
 
 **Test on all versions with tox:**
+
 ```bash
 tox -e py310,py311,py312
 ```
@@ -359,6 +388,7 @@ tox -e py310,py311,py312
 ## Troubleshooting
 
 ### UV Not Found
+
 ```bash
 # Install UV
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -371,6 +401,7 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 ```
 
 ### Virtual Environment Issues
+
 ```bash
 # Remove and recreate
 rm -rf .venv
@@ -378,6 +409,7 @@ rm -rf .venv
 ```
 
 ### Test Failures
+
 ```bash
 # Run with verbose output
 pytest tests/ -vv
@@ -390,6 +422,7 @@ pytest tests/ --pdb
 ```
 
 ### Pre-commit Hook Issues
+
 ```bash
 # Reinstall hooks
 pre-commit uninstall
@@ -403,6 +436,7 @@ pre-commit run --all-files
 ```
 
 ### Tox Issues
+
 ```bash
 # Recreate tox environments
 tox -r
@@ -416,18 +450,23 @@ tox -v
 ## Key Features
 
 ### 1. Fast Package Management
+
 UV is **10-100x faster** than pip, making dependency installation nearly instantaneous.
 
 ### 2. Comprehensive Testing
+
 - 98 tests covering unit and integration scenarios
 - Mocked external dependencies (RabbitMQ, SocketIO)
 - Fast test execution (~5 seconds for full suite)
 
 ### 3. Multi-Version Support
+
 Tox ensures compatibility across Python 3.10, 3.11, and 3.12.
 
 ### 4. Code Quality Enforcement
+
 7 different linting tools ensure:
+
 - Consistent formatting
 - Type safety
 - Security best practices
@@ -435,12 +474,15 @@ Tox ensures compatibility across Python 3.10, 3.11, and 3.12.
 - Import organization
 
 ### 5. Unique Pre-commit System
+
 Two-stage hooks provide:
+
 - First attempt: Check and report issues
 - Second attempt: Auto-fix issues
 - Prevents bad code from being committed
 
 ### 6. Developer-Friendly
+
 - One-command setup
 - Comprehensive documentation
 - Make commands for common tasks
@@ -451,6 +493,7 @@ Two-stage hooks provide:
 ## Next Steps
 
 ### For New Developers
+
 1. Run `./setup-dev.sh`
 2. Read `DEVELOPMENT.md`
 3. Read `TESTING.md`
@@ -458,12 +501,14 @@ Two-stage hooks provide:
 5. Start coding!
 
 ### For CI/CD Integration
+
 1. Use `tox` in CI pipeline
 2. Enforce 80% coverage minimum
 3. Run security scans with Bandit
 4. Test on all Python versions
 
 ### For Production Deployment
+
 1. Use `requirements.txt` for production dependencies
 2. Set environment variables for RabbitMQ and SocketIO
 3. Run with production WSGI server (gunicorn)
@@ -474,29 +519,34 @@ Two-stage hooks provide:
 ## Important Notes
 
 ### Turn-Based Game Logic
+
 The GameManager implements a turn-based system where:
+
 - After 3 throws, `_end_turn()` is called which sets `is_paused = True`
 - `next_player()` must be called to unpause and continue
 - This is critical for integration tests
 
 ### Coverage Testing
+
 Running individual test files will show low coverage because they only test specific modules. Always run the full test suite (`pytest tests/`) for accurate coverage metrics.
 
 ### UV Usage
+
 Always use `uv pip install` instead of `pip install` for consistency and speed.
 
 ### Pre-commit Hook Behavior
+
 The two-stage system is unique - first commit attempt checks and fails, second attempt auto-fixes. This may need explanation to new developers.
 
 ---
 
 ## Resources
 
-- **UV Documentation**: https://github.com/astral-sh/uv
-- **pytest Documentation**: https://docs.pytest.org/
-- **Tox Documentation**: https://tox.wiki/
-- **Pre-commit Documentation**: https://pre-commit.com/
-- **Ruff Documentation**: https://docs.astral.sh/ruff/
+- **UV Documentation**: <https://github.com/astral-sh/uv>
+- **pytest Documentation**: <https://docs.pytest.org/>
+- **Tox Documentation**: <https://tox.wiki/>
+- **Pre-commit Documentation**: <https://pre-commit.com/>
+- **Ruff Documentation**: <https://docs.astral.sh/ruff/>
 
 ---
 
@@ -520,6 +570,7 @@ The two-stage system is unique - first commit attempt checks and fails, second a
 ## Contact & Support
 
 For questions or issues:
+
 1. Check `DEVELOPMENT.md` for development guidelines
 2. Check `TESTING.md` for testing guidelines
 3. Run `make help` for available commands
@@ -529,7 +580,7 @@ For questions or issues:
 
 **Setup completed successfully! Happy coding! 🚀**
 
-*Last updated: 2025*
-*Python versions: 3.10, 3.11, 3.12*
-*UV version: 0.8.22*
-*Test coverage: 80.17%*
+_Last updated: 2025_
+_Python versions: 3.10, 3.11, 3.12_
+_UV version: 0.8.22_
+_Test coverage: 80.17%_

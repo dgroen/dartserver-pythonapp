@@ -77,14 +77,14 @@ curl -X POST http://localhost:5000/api/tts/test \
 
 ## 📊 Speed Guide
 
-| Speed | WPM | Description |
-|-------|-----|-------------|
-| Very Slow | 100 | For beginners |
-| Slow | 125 | Clear and easy |
-| **Normal** | **150** | **Default** |
-| Fast | 175 | Quick games |
-| Very Fast | 200 | Tournaments |
-| Maximum | 250 | Speed mode |
+| Speed      | WPM     | Description    |
+| ---------- | ------- | -------------- |
+| Very Slow  | 100     | For beginners  |
+| Slow       | 125     | Clear and easy |
+| **Normal** | **150** | **Default**    |
+| Fast       | 175     | Quick games    |
+| Very Fast  | 200     | Tournaments    |
+| Maximum    | 250     | Speed mode     |
 
 ---
 
@@ -98,6 +98,7 @@ python3 verify_tts_integration.py
 ```
 
 Expected output:
+
 ```
 ✅ ALL TESTS PASSED!
 
@@ -114,6 +115,7 @@ Expected output:
 ## 📝 Examples
 
 ### Example 1: Slow Speed for Learning
+
 ```bash
 # Edit .env
 TTS_SPEED=100
@@ -123,6 +125,7 @@ python3 app.py
 ```
 
 ### Example 2: Fast Speed for Experienced Players
+
 ```bash
 # Via API (no restart needed)
 curl -X POST http://localhost:5000/api/tts/config \
@@ -131,6 +134,7 @@ curl -X POST http://localhost:5000/api/tts/config \
 ```
 
 ### Example 3: Quiet Volume for Late Night
+
 ```bash
 curl -X POST http://localhost:5000/api/tts/config \
   -H "Content-Type: application/json" \
@@ -149,6 +153,7 @@ python3 -c "from tts_service import TTSService; tts = TTSService(); [print(v['na
 ```
 
 Then set your favorite in `.env`:
+
 ```bash
 TTS_VOICE=english
 ```
@@ -175,6 +180,7 @@ TTS_VOICE=english
 Just start your app and enjoy voice announcements with configurable speed and voice type! 🎉
 
 For more details, see:
+
 - `TTS_USAGE.md` - Complete usage guide
 - `TTS_SETUP_GUIDE.md` - Detailed setup information
 - `TTS_QUICK_REFERENCE.md` - Quick reference card

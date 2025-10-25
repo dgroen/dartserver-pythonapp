@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="/static/manifest.json">
+    <title>Dartboard Setup - Darts Mobile</title>
+    <link rel="stylesheet" href="/static/css/mobile.css">
+</head>
+<body>
+    <div class="mobile-app">
+        <header class="mobile-header">
+            <a href="/mobile" class="back-btn">←</a>
+            <h1>🎯 Dartboard Setup</h1>
+        </header>
+
+        <main class="mobile-content">
+            <div class="setup-form-container">
+                <h2>Register New Dartboard</h2>
+                <form id="dartboardForm">
+                    <div class="form-group">
+                        <label for="dartboardId">Dartboard ID</label>
+                        <input type="text" id="dartboardId" name="dartboardId" required
+                               placeholder="e.g., DART-001">
+                        <small>Unique identifier for your dartboard</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="dartboardName">Dartboard Name</label>
+                        <input type="text" id="dartboardName" name="dartboardName" required
+                               placeholder="e.g., Living Room Dartboard">
+                        <small>Friendly name to identify this dartboard</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="wpaKey">WPA Key</label>
+                        <input type="text" id="wpaKey" name="wpaKey" required
+                               placeholder="Enter WPA key">
+                        <small>Pre-configured WPA key for this dartboard</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-large">Register Dartboard</button>
+                </form>
+            </div>
+
+            <div class="info-section">
+                <h3>Setup Instructions</h3>
+                <ol>
+                    <li>Enter the unique ID printed on your dartboard</li>
+                    <li>Give it a friendly name for easy identification</li>
+                    <li>Enter the WPA key that came with your dartboard</li>
+                    <li>After registration, go to Hotspot Control to connect</li>
+                </ol>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/mobile_dartboard_setup.js"></script>
+</body>
+</html>
