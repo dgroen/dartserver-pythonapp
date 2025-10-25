@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is a Python web application for managing darts games (301, 401, 501, and Cricket) with RabbitMQ integration, real-time updates via WebSocket, and enterprise-grade OAuth2 authentication via WSO2 Identity Server.
+This is a Python web application for managing darts games (301, 401, 501, and Cricket) with RabbitMQ integration, real-time updates via WebSocket, and enterprise-grade OAuth2 authentication via WSO2 Identity Server. The application includes text-to-speech (TTS) announcements for game events and scores.
 
 ### Key Technologies
 
@@ -11,6 +11,7 @@ This is a Python web application for managing darts games (301, 401, 501, and Cr
 - **Authentication**: OAuth2 with WSO2 Identity Server, JWT validation
 - **Real-time**: Socket.IO for automatic UI refresh across all clients
 - **Database**: SQLAlchemy with Alembic migrations
+- **TTS**: Text-to-speech with pyttsx3 and gTTS for audio announcements
 - **Testing**: pytest with pytest-cov, pytest-mock, pytest-asyncio
 - **Linting**: Ruff, Black, isort, Flake8, Pylint, MyPy, Bandit
 - **Package Management**: UV (uv pip) for fast dependency installation
@@ -20,12 +21,15 @@ This is a Python web application for managing darts games (301, 401, 501, and Cr
 
 ### Prerequisites
 
-- Python 3.10, 3.11, or 3.12
-- UV package manager (`pip install uv`)
+- Python 3.10 or newer (tested on 3.10, 3.11, 3.12)
+- UV package manager (`pip install uv`) - used by Makefile for fast dependency installation
+- Alternative: Traditional pip with `requirements.txt` (also supported)
 - Docker and Docker Compose (for full stack)
 - RabbitMQ (optional, included in Docker Compose)
 
 ### Quick Setup
+
+**Using Makefile (recommended - uses UV for speed):**
 
 ```bash
 # Install all development dependencies
@@ -39,6 +43,16 @@ make test
 
 # Start the application
 make run
+```
+
+**Alternative with traditional pip:**
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# For development dependencies
+pip install -e ".[dev,lint,test]"
 ```
 
 ### Environment Variables
@@ -161,9 +175,11 @@ make coverage          # Generate detailed coverage report
 2. **game_manager.py**: Central game state manager (singleton pattern)
 3. **auth.py**: OAuth2 authentication, JWT validation, role-based access control
 4. **rabbitmq_consumer.py**: RabbitMQ message consumer for dart scores
-5. **games/**: Game logic modules (game_301.py, game_cricket.py)
-6. **database_models.py**: SQLAlchemy models
-7. **database_service.py**: Database operations layer
+5. **tts_service.py**: Text-to-speech service for audio announcements of scores and game events
+6. **games/**: Game logic modules (game_301.py, game_cricket.py)
+7. **database_models.py**: SQLAlchemy models
+8. **database_service.py**: Database operations layer
+9. **api_gateway.py**: API gateway with OAuth2 authentication
 
 ### Game Logic
 
