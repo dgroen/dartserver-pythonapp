@@ -211,7 +211,7 @@ function displayGameDetails(gameData) {
         
         const totalScore = playerThrows.reduce((sum, t) => sum + t.actual_score, 0);
         const throwCount = playerThrows.length;
-        const avgScore = throwCount > 0 ? (totalScore / throwCount).toFixed(2) : 0;
+        const avgScore = throwCount > 0 ? (totalScore / throwCount).toFixed(2) : '0.00';
         
         const doubles = playerThrows.filter(t => t.multiplier === 'DOUBLE').length;
         const triples = playerThrows.filter(t => t.multiplier === 'TRIPLE').length;
