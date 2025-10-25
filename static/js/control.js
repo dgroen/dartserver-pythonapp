@@ -87,10 +87,10 @@ playerNameInput.addEventListener('input', (e) => {
 
             if (data.success && data.users && data.users.length > 0) {
                 const html = data.users.map(user => `
-                    <div class="search-result-item" style="padding: 0.75rem; border-bottom: 1px solid rgba(0, 212, 255, 0.1); cursor: pointer; transition: background 0.2s;"
+                    <div class="search-result-item"
                          onclick="selectUser('${user.username}', '${user.name || user.username}', '${user.email || ''}')">
-                        <div style="font-weight: 500; color: #00d4ff;">${user.name || user.username}</div>
-                        <div style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.6);">${user.email || user.username}</div>
+                        <div class="user-name">${user.name || user.username}</div>
+                        <div class="user-email">${user.email || user.username}</div>
                     </div>
                 `).join('');
                 playerSearchResults.innerHTML = html;

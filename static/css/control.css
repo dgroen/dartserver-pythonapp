@@ -154,6 +154,14 @@ header h1 {
     font-size: 1em;
 }
 
+.form-group select {
+    appearance: auto;
+    -webkit-appearance: auto;
+    -moz-appearance: auto;
+    background-color: white;
+    cursor: pointer;
+}
+
 .form-group input:focus,
 .form-group select:focus {
     outline: none;
@@ -273,6 +281,49 @@ header h1 {
     color: #333;
     white-space: pre-wrap;
     word-wrap: break-word;
+}
+
+/* Search results styling */
+#player-search-results,
+.player-search-results {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #667eea;
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.search-result-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.search-result-item:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item .user-name {
+    font-weight: 500;
+    color: #667eea;
+}
+
+.search-result-item .user-email {
+    font-size: 0.85rem;
+    color: #666;
 }
 
 @media (max-width: 768px) {
