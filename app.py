@@ -438,7 +438,7 @@ def search_wso2_users():
     """
     search_term = request.args.get("q", "")
     limit = min(int(request.args.get("limit", 10)), 50)  # Cap at 50 results
-    
+
     users = search_users(search_term, max_results=limit)
     return jsonify(users)
 

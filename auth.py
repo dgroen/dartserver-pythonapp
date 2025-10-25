@@ -419,11 +419,11 @@ def logout_user(id_token: str | None = None) -> str:
 def search_users(search_term: str = "", max_results: int = 10) -> list[dict]:
     """
     Search for users in WSO2 IS using SCIM2 API
-    
+
     Args:
         search_term: Username or name to search for (case-insensitive)
         max_results: Maximum number of results to return
-    
+
     Returns:
         List of user dictionaries with 'id', 'username', 'name' fields
     """
@@ -434,15 +434,15 @@ def search_users(search_term: str = "", max_results: int = 10) -> list[dict]:
         if search_term:
             # SCIM2 filter: userName co "searchterm" (contains, case-insensitive)
             filter_query = f'userName co "{search_term}"'
-        
+
         params = {
             "count": max_results,
             "startIndex": 1,
         }
-        
+
         if filter_query:
             params["filter"] = filter_query
-        
+
         # Make request to SCIM2 Users endpoint
         response = requests.get(
             WSO2_IS_SCIM2_USERS_URL,
@@ -451,11 +451,11 @@ def search_users(search_term: str = "", max_results: int = 10) -> list[dict]:
             verify=WSO2_IS_VERIFY_SSL,
             timeout=5,
         )
-        
+
         if response.status_code == 200:
             data = response.json()
             users = []
-            
+
             # Extract relevant user information
             for resource in data.get("Resources", []):
                 user = {
@@ -463,28 +463,28 @@ def search_users(search_term: str = "", max_results: int = 10) -> list[dict]:
                     "username": resource.get("userName", ""),
                     "name": "",
                 }
-                
+
                 # Get display name from name object if available
                 name_obj = resource.get("name", {})
                 if name_obj:
                     given_name = name_obj.get("givenName", "")
                     family_name = name_obj.get("familyName", "")
                     user["name"] = f"{given_name} {family_name}".strip()
-                
+
                 # Fallback to username if no name
                 if not user["name"]:
                     user["name"] = user["username"]
-                
+
                 users.append(user)
-            
+
             logger.info(f"Found {len(users)} users matching '{search_term}'")
             return users
-        
+
         logger.warning(
             f"User search failed: status={response.status_code}, body={response.text}",
         )
         return []
-        
+
     except Exception:
         logger.exception(f"Error searching users with term '{search_term}'")
         return []
