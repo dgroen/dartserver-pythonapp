@@ -461,3 +461,165 @@ class TestPermissionRequired:
                 assert response.status_code == 200
                 data = json.loads(response.data)
                 assert data["message"] == "action performed"
+
+
+class TestSearchUsers:
+    """Test user search functionality."""
+
+    @patch("auth.requests.get")
+    def test_search_users_success(self, mock_get):
+        """Test successful user search."""
+        # Mock SCIM2 API response
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "totalResults": 2,
+            "Resources": [
+                {
+                    "id": "user1-id",
+                    "userName": "john_doe",
+                    "name": {
+                        "givenName": "John",
+                        "familyName": "Doe",
+                    },
+                },
+                {
+                    "id": "user2-id",
+                    "userName": "jane_smith",
+                    "name": {
+                        "givenName": "Jane",
+                        "familyName": "Smith",
+                    },
+                },
+            ],
+        }
+        mock_get.return_value = mock_response
+
+        from auth import search_users
+
+        users = search_users("john", max_results=10)
+
+        assert len(users) == 2
+        assert users[0]["id"] == "user1-id"
+        assert users[0]["username"] == "john_doe"
+        assert users[0]["name"] == "John Doe"
+        assert users[1]["id"] == "user2-id"
+        assert users[1]["username"] == "jane_smith"
+        assert users[1]["name"] == "Jane Smith"
+
+        # Verify API call
+        mock_get.assert_called_once()
+        call_args = mock_get.call_args
+        assert "filter" in call_args.kwargs["params"]
+        assert 'userName co "john"' in call_args.kwargs["params"]["filter"]
+
+    @patch("auth.requests.get")
+    def test_search_users_no_results(self, mock_get):
+        """Test user search with no results."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "totalResults": 0,
+            "Resources": [],
+        }
+        mock_get.return_value = mock_response
+
+        from auth import search_users
+
+        users = search_users("nonexistent")
+
+        assert len(users) == 0
+
+    @patch("auth.requests.get")
+    def test_search_users_empty_search(self, mock_get):
+        """Test user search with empty search term."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "totalResults": 1,
+            "Resources": [
+                {
+                    "id": "user1-id",
+                    "userName": "testuser",
+                    "name": {},
+                },
+            ],
+        }
+        mock_get.return_value = mock_response
+
+        from auth import search_users
+
+        users = search_users("")
+
+        assert len(users) == 1
+        # Verify no filter was sent when search term is empty
+        call_args = mock_get.call_args
+        assert "filter" not in call_args.kwargs["params"]
+
+    @patch("auth.requests.get")
+    def test_search_users_username_fallback(self, mock_get):
+        """Test user search falls back to username when no display name."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "totalResults": 1,
+            "Resources": [
+                {
+                    "id": "user1-id",
+                    "userName": "testuser",
+                    "name": {},  # Empty name object
+                },
+            ],
+        }
+        mock_get.return_value = mock_response
+
+        from auth import search_users
+
+        users = search_users("test")
+
+        assert len(users) == 1
+        assert users[0]["name"] == "testuser"  # Falls back to username
+
+    @patch("auth.requests.get")
+    def test_search_users_api_error(self, mock_get):
+        """Test user search handles API errors gracefully."""
+        mock_response = Mock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        mock_get.return_value = mock_response
+
+        from auth import search_users
+
+        users = search_users("test")
+
+        assert len(users) == 0  # Returns empty list on error
+
+    @patch("auth.requests.get")
+    def test_search_users_connection_error(self, mock_get):
+        """Test user search handles connection errors gracefully."""
+        mock_get.side_effect = Exception("Connection failed")
+
+        from auth import search_users
+
+        users = search_users("test")
+
+        assert len(users) == 0  # Returns empty list on exception
+
+    @patch("auth.requests.get")
+    def test_search_users_max_results(self, mock_get):
+        """Test user search respects max_results parameter."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "totalResults": 0,
+            "Resources": [],
+        }
+        mock_get.return_value = mock_response
+
+        from auth import search_users
+
+        search_users("test", max_results=5)
+
+        # Verify count parameter is set correctly
+        call_args = mock_get.call_args
+        assert call_args.kwargs["params"]["count"] == 5

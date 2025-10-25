@@ -188,3 +188,67 @@ class TestAppEndpoints:
         response = client.post("/api/game/new", data="not json")
         # Should handle gracefully
         assert response.status_code in [200, 400, 415]
+
+    def test_search_users_endpoint(self, client):
+        """Test user search endpoint."""
+        with patch("app.search_users") as mock_search:
+            mock_search.return_value = [
+                {"id": "user1", "username": "john_doe", "name": "John Doe"},
+                {"id": "user2", "username": "jane_doe", "name": "Jane Doe"},
+            ]
+
+            response = client.get("/api/users/search?q=doe&limit=10")
+            assert response.status_code == 200
+
+            data = json.loads(response.data)
+            assert len(data) == 2
+            assert data[0]["username"] == "john_doe"
+            assert data[1]["username"] == "jane_doe"
+
+            # Verify search_users was called with correct parameters
+            mock_search.assert_called_once_with("doe", max_results=10)
+
+    def test_search_users_no_query(self, client):
+        """Test user search endpoint with no query parameter."""
+        with patch("app.search_users") as mock_search:
+            mock_search.return_value = []
+
+            response = client.get("/api/users/search")
+            assert response.status_code == 200
+
+            data = json.loads(response.data)
+            assert len(data) == 0
+
+            # Verify search_users was called with empty string
+            mock_search.assert_called_once_with("", max_results=10)
+
+    def test_search_users_limit_capped(self, client):
+        """Test user search endpoint caps limit at 50."""
+        with patch("app.search_users") as mock_search:
+            mock_search.return_value = []
+
+            response = client.get("/api/users/search?limit=100")
+            assert response.status_code == 200
+
+            # Verify limit was capped at 50
+            mock_search.assert_called_once_with("", max_results=50)
+
+    def test_search_users_requires_permission(self, app):
+        """Test user search endpoint requires player:add permission."""
+        # Create a client without proper permissions
+        client = app.test_client()
+
+        with patch("auth.validate_token") as mock_validate:
+            mock_validate.return_value = {
+                "sub": "test-user",
+                "username": "testuser",
+                "groups": ["player"],  # Player role doesn't have player:add permission
+                "roles": ["player"],
+            }
+
+            with client.session_transaction() as sess:
+                sess["access_token"] = "test-token"
+
+            response = client.get("/api/users/search?q=test")
+            # Should return 403 Forbidden
+            assert response.status_code == 403
