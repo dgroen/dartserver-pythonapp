@@ -55,7 +55,10 @@
                     <!-- Players will be dynamically added here -->
                 </div>
                 <div class="player-controls">
-                    <input type="text" id="player-name" placeholder="Player Name">
+                    <div style="position: relative; flex: 1;">
+                        <input type="text" id="player-name" placeholder="Search or enter player name" autocomplete="off">
+                        <div id="user-suggestions" class="user-suggestions" style="display: none;"></div>
+                    </div>
                     <button id="add-player-btn" class="btn btn-success">Add Player</button>
                 </div>
             </section>

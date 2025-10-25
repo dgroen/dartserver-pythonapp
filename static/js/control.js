@@ -14,8 +14,12 @@ const scoreValueInput = document.getElementById('score-value');
 const multiplierSelect = document.getElementById('multiplier');
 const submitScoreBtn = document.getElementById('submit-score-btn');
 const gameStateJson = document.getElementById('game-state-json');
+const userSuggestions = document.getElementById('user-suggestions');
 
 let currentGameState = null;
+let searchTimeout = null;
+let selectedUserIndex = -1;
+let userSearchResults = [];
 
 // Initialize
 socket.on('connect', () => {
@@ -100,7 +104,56 @@ submitScoreBtn.addEventListener('click', () => {
 // Allow Enter key to add player
 playerNameInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
+        e.preventDefault();
         addPlayerBtn.click();
+        hideSuggestions();
+    }
+});
+
+// User search and autocomplete functionality
+playerNameInput.addEventListener('input', (e) => {
+    const searchTerm = e.target.value.trim();
+    
+    // Clear existing timeout
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+    
+    // If search term is empty, hide suggestions
+    if (searchTerm.length === 0) {
+        hideSuggestions();
+        return;
+    }
+    
+    // Wait 300ms before searching to avoid too many requests
+    searchTimeout = setTimeout(() => {
+        searchUsers(searchTerm);
+    }, 300);
+});
+
+// Keyboard navigation for suggestions
+playerNameInput.addEventListener('keydown', (e) => {
+    if (userSuggestions.style.display === 'none') {
+        return;
+    }
+    
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedUserIndex = Math.min(selectedUserIndex + 1, userSearchResults.length - 1);
+        updateSelectedSuggestion();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedUserIndex = Math.max(selectedUserIndex - 1, -1);
+        updateSelectedSuggestion();
+    } else if (e.key === 'Escape') {
+        hideSuggestions();
+    }
+});
+
+// Hide suggestions when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.player-controls')) {
+        hideSuggestions();
     }
 });
 
@@ -245,4 +298,91 @@ function playTTSAudio(audioBase64, text) {
     } catch (error) {
         console.error('Error processing TTS audio:', error);
     }
+}
+
+// User search functions
+async function searchUsers(searchTerm) {
+    try {
+        const response = await fetch(`/api/users/search?q=${encodeURIComponent(searchTerm)}&limit=10`);
+        
+        if (!response.ok) {
+            console.error("User search failed:", response.status);
+            hideSuggestions();
+            return;
+        }
+        
+        const users = await response.json();
+        userSearchResults = users;
+        selectedUserIndex = -1;
+        displaySuggestions(users);
+    } catch (error) {
+        console.error("Error searching users:", error);
+        hideSuggestions();
+    }
+}
+
+function displaySuggestions(users) {
+    if (users.length === 0) {
+        userSuggestions.innerHTML = "<div class=\"suggestion-no-results\">No users found</div>";
+        userSuggestions.style.display = "block";
+        return;
+    }
+    
+    userSuggestions.innerHTML = "";
+    users.forEach((user, index) => {
+        const item = document.createElement("div");
+        item.className = "user-suggestion-item";
+        item.dataset.index = index;
+        
+        const username = document.createElement("span");
+        username.className = "suggestion-username";
+        username.textContent = user.username;
+        
+        item.appendChild(username);
+        
+        if (user.name && user.name !== user.username) {
+            const name = document.createElement("span");
+            name.className = "suggestion-name";
+            name.textContent = `(${user.name})`;
+            item.appendChild(name);
+        }
+        
+        item.addEventListener("click", () => {
+            selectUser(user);
+        });
+        
+        userSuggestions.appendChild(item);
+    });
+    
+    userSuggestions.style.display = "block";
+}
+
+function updateSelectedSuggestion() {
+    const items = userSuggestions.querySelectorAll(".user-suggestion-item");
+    items.forEach((item, index) => {
+        if (index === selectedUserIndex) {
+            item.classList.add("selected");
+            item.scrollIntoView({ block: "nearest" });
+            
+            // Update input with selected username
+            if (userSearchResults[index]) {
+                playerNameInput.value = userSearchResults[index].username;
+            }
+        } else {
+            item.classList.remove("selected");
+        }
+    });
+}
+
+function selectUser(user) {
+    playerNameInput.value = user.username;
+    hideSuggestions();
+    playerNameInput.focus();
+}
+
+function hideSuggestions() {
+    userSuggestions.style.display = "none";
+    userSuggestions.innerHTML = "";
+    userSearchResults = [];
+    selectedUserIndex = -1;
 }
