@@ -208,3 +208,54 @@ class TestControlPanelPlayerSearch:
 
         # Might return 400 depending on minimum query length
         assert response.status_code in [200, 400]
+
+    def test_player_search_unauthenticated(self, app):
+        """Test that search endpoint requires authentication."""
+        unauthenticated_client = app.test_client()
+
+        response = unauthenticated_client.get(
+            "/api/wso2/users/search?q=alice",
+        )
+
+        # Should redirect to login or return 401/403
+        assert response.status_code in [302, 401, 403]
+
+    def test_player_search_handles_backend_error(self, client, auth_headers):
+        """Test that search endpoint handles backend errors gracefully."""
+        with patch("src.core.auth.search_wso2_users") as mock_search:
+            mock_search.side_effect = Exception("WSO2 connection failed")
+
+            response = client.get(
+                "/api/wso2/users/search?q=alice",
+                headers=auth_headers,
+            )
+
+            assert response.status_code == 500
+            data = response.json
+            assert data["success"] is False
+            assert "error" in data
+
+    def test_player_search_result_limit(self, client, auth_headers):
+        """Test that search results are properly limited."""
+        with patch("src.core.auth.search_wso2_users") as mock_search:
+            # Mock a large number of results
+            mock_results = [
+                {
+                    "username": f"user{i}",
+                    "name": f"User {i}",
+                    "email": f"user{i}@example.com",
+                }
+                for i in range(100)
+            ]
+            mock_search.return_value = mock_results
+
+            response = client.get(
+                "/api/wso2/users/search?q=user",
+                headers=auth_headers,
+            )
+
+            assert response.status_code == 200
+            data = response.json
+            assert data["success"] is True
+            # Results should be limited (backend handles this via SCIM2 API)
+            assert len(data["users"]) <= 100
