@@ -10,6 +10,8 @@ const gameStatusDisplay = document.getElementById('game-status');
 const currentThrowDisplay = document.getElementById('current-throw');
 const videoContainer = document.getElementById('video-container');
 const effectVideo = document.getElementById('effect-video');
+const checkoutAdviceContainer = document.getElementById('checkout-advice');
+const adviceText = document.getElementById('advice-text');
 
 // Audio elements (optional - can be added later)
 const audioCache = {};
@@ -73,6 +75,9 @@ function updateGameDisplay(state) {
         (state.is_paused ? 'Paused' : 'In Progress') : 'Not Started';
     currentThrowDisplay.textContent = state.current_throw || 1;
     
+    // Update checkout advice
+    updateCheckoutAdvice(state);
+    
     // Update players
     playersContainer.innerHTML = '';
     
@@ -81,6 +86,30 @@ function updateGameDisplay(state) {
             const playerCard = createPlayerCard(player, index, state);
             playersContainer.appendChild(playerCard);
         });
+    }
+}
+
+function updateCheckoutAdvice(state) {
+    // Only show advice for 301/401/501 games
+    if (state.checkout_advice && state.is_started && !state.is_paused) {
+        const advice = state.checkout_advice;
+        
+        if (advice.possible) {
+            let adviceMessage = advice.advice;
+            
+            // Format the advice message
+            if (advice.score <= 170) {
+                adviceMessage = `Checkout ${advice.score}: ${advice.advice}`;
+            }
+            
+            adviceText.textContent = adviceMessage;
+            checkoutAdviceContainer.style.display = 'block';
+        } else {
+            adviceText.textContent = advice.advice || 'No checkout available';
+            checkoutAdviceContainer.style.display = 'block';
+        }
+    } else {
+        checkoutAdviceContainer.style.display = 'none';
     }
 }
 

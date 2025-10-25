@@ -211,6 +211,30 @@ header h1 {
     min-height: 40px;
 }
 
+.checkout-advice {
+    text-align: center;
+    padding: 20px;
+    background: rgba(255, 165, 0, 0.3);
+    border-radius: 10px;
+    border: 2px solid rgba(255, 165, 0, 0.5);
+    margin: 10px 0;
+    box-shadow: 0 0 15px rgba(255, 165, 0, 0.3);
+}
+
+.advice-label {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #FFD700;
+    margin-bottom: 10px;
+}
+
+.advice-text {
+    font-size: 1.8em;
+    font-weight: bold;
+    color: #FFF;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+}
+
 .throw-info {
     text-align: center;
     font-size: 1.5em;
