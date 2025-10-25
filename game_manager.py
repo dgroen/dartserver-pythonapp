@@ -3,6 +3,7 @@
 import base64
 import os
 
+from checkout_advice import CheckoutAdvice
 from database_service import DatabaseService
 from games.game_301 import Game301
 from games.game_cricket import GameCricket
@@ -371,6 +372,14 @@ class GameManager:
 
         if self.game:
             state["game_data"] = self.game.get_state()
+
+        # Add checkout advice for 301/401/501 games
+        if self.is_started and self.game_type in ["301", "401", "501"]:
+            current_player_score = self._get_player_current_score(self.current_player)
+            if current_player_score > 0 and current_player_score <= 170:
+                advice = CheckoutAdvice.get_advice(current_player_score, self.double_out)
+                if advice:
+                    state["checkout_advice"] = advice
 
         return state
 
