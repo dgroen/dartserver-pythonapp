@@ -24,6 +24,7 @@ from auth import (
     role_required,
 )
 from game_manager import GameManager
+from multi_game_manager import MultiGameManager
 from rabbitmq_consumer import RabbitMQConsumer
 
 # Load environment variables
@@ -82,8 +83,12 @@ swagger = Swagger(app, config=swagger_config, template=swagger_template)
 # Initialize SocketIO
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
-# Initialize Game Manager
-game_manager = GameManager(socketio)
+# Initialize Multi-Game Manager
+multi_game_manager = MultiGameManager(socketio)
+
+# Create a default game for backward compatibility
+default_game_manager = multi_game_manager.create_game("default")
+game_manager = default_game_manager  # Keep for backward compatibility with existing code
 
 # Initialize RabbitMQ Consumer
 rabbitmq_consumer = None
@@ -360,6 +365,293 @@ def new_game():
     game_manager.new_game(game_type, player_names, double_out)
     # Game state is automatically emitted by game_manager.new_game()
     return jsonify({"status": "success", "message": "New game started"})
+
+
+@app.route("/api/games", methods=["GET"])
+@login_required
+def list_games():
+    """List all active game sessions - all authenticated users
+    ---
+    tags:
+      - Game
+    summary: List all active games
+    description: Returns a list of all active game sessions with their basic information
+    responses:
+      200:
+        description: List of active games
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            games:
+              type: array
+              items:
+                type: object
+                properties:
+                  game_id:
+                    type: string
+                    description: Unique game identifier
+                  game_type:
+                    type: string
+                    description: Type of game
+                  is_started:
+                    type: boolean
+                    description: Whether the game has started
+                  is_active:
+                    type: boolean
+                    description: Whether this is the currently active game
+                  player_count:
+                    type: integer
+                    description: Number of players
+                  players:
+                    type: array
+                    items:
+                      type: string
+                    description: List of player names
+    """
+    games = multi_game_manager.list_games()
+    active_game_id = multi_game_manager.get_active_game_id()
+    return jsonify({"status": "success", "games": games, "active_game_id": active_game_id})
+
+
+@app.route("/api/games/create", methods=["POST"])
+@login_required
+@permission_required("game:create")
+def create_new_game_session():
+    """Create a new game session - requires game:create permission
+    ---
+    tags:
+      - Game
+    summary: Create a new game session
+    description: Creates a new game session with a unique ID and optionally starts a game
+    parameters:
+      - in: body
+        name: body
+        description: Game session configuration
+        required: true
+        schema:
+          type: object
+          properties:
+            game_id:
+              type: string
+              description: Unique identifier for the game (optional, will be auto-generated if not provided)
+              example: game-1
+            game_type:
+              type: string
+              description: Type of game to start
+              enum: ['301', '401', '501', 'cricket']
+              example: '301'
+            players:
+              type: array
+              description: List of player names
+              items:
+                type: string
+              example: ['Alice', 'Bob']
+            double_out:
+              type: boolean
+              description: Whether to require double-out to finish
+              default: false
+            set_as_active:
+              type: boolean
+              description: Whether to set this as the active game
+              default: true
+    responses:
+      200:
+        description: Game session created successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: Game session created
+            game_id:
+              type: string
+              description: ID of the created game
+      400:
+        description: Bad request
+    """
+    data = request.json or {}
+    game_id = data.get("game_id")
+
+    # Auto-generate game ID if not provided
+    if not game_id:
+        import uuid
+        game_id = f"game-{str(uuid.uuid4())[:8]}"
+
+    # Check if game already exists
+    if multi_game_manager.has_game(game_id):
+        return jsonify({"status": "error", "message": f"Game '{game_id}' already exists"}), 400
+
+    # Create the game session
+    try:
+        new_game_manager = multi_game_manager.create_game(game_id)
+
+        # Start the game if parameters provided
+        game_type = data.get("game_type")
+        player_names = data.get("players")
+        if game_type and player_names:
+            double_out = data.get("double_out", False)
+            new_game_manager.new_game(game_type, player_names, double_out)
+
+        # Set as active if requested (default: true)
+        if data.get("set_as_active", True):
+            multi_game_manager.set_active_game(game_id)
+            # Update global game_manager reference
+            global game_manager
+            game_manager = new_game_manager
+
+        return jsonify(
+            {
+                "status": "success",
+                "message": "Game session created",
+                "game_id": game_id,
+            }
+        )
+    except ValueError as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/api/games/<game_id>/activate", methods=["POST"])
+@login_required
+@permission_required("game:create")
+def activate_game_session(game_id):
+    """Set a game as the active game session - requires game:create permission
+    ---
+    tags:
+      - Game
+    summary: Activate a game session
+    description: Sets the specified game as the currently active game
+    parameters:
+      - in: path
+        name: game_id
+        type: string
+        required: true
+        description: ID of the game to activate
+    responses:
+      200:
+        description: Game activated successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: Game activated
+            game_id:
+              type: string
+              description: ID of the activated game
+      404:
+        description: Game not found
+    """
+    if not multi_game_manager.has_game(game_id):
+        return jsonify({"status": "error", "message": f"Game '{game_id}' not found"}), 404
+
+    multi_game_manager.set_active_game(game_id)
+
+    # Update global game_manager reference
+    global game_manager
+    game_manager = multi_game_manager.get_game(game_id)
+
+    return jsonify(
+        {
+            "status": "success",
+            "message": "Game activated",
+            "game_id": game_id,
+        }
+    )
+
+
+@app.route("/api/games/<game_id>", methods=["DELETE"])
+@login_required
+@permission_required("game:create")
+def delete_game_session(game_id):
+    """Delete a game session - requires game:create permission
+    ---
+    tags:
+      - Game
+    summary: Delete a game session
+    description: Deletes a game session by ID
+    parameters:
+      - in: path
+        name: game_id
+        type: string
+        required: true
+        description: ID of the game to delete
+    responses:
+      200:
+        description: Game deleted successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: Game session deleted
+      404:
+        description: Game not found
+      400:
+        description: Cannot delete default game
+    """
+    # Prevent deletion of default game
+    if game_id == "default":
+        return jsonify({"status": "error", "message": "Cannot delete default game"}), 400
+
+    if not multi_game_manager.has_game(game_id):
+        return jsonify({"status": "error", "message": f"Game '{game_id}' not found"}), 404
+
+    multi_game_manager.delete_game(game_id)
+
+    # Update global game_manager reference if we deleted the active game
+    global game_manager
+    active_game = multi_game_manager.get_game()
+    if active_game:
+        game_manager = active_game
+
+    return jsonify(
+        {
+            "status": "success",
+            "message": "Game session deleted",
+        }
+    )
+
+
+@app.route("/api/games/<game_id>/state", methods=["GET"])
+@login_required
+def get_specific_game_state(game_id):
+    """Get state of a specific game - all authenticated users
+    ---
+    tags:
+      - Game
+    summary: Get specific game state
+    description: Returns the state of a specific game by ID
+    parameters:
+      - in: path
+        name: game_id
+        type: string
+        required: true
+        description: ID of the game
+    responses:
+      200:
+        description: Game state
+        schema:
+          type: object
+      404:
+        description: Game not found
+    """
+    game = multi_game_manager.get_game(game_id)
+    if not game:
+        return jsonify({"status": "error", "message": f"Game '{game_id}' not found"}), 404
+
+    return jsonify(game.get_game_state())
 
 
 @app.route("/api/players", methods=["GET"])
