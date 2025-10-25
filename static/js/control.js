@@ -154,7 +154,7 @@ window.selectUser = function(username, displayName, email) {
 
 // Hide search results when clicking outside
 document.addEventListener('click', (e) => {
-    if (e.target !== playerNameInput && !playerSearchResults.contains(e.target)) {
+    if (playerSearchResults && e.target !== playerNameInput && !playerSearchResults.contains(e.target)) {
         playerSearchResults.style.display = 'none';
         selectedSearchIndex = -1;
     }
