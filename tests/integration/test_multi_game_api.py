@@ -113,7 +113,7 @@ class TestMultiGameIntegration:
         game1.new_game("301", ["Alice", "Bob"])
 
         game2 = multi_manager.create_game("game-2")
-        # Don't start game2
+        # Leave game2 unstarted to test different game states in listing
 
         game3 = multi_manager.create_game("game-3")
         game3.new_game("cricket", ["Charlie", "Dave", "Eve", "Frank"])
