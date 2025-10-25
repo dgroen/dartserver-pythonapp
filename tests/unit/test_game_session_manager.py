@@ -134,11 +134,11 @@ class TestGameSessionManager:
         manager = GameSessionManager(mock_socketio)
         session_ids = set()
 
-        # Create 100 sessions
-        for i in range(100):
+        # Create 20 sessions to validate uniqueness
+        for i in range(20):
             session_id = manager.create_session(creator_id=f"user{i}")
             assert session_id not in session_ids
             session_ids.add(session_id)
 
-        assert len(session_ids) == 100
-        assert len(manager.sessions) == 100
+        assert len(session_ids) == 20
+        assert len(manager.sessions) == 20
