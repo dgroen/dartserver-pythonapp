@@ -18,6 +18,7 @@ from flask_socketio import SocketIO
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src.app.game_manager import GameManager
+from src.app.game_session_manager import GameSessionManager
 from src.app.mobile_service import MobileService
 from src.core.auth import (
     exchange_code_for_token,
@@ -121,9 +122,24 @@ swagger = Swagger(app, config=swagger_config, template=swagger_template)
 # Initialize SocketIO
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
-# Initialize Game Manager
-game_manager = GameManager(socketio)
-app.game_manager = game_manager  # Attach to app for access in decorators
+# Initialize Game Session Manager (for multiple games)
+game_session_manager = GameSessionManager(socketio)
+app.game_session_manager = game_session_manager
+
+# Initialize legacy Game Manager for backward compatibility
+# This is the default session that routes to game_session_manager
+game_manager = None  # Will be lazily initialized
+
+
+def _get_default_game_manager():
+    """Get the default game manager for backward compatibility"""
+    global game_manager
+    if game_manager is None:
+        default_session_id = game_session_manager.get_or_create_default_session()
+        game_manager = game_session_manager.get_session(default_session_id)
+        app.game_manager = game_manager  # Attach to app for access in decorators
+    return game_manager
+
 
 # Initialize RabbitMQ Consumer
 rabbitmq_consumer = None
@@ -132,7 +148,10 @@ rabbitmq_consumer = None
 def on_score_received(score_data):
     """Callback when a score is received from RabbitMQ"""
     print(f"Score received: {score_data}")
-    game_manager.process_score(score_data)
+    # For backward compatibility, route to default game manager
+    # In the future, this should route based on session_id in score_data
+    gm = _get_default_game_manager()
+    gm.process_score(score_data)
 
 
 @app.route("/")
@@ -290,7 +309,8 @@ def callback():
             name = user_info.get("name") or user_info.get("given_name", username)
 
             if username:
-                player = game_manager.db_service.get_or_create_player(
+                gm = _get_default_game_manager()
+                player = gm.db_service.get_or_create_player(
                     username=username,
                     email=email,
                     name=name,
@@ -460,7 +480,8 @@ def get_game_state():
               type: object
               description: Game-specific data
     """
-    return jsonify(game_manager.get_game_state())
+    gm = _get_default_game_manager()
+    return jsonify(gm.get_game_state())
 
 
 @app.route("/api/game/new", methods=["POST"])
@@ -517,8 +538,208 @@ def new_game():
     player_names = data.get("players", ["Player 1", "Player 2"])
     double_out = data.get("double_out", False)
 
-    game_manager.new_game(game_type, player_names, double_out)
+    gm = _get_default_game_manager()
+    gm.new_game(game_type, player_names, double_out)
     # Game state is automatically emitted by game_manager.new_game()
+    return jsonify({"status": "success", "message": "New game started"})
+
+
+@app.route("/api/sessions", methods=["GET"])
+@login_required
+def list_game_sessions():
+    """List all active game sessions
+    ---
+    tags:
+      - Game
+    summary: List all active game sessions
+    description: Returns a list of all active game sessions with their current state
+    responses:
+      200:
+        description: List of game sessions
+        schema:
+          type: object
+          properties:
+            sessions:
+              type: array
+              items:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                    description: Unique session identifier
+                  creator_id:
+                    type: string
+                    description: Session creator ID
+                  game_type:
+                    type: string
+                    description: Type of game
+                  is_started:
+                    type: boolean
+                    description: Whether game has started
+                  is_paused:
+                    type: boolean
+                    description: Whether game is paused
+                  player_count:
+                    type: integer
+                    description: Number of players
+                  players:
+                    type: array
+                    description: List of players
+    """
+    sessions = game_session_manager.list_sessions()
+    return jsonify({"sessions": sessions})
+
+
+@app.route("/api/sessions/create", methods=["POST"])
+@login_required
+@permission_required("game:create")
+def create_game_session():
+    """Create a new game session
+    ---
+    tags:
+      - Game
+    summary: Create a new game session
+    description: Creates a new game session for a game master
+    responses:
+      200:
+        description: Game session created successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            session_id:
+              type: string
+              description: Unique session identifier
+            message:
+              type: string
+              example: Game session created
+    """
+    # Get creator ID from session
+    user_info = session.get("user_info", {})
+    creator_id = user_info.get("sub") or user_info.get("preferred_username")
+
+    session_id = game_session_manager.create_session(creator_id=creator_id)
+    return jsonify(
+        {
+            "status": "success",
+            "session_id": session_id,
+            "message": "Game session created",
+        },
+    )
+
+
+@app.route("/api/sessions/<session_id>", methods=["GET"])
+@login_required
+def get_game_session(session_id):
+    """Get a specific game session state
+    ---
+    tags:
+      - Game
+    summary: Get game session state
+    description: Returns the current state of a specific game session
+    parameters:
+      - in: path
+        name: session_id
+        type: string
+        required: true
+        description: Session identifier
+    responses:
+      200:
+        description: Game session state
+      404:
+        description: Session not found
+    """
+    game_mgr = game_session_manager.get_session(session_id)
+    if not game_mgr:
+        return jsonify({"error": "Session not found"}), 404
+
+    return jsonify(game_mgr.get_game_state())
+
+
+@app.route("/api/sessions/<session_id>", methods=["DELETE"])
+@login_required
+@permission_required("game:create")
+def delete_game_session(session_id):
+    """Delete a game session
+    ---
+    tags:
+      - Game
+    summary: Delete a game session
+    description: Deletes a game session
+    parameters:
+      - in: path
+        name: session_id
+        type: string
+        required: true
+        description: Session identifier
+    responses:
+      200:
+        description: Session deleted successfully
+      404:
+        description: Session not found
+    """
+    if game_session_manager.delete_session(session_id):
+        return jsonify({"status": "success", "message": "Session deleted"})
+    else:
+        return jsonify({"error": "Session not found"}), 404
+
+
+@app.route("/api/sessions/<session_id>/new_game", methods=["POST"])
+@login_required
+@permission_required("game:create")
+def new_game_in_session(session_id):
+    """Start a new game in a specific session
+    ---
+    tags:
+      - Game
+    summary: Start a new game in session
+    description: Initializes a new darts game in a specific session
+    parameters:
+      - in: path
+        name: session_id
+        type: string
+        required: true
+        description: Session identifier
+      - in: body
+        name: body
+        description: Game configuration
+        required: true
+        schema:
+          type: object
+          properties:
+            game_type:
+              type: string
+              description: Type of game to start
+              enum: ['301', '401', '501', 'cricket']
+              default: '301'
+            players:
+              type: array
+              description: List of player names
+              items:
+                type: string
+              default: ['Player 1', 'Player 2']
+            double_out:
+              type: boolean
+              description: Whether to require double-out to finish
+              default: false
+    responses:
+      200:
+        description: Game started successfully
+      404:
+        description: Session not found
+    """
+    game_mgr = game_session_manager.get_session(session_id)
+    if not game_mgr:
+        return jsonify({"error": "Session not found"}), 404
+
+    data = request.json or {}
+    game_type = data.get("game_type", "301")
+    player_names = data.get("players", ["Player 1", "Player 2"])
+    double_out = data.get("double_out", False)
+
+    game_mgr.new_game(game_type, player_names, double_out)
     return jsonify({"status": "success", "message": "New game started"})
 
 
@@ -548,7 +769,8 @@ def get_players():
                 description: Player name
                 example: Alice
     """
-    return jsonify(game_manager.get_players())
+    gm = _get_default_game_manager()
+    return jsonify(gm.get_players())
 
 
 @app.route("/api/wso2/users/search", methods=["GET"])
@@ -687,7 +909,8 @@ def add_player():
         email = wso2_user.get("email")
 
         # Add to database with email and username (enforces WSO2 users only)
-        player = game_manager.db_service.get_or_create_player(
+        gm = _get_default_game_manager()
+        player = gm.db_service.get_or_create_player(
             name=player_name,
             username=username,
             email=email,
@@ -700,7 +923,7 @@ def add_player():
             )
 
         # Add to game with player database ID
-        game_manager.add_player_with_id(player_name, player.id)
+        gm.add_player_with_id(player_name, player.id)
 
         return jsonify(
             {
@@ -748,7 +971,8 @@ def remove_player(player_id):
               type: string
               example: Player removed
     """
-    game_manager.remove_player(player_id)
+    gm = _get_default_game_manager()
+    gm.remove_player(player_id)
     # Game state is automatically emitted by game_manager.remove_player()
     return jsonify({"status": "success", "message": "Player removed"})
 
@@ -807,7 +1031,8 @@ def submit_score():
     multiplier = data.get("multiplier", "SINGLE")
 
     # Process the score
-    game_manager.process_score({"score": score, "multiplier": multiplier})
+    gm = _get_default_game_manager()
+    gm.process_score({"score": score, "multiplier": multiplier})
     # Game state is automatically emitted by game_manager.process_score()
 
     return jsonify({"status": "success", "message": "Score submitted"})
@@ -843,13 +1068,14 @@ def get_tts_config():
               type: string
               description: Current voice type
     """
+    gm = _get_default_game_manager()
     return jsonify(
         {
-            "enabled": game_manager.tts.is_enabled(),
-            "engine": game_manager.tts.engine_name,
-            "speed": game_manager.tts.speed,
-            "volume": game_manager.tts.volume,
-            "voice": game_manager.tts.voice_type,
+            "enabled": gm.tts.is_enabled(),
+            "engine": gm.tts.engine_name,
+            "speed": gm.tts.speed,
+            "volume": gm.tts.volume,
+            "voice": gm.tts.voice_type,
         },
     )
 
@@ -900,21 +1126,22 @@ def update_tts_config():
               example: TTS configuration updated
     """
     data = request.json
+    gm = _get_default_game_manager()
 
     if "enabled" in data:
         if data["enabled"]:
-            game_manager.tts.enable()
+            gm.tts.enable()
         else:
-            game_manager.tts.disable()
+            gm.tts.disable()
 
     if "speed" in data:
-        game_manager.tts.set_speed(int(data["speed"]))
+        gm.tts.set_speed(int(data["speed"]))
 
     if "volume" in data:
-        game_manager.tts.set_volume(float(data["volume"]))
+        gm.tts.set_volume(float(data["volume"]))
 
     if "voice" in data:
-        game_manager.tts.set_voice(data["voice"])
+        gm.tts.set_voice(data["voice"])
 
     return jsonify({"status": "success", "message": "TTS configuration updated"})
 
@@ -950,7 +1177,9 @@ def get_tts_voices():
                 type: string
                 description: Voice gender
     """
-    voices = game_manager.tts.get_available_voices()
+    gm = _get_default_game_manager()
+
+    voices = gm.tts.get_available_voices()
     return jsonify(voices)
 
 
@@ -992,7 +1221,10 @@ def test_tts():
     data = request.json
     text = data.get("text", "This is a test")
 
-    success = game_manager.tts.speak(text)
+    gm = _get_default_game_manager()
+
+
+    success = gm.tts.speak(text)
 
     if success:
         return jsonify({"status": "success", "message": "TTS test completed"})
@@ -1066,7 +1298,10 @@ def generate_tts_audio():
     if not text:
         return jsonify({"status": "error", "message": "Text is required"}), 400
 
-    audio_data = game_manager.tts.generate_audio_data(text, lang)
+    gm = _get_default_game_manager()
+
+
+    audio_data = gm.tts.generate_audio_data(text, lang)
 
     if audio_data:
         return Response(audio_data, mimetype="audio/mpeg")
@@ -1124,7 +1359,9 @@ def get_game_history():
     """
     limit = request.args.get("limit", 10, type=int)
     try:
-        games = game_manager.db_service.get_recent_games(limit=limit)
+        gm = _get_default_game_manager()
+
+        games = gm.db_service.get_recent_games(limit=limit)
         return jsonify({"status": "success", "games": games})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -1181,7 +1418,9 @@ def get_game_replay(game_session_id):
         description: Game not found
     """
     try:
-        game_data = game_manager.db_service.get_game_replay_data(game_session_id)
+        gm = _get_default_game_manager()
+
+        game_data = gm.db_service.get_game_replay_data(game_session_id)
         if game_data:
             return jsonify({"status": "success", "game_data": game_data})
         return jsonify({"status": "error", "message": "Game not found"}), 404
@@ -1213,7 +1452,7 @@ def get_current_game_session_id():
     return jsonify(
         {
             "status": "success",
-            "game_session_id": game_manager.db_service.current_game_session_id,
+            "game_session_id": _get_default_game_manager().db_service.current_game_session_id,
         },
     )
 
@@ -1225,7 +1464,9 @@ def get_current_game_session_id():
 
 def get_mobile_service():
     """Helper function to get MobileService instance with database session"""
-    db_session = game_manager.db_service.db_manager.get_session()
+    gm = _get_default_game_manager()
+
+    db_session = gm.db_service.db_manager.get_session()
     return MobileService(db_session)
 
 
@@ -1838,7 +2079,8 @@ def get_current_game():
               type: object
               description: Current game state
     """
-    game_state = game_manager.get_game_state()
+    gm = _get_default_game_manager()
+    game_state = gm.get_game_state()
     return jsonify({"success": True, "game": game_state})
 
 
@@ -1893,8 +2135,9 @@ def start_game():
     player_names = data.get("players", ["Player 1", "Player 2"])
     double_out = data.get("double_out", False)
 
-    game_manager.new_game(game_type, player_names, double_out)
-    game_state = game_manager.get_game_state()
+    gm = _get_default_game_manager()
+    gm.new_game(game_type, player_names, double_out)
+    game_state = gm.get_game_state()
 
     return jsonify(
         {
@@ -1939,7 +2182,8 @@ def end_game():
     """
 
     # Reset the game state
-    game_manager.reset_game()
+    gm = _get_default_game_manager()
+    gm.reset_game()
 
     return jsonify(
         {
@@ -1985,7 +2229,9 @@ def get_game_results():
     game_type = request.args.get("game_type")
 
     try:
-        games = game_manager.db_service.get_recent_games(limit=limit)
+        gm = _get_default_game_manager()
+
+        games = gm.db_service.get_recent_games(limit=limit)
 
         # Filter by game type if specified
         if game_type:
@@ -2038,7 +2284,10 @@ def get_player_history():
         game_type = request.args.get("game_type")
         limit = request.args.get("limit", 50, type=int)
 
-        games = game_manager.db_service.get_player_game_history(
+        gm = _get_default_game_manager()
+
+
+        games = gm.db_service.get_player_game_history(
             player_id=player_id,
             game_type=game_type,
             limit=limit,
@@ -2076,7 +2325,8 @@ def get_player_statistics():
         if not player_id:
             return jsonify({"success": False, "error": "Player ID not available"}), 401
 
-        stats = game_manager.db_service.get_player_statistics(player_id=player_id)
+        gm = _get_default_game_manager()
+        stats = gm.db_service.get_player_statistics(player_id=player_id)
 
         if stats:
             return jsonify({"success": True, "statistics": stats})
@@ -2108,7 +2358,9 @@ def get_active_games():
                 type: object
     """
     try:
-        games = game_manager.db_service.get_active_games()
+        gm = _get_default_game_manager()
+
+        games = gm.db_service.get_active_games()
         return jsonify({"success": True, "games": games})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -2132,7 +2384,8 @@ def handle_connect():
     """Handle client connection"""
     print("Client connected")
     # Use socketio.emit to ensure the message reaches the test client
-    socketio.emit("game_state", game_manager.get_game_state(), namespace="/", to=request.sid)  # type: ignore
+    gm = _get_default_game_manager()
+    socketio.emit("game_state", gm.get_game_state(), namespace="/", to=request.sid)  # type: ignore
 
 
 @socketio.on("disconnect", namespace="/")
@@ -2147,14 +2400,16 @@ def handle_new_game(data):
     game_type = data.get("game_type", "301")
     player_names = data.get("players", ["Player 1", "Player 2"])
     double_out = data.get("double_out", False)
-    game_manager.new_game(game_type, player_names, double_out)
+    gm = _get_default_game_manager()
+    gm.new_game(game_type, player_names, double_out)
 
 
 @socketio.on("add_player", namespace="/")
 def handle_add_player(data):
     """Handle add player request"""
-    player_name = data.get("name", f"Player {len(game_manager.players) + 1}")
-    game_manager.add_player(player_name)
+    gm = _get_default_game_manager()
+    player_name = data.get("name", f"Player {len(gm.players) + 1}")
+    gm.add_player(player_name)
 
 
 @socketio.on("remove_player", namespace="/")
@@ -2162,13 +2417,15 @@ def handle_remove_player(data):
     """Handle remove player request"""
     player_id = data.get("player_id")
     if player_id is not None:
-        game_manager.remove_player(player_id)
+        gm = _get_default_game_manager()
+        gm.remove_player(player_id)
 
 
 @socketio.on("next_player", namespace="/")
 def handle_next_player():
     """Handle next player request"""
-    game_manager.next_player()
+    gm = _get_default_game_manager()
+    gm.next_player()
 
 
 @socketio.on("skip_to_player", namespace="/")
@@ -2176,20 +2433,23 @@ def handle_skip_to_player(data):
     """Handle skip to specific player"""
     player_id = data.get("player_id")
     if player_id is not None:
-        game_manager.skip_to_player(player_id)
+        gm = _get_default_game_manager()
+        gm.skip_to_player(player_id)
 
 
 @socketio.on("manual_score", namespace="/")
 def handle_manual_score(data):
     """Handle manual score entry"""
-    game_manager.process_score(data)
+    gm = _get_default_game_manager()
+    gm.process_score(data)
 
 
 @socketio.on("set_throwout_advice", namespace="/")
 def handle_set_throwout_advice(data):
     """Handle toggle of throwout advice"""
     enabled = data.get("enabled", False)
-    game_manager.set_show_throwout_advice(enabled)
+    gm = _get_default_game_manager()
+    gm.set_show_throwout_advice(enabled)
 
 
 def start_rabbitmq_consumer():
