@@ -167,12 +167,13 @@ function updateSummaryStats(games) {
     });
     document.getElementById('popular-game').textContent = mostPopular;
     
-    // Total unique players
+    // Total unique players (based on winners only, or placeholder if no winners)
     const uniquePlayers = new Set();
     games.forEach(g => {
         if (g.winner) uniquePlayers.add(g.winner);
     });
-    document.getElementById('total-players').textContent = uniquePlayers.size || games.reduce((sum, g) => sum + g.player_count, 0);
+    // Show count of unique winners, or '-' if no completed games
+    document.getElementById('total-players').textContent = uniquePlayers.size > 0 ? uniquePlayers.size : '-';
 }
 
 function viewGameDetails(gameSessionId) {
