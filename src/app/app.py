@@ -194,6 +194,24 @@ def history():
     return render_template("history.html", user_roles=user_roles, user_claims=user_claims)
 
 
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    """Game dashboard page with game history
+    ---
+    tags:
+      - UI
+    summary: Game dashboard page
+    description: Renders the dashboard with game history, statistics, and game details
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template("dashboard.html", user_roles=user_roles, user_claims=user_claims)
+
+
 @app.route("/login")
 def login():
     """Login page"""

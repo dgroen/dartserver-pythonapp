@@ -158,12 +158,14 @@
 .game-info {
     display: grid;
     gap: 8px;
+    flex: 1;
 }
 
 .game-header {
     display: flex;
     align-items: center;
     gap: 15px;
+    flex-wrap: wrap;
 }
 
 .game-type {
@@ -181,6 +183,7 @@
     display: flex;
     gap: 20px;
     font-size: 0.95em;
+    flex-wrap: wrap;
 }
 
 .detail-item {
@@ -223,10 +226,18 @@
     cursor: pointer;
     font-size: 0.95em;
     transition: background 0.3s;
+    white-space: nowrap;
+    font-weight: 500;
+    flex-shrink: 0;
 }
 
 .view-btn:hover {
     background: #1976D2;
+    transform: scale(1.05);
+}
+
+.view-btn:active {
+    transform: scale(0.98);
 }
 
 /* Modal */
@@ -357,11 +368,22 @@
     .game-card {
         grid-template-columns: 1fr;
         text-align: center;
+        gap: 15px;
+    }
+    
+    .game-icon {
+        display: none;
     }
     
     .game-details {
         flex-direction: column;
         gap: 10px;
+    }
+    
+    .view-btn {
+        width: 100%;
+        padding: 12px 20px;
+        font-size: 1em;
     }
     
     .modal-content {
@@ -372,5 +394,19 @@
     
     .players-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filters label {
+        flex-direction: column;
+    }
+    
+    .filters select,
+    .btn-primary {
+        width: 100%;
     }
 }

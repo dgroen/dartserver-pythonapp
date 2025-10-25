@@ -68,17 +68,19 @@ function displayGames(games) {
     gamesList.innerHTML = games.map(game => createGameCard(game)).join('');
     
     // Add click event listeners to view buttons
-    document.querySelectorAll('.view-btn').forEach((btn, index) => {
+    document.querySelectorAll('.view-btn').forEach((btn) => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            viewGameDetails(games[index].game_session_id);
+            const gameSessionId = btn.getAttribute('data-session-id');
+            viewGameDetails(gameSessionId);
         });
     });
     
     // Add click event listeners to game cards
-    document.querySelectorAll('.game-card').forEach((card, index) => {
+    document.querySelectorAll('.game-card').forEach((card) => {
         card.addEventListener('click', () => {
-            viewGameDetails(games[index].game_session_id);
+            const gameSessionId = card.getAttribute('data-session-id');
+            viewGameDetails(gameSessionId);
         });
     });
 }
@@ -127,7 +129,7 @@ function createGameCard(game) {
                     ` : ''}
                 </div>
             </div>
-            <button class="view-btn">View Details</button>
+            <button class="view-btn" data-session-id="${game.game_session_id}">View Details</button>
         </div>
     `;
 }
