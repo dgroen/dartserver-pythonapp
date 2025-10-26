@@ -53,6 +53,14 @@
 
             <!-- Filters -->
             <div class="filters">
+                {% if 'admin' in user_roles %}
+                <label>
+                    Filter by user:
+                    <select id="user-select">
+                        <option value="">All users</option>
+                    </select>
+                </label>
+                {% endif %}
                 <label>
                     Show:
                     <select id="limit-select">
@@ -84,6 +92,10 @@
         </div>
     </div>
 
+    <script>
+        // Pass user role info to JavaScript
+        window.userIsAdmin = {% if 'admin' in user_roles %}true{% else %}false{% endif %};
+    </script>
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>

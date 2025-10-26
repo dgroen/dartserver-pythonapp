@@ -437,12 +437,13 @@ class DatabaseService:
         finally:
             session.close()
 
-    def get_recent_games(self, limit=10):
+    def get_recent_games(self, limit=10, username=None):
         """
         Get recent game sessions
 
         Args:
             limit: Maximum number of games to return
+            username: Optional username to filter games (only games where this user participated)
 
         Returns:
             List of game session summaries
@@ -455,11 +456,21 @@ class DatabaseService:
                 func.coalesce(GameResult.finished_at, GameResult.started_at),
             )
 
+            # Base query for game sessions
+            base_query = session.query(
+                GameResult.game_session_id,
+                max_timestamp_expr.label("max_time"),
+            )
+
+            # If username is provided, filter to only games where this user participated
+            if username:
+                # Join with Player table to filter by username
+                base_query = base_query.join(
+                    Player, GameResult.player_id == Player.id
+                ).filter(Player.username == username)
+
             subquery = (
-                session.query(
-                    GameResult.game_session_id,
-                    max_timestamp_expr.label("max_time"),
-                )
+                base_query
                 .group_by(GameResult.game_session_id)
                 .order_by(max_timestamp_expr.desc())
                 .limit(limit)
@@ -506,6 +517,34 @@ class DatabaseService:
 
         except Exception as e:
             print(f"Error getting recent games: {e}")
+            return []
+        finally:
+            session.close()
+
+    def get_all_players_with_usernames(self):
+        """
+        Get all players who have a username (authenticated users)
+        
+        Returns:
+            List of player dictionaries with id, name, username, email
+        """
+        session = self.db_manager.get_session()
+        try:
+            # Get all players with usernames (authenticated users)
+            players = session.query(Player).filter(Player.username.isnot(None)).all()
+            
+            result = []
+            for player in players:
+                result.append({
+                    "id": player.id,
+                    "name": player.name,
+                    "username": player.username,
+                    "email": player.email,
+                })
+            
+            return result
+        except Exception as e:
+            print(f"Error getting players: {e}")
             return []
         finally:
             session.close()

@@ -567,25 +567,53 @@ def get_players():
     tags:
       - Players
     summary: Get all players
-    description: Returns a list of all players in the current game
+    description: Returns a list of all players in the current game or all database players
+    parameters:
+      - in: query
+        name: source
+        type: string
+        description: Source of players ('game' for current game, 'database' for all users)
+        default: game
+        enum: [game, database]
     responses:
       200:
-        description: List of players
+        description: List of players or status with players
         schema:
-          type: array
-          items:
-            type: object
-            properties:
-              id:
-                type: integer
-                description: Player ID
-                example: 0
-              name:
-                type: string
-                description: Player name
-                example: Alice
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            players:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Player ID
+                  name:
+                    type: string
+                    description: Player name
+                  username:
+                    type: string
+                    description: Player username (for database source)
+                  email:
+                    type: string
+                    description: Player email (for database source)
     """
-    return jsonify(game_manager.get_players())
+    source = request.args.get("source", "game")
+    
+    if source == "database":
+        # Return all players from database with usernames
+        try:
+            players = game_manager.db_service.get_all_players_with_usernames()
+            return jsonify({"status": "success", "players": players})
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+    else:
+        # Return current game players
+        return jsonify(game_manager.get_players())
 
 
 @app.route("/api/wso2/users/search", methods=["GET"])
@@ -1112,13 +1140,14 @@ def generate_tts_audio():
 
 # SocketIO Events
 @app.route("/api/game/history", methods=["GET"])
+@login_required
 def get_game_history():
     """Get recent game history
     ---
     tags:
       - Game
     summary: Get recent game history
-    description: Returns a list of recent games with basic information
+    description: Returns a list of recent games. Regular users see only their games, admins can filter by user.
     parameters:
       - in: query
         name: limit
@@ -1126,6 +1155,11 @@ def get_game_history():
         description: Maximum number of games to return
         default: 10
         example: 10
+      - in: query
+        name: user
+        type: string
+        description: Filter by username (admin only)
+        example: john_doe
     responses:
       200:
         description: List of recent games
@@ -1160,8 +1194,24 @@ def get_game_history():
                     description: Game finish timestamp
     """
     limit = request.args.get("limit", 10, type=int)
+    filter_user = request.args.get("user", None)
+    
+    # Get current user info
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    current_username = user_claims.get("username") or user_claims.get("preferred_username") or user_claims.get("sub")
+    
+    # Determine which username to filter by
+    username_filter = None
+    if "admin" in user_roles:
+        # Admins can filter by specific user or see all games
+        username_filter = filter_user
+    else:
+        # Regular users only see their own games
+        username_filter = current_username
+    
     try:
-        games = game_manager.db_service.get_recent_games(limit=limit)
+        games = game_manager.db_service.get_recent_games(limit=limit, username=username_filter)
         return jsonify({"status": "success", "games": games})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
