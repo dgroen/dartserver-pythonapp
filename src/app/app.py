@@ -29,6 +29,7 @@ from src.core.auth import (
     role_required,
 )
 from src.core.config import Config
+from src.core.database_models import Player
 from src.core.rabbitmq_consumer import RabbitMQConsumer
 
 # Load environment variables
@@ -155,6 +156,14 @@ def index():
     user_roles = getattr(request, "user_roles", [])
     user_claims = getattr(request, "user_claims", {})
     return render_template("index.html", user_roles=user_roles, user_claims=user_claims)
+
+
+@app.route("/service-worker.js")
+def serve_service_worker():
+    """Serve the service worker file (no authentication required for PWA)"""
+    from flask import send_from_directory
+
+    return send_from_directory(str(_root_dir / "static"), "service-worker.js")
 
 
 @app.route("/control")
@@ -514,10 +523,38 @@ def new_game():
     """
     data = request.json
     game_type = data.get("game_type", "301")
-    player_names = data.get("players", ["Player 1", "Player 2"])
+    player_data = data.get("players", [])
     double_out = data.get("double_out", False)
 
-    game_manager.new_game(game_type, player_names, double_out)
+    # Convert player names to player objects with database IDs
+    db_session = game_manager.db_service.db_manager.get_session()
+    player_ids = []
+
+    for player_name in player_data:
+        # Try to find player by name or username
+        player = (
+            db_session.query(Player)
+            .filter(
+                (Player.name == player_name) | (Player.username == player_name),
+            )
+            .first()
+        )
+        if player:
+            player_ids.append({"db_id": player.id, "name": player.name})
+        else:
+            # If player not found in database, raise an error
+            app.logger.warning(
+                f"Player '{player_name}' not found in database. "
+                "Only registered WSO2 users can play.",
+            )
+            raise ValueError(
+                f"Player '{player_name}' not found. Only registered WSO2 users allowed.",
+            )
+
+    if not player_ids:
+        player_ids = [session.get("player_id")]
+
+    game_manager.new_game(game_type, player_ids=player_ids, double_out=double_out)
     # Game state is automatically emitted by game_manager.new_game()
     return jsonify({"status": "success", "message": "New game started"})
 
@@ -1890,10 +1927,38 @@ def start_game():
     """
     data = request.json
     game_type = data.get("game_type", "301")
-    player_names = data.get("players", ["Player 1", "Player 2"])
+    player_data = data.get("players", [])
     double_out = data.get("double_out", False)
 
-    game_manager.new_game(game_type, player_names, double_out)
+    # Convert player names to player objects with database IDs
+    db_session = game_manager.db_service.db_manager.get_session()
+    player_ids = []
+
+    for player_name in player_data:
+        # Try to find player by name or username
+        player = (
+            db_session.query(Player)
+            .filter(
+                (Player.name == player_name) | (Player.username == player_name),
+            )
+            .first()
+        )
+        if player:
+            player_ids.append({"db_id": player.id, "name": player.name})
+        else:
+            # If player not found in database, raise an error
+            app.logger.warning(
+                f"Player '{player_name}' not found in database. "
+                "Only registered WSO2 users can play.",
+            )
+            raise ValueError(
+                f"Player '{player_name}' not found. Only registered WSO2 users allowed.",
+            )
+
+    if not player_ids:
+        player_ids = [session.get("player_id")]
+
+    game_manager.new_game(game_type, player_ids=player_ids, double_out=double_out)
     game_state = game_manager.get_game_state()
 
     return jsonify(
@@ -2145,9 +2210,38 @@ def handle_disconnect():
 def handle_new_game(data):
     """Handle new game request"""
     game_type = data.get("game_type", "301")
-    player_names = data.get("players", ["Player 1", "Player 2"])
+    player_data = data.get("players", [])
     double_out = data.get("double_out", False)
-    game_manager.new_game(game_type, player_names, double_out)
+
+    # Convert player names to player objects with database IDs
+    db_session = game_manager.db_service.db_manager.get_session()
+    player_ids = []
+
+    for player_name in player_data:
+        # Try to find player by name or username
+        player = (
+            db_session.query(Player)
+            .filter(
+                (Player.name == player_name) | (Player.username == player_name),
+            )
+            .first()
+        )
+        if player:
+            player_ids.append({"db_id": player.id, "name": player.name})
+        else:
+            # If player not found in database, raise an error
+            app.logger.warning(
+                f"Player '{player_name}' not found in database. "
+                "Only registered WSO2 users can play.",
+            )
+            raise ValueError(
+                f"Player '{player_name}' not found. Only registered WSO2 users allowed.",
+            )
+
+    if not player_ids:
+        player_ids = [session.get("player_id")]
+
+    game_manager.new_game(game_type, player_ids=player_ids, double_out=double_out)
 
 
 @socketio.on("add_player", namespace="/")

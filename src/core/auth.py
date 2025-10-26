@@ -875,9 +875,14 @@ def get_wso2_user_info(username: str, access_token: str | None = None) -> dict |
                     and isinstance(user["emails"], list)
                     and len(user["emails"]) > 0
                 ):
-                    user_info["email"] = user["emails"][0].get("value")
+                    email_item = user["emails"][0]
+                    # Handle both string format and object format
+                    if isinstance(email_item, str):
+                        user_info["email"] = email_item
+                    elif isinstance(email_item, dict):
+                        user_info["email"] = email_item.get("value")
 
-                if "name" in user:
+                if "name" in user and isinstance(user["name"], dict):
                     name_parts = []
                     if user["name"].get("givenName"):
                         name_parts.append(user["name"]["givenName"])

@@ -96,20 +96,31 @@ class GameManager:
             # Use player IDs (WSO2 authenticated users)
             self.players = [
                 {
-                    "name": f"Player {i+1}",
+                    "name": (
+                        pid.get("name", f"Player {i+1}")
+                        if isinstance(pid, dict)
+                        else f"Player {i+1}"
+                    ),
                     "id": i,
-                    "db_id": pid if isinstance(pid, int) else pid.get("db_id"),
+                    "db_id": pid if isinstance(pid, int) else (pid.get("db_id") if pid else None),
                 }
                 for i, pid in enumerate(player_ids)
+                if pid is not None
             ]
-        elif player_names:
-            # Fallback to player names (DEPRECATED - for backwards compatibility)
-            self.players = [{"name": name, "id": i} for i, name in enumerate(player_names)]
-        elif not self.players:
-            self.players = [
-                {"name": "Player 1", "id": 0},
-                {"name": "Player 2", "id": 1},
-            ]
+            # If all player_ids were None, fall through to create defaults
+            if not self.players:
+                player_ids = None
+
+        if not self.players:
+            if player_names:
+                # Fallback to player names (DEPRECATED - for backwards compatibility)
+                self.players = [{"name": name, "id": i} for i, name in enumerate(player_names)]
+            else:
+                # Default players
+                self.players = [
+                    {"name": "Player 1", "id": 0},
+                    {"name": "Player 2", "id": 1},
+                ]
 
         # Create appropriate game instance
         if self.game_type == "cricket":
@@ -154,7 +165,6 @@ class GameManager:
             raise ValueError(msg)
 
         try:
-
             self.db_service.start_new_game(
                 game_type_name=self.game_type,
                 player_ids=player_ids,

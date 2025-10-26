@@ -6,6 +6,23 @@ from unittest.mock import patch
 import pytest
 
 from src.app.app import app as flask_app
+from src.app.app import game_manager
+from src.core.database_service import DatabaseService
+
+
+@pytest.fixture
+def db_service():
+    """Create in-memory database service for testing."""
+    db = DatabaseService("sqlite:///:memory:")
+    db.initialize_database()
+
+    # Create test players
+    db.get_or_create_player("Alice", username="alice")
+    db.get_or_create_player("Bob", username="bob")
+    db.get_or_create_player("Charlie", username="charlie")
+    db.get_or_create_player("Diana", username="diana")
+
+    return db
 
 
 @pytest.fixture
@@ -23,16 +40,26 @@ def mock_auth():
 
 
 @pytest.fixture
-def app(mock_auth):
+def app(mock_auth, db_service):
     """Create Flask app for testing."""
-    with patch("src.app.app.start_rabbitmq_consumer"):
+    with (
+        patch("src.app.app.start_rabbitmq_consumer"),
+        patch(
+            "src.app.game_manager.DatabaseService",
+        ) as mock_db_class,
+    ):
+        mock_db_class.return_value = db_service
         flask_app.config["TESTING"] = True
+        game_manager.db_service = db_service
         yield flask_app
 
 
 @pytest.fixture
-def client(app):
+def client(app, db_service):
     """Create test client."""
+    # Make sure game_manager uses the test database
+    game_manager.db_service = db_service
+
     client = app.test_client()
     # Set up session with access token for authenticated requests
     with client.session_transaction() as sess:
@@ -66,10 +93,10 @@ class TestAppEndpoints:
         assert "is_started" in data
 
     def test_new_game_default(self, client):
-        """Test starting new game with defaults."""
+        """Test starting new game with defaults (using Alice and Bob from fixtures)."""
         response = client.post(
             "/api/game/new",
-            data=json.dumps({}),
+            data=json.dumps({"players": ["Alice", "Bob"]}),
             content_type="application/json",
         )
         assert response.status_code == 200
@@ -120,12 +147,18 @@ class TestAppEndpoints:
             data=json.dumps({"game_type": "301", "players": ["Alice"]}),
             content_type="application/json",
         )
-        # Add player
-        response = client.post(
-            "/api/players",
-            data=json.dumps({"name": "Bob"}),
-            content_type="application/json",
-        )
+        # Add player - must use username and mock WSO2
+        with patch("src.core.auth.get_wso2_user_info") as mock_wso2:
+            mock_wso2.return_value = {
+                "username": "bob",
+                "name": "Bob",
+                "email": "bob@example.com",
+            }
+            response = client.post(
+                "/api/players",
+                data=json.dumps({"username": "bob"}),
+                content_type="application/json",
+            )
         assert response.status_code == 200
         data = json.loads(response.data)
         assert data["status"] == "success"

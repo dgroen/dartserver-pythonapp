@@ -19,6 +19,7 @@ const showThrowoutAdviceCheckbox = document.getElementById('show-throwout-advice
 
 let currentGameState = null;
 let selectedUser = null;
+let selectedSearchIndex = -1;  // Track selected search result for keyboard navigation
 
 // Initialize
 socket.on('connect', () => {
@@ -72,6 +73,7 @@ let searchTimeout;
 playerNameInput.addEventListener('input', (e) => {
     const query = e.target.value.trim();
     clearTimeout(searchTimeout);
+    selectedSearchIndex = -1;  // Reset keyboard selection on new input
 
     if (query.length < 2) {
         playerSearchResults.style.display = 'none';
@@ -87,10 +89,10 @@ playerNameInput.addEventListener('input', (e) => {
 
             if (data.success && data.users && data.users.length > 0) {
                 const html = data.users.map(user => `
-                    <div class="search-result-item" style="padding: 0.75rem; border-bottom: 1px solid rgba(0, 212, 255, 0.1); cursor: pointer; transition: background 0.2s;"
+                    <div class="search-result-item"
                          onclick="selectUser('${user.username}', '${user.name || user.username}', '${user.email || ''}')">
-                        <div style="font-weight: 500; color: #00d4ff;">${user.name || user.username}</div>
-                        <div style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.6);">${user.email || user.username}</div>
+                        <div class="search-result-name">${user.name || user.username}</div>
+                        <div class="search-result-email">${user.email || user.username}</div>
                     </div>
                 `).join('');
                 playerSearchResults.innerHTML = html;
@@ -106,17 +108,55 @@ playerNameInput.addEventListener('input', (e) => {
     }, 300);
 });
 
+// Keyboard navigation for search results
+playerNameInput.addEventListener('keydown', (e) => {
+    const results = playerSearchResults.querySelectorAll('.search-result-item');
+
+    if (results.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedSearchIndex = Math.min(selectedSearchIndex + 1, results.length - 1);
+        updateSearchSelection(results);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedSearchIndex = Math.max(selectedSearchIndex - 1, -1);
+        updateSearchSelection(results);
+    } else if (e.key === 'Enter' && selectedSearchIndex >= 0) {
+        e.preventDefault();
+        results[selectedSearchIndex].click();
+    } else if (e.key === 'Escape') {
+        e.preventDefault();
+        playerSearchResults.style.display = 'none';
+        selectedSearchIndex = -1;
+    }
+});
+
+// Update search result selection highlighting
+function updateSearchSelection(results) {
+    results.forEach((result, index) => {
+        if (index === selectedSearchIndex) {
+            result.classList.add('selected');
+            result.scrollIntoView({ block: 'nearest' });
+        } else {
+            result.classList.remove('selected');
+        }
+    });
+}
+
 // Select WSO2 user from search results
 window.selectUser = function(username, displayName, email) {
     selectedUser = { username, displayName, email };
     playerNameInput.value = displayName;
     playerSearchResults.style.display = 'none';
+    selectedSearchIndex = -1;
 };
 
 // Hide search results when clicking outside
 document.addEventListener('click', (e) => {
-    if (e.target !== playerNameInput) {
+    if (playerSearchResults && e.target !== playerNameInput && !playerSearchResults.contains(e.target)) {
         playerSearchResults.style.display = 'none';
+        selectedSearchIndex = -1;
     }
 });
 
@@ -130,7 +170,7 @@ addPlayerBtn.addEventListener('click', async () => {
     try {
         const payload = selectedUser
             ? { username: selectedUser.username }
-            : { name: name };
+            : { username: name };
 
         const response = await fetch('/api/players', {
             method: 'POST',

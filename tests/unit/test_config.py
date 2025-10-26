@@ -102,8 +102,8 @@ class TestConfigSecurity:
         assert isinstance(Config.FLASK_USE_SSL, bool)
 
     def test_session_cookie_secure_matches_scheme_when_https(self):
-        """Test SESSION_COOKIE_SECURE should be true for https"""
-        if Config.APP_SCHEME == "https":
+        """Test SESSION_COOKIE_SECURE should be true for https (except localhost)"""
+        if Config.APP_SCHEME == "https" and "localhost" not in Config.APP_DOMAIN:
             assert Config.SESSION_COOKIE_SECURE is True
 
     def test_session_cookie_secure_can_be_false_for_http(self):

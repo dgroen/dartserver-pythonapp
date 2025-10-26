@@ -773,7 +773,7 @@ class DatabaseService:
                 .filter(
                     and_(
                         GameResult.started_at.isnot(None),
-                        GameResult.finished_at.isna(),
+                        GameResult.finished_at.is_(None),
                     ),
                 )
                 .group_by(GameResult.game_session_id)

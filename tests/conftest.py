@@ -105,3 +105,14 @@ def in_memory_db():
     db_service = DatabaseService("sqlite:///:memory:")
     db_service.initialize_database()
     return db_service
+
+
+@pytest.fixture
+def player_ids_with_db():
+    """Helper to create player dicts with database IDs."""
+
+    def _create_players(names):
+        """Create player objects with db_ids for testing."""
+        return [{"db_id": i + 1, "name": name} for i, name in enumerate(names)]
+
+    return _create_players
