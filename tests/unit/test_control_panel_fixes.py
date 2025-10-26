@@ -65,19 +65,26 @@ class TestPlayerAdditionFix:
 
     def test_player_addition_endpoint_succeeds(self, client, auth_headers):
         """Test that player addition endpoint returns success."""
-        response = client.post(
-            "/api/players",
-            json={"name": "TestPlayer"},
-            headers=auth_headers,
-        )
+        with patch("src.core.auth.get_wso2_user_info") as mock_wso2:
+            mock_wso2.return_value = {
+                "username": "testplayer",
+                "name": "TestPlayer",
+                "email": "test@example.com",
+            }
 
-        assert response.status_code == 200
-        data = response.json
-        assert data["status"] == "success"
-        assert data["player"]["name"] == "TestPlayer"
-        # The API successfully adds the player
-        assert "message" in data
-        assert data["message"] == "Player added"
+            response = client.post(
+                "/api/players",
+                json={"username": "testplayer"},
+                headers=auth_headers,
+            )
+
+            assert response.status_code == 200
+            data = response.json
+            assert data["status"] == "success"
+            assert data["player"]["name"] == "TestPlayer"
+            # The API successfully adds the player
+            assert "message" in data
+            assert "added to game" in data["message"]
 
     def test_player_addition_with_username(self, client, auth_headers):
         """Test adding a WSO2 user as a player via API."""

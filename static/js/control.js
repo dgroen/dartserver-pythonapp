@@ -170,7 +170,7 @@ addPlayerBtn.addEventListener('click', async () => {
     try {
         const payload = selectedUser
             ? { username: selectedUser.username }
-            : { name: name };
+            : { username: name };
 
         const response = await fetch('/api/players', {
             method: 'POST',
