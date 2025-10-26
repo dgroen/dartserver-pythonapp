@@ -78,6 +78,7 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dartsdb
 ```
 
 For Docker Compose, the URL uses the service name:
+
 ```
 DATABASE_URL=postgresql://postgres:postgres@postgres:5432/dartsdb
 ```
@@ -87,19 +88,23 @@ DATABASE_URL=postgresql://postgres:postgres@postgres:5432/dartsdb
 The database consists of four main tables:
 
 ### 1. **player**
+
 - Stores player information
 - Fields: id, name, created_at
 
 ### 2. **gametype**
+
 - Stores game type definitions (301, 401, 501, cricket)
 - Fields: id, name, description, created_at
 
 ### 3. **gameresults**
+
 - Stores per-player game session data
 - Fields: id, game_type_id, player_id, player_order, start_score, final_score, is_winner, double_out_enabled, started_at, finished_at, game_session_id
 - The `game_session_id` (UUID) groups all players in the same game
 
 ### 4. **scores**
+
 - Stores individual throw data with complete replay capability
 - Fields:
   - `id`: Primary key

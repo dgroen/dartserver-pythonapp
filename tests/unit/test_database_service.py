@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from database_models import DatabaseManager
-from database_service import DatabaseService
+from src.core.database_models import DatabaseManager, Player
+from src.core.database_service import DatabaseService
 
 
 class TestDatabaseManager:
@@ -41,6 +41,23 @@ class TestDatabaseService:
         service.initialize_database()
         return service
 
+    def _create_test_players(self, db_service, names):
+        """Helper to create test player records in the database."""
+        session = db_service.db_manager.get_session()
+        player_ids = []
+        for name in names:
+            player = Player(
+                name=name,
+                username=name.replace(" ", "_").lower(),
+                email=f"{name.replace(' ', '_').lower()}@test.local",
+            )
+            session.add(player)
+            session.flush()
+            player_ids.append(player.id)
+        session.commit()
+        session.close()
+        return player_ids
+
     def test_initialization_default_url(self):
         """Test initialization with default URL from environment."""
         with patch.dict("os.environ", {"DATABASE_URL": "sqlite:///:memory:"}):
@@ -59,9 +76,10 @@ class TestDatabaseService:
 
     def test_start_new_game(self, db_service):
         """Test starting a new game."""
+        player_ids = self._create_test_players(db_service, ["Player 1", "Player 2"])
         session_id = db_service.start_new_game(
             game_type_name="301",
-            player_names=["Player 1", "Player 2"],
+            player_ids=player_ids,
             start_score=301,
             double_out=False,
         )
@@ -71,9 +89,10 @@ class TestDatabaseService:
 
     def test_start_new_game_cricket(self, db_service):
         """Test starting a cricket game."""
+        player_ids = self._create_test_players(db_service, ["Alice", "Bob"])
         session_id = db_service.start_new_game(
             game_type_name="cricket",
-            player_names=["Alice", "Bob"],
+            player_ids=player_ids,
             start_score=None,
             double_out=False,
         )
@@ -82,9 +101,10 @@ class TestDatabaseService:
 
     def test_start_new_game_creates_game_type(self, db_service):
         """Test that starting a game creates game type if it doesn't exist."""
+        player_ids = self._create_test_players(db_service, ["Player 1"])
         session_id = db_service.start_new_game(
             game_type_name="custom_game",
-            player_names=["Player 1"],
+            player_ids=player_ids,
             start_score=500,
             double_out=True,
         )
@@ -95,7 +115,7 @@ class TestDatabaseService:
         # Start a game first
         db_service.start_new_game(
             game_type_name="301",
-            player_names=["Player 1", "Player 2"],
+            player_ids=self._create_test_players(db_service, ["Player 1", "Player 2"]),
             start_score=301,
             double_out=False,
         )
@@ -140,7 +160,7 @@ class TestDatabaseService:
         # Start a game
         db_service.start_new_game(
             game_type_name="301",
-            player_names=["Player 1", "Player 2"],
+            player_ids=self._create_test_players(db_service, ["Player 1", "Player 2"]),
             start_score=301,
             double_out=False,
         )
@@ -159,7 +179,7 @@ class TestDatabaseService:
         # Start a game
         db_service.start_new_game(
             game_type_name="301",
-            player_names=["Player 1", "Player 2"],
+            player_ids=self._create_test_players(db_service, ["Player 1", "Player 2"]),
             start_score=301,
             double_out=False,
         )
@@ -173,7 +193,7 @@ class TestDatabaseService:
         # Start and finish a game
         db_service.start_new_game(
             game_type_name="301",
-            player_names=["Player 1", "Player 2"],
+            player_ids=self._create_test_players(db_service, ["Player 1", "Player 2"]),
             start_score=301,
             double_out=False,
         )
@@ -195,7 +215,7 @@ class TestDatabaseService:
         # Start a game and record some throws
         session_id = db_service.start_new_game(
             game_type_name="301",
-            player_names=["Player 1", "Player 2"],
+            player_ids=self._create_test_players(db_service, ["Player 1", "Player 2"]),
             start_score=301,
             double_out=False,
         )
@@ -233,7 +253,7 @@ class TestDatabaseService:
         # Start game
         session_id = db_service.start_new_game(
             game_type_name="301",
-            player_names=["Alice", "Bob"],
+            player_ids=self._create_test_players(db_service, ["Alice", "Bob"]),
             start_score=301,
             double_out=False,
         )
@@ -287,7 +307,7 @@ class TestDatabaseService:
         # Start first game
         db_service.start_new_game(
             game_type_name="301",
-            player_names=["Player 1", "Player 2"],
+            player_ids=self._create_test_players(db_service, ["Player 1", "Player 2"]),
             start_score=301,
             double_out=False,
         )
@@ -296,7 +316,7 @@ class TestDatabaseService:
         # Start second game
         db_service.start_new_game(
             game_type_name="501",
-            player_names=["Player 3", "Player 4"],
+            player_ids=self._create_test_players(db_service, ["Player 3", "Player 4"]),
             start_score=501,
             double_out=True,
         )
@@ -310,7 +330,7 @@ class TestDatabaseService:
         """Test recording a bust throw."""
         db_service.start_new_game(
             game_type_name="301",
-            player_names=["Player 1"],
+            player_ids=self._create_test_players(db_service, ["Player 1"]),
             start_score=301,
             double_out=False,
         )
@@ -335,7 +355,7 @@ class TestDatabaseService:
         """Test recording a finishing throw."""
         db_service.start_new_game(
             game_type_name="301",
-            player_names=["Player 1"],
+            player_ids=self._create_test_players(db_service, ["Player 1"]),
             start_score=301,
             double_out=False,
         )
@@ -360,7 +380,7 @@ class TestDatabaseService:
         """Test undoing throws for a bust."""
         db_service.start_new_game(
             game_type_name="301",
-            player_names=["Player 1"],
+            player_ids=self._create_test_players(db_service, ["Player 1"]),
             start_score=301,
             double_out=False,
         )
@@ -385,3 +405,89 @@ class TestDatabaseService:
         # Undo 2 throws
         db_service.undo_throws_for_bust(player_id=0, throw_count=2)
         # Should not raise an error
+
+    def test_get_or_create_player_new_player(self, db_service):
+        """Test creating a new player via get_or_create_player."""
+        player = db_service.get_or_create_player(
+            name="Test Player",
+            username="testuser",
+            email="test@example.com",
+        )
+
+        assert player is not None
+        assert player.name == "Test Player"
+        assert player.username == "testuser"
+        assert player.email == "test@example.com"
+        assert player.id is not None
+        # Ensure the player object is accessible after session closure
+        player_id = player.id
+        assert player_id > 0
+
+    def test_get_or_create_player_existing_by_username(self, db_service):
+        """Test retrieving an existing player by username."""
+        # Create a player first
+        player1 = db_service.get_or_create_player(
+            name="Test Player",
+            username="testuser",
+            email="test@example.com",
+        )
+        player1_id = player1.id
+
+        # Get the same player using username
+        player2 = db_service.get_or_create_player(
+            name="Updated Name",
+            username="testuser",
+            email="newemail@example.com",
+        )
+
+        assert player2 is not None
+        assert player2.id == player1_id
+        assert player2.name == "Updated Name"  # Name should be updated
+        assert player2.email == "newemail@example.com"  # Email should be updated
+
+    def test_get_or_create_player_existing_by_email(self, db_service):
+        """Test retrieving an existing player by email."""
+        # Create a player first
+        player1 = db_service.get_or_create_player(
+            name="Test Player",
+            username="testuser1",
+            email="test@example.com",
+        )
+        player1_id = player1.id
+
+        # Get the same player using email (different username)
+        player2 = db_service.get_or_create_player(
+            name="Updated Name",
+            username="testuser2",
+            email="test@example.com",
+        )
+
+        assert player2 is not None
+        assert player2.id == player1_id
+        assert player2.name == "Updated Name"
+        assert player2.username == "testuser2"
+
+    def test_get_or_create_player_no_username_no_email(self, db_service):
+        """Test that creating a player without username is rejected (WSO2 requirement)."""
+        # Players without a username cannot be created due to WSO2 authentication requirement
+        player = db_service.get_or_create_player(name="Name Only")
+
+        # Should return None since no username provided
+        assert player is None
+
+    def test_get_or_create_player_multiple_separate_players(self, db_service):
+        """Test creating multiple separate players."""
+        player1 = db_service.get_or_create_player(
+            name="Player 1",
+            username="user1",
+            email="user1@example.com",
+        )
+        player2 = db_service.get_or_create_player(
+            name="Player 2",
+            username="user2",
+            email="user2@example.com",
+        )
+
+        assert player1.id != player2.id
+        assert player1.username == "user1"
+        assert player2.username == "user2"

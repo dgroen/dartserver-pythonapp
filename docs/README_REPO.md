@@ -11,12 +11,14 @@ This is a standalone Python application that provides a web-based darts game man
 ## ✨ Features
 
 ### Game Modes
+
 - **301** - Classic countdown game
-- **401** - Extended countdown game  
+- **401** - Extended countdown game
 - **501** - Professional countdown game
 - **Cricket** - Strategic target game (15-20, Bull)
 
 ### Core Functionality
+
 - ✅ Multi-player support (2-6 players, Cricket: 2-4)
 - ✅ RabbitMQ integration for score input
 - ✅ Real-time WebSocket updates
@@ -27,6 +29,7 @@ This is a standalone Python application that provides a web-based darts game man
 - ✅ Turn management
 
 ### Technical Features
+
 - ✅ Docker support with docker-compose
 - ✅ Auto-reconnecting RabbitMQ consumer
 - ✅ Event-driven architecture
@@ -42,6 +45,7 @@ docker-compose up
 ```
 
 This starts:
+
 - RabbitMQ server (port 5672, management UI on 15672)
 - Python Flask application (port 5000)
 
@@ -72,12 +76,12 @@ python app.py
 
 Once running:
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| **Game Board** | http://localhost:5000 | Main display |
-| **Control Panel** | http://localhost:5000/control | Game management |
-| **API** | http://localhost:5000/api/game/state | REST API |
-| **RabbitMQ UI** | http://localhost:15672 | Queue management (guest/guest) |
+| Service           | URL                                    | Purpose                        |
+| ----------------- | -------------------------------------- | ------------------------------ |
+| **Game Board**    | <http://localhost:5000>                | Main display                   |
+| **Control Panel** | <http://localhost:5000/control>        | Game management                |
+| **API**           | <http://localhost:5000/api/game/state> | REST API                       |
+| **RabbitMQ UI**   | <http://localhost:15672>               | Queue management (guest/guest) |
 
 ## 📡 Integration
 
@@ -92,6 +96,7 @@ Once running:
 ```
 
 Publish to:
+
 - **Exchange:** `darts_exchange`
 - **Routing Key:** `darts.scores.*`
 
@@ -110,41 +115,45 @@ curl http://localhost:5000/api/game/state
 ### WebSocket
 
 ```javascript
-const socket = io('http://localhost:5000');
-socket.emit('new_game', {game_type: '301', players: ['Alice', 'Bob']});
-socket.emit('manual_score', {score: 20, multiplier: 'TRIPLE'});
+const socket = io("http://localhost:5000");
+socket.emit("new_game", { game_type: "301", players: ["Alice", "Bob"] });
+socket.emit("manual_score", { score: 20, multiplier: "TRIPLE" });
 ```
 
 ## 📚 Documentation
 
-| Document | Purpose |
-|----------|---------|
-| **GET_STARTED.md** | First-time setup guide |
-| **QUICKSTART.md** | Quick reference |
-| **SUMMARY.md** | Feature overview |
-| **ARCHITECTURE.md** | System design details |
-| **INDEX.md** | Documentation index |
+| Document            | Purpose                |
+| ------------------- | ---------------------- |
+| **GET_STARTED.md**  | First-time setup guide |
+| **QUICKSTART.md**   | Quick reference        |
+| **SUMMARY.md**      | Feature overview       |
+| **ARCHITECTURE.md** | System design details  |
+| **INDEX.md**        | Documentation index    |
 
 **Start here:** [GET_STARTED.md](GET_STARTED.md)
 
 ## 🧪 Testing
 
 ### Verify Installation
+
 ```bash
 python verify_installation.py
 ```
 
 ### Test RabbitMQ Integration
+
 ```bash
 python test_rabbitmq.py
 ```
 
 ### API Examples
+
 ```bash
 python examples/api_examples.py
 ```
 
 ### WebSocket Examples
+
 ```bash
 python examples/websocket_client.py
 ```
@@ -152,12 +161,14 @@ python examples/websocket_client.py
 ## 🎮 Game Rules
 
 ### 301/401/501
+
 - Start with 301/401/501 points
 - Subtract each dart score
 - Bust if score goes below 0 (reverts to turn start)
 - Win by reaching exactly 0
 
 ### Cricket
+
 - Targets: 15, 16, 17, 18, 19, 20, Bull (25)
 - Need 3 hits to "open" each target
 - Score points on opened targets
@@ -190,7 +201,7 @@ SECRET_KEY=your-secret-key-here
 
 ```cpp
 void sendScore(int score, String multiplier) {
-  String payload = "{\"score\":" + String(score) + 
+  String payload = "{\"score\":" + String(score) +
                    ",\"multiplier\":\"" + multiplier + "\"}";
   mqttClient.publish("darts.scores.board1", payload);
 }
@@ -237,6 +248,7 @@ dartserver-pythonapp/
 ## 🐛 Troubleshooting
 
 ### RabbitMQ Connection Issues
+
 ```bash
 # Check if RabbitMQ is running
 sudo systemctl status rabbitmq-server
@@ -246,12 +258,14 @@ sudo systemctl restart rabbitmq-server
 ```
 
 ### Port Already in Use
+
 ```bash
 # Change port in .env
 FLASK_PORT=5001
 ```
 
 ### Dependencies Issues
+
 ```bash
 pip install -r requirements.txt --force-reinstall
 ```
@@ -259,17 +273,20 @@ pip install -r requirements.txt --force-reinstall
 ## 🚢 Deployment
 
 ### Development
+
 ```bash
 python app.py
 ```
 
 ### Production
+
 ```bash
 # Use Gunicorn with eventlet worker
 gunicorn -k eventlet -w 1 -b 0.0.0.0:5000 app:app
 ```
 
 ### Docker Production
+
 ```bash
 docker-compose up -d
 ```
@@ -277,16 +294,19 @@ docker-compose up -d
 ## 🎨 Customization
 
 ### Add New Game Mode
+
 1. Create `games/game_newmode.py`
 2. Implement game logic class
 3. Register in `game_manager.py`
 4. Update UI templates
 
 ### Modify Styling
+
 - Game board: `static/css/style.css`
 - Control panel: `static/css/control.css`
 
 ### Add Audio/Video Effects
+
 - Place files in `static/audio/` and `static/video/`
 - Update `static/js/main.js` to use them
 
@@ -315,6 +335,7 @@ See LICENSE file for details.
 ## 📞 Support
 
 For issues or questions:
+
 1. Check the documentation in this repository
 2. Run `python verify_installation.py`
 3. Review the troubleshooting section
@@ -324,4 +345,4 @@ For issues or questions:
 
 **Happy Darting! 🎯**
 
-*A complete Python darts game application with RabbitMQ integration, real-time updates, and multiple game modes.*
+_A complete Python darts game application with RabbitMQ integration, real-time updates, and multiple game modes._

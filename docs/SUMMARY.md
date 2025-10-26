@@ -5,6 +5,7 @@
 A complete Python web application for managing darts games with the following features:
 
 ### ✅ Core Features
+
 - **Game Modes**: 301, 401, 501, and Cricket
 - **Multi-Player Support**: 2-6 players (Cricket max 4)
 - **RabbitMQ Integration**: Receives scores via topic subscription
@@ -53,18 +54,21 @@ dartserver-pythonapp/
 ## 🚀 Quick Start
 
 ### Option 1: Docker (Easiest)
+
 ```bash
 docker-compose up
 ```
 
 ### Option 2: Manual
+
 ```bash
 ./run.sh
 ```
 
 Then open:
-- Game Board: http://localhost:5000
-- Control Panel: http://localhost:5000/control
+
+- Game Board: <http://localhost:5000>
+- Control Panel: <http://localhost:5000/control>
 
 ## 🎮 How It Works
 
@@ -79,6 +83,7 @@ Start Game → Players Take Turns → Send Scores → Update State → Check Win
 ### 2. Score Input Methods
 
 **A. RabbitMQ (Primary)**
+
 ```json
 {
   "score": 20,
@@ -88,6 +93,7 @@ Start Game → Players Take Turns → Send Scores → Update State → Check Win
 ```
 
 **B. REST API**
+
 ```bash
 POST /api/game/new
 GET /api/game/state
@@ -95,12 +101,14 @@ POST /api/players
 ```
 
 **C. WebSocket**
+
 ```javascript
-socket.emit('manual_score', {score: 20, multiplier: 'TRIPLE'})
-socket.emit('next_player')
+socket.emit("manual_score", { score: 20, multiplier: "TRIPLE" });
+socket.emit("next_player");
 ```
 
 **D. Web Control Panel**
+
 - Manual score entry form
 - Player management
 - Game controls
@@ -108,12 +116,14 @@ socket.emit('next_player')
 ### 3. Game Rules Implementation
 
 **301/401/501:**
+
 - Start with N points
 - Subtract each dart score
 - Bust if going below 0
 - Win by reaching exactly 0
 
 **Cricket:**
+
 - Hit 15-20 and Bull (25)
 - 3 hits to "open" each number
 - Score points on opened numbers
@@ -122,19 +132,22 @@ socket.emit('next_player')
 ## 🔌 Integration Options
 
 ### With Existing Node.js App
+
 ```bash
 # Use the bridge script
 node bridge_nodejs_to_rabbitmq.js
 ```
 
 ### With Arduino/ESP32
+
 ```cpp
 // Send scores to RabbitMQ
-mqttClient.publish("darts.scores.board1", 
+mqttClient.publish("darts.scores.board1",
   "{\"score\":20,\"multiplier\":\"TRIPLE\"}");
 ```
 
 ### With Other Systems
+
 - Use REST API endpoints
 - Connect via WebSocket
 - Publish to RabbitMQ directly
@@ -142,15 +155,17 @@ mqttClient.publish("darts.scores.board1",
 ## 📊 Message Format
 
 ### RabbitMQ Message
+
 ```json
 {
-  "score": 20,           // Base score (0-60)
+  "score": 20, // Base score (0-60)
   "multiplier": "TRIPLE", // SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL
-  "user": "Player 1"     // Optional player name
+  "user": "Player 1" // Optional player name
 }
 ```
 
 ### Routing Keys
+
 - Pattern: `darts.scores.#`
 - Examples:
   - `darts.scores.board1`
@@ -160,16 +175,19 @@ mqttClient.publish("darts.scores.board1",
 ## 🧪 Testing
 
 ### Test RabbitMQ Integration
+
 ```bash
 python test_rabbitmq.py
 ```
 
 ### Test REST API
+
 ```bash
 python examples/api_examples.py
 ```
 
 ### Test WebSocket
+
 ```bash
 python examples/websocket_client.py
 ```
@@ -177,26 +195,35 @@ python examples/websocket_client.py
 ## 🎨 Customization
 
 ### Add Audio Files
+
 Place MP3 files in `static/audio/`:
+
 - Plink.mp3, Triple.mp3, Dbl.mp3, etc.
 
 ### Add Video Effects
+
 Place MP4 files in `static/video/`:
+
 - triple.mp4, double.mp4, bullseye.mp4, etc.
 
 ### Modify Game Rules
+
 Edit files in `games/` directory:
+
 - `game_301.py` - Modify 301 logic
 - `game_cricket.py` - Modify Cricket logic
 
 ### Change Styling
+
 Edit CSS files in `static/css/`:
+
 - `style.css` - Main board styling
 - `control.css` - Control panel styling
 
 ## 🔧 Configuration
 
 ### Environment Variables (.env)
+
 ```bash
 # RabbitMQ
 RABBITMQ_HOST=localhost
@@ -216,6 +243,7 @@ SECRET_KEY=your-secret-key
 ## 📡 API Reference
 
 ### REST Endpoints
+
 - `GET /` - Game board
 - `GET /control` - Control panel
 - `GET /api/game/state` - Get game state
@@ -225,7 +253,9 @@ SECRET_KEY=your-secret-key
 - `DELETE /api/players/<id>` - Remove player
 
 ### WebSocket Events
+
 **Emit (Client → Server):**
+
 - `new_game` - Start game
 - `add_player` - Add player
 - `remove_player` - Remove player
@@ -234,6 +264,7 @@ SECRET_KEY=your-secret-key
 - `manual_score` - Submit score
 
 **Listen (Server → Client):**
+
 - `game_state` - State update
 - `play_sound` - Sound effect
 - `play_video` - Video effect
@@ -243,6 +274,7 @@ SECRET_KEY=your-secret-key
 ## 🐛 Troubleshooting
 
 ### RabbitMQ Issues
+
 ```bash
 # Check if running
 sudo systemctl status rabbitmq-server
@@ -255,6 +287,7 @@ sudo systemctl restart rabbitmq-server
 ```
 
 ### Application Issues
+
 ```bash
 # Check Python version (need 3.8+)
 python --version
@@ -267,6 +300,7 @@ pip install -r requirements.txt --force-reinstall
 ```
 
 ### Port Conflicts
+
 ```bash
 # Change Flask port in .env
 FLASK_PORT=5001
@@ -310,6 +344,7 @@ RABBITMQ_PORT=5673
 ## 🤝 Support
 
 For issues or questions:
+
 1. Check documentation
 2. Review examples
 3. Check application logs

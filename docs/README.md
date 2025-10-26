@@ -1,436 +1,616 @@
-# Darts Game System Documentation
+# Darts Game Web Application
 
-Welcome to the Darts Game System documentation! This directory contains comprehensive guides for setting up, configuring, and using the system.
+A Python web application for managing darts games (301 and Cricket) with RabbitMQ integration, real-time updates, and enterprise-grade authentication.
 
----
+## Features
 
-## 📚 Documentation Index
+### Game Features
 
-### Quick Start
-- **[QUICK_START.md](../QUICK_START.md)** - Get up and running in minutes
-  - Prerequisites
-  - Step-by-step setup
-  - Common commands
-  - Troubleshooting
+- **Multiple Game Modes**: 301, 401, 501, and Cricket
+- **Single & Multi-Player Support**: Support for 1-6 players (Cricket max 4)
+- **RabbitMQ Integration**: Receives dart scores through RabbitMQ topic subscription
+- **Real-time Updates**: WebSocket-based real-time game state updates
+- **Automatic UI Refresh**: All connected clients automatically refresh when scores are sent/received
+- **Web Interface**: Clean, responsive web interface for game display and control
+- **Manual Score Entry**: Control panel for manual score entry and game management
+- **REST API**: Full REST API for game control and score submission
 
-### Authentication & Security
-- **[AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md)** - Complete authentication guide (500+ lines)
-  - Detailed WSO2 configuration
-  - Role and user setup
-  - OAuth2 application registration
-  - Claims configuration
-  - Testing procedures
-  - Security best practices
-  - Production deployment guide
+### 🔐 Security & Authentication (NEW!)
 
-- **[AUTHENTICATION_FLOW.md](AUTHENTICATION_FLOW.md)** - Visual flow diagrams
-  - OAuth2 Authorization Code Flow
-  - Role-Based Access Control Flow
-  - Permission Hierarchy
-  - Route Protection Matrix
-  - Token Validation Flow
-  - Session Lifecycle
-  - Component Interaction
-  - Security Layers
-  - Error Handling Flow
+- **🆕 OAuth2 Authentication**: Secure login with WSO2 Identity Server
+- **🆕 Role-Based Access Control**: Three-tier role model (Player, Game Master, Admin)
+- **🆕 Protected Routes**: All endpoints secured with authentication
+- **🆕 Permission System**: Granular permission-based access control
+- **🆕 Session Management**: Secure session handling with HttpOnly cookies
+- **🆕 Token Validation**: JWT signature verification and introspection
 
-- **[AUTHENTICATION_SUMMARY.md](../AUTHENTICATION_SUMMARY.md)** - Implementation overview
-  - Architecture summary
-  - Role definitions
-  - Files created/modified
-  - Configuration requirements
-  - Security features
-  - Testing guide
-  - Production checklist
+### Enterprise Integration
 
----
+- **🆕 API Gateway**: Secure REST API layer with OAuth2 authentication
+- **🆕 WSO2 Integration**: Enterprise-grade identity and API management
+- **🆕 Developer Portal**: Self-service API access with documentation and analytics
 
-## 🚀 Getting Started
+## Quick Start with Authentication 🚀
 
-### For First-Time Users
+**The fastest way to get started with full authentication:**
 
-1. **Start Here**: [QUICK_START.md](../QUICK_START.md)
-   - Follow the 5-step quick start guide
-   - Get the system running quickly
+```bash
+# 1. Run the quick start script
+./start-with-auth.sh
 
-2. **Configure Authentication**: [AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md)
-   - Set up WSO2 Identity Server
-   - Create roles and users
-   - Configure OAuth2
+# 2. Configure WSO2 (follow the interactive guide)
+./configure-wso2-roles.sh
 
-3. **Understand the Flow**: [AUTHENTICATION_FLOW.md](AUTHENTICATION_FLOW.md)
-   - Visual diagrams of authentication
-   - Understand how everything works together
+# 3. Update .env with your WSO2 credentials
 
-### For Developers
+# 4. Start services again
+./start-with-auth.sh
 
-1. **Architecture Overview**: [AUTHENTICATION_SUMMARY.md](../AUTHENTICATION_SUMMARY.md)
-   - Understand the implementation
-   - Review security features
-   - See what files were created/modified
+# 5. Access the application
+# Open http://localhost:5000 and login!
+```
 
-2. **Code Reference**: 
-   - `/auth.py` - Authentication module
-   - `/app.py` - Main application with protected routes
-   - `/templates/` - UI templates
-
-3. **Testing**: 
-   - Run `./test-authentication.sh` for automated tests
-   - Follow manual test procedures in documentation
-
-### For System Administrators
-
-1. **Production Deployment**: [AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md#production-deployment)
-   - Security hardening
-   - HTTPS configuration
-   - Environment variables
-   - Monitoring and logging
-
-2. **Troubleshooting**: [QUICK_START.md](../QUICK_START.md#troubleshooting)
-   - Common issues and solutions
-   - Service health checks
-   - Log analysis
+**See [QUICK_START.md](QUICK_START.md) for detailed instructions.**
 
 ---
 
-## 🎯 Role-Based Access Control
+## Manual Installation
 
-The system implements a three-tier role model:
+### 1. Install Python Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Set up RabbitMQ (if not already installed)
+
+```bash
+# On Ubuntu/Debian
+sudo apt-get install rabbitmq-server
+
+# On macOS
+brew install rabbitmq
+
+# Start RabbitMQ
+sudo systemctl start rabbitmq-server  # Linux
+brew services start rabbitmq          # macOS
+```
+
+### 3. Configure Environment Variables
+
+```bash
+cp .env.example .env
+# Edit .env with your settings:
+# - RabbitMQ connection
+# - Flask configuration
+# - WSO2 authentication (for secure mode)
+```
+
+### 4. Docker Deployment (Recommended)
+
+```bash
+# With authentication (recommended)
+docker-compose -f docker-compose-wso2.yml up -d
+
+# Without authentication (development only)
+docker-compose up -d
+```
+
+## Configuration
+
+Edit the `.env` file to configure:
+
+### RabbitMQ Settings
+
+- `RABBITMQ_HOST`: RabbitMQ server host (default: localhost)
+- `RABBITMQ_PORT`: RabbitMQ server port (default: 5672)
+- `RABBITMQ_USER`: RabbitMQ username (default: guest)
+- `RABBITMQ_PASSWORD`: RabbitMQ password (default: guest)
+- `RABBITMQ_EXCHANGE`: Exchange name (default: darts_exchange)
+- `RABBITMQ_TOPIC`: Topic pattern (default: darts.scores.#)
+
+### Flask Settings
+
+- `FLASK_HOST`: Flask server host (default: 0.0.0.0)
+- `FLASK_PORT`: Flask server port (default: 5000)
+- `FLASK_DEBUG`: Debug mode (default: True)
+- `SECRET_KEY`: Session encryption key (change in production!)
+
+### 🔐 WSO2 Authentication Settings (NEW!)
+
+- `WSO2_IS_URL`: WSO2 Identity Server URL (default: <https://localhost:9443>)
+- `WSO2_CLIENT_ID`: OAuth2 client ID (get from WSO2 Console)
+- `WSO2_CLIENT_SECRET`: OAuth2 client secret (get from WSO2 Console)
+- `WSO2_REDIRECT_URI`: OAuth2 callback URL (default: <http://localhost:5000/callback>)
+- `JWT_VALIDATION_MODE`: Token validation method (`introspection` or `jwks`)
+- `WSO2_IS_INTROSPECT_USER`: Introspection username (default: admin)
+- `WSO2_IS_INTROSPECT_PASSWORD`: Introspection password (default: admin)
+- `SESSION_COOKIE_SECURE`: Enable secure cookies (set to `True` in production with HTTPS)
+
+**See [docs/AUTHENTICATION_SETUP.md](docs/AUTHENTICATION_SETUP.md) for detailed configuration guide.**
+
+## 🔐 Authentication & Roles
+
+The system implements a three-tier role-based access control model:
 
 ### 🟢 Player Role
+
+**Purpose**: Basic game participation
+
+**Permissions**:
+
 - View game board
-- Submit scores
+- Submit dart scores
 - View game state
 
+**Access**: Game board, score submission
+
+---
+
 ### 🟡 Game Master Role
+
+**Purpose**: Game management and coordination
+
+**Permissions**:
+
 - All Player permissions
 - Access control panel
-- Create games
-- Manage players
+- Create new games
+- Add/remove players
+- Manage game flow
+
+**Access**: All Player features + Control panel
+
+---
 
 ### 🔴 Admin Role
+
+**Purpose**: Full system administration
+
+**Permissions**:
+
+- All permissions (wildcard `*`)
 - Full system access
-- All permissions
+- User management (via WSO2)
 
-**Detailed information**: [AUTHENTICATION_SUMMARY.md](../AUTHENTICATION_SUMMARY.md#role-based-access-control-rbac)
-
----
-
-## 🔧 Configuration Files
-
-### Environment Configuration
-- **`.env`** - Environment variables (create from `.env.example`)
-  - WSO2 credentials
-  - OAuth2 settings
-  - Session configuration
-
-### Docker Configuration
-- **`docker-compose-wso2.yml`** - Docker Compose configuration
-  - All services defined
-  - Environment variables
-  - Network configuration
-  - Health checks
-
-### Application Configuration
-- **`auth.py`** - Authentication module
-  - Role definitions
-  - Permission mappings
-  - OAuth2 flow implementation
+**Access**: Complete system access
 
 ---
 
-## 🛠️ Helper Scripts
+**Test Users** (create these in WSO2 Console):
 
-### Setup Scripts
-- **`start-with-auth.sh`** - Quick start script
-  - Validates configuration
-  - Starts all services
-  - Performs health checks
-  - Displays access URLs
+- `testplayer` / `Player@123` (Player role)
+- `testgamemaster` / `GameMaster@123` (Game Master role)
+- `testadmin` / `Admin@123` (Admin role)
 
-- **`configure-wso2-roles.sh`** - Configuration helper
-  - Step-by-step WSO2 setup
-  - Role creation guide
-  - User creation guide
-  - OAuth2 app registration
-
-### Testing Scripts
-- **`test-authentication.sh`** - Authentication testing
-  - Automated endpoint tests
-  - Service health checks
-  - Manual test checklist
+**See [AUTHENTICATION_SUMMARY.md](AUTHENTICATION_SUMMARY.md) for detailed role information.**
 
 ---
 
-## 📖 Key Concepts
+## Usage
 
-### OAuth2 Authorization Code Flow
-The system uses the OAuth2 Authorization Code Flow for secure authentication:
-1. User accesses protected resource
-2. Redirected to WSO2 for authentication
-3. User logs in with credentials
-4. WSO2 redirects back with authorization code
-5. App exchanges code for access token
-6. Token validated and session created
+### With Authentication (Recommended)
 
-**Visual diagram**: [AUTHENTICATION_FLOW.md](AUTHENTICATION_FLOW.md#oauth2-authorization-code-flow)
+1. **Start services**:
 
-### Token Validation
-Two methods supported:
-- **JWKS** - JSON Web Key Set signature verification
-- **Introspection** - WSO2 token introspection endpoint
+```bash
+./start-with-auth.sh
+```
 
-**Configuration**: Set `JWT_VALIDATION_MODE` in `.env`
+2. **Access the web interface**:
+   - Login page: <http://localhost:5000/login>
+   - Main game board: <http://localhost:5000/> (requires login)
+   - Control panel: <http://localhost:5000/control> (requires Game Master or Admin role)
+   - User profile: <http://localhost:5000/profile> (requires login)
 
-### Session Management
-- Secure session cookies (HttpOnly, SameSite)
-- Token storage in server-side session
-- Automatic session validation on each request
+3. **Login with test user**:
+   - Use one of the test users created in WSO2
+   - You'll be redirected to WSO2 login page
+   - After successful login, you'll be redirected back to the game
 
----
+### Without Authentication (Development Only)
 
-## 🔒 Security Features
+1. **Start the application**:
 
-### Implemented
-✅ OAuth2 Authorization Code Flow  
-✅ CSRF Protection (state parameter)  
-✅ Token Validation (JWKS + Introspection)  
-✅ Role-Based Access Control  
-✅ Session Security (HttpOnly, SameSite)  
-✅ Input Validation  
+```bash
+python app.py
+```
 
-### Production Requirements
-⚠️ Enable HTTPS  
-⚠️ Use valid SSL certificates  
-⚠️ Set SESSION_COOKIE_SECURE=True  
-⚠️ Generate strong SECRET_KEY  
-⚠️ Create dedicated service account  
+2. **Access the web interface**:
+   - Main game board: <http://localhost:5000/>
+   - Control panel: <http://localhost:5000/control>
+   - Auto-refresh test page: <http://localhost:5000/test-refresh>
 
-**Full security guide**: [AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md#security-considerations)
+3. **Send scores via RabbitMQ**:
 
----
+The application listens for messages on the configured RabbitMQ exchange and topic.
 
-## 🐛 Troubleshooting
+**Message Format** (JSON):
 
-### Common Issues
+```json
+{
+  "score": 20,
+  "multiplier": "TRIPLE",
+  "user": "Player 1"
+}
+```
 
-#### Services Won't Start
+**Multiplier Options**:
+
+- `SINGLE`: Single score
+- `DOUBLE`: Double score
+- `TRIPLE`: Triple score
+- `BULL`: Bullseye (25 points)
+- `DBLBULL`: Double Bullseye (50 points)
+
+## Game Rules
+
+### 301/401/501
+
+- Players start with 301/401/501 points
+- Each dart score is subtracted from the player's total
+- First player to reach exactly 0 wins
+- Going below 0 results in a "bust" - score returns to start of turn
+
+### Cricket
+
+- Players must hit 15, 16, 17, 18, 19, 20, and Bull (25)
+- Each number must be hit 3 times to "open" it
+- Once opened, additional hits score points
+- When all players have hit a number 3 times, it's "closed"
+- First player to open all numbers with the highest score wins
+
+## API Endpoints
+
+### REST API
+
+- `GET /api/game/state` - Get current game state
+- `POST /api/game/new` - Start a new game
+
+  ```json
+  {
+    "game_type": "301",
+    "players": ["Player 1", "Player 2"],
+    "double_out": false
+  }
+  ```
+
+- `POST /api/score` - Submit a score (triggers automatic UI refresh)
+
+  ```json
+  {
+    "score": 20,
+    "multiplier": "TRIPLE"
+  }
+  ```
+
+- `GET /api/players` - Get all players
+- `POST /api/players` - Add a player
+
+  ```json
+  {
+    "name": "Player 3"
+  }
+  ```
+
+- `DELETE /api/players/<player_id>` - Remove a player
+
+**Note**: All API endpoints that modify game state automatically trigger UI refresh for all connected clients via WebSocket.
+
+### WebSocket Events
+
+**Client → Server**:
+
+- `new_game` - Start a new game
+- `add_player` - Add a player
+- `remove_player` - Remove a player
+- `next_player` - Move to next player
+- `skip_to_player` - Skip to specific player
+- `manual_score` - Submit a manual score
+
+**Server → Client**:
+
+- `game_state` - Game state update
+- `play_sound` - Play a sound effect
+- `play_video` - Play a video effect
+- `message` - Display a message
+- `big_message` - Display a big message
+
+## Testing
+
+### Test Automatic UI Refresh
+
+**Method 1: Interactive Test Page**
+
+```bash
+# Start the application
+python app.py
+
+# Open in browser: http://localhost:5000/test-refresh
+# Click the test buttons and watch the UI update automatically!
+```
+
+**Method 2: Automated Test Script**
+
+```bash
+# Start the application in one terminal
+python app.py
+
+# Open the game UI in a browser: http://localhost:5000
+
+# Run the test script in another terminal
+python examples/test_auto_refresh.py
+
+# Watch the UI update automatically as the script makes API calls!
+```
+
+### Test RabbitMQ Integration
+
+Use the included test script to send test scores:
+
+```bash
+python test_rabbitmq.py
+```
+
+Or manually publish messages using RabbitMQ tools:
+
+```bash
+# Install rabbitmq management tools
+sudo rabbitmq-plugins enable rabbitmq_management
+
+# Publish a test message
+rabbitmqadmin publish exchange=darts_exchange routing_key=darts.scores.test \
+  payload='{"score": 20, "multiplier": "TRIPLE", "user": "Test Player"}'
+```
+
+## Project Structure
+
+```
+dartserver-pythonapp/
+├── app.py                  # Main Flask application
+├── game_manager.py         # Game logic manager
+├── rabbitmq_consumer.py    # RabbitMQ consumer
+├── requirements.txt        # Python dependencies
+├── .env.example           # Environment variables template
+├── games/
+│   ├── __init__.py
+│   ├── game_301.py        # 301/401/501 game logic
+│   └── game_cricket.py    # Cricket game logic
+├── templates/
+│   ├── index.html         # Main game board
+│   ├── control.html       # Control panel
+│   └── test_refresh.html  # Auto-refresh test page
+├── examples/
+│   ├── api_examples.py    # API usage examples
+│   ├── test_auto_refresh.py # Auto-refresh test script
+│   └── websocket_client.py # WebSocket client example
+└── static/
+    ├── css/
+    │   ├── style.css      # Main styles
+    │   └── control.css    # Control panel styles
+    └── js/
+        ├── main.js        # Main game board JavaScript
+        └── control.js     # Control panel JavaScript
+```
+
+## Integration with Existing System
+
+This Python application can work alongside your existing Node.js darts application. You can:
+
+1. Use the Python app as a standalone system with RabbitMQ
+2. Bridge the Node.js app to send scores to RabbitMQ
+3. Use the Python app's REST API to integrate with other systems
+
+## Automatic UI Refresh
+
+The application features **automatic UI refresh** - all connected clients automatically update when:
+
+- Scores are submitted (via API, RabbitMQ, or WebSocket)
+- New games are started
+- Players are added or removed
+- Game state changes
+
+This is implemented using WebSocket (Socket.IO) technology. See [docs/AUTO_REFRESH.md](docs/AUTO_REFRESH.md) for detailed documentation.
+
+## Troubleshooting
+
+### Authentication Issues
+
+**Cannot login / "Invalid credentials"**:
+
+- Verify user exists in WSO2 Console
+- Check username and password
+- Ensure user has a role assigned
+- See [QUICK_START.md](QUICK_START.md#troubleshooting)
+
+**"WSO2 Client ID not configured"**:
+
+- Run `./configure-wso2-roles.sh`
+- Update `.env` with Client ID and Secret
+- Restart services
+
+**"403 Forbidden" on control panel**:
+
+- Verify user has Game Master or Admin role
+- Check role assignment in WSO2 Console
+- See [docs/AUTHENTICATION_SETUP.md](docs/AUTHENTICATION_SETUP.md#troubleshooting)
+
+**"Invalid redirect URI"**:
+
+- Verify callback URL in WSO2 OAuth2 app: `http://localhost:5000/callback`
+- Check `WSO2_REDIRECT_URI` in `.env`
+
+### Application Issues
+
+**UI Not Automatically Refreshing?**:
+
+- Check browser console for WebSocket connection errors
+- Verify Socket.IO client library is loaded
+- Visit <http://localhost:5000/test-refresh> to test the connection
+- See [docs/AUTO_REFRESH.md](docs/AUTO_REFRESH.md) for detailed troubleshooting
+
+**RabbitMQ Connection Issues**:
+
+- Ensure RabbitMQ is running: `sudo systemctl status rabbitmq-server`
+- Check firewall settings
+- Verify credentials in `.env` file
+
+**WebSocket Connection Issues**:
+
+- Check browser console for errors
+- Ensure Flask server is running
+- Try disabling browser extensions
+
+**Game Logic Issues**:
+
+- Check server console for error messages
+- Verify score message format
+- Use the control panel to manually test game logic
+
+**Services won't start**:
+
 - Check Docker is running
-- Verify ports are available
+- Verify ports are available (5000, 8080, 9443, 5672, 15672)
 - Check Docker resources (4GB+ RAM recommended)
-
-#### Cannot Connect to WSO2
-- Wait 2-3 minutes for startup
-- Check logs: `docker-compose -f docker-compose-wso2.yml logs wso2is`
-- Verify: `curl -k https://localhost:9443/carbon/admin/login.jsp`
-
-#### Authentication Fails
-- Verify WSO2 configuration
-- Check client credentials in `.env`
-- Verify callback URL matches
-- Check user has roles assigned
-
-#### 403 Forbidden
-- Verify user has required role
-- Check permission configuration
-- Review route protection decorators
-
-**Full troubleshooting guide**: [QUICK_START.md](../QUICK_START.md#troubleshooting)
+- View logs: `docker-compose -f docker-compose-wso2.yml logs -f`
 
 ---
 
-## 📊 Service URLs
+## 📚 Documentation
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| Darts Game | http://localhost:5000 | WSO2 users |
-| WSO2 IS Console | https://localhost:9443/carbon | admin / admin |
-| RabbitMQ Management | http://localhost:15672 | guest / guest |
-| API Gateway | http://localhost:8080 | Token required |
+### Quick Start & Setup
+
+- **[QUICK_START.md](QUICK_START.md)** - Get started in 5 steps
+- **[BANNER.txt](BANNER.txt)** - System overview and quick reference
+
+### Authentication & Security
+
+- **[AUTHENTICATION_SETUP.md](docs/AUTHENTICATION_SETUP.md)** - Complete authentication guide (500+ lines)
+- **[AUTHENTICATION_FLOW.md](docs/AUTHENTICATION_FLOW.md)** - Visual flow diagrams
+- **[AUTHENTICATION_SUMMARY.md](AUTHENTICATION_SUMMARY.md)** - Implementation overview
+
+### Documentation Index
+
+- **[docs/README.md](docs/README.md)** - Complete documentation index
+
+### Helper Scripts
+
+- **`./start-with-auth.sh`** - Quick start with health checks
+- **`./configure-wso2-roles.sh`** - Interactive WSO2 configuration
+- **`./test-authentication.sh`** - Authentication testing
+
+---
+
+## 🚀 Service URLs
+
+| Service          | URL                             | Credentials    | Purpose             |
+| ---------------- | ------------------------------- | -------------- | ------------------- |
+| **Darts Game**   | <http://localhost:5000>         | WSO2 users     | Main application    |
+| **WSO2 Console** | <https://localhost:9443/carbon> | admin / admin  | Identity management |
+| **RabbitMQ**     | <http://localhost:15672>        | guest / guest  | Message broker      |
+| **API Gateway**  | <http://localhost:8080>         | Token required | REST API            |
 
 ---
 
 ## 🧪 Testing
 
 ### Automated Tests
-```bash
-./test-authentication.sh
-```
-
-### Manual Tests
-1. Test each role (player, gamemaster, admin)
-2. Verify access control
-3. Test logout functionality
-4. Verify session persistence
-
-**Detailed test procedures**: [AUTHENTICATION_SETUP.md](AUTHENTICATION_SETUP.md#testing-the-setup)
-
----
-
-## 📝 API Endpoints
-
-### Public Endpoints
-- `GET /login` - Login page
-- `GET /callback` - OAuth2 callback
-
-### Protected Endpoints
-- `GET /` - Game board (all roles)
-- `GET /control` - Control panel (gamemaster, admin)
-- `GET /profile` - User profile (all roles)
-- `GET /logout` - Logout (all roles)
-
-### API Endpoints
-- `GET /api/game` - Get game state
-- `POST /api/game` - Create game (gamemaster, admin)
-- `POST /api/player` - Add player (gamemaster, admin)
-- `DELETE /api/player/<id>` - Remove player (gamemaster, admin)
-- `POST /api/score` - Submit score (all roles)
-
-**Full route protection matrix**: [AUTHENTICATION_FLOW.md](AUTHENTICATION_FLOW.md#route-protection-matrix)
-
----
-
-## 🔄 Development Workflow
-
-### Making Changes
-
-1. **Modify Code**
-   - Edit files in `/data/dartserver-pythonapp/`
-   - Update authentication logic in `auth.py`
-   - Update routes in `app.py`
-
-2. **Test Changes**
-   ```bash
-   docker-compose -f docker-compose-wso2.yml restart darts-app
-   ./test-authentication.sh
-   ```
-
-3. **View Logs**
-   ```bash
-   docker-compose -f docker-compose-wso2.yml logs -f darts-app
-   ```
-
-### Adding New Roles
-
-1. Update `ROLES` dictionary in `auth.py`
-2. Create role in WSO2 Console
-3. Assign permissions
-4. Update documentation
-
-### Adding New Permissions
-
-1. Add permission to role in `auth.py`
-2. Apply `@permission_required()` decorator to route
-3. Test access control
-4. Update documentation
-
----
-
-## 📚 Additional Resources
-
-### WSO2 Documentation
-- [WSO2 Identity Server Documentation](https://is.docs.wso2.com/)
-- [OAuth2 Guide](https://is.docs.wso2.com/en/latest/guides/identity-federation/oauth/)
-- [Role-Based Access Control](https://is.docs.wso2.com/en/latest/guides/identity-lifecycles/manage-roles-overview/)
-
-### OAuth2 Resources
-- [OAuth 2.0 Authorization Code Flow](https://oauth.net/2/grant-types/authorization-code/)
-- [OpenID Connect](https://openid.net/connect/)
-
-### Flask Resources
-- [Flask Documentation](https://flask.palletsprojects.com/)
-- [Flask Sessions](https://flask.palletsprojects.com/en/2.3.x/quickstart/#sessions)
-
----
-
-## 🤝 Support
-
-### Getting Help
-
-1. **Check Documentation**
-   - Review relevant guides above
-   - Check troubleshooting sections
-
-2. **Check Logs**
-   ```bash
-   docker-compose -f docker-compose-wso2.yml logs -f
-   ```
-
-3. **Run Tests**
-   ```bash
-   ./test-authentication.sh
-   ```
-
-4. **Verify Configuration**
-   - Check `.env` file
-   - Verify WSO2 configuration
-   - Check Docker resources
-
----
-
-## 📋 Cheat Sheet
-
-### Quick Commands
 
 ```bash
-# Start services
-./start-with-auth.sh
-
-# Configure WSO2
-./configure-wso2-roles.sh
-
 # Test authentication
 ./test-authentication.sh
 
-# View logs
-docker-compose -f docker-compose-wso2.yml logs -f
+# Test auto-refresh
+python examples/test_auto_refresh.py
 
-# Restart service
-docker-compose -f docker-compose-wso2.yml restart darts-app
-
-# Stop services
-docker-compose -f docker-compose-wso2.yml down
-
-# Clean restart
-docker-compose -f docker-compose-wso2.yml down -v
-docker-compose -f docker-compose-wso2.yml up -d
+# Test RabbitMQ
+python test_rabbitmq.py
 ```
 
-### Test Users
+### Manual Testing
 
-| Username | Password | Role |
-|----------|----------|------|
-| testplayer | Player@123 | player |
-| testgamemaster | GameMaster@123 | gamemaster |
-| testadmin | Admin@123 | admin |
+1. Login with each role (player, gamemaster, admin)
+2. Verify access control works correctly
+3. Test game functionality
+4. Test logout
 
-*Note: Create these users in WSO2 Console first*
-
----
-
-## 📄 Document Versions
-
-| Document | Lines | Last Updated |
-|----------|-------|--------------|
-| AUTHENTICATION_SETUP.md | 500+ | 2024 |
-| AUTHENTICATION_FLOW.md | 400+ | 2024 |
-| AUTHENTICATION_SUMMARY.md | 400+ | 2024 |
-| QUICK_START.md | 200+ | 2024 |
+**See [docs/AUTHENTICATION_SETUP.md](docs/AUTHENTICATION_SETUP.md#testing-the-setup) for detailed test procedures.**
 
 ---
 
-## ✅ Implementation Status
+## 📦 Project Structure
 
-**Status**: ✅ Complete and ready for deployment
-
-- ✅ Authentication module implemented
-- ✅ Role-based access control configured
-- ✅ UI updated with login/logout
-- ✅ All routes protected
-- ✅ Documentation complete
-- ✅ Helper scripts created
-- ✅ Testing scripts ready
+```
+dartserver-pythonapp/
+├── app.py                          # Main Flask application
+├── auth.py                         # Authentication module (NEW!)
+├── game_manager.py                 # Game logic manager
+├── rabbitmq_consumer.py            # RabbitMQ consumer
+├── requirements.txt                # Python dependencies
+├── .env.example                    # Environment variables template
+├── docker-compose-wso2.yml         # Docker Compose with WSO2 (NEW!)
+├── QUICK_START.md                  # Quick start guide (NEW!)
+├── AUTHENTICATION_SUMMARY.md       # Auth implementation summary (NEW!)
+├── BANNER.txt                      # System banner (NEW!)
+├── start-with-auth.sh              # Quick start script (NEW!)
+├── configure-wso2-roles.sh         # WSO2 configuration helper (NEW!)
+├── test-authentication.sh          # Authentication testing (NEW!)
+├── docs/
+│   ├── README.md                   # Documentation index (NEW!)
+│   ├── AUTHENTICATION_SETUP.md     # Complete auth guide (NEW!)
+│   ├── AUTHENTICATION_FLOW.md      # Flow diagrams (NEW!)
+│   └── AUTO_REFRESH.md             # Auto-refresh documentation
+├── games/
+│   ├── __init__.py
+│   ├── game_301.py                 # 301/401/501 game logic
+│   └── game_cricket.py             # Cricket game logic
+├── templates/
+│   ├── index.html                  # Main game board (updated)
+│   ├── control.html                # Control panel (updated)
+│   ├── login.html                  # Login page (NEW!)
+│   └── test_refresh.html           # Auto-refresh test page
+├── examples/
+│   ├── api_examples.py             # API usage examples
+│   ├── test_auto_refresh.py        # Auto-refresh test script
+│   └── websocket_client.py         # WebSocket client example
+└── static/
+    ├── css/
+    │   ├── style.css               # Main styles (updated)
+    │   └── control.css             # Control panel styles (updated)
+    └── js/
+        ├── main.js                 # Main game board JavaScript
+        └── control.js              # Control panel JavaScript
+```
 
 ---
 
-**Ready to get started? Begin with [QUICK_START.md](../QUICK_START.md)! 🎯**
+## 🔒 Security Notes
+
+### Development Mode (Current)
+
+⚠️ The current configuration is for **development only**:
+
+- Self-signed SSL certificates (verification disabled)
+- HTTP instead of HTTPS for the app
+- Default admin credentials for introspection
+- `SESSION_COOKIE_SECURE=False`
+
+### Production Deployment
+
+🔒 For production, you **must**:
+
+- Enable HTTPS with valid SSL certificates
+- Set `SESSION_COOKIE_SECURE=True`
+- Generate strong `SECRET_KEY`
+- Create dedicated service account for introspection
+- Enable SSL verification
+- Configure firewall rules
+- Set up monitoring and logging
+
+**See [docs/AUTHENTICATION_SETUP.md](docs/AUTHENTICATION_SETUP.md#production-deployment) for complete production guide.**
+
+---
+
+## License
+
+See LICENSE file in the root directory.

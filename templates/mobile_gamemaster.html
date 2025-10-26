@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1e3c72">
+    <meta name="description" content="Game Master control panel for dartboard game management">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192x192.png">
+    <title>👑 Game Master - Darts Mobile</title>
+    <link rel="stylesheet" href="/static/css/mobile.css">
+    <link rel="stylesheet" href="/static/css/mobile_gamemaster.css">
+</head>
+<body>
+    <div class="mobile-app">
+        <header class="mobile-header">
+            <a href="/mobile" class="back-btn" aria-label="Back to home">←</a>
+            <h1>👑 Game Master</h1>
+            <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+        </header>
+
+        <!-- Menu Overlay -->
+        <div class="menu-overlay" id="menuOverlay"></div>
+
+        <!-- Navigation Menu -->
+        <nav class="mobile-nav" id="mobileNav">
+            <ul>
+                <li><a href="/mobile" class="nav-item">🏠 Home</a></li>
+                <li><a href="/mobile/gameplay" class="nav-item">🎮 Gameplay</a></li>
+                <li><a href="/mobile/dartboard-setup" class="nav-item">🎯 Dartboard Setup</a></li>
+                <li><a href="/mobile/results" class="nav-item">📊 Game Results</a></li>
+                <li><a href="/mobile/account" class="nav-item">⚙️ Account</a></li>
+                <li><a href="/logout" class="nav-item">🚪 Logout</a></li>
+            </ul>
+        </nav>
+
+        <main class="mobile-content">
+            <!-- Game Status Card -->
+            <div class="status-card game-status" id="gameStatusCard">
+                <div class="status-indicator">
+                    <span class="status-dot offline" id="gameStatusDot"></span>
+                    <span class="status-text" id="gameStatusText">No active game</span>
+                </div>
+                <div class="game-info" id="gameInfo" style="display: none;">
+                    <div class="info-item">
+                        <span class="info-label">Game Type:</span>
+                        <span class="info-value" id="gameTypeDisplay">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Current Player:</span>
+                        <span class="info-value" id="currentPlayerDisplay">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New Game Section -->
+            <section class="control-section">
+                <h2>🎮 Start New Game</h2>
+                <form id="newGameForm" class="game-form">
+                    <div class="form-group">
+                        <label for="gameType">Game Type</label>
+                        <select id="gameType" name="gameType" class="form-control">
+                            <option value="301">301</option>
+                            <option value="401">401</option>
+                            <option value="501" selected>501</option>
+                            <option value="cricket">Cricket</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="doubleOut" name="doubleOut">
+                            <span class="checkbox-text">Double Out (must finish with a double)</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="playerNames">Players (one per line)</label>
+                        <textarea id="playerNames" name="playerNames" rows="5" class="form-control"
+                                  placeholder="Player 1&#10;Player 2&#10;Player 3"></textarea>
+                        <small class="form-hint">Enter at least 1 player</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-large">
+                        <span class="btn-icon">🚀</span>
+                        Start Game
+                    </button>
+                </form>
+            </section>
+
+            <!-- Player Management -->
+            <section class="control-section">
+                <h2>👥 Players</h2>
+                <div id="playersList" class="players-list">
+                    <p class="empty-state">No active game</p>
+                </div>
+
+                <!-- Add Player During Game -->
+                <div class="add-player-section" id="addPlayerSection" style="display: none;">
+                    <div class="form-group">
+                        <input type="text" id="newPlayerName" class="form-control"
+                               placeholder="New player name">
+                    </div>
+                    <button class="btn btn-success" id="addPlayerBtn">
+                        <span class="btn-icon">➕</span>
+                        Add Player
+                    </button>
+                </div>
+            </section>
+
+            <!-- Game Controls -->
+            <section class="control-section">
+                <h2>🎯 Game Controls</h2>
+                <div class="control-buttons">
+                    <button class="btn btn-secondary btn-large" id="nextPlayerBtn" disabled>
+                        <span class="btn-icon">⏭️</span>
+                        Next Player
+                    </button>
+                    <button class="btn btn-warning btn-large" id="pauseBtn" disabled>
+                        <span class="btn-icon">⏸️</span>
+                        Pause Game
+                    </button>
+                    <button class="btn btn-danger btn-large" id="endGameBtn" disabled>
+                        <span class="btn-icon">🛑</span>
+                        End Game
+                    </button>
+                </div>
+            </section>
+
+            <!-- Manual Score Entry -->
+            <section class="control-section">
+                <h2>✍️ Manual Score Entry</h2>
+                <form id="manualScoreForm" class="score-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="scoreValue">Score</label>
+                            <input type="number" id="scoreValue" class="form-control"
+                                   min="0" max="60" value="20">
+                        </div>
+                        <div class="form-group">
+                            <label for="multiplier">Multiplier</label>
+                            <select id="multiplier" class="form-control">
+                                <option value="SINGLE">Single</option>
+                                <option value="DOUBLE">Double</option>
+                                <option value="TRIPLE">Triple</option>
+                                <option value="BULL">Bull (25)</option>
+                                <option value="DBLBULL">Double Bull (50)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-large" id="submitScoreBtn" disabled>
+                        <span class="btn-icon">📝</span>
+                        Submit Score
+                    </button>
+                </form>
+            </section>
+
+            <!-- Game State Display -->
+            <section class="control-section">
+                <h2>📊 Game State</h2>
+                <div class="game-state-display">
+                    <button class="btn btn-secondary" id="refreshStateBtn">
+                        <span class="btn-icon">🔄</span>
+                        Refresh State
+                    </button>
+                    <div class="state-container">
+                        <pre id="gameStateJson" class="state-json">No game data</pre>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="mobile-footer">
+            <p>&copy; 2025 Darts Game System</p>
+        </footer>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="/static/js/mobile.js"></script>
+    <script src="/static/js/mobile_gamemaster.js"></script>
+    <script>
+        // Menu Toggle Functionality
+        const menuToggle = document.getElementById('menuToggle');
+        const mobileNav = document.getElementById('mobileNav');
+        const menuOverlay = document.getElementById('menuOverlay');
+
+        function toggleMenu() {
+            mobileNav.classList.toggle('active');
+            menuOverlay.classList.toggle('active');
+        }
+
+        menuToggle.addEventListener('click', toggleMenu);
+        menuOverlay.addEventListener('click', toggleMenu);
+
+        // Close menu when clicking a nav item
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                mobileNav.classList.remove('active');
+                menuOverlay.classList.remove('active');
+            });
+        });
+
+        // Register Service Worker for PWA functionality
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker registered successfully:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.error('❌ Service Worker registration failed:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

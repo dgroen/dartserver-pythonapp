@@ -1,6 +1,6 @@
 # TTS Implementation Summary
 
-## ✅ Implementation Complete!
+## ✅ Implementation Complete
 
 The Text-to-Speech (TTS) system has been **fully integrated** into your darts game application with configurable speed and voice type support.
 
@@ -9,9 +9,11 @@ The Text-to-Speech (TTS) system has been **fully integrated** into your darts ga
 ## 📋 What Was Done
 
 ### 1. ✅ TTS Service (`tts_service.py`)
+
 **Status**: Already existed and is fully functional
 
 **Features**:
+
 - Dual engine support: `pyttsx3` (offline) and `gTTS` (online)
 - Configurable speech speed
 - Configurable voice type
@@ -20,12 +22,15 @@ The Text-to-Speech (TTS) system has been **fully integrated** into your darts ga
 - Graceful fallback when engines unavailable
 
 ### 2. ✅ GameManager Integration (`game_manager.py`)
+
 **Status**: Fully integrated
 
 **Changes Made**:
+
 - ✅ Added `import os` for environment variables
 - ✅ Added `from tts_service import TTSService` import
 - ✅ Added TTS initialization in `__init__()` method:
+
   ```python
   # Initialize TTS service
   tts_enabled = os.getenv("TTS_ENABLED", "true").lower() == "true"
@@ -33,24 +38,25 @@ The Text-to-Speech (TTS) system has been **fully integrated** into your darts ga
   tts_speed = int(os.getenv("TTS_SPEED", "150"))
   tts_volume = float(os.getenv("TTS_VOLUME", "0.9"))
   tts_voice = os.getenv("TTS_VOICE", "default")
-  
+
   self.tts = TTSService(
       engine=tts_engine,
       voice_type=tts_voice,
       speed=tts_speed,
       volume=tts_volume
   )
-  
+
   if not tts_enabled:
       self.tts.disable()
   ```
 
 - ✅ Enhanced `_emit_sound()` method with TTS support:
+
   ```python
   def _emit_sound(self, sound, text=None):
       """Emit sound event and optionally speak text via TTS"""
       self.socketio.emit("play_sound", {"sound": sound})
-      
+
       # Use TTS if text is provided
       if text and self.tts.is_enabled():
           self.tts.speak(text)
@@ -64,9 +70,11 @@ The Text-to-Speech (TTS) system has been **fully integrated** into your darts ga
   - Winner: `self._emit_sound("WeHaveAWinner", "We have a winner! {name} wins!")`
 
 ### 3. ✅ Environment Configuration (`.env`)
+
 **Status**: Configured
 
 **Added**:
+
 ```bash
 # Text-to-Speech Configuration
 TTS_ENABLED=true
@@ -77,24 +85,30 @@ TTS_VOICE=default
 ```
 
 ### 4. ✅ API Endpoints (`app.py`)
+
 **Status**: Already existed
 
 **Available Endpoints**:
+
 - `GET /api/tts/config` - Get current TTS configuration
 - `POST /api/tts/config` - Update TTS settings
 - `POST /api/tts/test` - Test TTS with custom text
 
 ### 5. ✅ Dependencies (`requirements.txt` & `pyproject.toml`)
+
 **Status**: Already configured
 
 **TTS Libraries**:
+
 - `pyttsx3==2.90`
 - `gtts==2.5.0`
 
 ### 6. ✅ Documentation
+
 **Status**: Created
 
 **Files Created**:
+
 - `TTS_SETUP_GUIDE.md` - Comprehensive setup and usage guide
 - `TTS_IMPLEMENTATION_SUMMARY.md` - This file
 - `test_tts_integration.py` - Integration test script
@@ -103,19 +117,19 @@ TTS_VOICE=default
 
 ## 🎯 TTS Integration Points
 
-| Location | Method | TTS Message |
-|----------|--------|-------------|
-| `new_game()` | Line 104 | "Welcome to the game" |
-| `new_game()` | Line 107 | "{Player name}, Throw Darts" |
-| `next_player()` | Line 254 | "{Player name}, Throw Darts" |
-| `skip_to_player()` | Line 272 | "{Player name}, Throw Darts" |
-| `_handle_bust()` | Line 303 | "Bust!" |
-| `_handle_winner()` | Line 315 | "We have a winner! {name} wins!" |
-| `_emit_throw_effects()` | Line 337 | "Triple! {score} points" |
-| `_emit_throw_effects()` | Line 341 | "Double! {score} points" |
-| `_emit_throw_effects()` | Line 343 | "Bullseye! {score} points" |
+| Location                | Method   | TTS Message                       |
+| ----------------------- | -------- | --------------------------------- |
+| `new_game()`            | Line 104 | "Welcome to the game"             |
+| `new_game()`            | Line 107 | "{Player name}, Throw Darts"      |
+| `next_player()`         | Line 254 | "{Player name}, Throw Darts"      |
+| `skip_to_player()`      | Line 272 | "{Player name}, Throw Darts"      |
+| `_handle_bust()`        | Line 303 | "Bust!"                           |
+| `_handle_winner()`      | Line 315 | "We have a winner! {name} wins!"  |
+| `_emit_throw_effects()` | Line 337 | "Triple! {score} points"          |
+| `_emit_throw_effects()` | Line 341 | "Double! {score} points"          |
+| `_emit_throw_effects()` | Line 343 | "Bullseye! {score} points"        |
 | `_emit_throw_effects()` | Line 345 | "Double Bullseye! {score} points" |
-| `_emit_throw_effects()` | Line 352 | "{score} points" |
+| `_emit_throw_effects()` | Line 352 | "{score} points"                  |
 
 ---
 
@@ -124,6 +138,7 @@ TTS_VOICE=default
 ### Speed Configuration
 
 **pyttsx3 Engine** (Words Per Minute):
+
 - `100` - Very slow, clear speech
 - `125` - Slow, deliberate
 - `150` - Normal speed (default)
@@ -132,12 +147,14 @@ TTS_VOICE=default
 - `250` - Very fast
 
 **gTTS Engine** (Boolean):
+
 - `< 100` - Slow mode enabled
 - `>= 100` - Normal speed
 
 ### Voice Configuration
 
 **pyttsx3 Voices** (System-dependent):
+
 - `default` - System default voice
 - `male` - Male voice (if available)
 - `female` - Female voice (if available)
@@ -145,6 +162,7 @@ TTS_VOICE=default
 - Or specific voice ID from `get_available_voices()`
 
 **gTTS Voices**:
+
 - Uses Google's default voice
 - Language can be changed via code (default: 'en')
 
@@ -174,6 +192,7 @@ pip install -r requirements.txt
 ```
 
 **For Linux users** (pyttsx3 requires espeak):
+
 ```bash
 sudo apt-get update
 sudo apt-get install espeak espeak-data libespeak-dev
@@ -191,6 +210,7 @@ python3 test_tts_integration.py
 ```
 
 **Expected Output**:
+
 ```
 ✓ TTS Service imported successfully
 ✓ TTS Service initialized
@@ -205,12 +225,14 @@ python3 test_tts_integration.py
 ## 🚀 Quick Start
 
 1. **Install TTS dependencies**:
+
    ```bash
    pip install pyttsx3 gtts
    sudo apt-get install espeak  # Linux only
    ```
 
 2. **Configuration is already set** in `.env`:
+
    ```bash
    TTS_ENABLED=true
    TTS_ENGINE=pyttsx3
@@ -220,11 +242,13 @@ python3 test_tts_integration.py
    ```
 
 3. **Start the application**:
+
    ```bash
    python3 app.py
    ```
 
 4. **Test TTS via API**:
+
    ```bash
    curl -X POST http://localhost:5000/api/tts/test \
      -H "Content-Type: application/json" \
@@ -266,6 +290,7 @@ curl -X POST http://localhost:5000/api/tts/config \
 ### Switch to gTTS Engine
 
 Edit `.env`:
+
 ```bash
 TTS_ENGINE=gtts
 ```
@@ -290,7 +315,8 @@ Test 5: ✓ TTS Configuration from environment
 
 ## 📝 Files Modified/Created
 
-### Modified Files:
+### Modified Files
+
 1. `/data/dartserver-pythonapp/game_manager.py`
    - Added TTS imports
    - Added TTS initialization
@@ -300,7 +326,8 @@ Test 5: ✓ TTS Configuration from environment
 2. `/data/dartserver-pythonapp/.env`
    - Added TTS configuration variables
 
-### Created Files:
+### Created Files
+
 1. `/data/dartserver-pythonapp/TTS_SETUP_GUIDE.md`
    - Comprehensive setup and usage guide
    - Troubleshooting section
@@ -314,7 +341,8 @@ Test 5: ✓ TTS Configuration from environment
    - Integration test script
    - Verifies TTS is properly integrated
 
-### Existing Files (Already Had TTS):
+### Existing Files (Already Had TTS)
+
 1. `/data/dartserver-pythonapp/tts_service.py` - TTS service implementation
 2. `/data/dartserver-pythonapp/app.py` - API endpoints for TTS
 3. `/data/dartserver-pythonapp/requirements.txt` - TTS dependencies
@@ -326,7 +354,7 @@ Test 5: ✓ TTS Configuration from environment
 
 **The TTS system is fully implemented and ready to use!**
 
-### What You Get:
+### What You Get
 
 ✅ **Configurable Speed**: Adjust speech rate from 100-250 WPM
 ✅ **Configurable Voice**: Choose from available system voices
@@ -337,7 +365,7 @@ Test 5: ✓ TTS Configuration from environment
 ✅ **Environment Config**: Configure via .env file
 ✅ **Game Integration**: Automatic announcements for all game events
 
-### Next Step:
+### Next Step
 
 **Install the TTS libraries** and you're ready to go!
 

@@ -1,6 +1,7 @@
 # 🎯 Linting Quick Reference Guide
 
 ## ✅ Current Status
+
 **ALL PRIMARY LINTERS PASSING** ✨
 
 ---
@@ -8,16 +9,19 @@
 ## 🚀 Quick Commands
 
 ### Check All Linters (Recommended)
+
 ```bash
 ./check_linting.sh
 ```
 
 ### Auto-Fix Everything
+
 ```bash
 ruff check --fix . && black . && isort . --skip .venv
 ```
 
 ### Individual Checks
+
 ```bash
 # Ruff (primary linter)
 ruff check .
@@ -33,6 +37,7 @@ isort --check-only . --skip .venv
 ```
 
 ### Individual Auto-Fixes
+
 ```bash
 # Fix ruff issues
 ruff check --fix .
@@ -49,20 +54,25 @@ isort . --skip .venv
 ## 📋 Common Issues & Solutions
 
 ### Issue: "Undefined name 'X'"
+
 **Error Code**: F821
 **Solution**: Import the missing module or define the variable
 
 ### Issue: "Line too long"
+
 **Error Code**: E501
 **Solution**: Run `black .` to auto-format
 
 ### Issue: "Import not sorted"
+
 **Error Code**: I001
 **Solution**: Run `isort . --skip .venv`
 
 ### Issue: "Missing docstring"
+
 **Error Code**: D103, D107
 **Solution**: Add a docstring to the function/class/method
+
 ```python
 def my_function():
     """Brief description of what this function does."""
@@ -70,8 +80,10 @@ def my_function():
 ```
 
 ### Issue: "Redundant exception in logging.exception"
+
 **Error Code**: TRY401
 **Solution**: Remove exception variable from logger.exception()
+
 ```python
 # ❌ Wrong
 except Exception as e:
@@ -83,8 +95,10 @@ except Exception:
 ```
 
 ### Issue: "Loop variable overwritten"
+
 **Error Code**: PLW2901
 **Solution**: Use a different variable name
+
 ```python
 # ❌ Wrong
 for item in items:
@@ -96,8 +110,10 @@ for item in items:
 ```
 
 ### Issue: "Implicit Optional"
+
 **Error Code**: RUF013
 **Solution**: Use explicit union type
+
 ```python
 # ❌ Wrong
 def func(param: str = None):
@@ -131,6 +147,7 @@ Before committing code:
 ## 📚 Linting Rules Summary
 
 ### Enabled Rule Sets
+
 - ✅ pycodestyle (E, W) - Style guide enforcement
 - ✅ pyflakes (F) - Logical errors
 - ✅ flake8-bugbear (B) - Bug detection
@@ -145,6 +162,7 @@ Before committing code:
 - ✅ ruff-specific (RUF) - Ruff-specific rules
 
 ### Ignored Rules
+
 - E501: Line too long (handled by Black)
 - S101: Use of assert (allowed in tests)
 - PLR0913: Too many arguments (acceptable in some cases)
@@ -154,6 +172,7 @@ Before committing code:
 ## 🎓 Best Practices
 
 ### Type Hints
+
 ```python
 # Use modern Python 3.10+ syntax
 def process(data: str | None = None) -> dict[str, Any]:
@@ -162,6 +181,7 @@ def process(data: str | None = None) -> dict[str, Any]:
 ```
 
 ### Logging
+
 ```python
 # Use lazy formatting
 logger.info("Processing %s items", count)
@@ -174,15 +194,16 @@ except Exception:
 ```
 
 ### Docstrings
+
 ```python
 def calculate_score(points: int, multiplier: int) -> int:
     """
     Calculate the final score.
-    
+
     Args:
         points: Base points scored
         multiplier: Score multiplier (1, 2, or 3)
-        
+
     Returns:
         Final calculated score
     """
@@ -190,6 +211,7 @@ def calculate_score(points: int, multiplier: int) -> int:
 ```
 
 ### Exception Handling
+
 ```python
 # Catch specific exceptions when possible
 try:
@@ -205,17 +227,20 @@ except KeyError as e:
 ## 🆘 Need Help?
 
 ### View Detailed Report
+
 ```bash
 cat LINTING_STATUS.md
 ```
 
 ### Check Specific File
+
 ```bash
 ruff check path/to/file.py
 flake8 path/to/file.py
 ```
 
 ### Get Rule Documentation
+
 ```bash
 # Ruff rule documentation
 ruff rule <RULE_CODE>
