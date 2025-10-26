@@ -1147,7 +1147,9 @@ def get_game_history():
     tags:
       - Game
     summary: Get recent game history
-    description: Returns a list of recent games. Regular users see only their games, admins can filter by user.
+    description: >
+      Returns a list of recent games. Regular users see only their games,
+      admins can filter by user.
     parameters:
       - in: query
         name: limit
@@ -1195,12 +1197,16 @@ def get_game_history():
     """
     limit = request.args.get("limit", 10, type=int)
     filter_user = request.args.get("user", None)
-    
+
     # Get current user info
     user_roles = getattr(request, "user_roles", [])
     user_claims = getattr(request, "user_claims", {})
-    current_username = user_claims.get("username") or user_claims.get("preferred_username") or user_claims.get("sub")
-    
+    current_username = (
+        user_claims.get("username")
+        or user_claims.get("preferred_username")
+        or user_claims.get("sub")
+    )
+
     # Determine which username to filter by
     username_filter = None
     if "admin" in user_roles:
