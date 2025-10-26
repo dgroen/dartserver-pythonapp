@@ -531,16 +531,16 @@ def new_game():
     player_ids = []
 
     for player_name in player_data:
-        # Try to find player by display_name or username
+        # Try to find player by name or username
         player = (
             db_session.query(Player)
             .filter(
-                (Player.display_name == player_name) | (Player.username == player_name),
+                (Player.name == player_name) | (Player.username == player_name),
             )
             .first()
         )
         if player:
-            player_ids.append(player.id)
+            player_ids.append({"db_id": player.id, "name": player.name})
         else:
             # If player not found in database, raise an error
             app.logger.warning(
@@ -1935,16 +1935,16 @@ def start_game():
     player_ids = []
 
     for player_name in player_data:
-        # Try to find player by display_name or username
+        # Try to find player by name or username
         player = (
             db_session.query(Player)
             .filter(
-                (Player.display_name == player_name) | (Player.username == player_name),
+                (Player.name == player_name) | (Player.username == player_name),
             )
             .first()
         )
         if player:
-            player_ids.append(player.id)
+            player_ids.append({"db_id": player.id, "name": player.name})
         else:
             # If player not found in database, raise an error
             app.logger.warning(
@@ -2218,16 +2218,16 @@ def handle_new_game(data):
     player_ids = []
 
     for player_name in player_data:
-        # Try to find player by display_name or username
+        # Try to find player by name or username
         player = (
             db_session.query(Player)
             .filter(
-                (Player.display_name == player_name) | (Player.username == player_name),
+                (Player.name == player_name) | (Player.username == player_name),
             )
             .first()
         )
         if player:
-            player_ids.append(player.id)
+            player_ids.append({"db_id": player.id, "name": player.name})
         else:
             # If player not found in database, raise an error
             app.logger.warning(

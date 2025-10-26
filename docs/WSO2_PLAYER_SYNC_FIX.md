@@ -3,10 +3,12 @@
 ## Problem Resolved
 
 The system was creating **phantom players** (players without a WSO2 connection) whenever:
+
 - A game was played with a player name only (no WSO2 user)
 - A player was added manually without WSO2 authentication
 
 This caused **game results to be stored under wrong player IDs**, breaking the connection between:
+
 - **Logged-in user** (Dennis with player_id=11)
 - **Games in database** (stored under phantom player with UUID name, player_id=21)
 
@@ -23,11 +25,13 @@ if not player:
 ```
 
 This violated the architecture principle:
+
 > **Only WSO2-authenticated users should have game results recorded**
 
 ## Solution Implemented
 
 ### 1. Database Relationship Enforcement
+
 **File**: `src/core/database_service.py`
 
 - **Modified `start_new_game()`**: Now requires `player_ids` (database IDs) instead of `player_names`
@@ -48,6 +52,7 @@ def get_or_create_player(self, name, username=None, email=None):
 ```
 
 ### 2. Game Manager Updates
+
 **File**: `src/app/game_manager.py`
 
 - **Modified `new_game()`**: Accepts `player_ids` parameter (WSO2 player IDs)
@@ -66,6 +71,7 @@ if missing_ids:
 ```
 
 ### 3. API Endpoint Enforcement
+
 **File**: `src/app/app.py`
 
 - **Modified `/api/players` (POST)**: Now requires `username` (WSO2 lookup)
@@ -103,6 +109,7 @@ python helpers/cleanup_phantom_players.py
 ```
 
 Output shows:
+
 - Phantom players (no username)
 - Games affected by each phantom player
 - Database summary
@@ -114,6 +121,7 @@ python helpers/cleanup_phantom_players.py --commit
 ```
 
 **Example Output**:
+
 ```
 🔍 Found 1 phantom player (no username):
 
@@ -136,6 +144,7 @@ psql -U your_user -d your_db -c "SELECT id, name, username FROM player WHERE nam
 ```
 
 Should return:
+
 ```
 id | name  | username
 ----+-------+----------
@@ -191,7 +200,8 @@ POST /api/players
 
 ## Backward Compatibility
 
-⚠️ **BREAKING CHANGE**: 
+⚠️ **BREAKING CHANGE**:
+
 - Manual player creation (no WSO2 username) is NO LONGER ALLOWED
 - Old game results with phantom players should be deleted (cleanup script provided)
 - New games MUST have all players registered in WSO2
@@ -213,7 +223,8 @@ player = game_manager.db_service.get_or_create_player(
 
 For existing production systems:
 
-1. **Identify all phantom players**: 
+1. **Identify all phantom players**:
+
    ```bash
    psql -c "SELECT id, name FROM player WHERE username IS NULL AND name != 'Bypass User';"
    ```
@@ -221,6 +232,7 @@ For existing production systems:
 2. **Contact players to register in WSO2** if their games need to be preserved
 
 3. **Delete phantom players and old game results**:
+
    ```bash
    python helpers/cleanup_phantom_players.py --commit
    ```
@@ -270,7 +282,8 @@ curl -X POST http://localhost:5000/api/players \
 
 **Cause**: Player logged in, but never created in database (no WSO2 link)
 
-**Solution**: 
+**Solution**:
+
 1. Check `/api/debug/session` - verify `player_id` exists
 2. Check player table - verify player has `username` (WSO2 link)
 3. If missing, re-login to trigger auto-creation
@@ -279,7 +292,8 @@ curl -X POST http://localhost:5000/api/players \
 
 **Cause**: Phantom players deleted in cleanup
 
-**Solution**: 
+**Solution**:
+
 - Backup database before cleanup
 - Check backup if games need to be recovered
 - Contact user to replay game as WSO2 user
@@ -288,19 +302,20 @@ curl -X POST http://localhost:5000/api/players \
 
 **Cause**: Player ID in game data doesn't exist in player table
 
-**Solution**: 
+**Solution**:
+
 1. Run cleanup: `python helpers/cleanup_phantom_players.py`
 2. Verify all players have WSO2 usernames
 3. Only add players with valid player_ids
 
 ## Files Modified
 
-| File | Change |
-|------|--------|
-| `src/core/database_service.py` | `start_new_game()` now requires player IDs; `get_or_create_player()` enforces username |
-| `src/app/game_manager.py` | `new_game()` accepts player_ids; validates db_id before saving |
-| `src/app/app.py` | `/api/players` POST now requires username; rejects manual entries |
-| `helpers/cleanup_phantom_players.py` | **NEW** - Cleanup utility for phantom players |
+| File                                 | Change                                                                                 |
+| ------------------------------------ | -------------------------------------------------------------------------------------- |
+| `src/core/database_service.py`       | `start_new_game()` now requires player IDs; `get_or_create_player()` enforces username |
+| `src/app/game_manager.py`            | `new_game()` accepts player_ids; validates db_id before saving                         |
+| `src/app/app.py`                     | `/api/players` POST now requires username; rejects manual entries                      |
+| `helpers/cleanup_phantom_players.py` | **NEW** - Cleanup utility for phantom players                                          |
 
 ## References
 

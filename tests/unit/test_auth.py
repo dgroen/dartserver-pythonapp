@@ -763,4 +763,3 @@ class TestSearchWSO2Users:
         # Verify that the request was made with Bearer token
         call_args = mock_get.call_args
         assert call_args[1]["headers"]["Authorization"] == "Bearer test-token"
-

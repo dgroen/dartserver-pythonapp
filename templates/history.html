@@ -283,7 +283,7 @@
             });
 
             console.log(`🔵 API Response Status: ${response.status} from ${url}`);
-            
+
             if (!response.ok && response.status === 401) {
                 console.error('❌ Unauthorized (401) - Redirecting to login');
                 window.location.href = '/login';
@@ -301,7 +301,7 @@
             try {
                 const response = await apiRequest('/api/player/statistics');
                 console.log('📊 Statistics Response:', response);
-                
+
                 if (response.success && response.statistics) {
                     const stats = response.statistics;
                     console.log('📊 Updating statistics grid with:', stats);
@@ -341,7 +341,7 @@
 
                 const response = await apiRequest(url);
                 console.log('🎮 History Response:', response);
-                
+
                 if (response.success) {
                     console.log(`🎮 Found ${response.games?.length || 0} games`);
                     displayHistory(response.games);
@@ -387,7 +387,7 @@
             console.log(`🎨 Building HTML for ${games.length} games...`);
             const historyHtml = games.map((game, index) => {
                 console.log(`🎨 Game ${index}:`, game);
-                
+
                 // Safely parse the start date
                 let dateStr = 'Date not available';
                 try {
@@ -398,7 +398,7 @@
                 } catch (e) {
                     console.warn('⚠️ Could not parse date:', game.started_at);
                 }
-                
+
                 const resultClass = game.is_winner ? 'win' : 'loss';
                 const resultText = game.is_winner ? '✓ Won' : '✗ Lost';
 

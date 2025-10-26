@@ -111,9 +111,9 @@ playerNameInput.addEventListener('input', (e) => {
 // Keyboard navigation for search results
 playerNameInput.addEventListener('keydown', (e) => {
     const results = playerSearchResults.querySelectorAll('.search-result-item');
-    
+
     if (results.length === 0) return;
-    
+
     if (e.key === 'ArrowDown') {
         e.preventDefault();
         selectedSearchIndex = Math.min(selectedSearchIndex + 1, results.length - 1);

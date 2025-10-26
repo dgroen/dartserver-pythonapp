@@ -10,13 +10,13 @@ document.addEventListener('DOMContentLoaded', function() {
 function setupEventListeners() {
     // Refresh button
     document.getElementById('refresh-btn').addEventListener('click', loadGames);
-    
+
     // Limit select
     document.getElementById('limit-select').addEventListener('change', loadGames);
-    
+
     // Modal close button
     document.querySelector('.close-btn').addEventListener('click', closeModal);
-    
+
     // Close modal when clicking outside
     window.addEventListener('click', function(event) {
         const modal = document.getElementById('game-detail-modal');
@@ -31,18 +31,18 @@ function loadGames() {
     const loadingMessage = document.getElementById('loading-message');
     const errorMessage = document.getElementById('error-message');
     const gamesList = document.getElementById('games-list');
-    
+
     // Show loading
     loadingMessage.style.display = 'block';
     errorMessage.style.display = 'none';
     gamesList.innerHTML = '';
-    
+
     // Fetch games from API
     fetch(`/api/game/history?limit=${limit}`)
         .then(response => response.json())
         .then(data => {
             loadingMessage.style.display = 'none';
-            
+
             if (data.status === 'success') {
                 currentGames = data.games;
                 displayGames(currentGames);
@@ -59,14 +59,14 @@ function loadGames() {
 
 function displayGames(games) {
     const gamesList = document.getElementById('games-list');
-    
+
     if (games.length === 0) {
         gamesList.innerHTML = '<p style="text-align: center; padding: 40px; color: #a0c4ff;">No games found</p>';
         return;
     }
-    
+
     gamesList.innerHTML = games.map(game => createGameCard(game)).join('');
-    
+
     // Add click event listeners to view buttons
     document.querySelectorAll('.view-btn').forEach((btn) => {
         btn.addEventListener('click', (e) => {
@@ -75,7 +75,7 @@ function displayGames(games) {
             viewGameDetails(gameSessionId);
         });
     });
-    
+
     // Add click event listeners to game cards
     document.querySelectorAll('.game-card').forEach((card) => {
         card.addEventListener('click', () => {
@@ -91,7 +91,7 @@ function createGameCard(game) {
     const isCompleted = game.finished_at !== null;
     const statusClass = isCompleted ? 'status-completed' : 'status-incomplete';
     const statusText = isCompleted ? 'Completed' : 'Incomplete';
-    
+
     // Calculate duration if finished
     let duration = '';
     if (finishedDate) {
@@ -100,7 +100,7 @@ function createGameCard(game) {
         const seconds = Math.floor((durationMs % 60000) / 1000);
         duration = `${minutes}m ${seconds}s`;
     }
-    
+
     return `
         <div class="game-card" data-session-id="${game.game_session_id}">
             <div class="game-icon">🎯</div>
@@ -135,12 +135,12 @@ function createGameCard(game) {
 }
 
 function formatDate(date) {
-    const options = { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit' 
+    const options = {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
     };
     return date.toLocaleDateString('en-US', options);
 }
@@ -148,17 +148,17 @@ function formatDate(date) {
 function updateSummaryStats(games) {
     // Total games
     document.getElementById('total-games').textContent = games.length;
-    
+
     // Completed games
     const completedGames = games.filter(g => g.finished_at !== null).length;
     document.getElementById('completed-games').textContent = completedGames;
-    
+
     // Most popular game type
     const gameTypeCounts = {};
     games.forEach(g => {
         gameTypeCounts[g.game_type] = (gameTypeCounts[g.game_type] || 0) + 1;
     });
-    
+
     let mostPopular = '-';
     let maxCount = 0;
     Object.entries(gameTypeCounts).forEach(([type, count]) => {
@@ -168,7 +168,7 @@ function updateSummaryStats(games) {
         }
     });
     document.getElementById('popular-game').textContent = mostPopular;
-    
+
     // Total unique players (based on winners only, or placeholder if no winners)
     const uniquePlayers = new Set();
     games.forEach(g => {
@@ -181,11 +181,11 @@ function updateSummaryStats(games) {
 function viewGameDetails(gameSessionId) {
     const modal = document.getElementById('game-detail-modal');
     const detailContent = document.getElementById('game-detail-content');
-    
+
     // Show modal with loading message
     modal.style.display = 'block';
     detailContent.innerHTML = '<p class="loading">Loading game details...</p>';
-    
+
     // Fetch game replay data
     fetch(`/api/game/replay/${gameSessionId}`)
         .then(response => response.json())
@@ -203,22 +203,22 @@ function viewGameDetails(gameSessionId) {
 
 function displayGameDetails(gameData) {
     const detailContent = document.getElementById('game-detail-content');
-    
+
     const startDate = new Date(gameData.started_at);
     const finishDate = gameData.finished_at ? new Date(gameData.finished_at) : null;
-    
+
     // Calculate statistics for each player
     const playerStats = gameData.players.map(player => {
         const playerThrows = gameData.throws.filter(t => t.player_order === player.player_order);
-        
+
         const totalScore = playerThrows.reduce((sum, t) => sum + t.actual_score, 0);
         const throwCount = playerThrows.length;
         const avgScore = throwCount > 0 ? (totalScore / throwCount).toFixed(2) : '0.00';
-        
+
         const doubles = playerThrows.filter(t => t.multiplier === 'DOUBLE').length;
         const triples = playerThrows.filter(t => t.multiplier === 'TRIPLE').length;
         const busts = playerThrows.filter(t => t.is_bust).length;
-        
+
         return {
             ...player,
             throws: playerThrows,
@@ -230,7 +230,7 @@ function displayGameDetails(gameData) {
             busts
         };
     });
-    
+
     let html = `
         <div class="detail-section">
             <h3>Game Information</h3>
@@ -241,7 +241,7 @@ function displayGameDetails(gameData) {
                 <div class="detail-item"><strong>Double Out:</strong> ${gameData.double_out_enabled ? 'Yes' : 'No'}</div>
             </div>
         </div>
-        
+
         <div class="detail-section">
             <h3>Players & Statistics</h3>
             <div class="players-grid">
@@ -284,7 +284,7 @@ function displayGameDetails(gameData) {
                 `).join('')}
             </div>
         </div>
-        
+
         <div class="detail-section">
             <h3>Throw History</h3>
             <table class="throws-table">
@@ -306,7 +306,7 @@ function displayGameDetails(gameData) {
                         let notes = [];
                         if (t.is_finish) notes.push('<span class="throw-finish">FINISH</span>');
                         if (t.is_bust) notes.push('<span class="throw-bust">BUST</span>');
-                        
+
                         return `
                             <tr>
                                 <td>${t.turn_number}</td>
@@ -325,7 +325,7 @@ function displayGameDetails(gameData) {
             </table>
         </div>
     `;
-    
+
     detailContent.innerHTML = html;
 }
 

@@ -364,47 +364,47 @@
     .summary-cards {
         grid-template-columns: 1fr;
     }
-    
+
     .game-card {
         grid-template-columns: 1fr;
         text-align: center;
         gap: 15px;
     }
-    
+
     .game-icon {
         display: none;
     }
-    
+
     .game-details {
         flex-direction: column;
         gap: 10px;
     }
-    
+
     .view-btn {
         width: 100%;
         padding: 12px 20px;
         font-size: 1em;
     }
-    
+
     .modal-content {
         width: 95%;
         margin: 10% auto;
         padding: 20px;
     }
-    
+
     .players-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .filters {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .filters label {
         flex-direction: column;
     }
-    
+
     .filters select,
     .btn-primary {
         width: 100%;
