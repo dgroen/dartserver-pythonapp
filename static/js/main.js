@@ -10,6 +10,8 @@ const gameStatusDisplay = document.getElementById('game-status');
 const currentThrowDisplay = document.getElementById('current-throw');
 const videoContainer = document.getElementById('video-container');
 const effectVideo = document.getElementById('effect-video');
+const throwoutAdvice = document.getElementById('throwout-advice');
+const adviceDisplay = document.getElementById('advice-display');
 
 // Audio elements (optional - can be added later)
 const audioCache = {};
@@ -72,6 +74,9 @@ function updateGameDisplay(state) {
     gameStatusDisplay.textContent = state.is_started ?
         (state.is_paused ? 'Paused' : 'In Progress') : 'Not Started';
     currentThrowDisplay.textContent = state.current_throw || 1;
+
+    // Update throwout advice
+    updateThrowoutAdvice(state);
 
     // Update players
     playersContainer.innerHTML = '';
@@ -152,6 +157,19 @@ function createPlayerCard(player, index, state) {
     }
 
     return card;
+}
+
+function updateThrowoutAdvice(state) {
+    // Show throwout advice if enabled and available
+    if (state.throwout_advice && state.show_throwout_advice && state.is_started) {
+        const adviceText = Array.isArray(state.throwout_advice)
+            ? state.throwout_advice.join(' or ')
+            : state.throwout_advice;
+        adviceDisplay.textContent = adviceText;
+        throwoutAdvice.style.display = 'block';
+    } else {
+        throwoutAdvice.style.display = 'none';
+    }
 }
 
 function playSound(soundName) {
