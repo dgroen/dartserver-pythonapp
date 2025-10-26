@@ -10,6 +10,8 @@ const gameStatusDisplay = document.getElementById('game-status');
 const currentThrowDisplay = document.getElementById('current-throw');
 const videoContainer = document.getElementById('video-container');
 const effectVideo = document.getElementById('effect-video');
+const throwoutAdviceElement = document.getElementById('throwoutAdvice');
+const adviceDisplay = document.getElementById('adviceDisplay');
 
 // Audio elements (optional - can be added later)
 const audioCache = {};
@@ -81,6 +83,18 @@ function updateGameDisplay(state) {
             const playerCard = createPlayerCard(player, index, state);
             playersContainer.appendChild(playerCard);
         });
+    }
+
+    // Update throwout advice display
+    displayThrowoutAdvice(state.throwout_advice);
+}
+
+function displayThrowoutAdvice(advice) {
+    if (Array.isArray(advice) && advice.length > 0) {
+        adviceDisplay.textContent = advice.join(' or ');
+        throwoutAdviceElement.style.display = 'block';
+    } else {
+        throwoutAdviceElement.style.display = 'none';
     }
 }
 
