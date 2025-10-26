@@ -3,6 +3,10 @@ let currentGames = [];
 
 // Initialize dashboard when page loads
 document.addEventListener('DOMContentLoaded', function() {
+    // Load users list for admin filter if user is admin
+    if (window.userIsAdmin) {
+        loadUsersList();
+    }
     loadGames();
     setupEventListeners();
 });
@@ -13,6 +17,14 @@ function setupEventListeners() {
 
     // Limit select
     document.getElementById('limit-select').addEventListener('change', loadGames);
+
+    // User select (if admin)
+    if (window.userIsAdmin) {
+        const userSelect = document.getElementById('user-select');
+        if (userSelect) {
+            userSelect.addEventListener('change', loadGames);
+        }
+    }
 
     // Modal close button
     document.querySelector('.close-btn').addEventListener('click', closeModal);
@@ -26,6 +38,31 @@ function setupEventListeners() {
     });
 }
 
+function loadUsersList() {
+    // Fetch list of users who have played games
+    fetch('/api/players?source=database')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const userSelect = document.getElementById('user-select');
+                if (userSelect) {
+                    // Add users to dropdown
+                    data.players.forEach(player => {
+                        if (player.username) {
+                            const option = document.createElement('option');
+                            option.value = player.username;
+                            option.textContent = player.name + ' (' + player.username + ')';
+                            userSelect.appendChild(option);
+                        }
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading users list:', error);
+        });
+}
+
 function loadGames() {
     const limit = document.getElementById('limit-select').value;
     const loadingMessage = document.getElementById('loading-message');
@@ -37,8 +74,19 @@ function loadGames() {
     errorMessage.style.display = 'none';
     gamesList.innerHTML = '';
 
+    // Build URL with parameters
+    let url = `/api/game/history?limit=${limit}`;
+    
+    // Add user filter for admin
+    if (window.userIsAdmin) {
+        const userSelect = document.getElementById('user-select');
+        if (userSelect && userSelect.value) {
+            url += `&user=${encodeURIComponent(userSelect.value)}`;
+        }
+    }
+
     // Fetch games from API
-    fetch(`/api/game/history?limit=${limit}`)
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             loadingMessage.style.display = 'none';
