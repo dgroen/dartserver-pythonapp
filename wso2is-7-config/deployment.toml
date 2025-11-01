@@ -35,7 +35,7 @@ prompt_consent = false
 allow_generic_http_requests = true
 allow_any_origin = false
 allowed_origins = [
-    "https://letsplaydarts.eu",
+    "https://test.letsplaydarts.eu",
     "http://localhost:5000"
 ]
 allow_subdomains = false
