@@ -1,9 +1,10 @@
 [server]
-hostname = "localhost"
+hostname = "test.letsplaydarts.eu"
 node_ip = "127.0.0.1"
+base_path = "https://test.letsplaydarts.eu/auth"
 
 [transport.https.properties]
-proxyPort = 9443
+proxyPort = 443
 
 [tomcat.management_console]
 proxy_context_path = "/console"
@@ -36,9 +37,10 @@ allow_generic_http_requests = true
 allow_any_origin = false
 allowed_origins = [
     "https://letsplaydarts.eu",
+    "https://test.letsplaydarts.eu",
     "http://localhost:5000"
 ]
-allow_subdomains = false
+allow_subdomains = true
 supported_methods = [
     "GET",
     "POST",
