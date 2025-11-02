@@ -1,5 +1,5 @@
-// Connect to SocketIO
-const socket = io();
+// control.js - Control Panel functionality
+// Note: socket is already defined in main.js, so we don't redeclare it here
 
 // DOM Elements
 const gameTypeSelect = document.getElementById('game-type');
@@ -45,9 +45,14 @@ socket.on('play_tts', (data) => {
 
 // Event Listeners
 newGameBtn.addEventListener('click', () => {
+    console.log('🔵 Start New Game button clicked!');
     const gameType = gameTypeSelect.value;
     const doubleOut = doubleOutCheckbox.checked;
     const playerNames = [];
+
+    console.log('🔵 Game type selected:', gameType);
+    console.log('🔵 Double out:', doubleOut);
+    console.log('🔵 Current game state:', currentGameState);
 
     // Get player names from current game state
     if (currentGameState && currentGameState.players && currentGameState.players.length > 0) {
@@ -58,8 +63,12 @@ newGameBtn.addEventListener('click', () => {
 
     // If no players, use defaults
     if (playerNames.length === 0) {
+        console.log('⚠️  No players in game state, using defaults');
         playerNames.push('Player 1', 'Player 2');
     }
+
+    console.log('🔵 Player names for new game:', playerNames);
+    console.log('🔵 Emitting new_game event via SocketIO');
 
     socket.emit('new_game', {
         game_type: gameType,
@@ -163,7 +172,11 @@ document.addEventListener('click', (e) => {
 });
 
 addPlayerBtn.addEventListener('click', async () => {
+    console.log('🔵 Add Player button clicked!');
     const name = playerNameInput.value.trim();
+    console.log('🔵 Player name input value:', name);
+    console.log('🔵 Selected user:', selectedUser);
+    
     if (!name) {
         alert('Please enter a player name');
         return;
@@ -174,6 +187,8 @@ addPlayerBtn.addEventListener('click', async () => {
             ? { username: selectedUser.username }
             : { username: name };
 
+        console.log('🔵 Sending POST to /api/players with payload:', payload);
+
         const response = await fetch('/api/players', {
             method: 'POST',
             credentials: 'include',  // Include session cookies
@@ -181,9 +196,11 @@ addPlayerBtn.addEventListener('click', async () => {
             body: JSON.stringify(payload)
         });
 
+        console.log('🔵 Response status:', response.status);
+
         if (response.ok) {
             const data = await response.json();
-            console.log('Player added:', data);
+            console.log('✅ Player added successfully:', data);
             playerNameInput.value = '';
             selectedUser = null;
             playerSearchResults.style.display = 'none';
@@ -191,10 +208,11 @@ addPlayerBtn.addEventListener('click', async () => {
             // so we don't need to emit a socket event here. Emitting would duplicate the player.
         } else {
             const error = await response.json();
+            console.error('❌ Error response:', error);
             alert('Error adding player: ' + (error.error || 'Unknown error'));
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error('❌ Exception caught:', error);
         alert('Failed to add player: ' + error.message);
     }
 });
