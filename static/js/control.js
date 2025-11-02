@@ -1,5 +1,5 @@
-// Connect to SocketIO
-const socket = io();
+// control.js - Control Panel functionality
+// Note: socket is already defined in main.js, so we don't redeclare it here
 
 // DOM Elements
 const gameTypeSelect = document.getElementById('game-type');

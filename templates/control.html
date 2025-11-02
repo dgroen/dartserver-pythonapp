@@ -132,10 +132,25 @@
     <script src="{{ url_for('static', filename='js/control.js') }}"></script>
     <script>
         // Load game types when page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             const gameTypeSelect = document.getElementById('game-type');
             if (gameTypeSelect) {
-                loadGameTypes(gameTypeSelect, false);
+                // Observer to detect and fix if something clears the select
+                let lastChildCount = 0;
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        const currentChildCount = gameTypeSelect.children.length;
+                        if (mutation.type === 'childList' && currentChildCount === 0 && lastChildCount > 0) {
+                            // Select was cleared, reload game types
+                            loadGameTypes(gameTypeSelect, false);
+                        }
+                        lastChildCount = currentChildCount;
+                    });
+                });
+                observer.observe(gameTypeSelect, { childList: true, subtree: false });
+                
+                await loadGameTypes(gameTypeSelect, false);
+                lastChildCount = gameTypeSelect.children.length;
             }
         });
     </script>

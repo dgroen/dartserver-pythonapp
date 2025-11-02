@@ -135,37 +135,49 @@ socket.on('play_video', (data) => {
 // Message event
 socket.on('message', (data) => {
     console.log('Message:', data.text);
-    alertMessage.textContent = data.text;
+    if (alertMessage) {
+        alertMessage.textContent = data.text;
+    }
 });
 
 // Big message event
 socket.on('big_message', (data) => {
     console.log('Big message:', data.text);
-    bigMessage.textContent = data.text;
+    if (bigMessage) {
+        bigMessage.textContent = data.text;
 
-    // Auto-clear after 3 seconds
-    setTimeout(() => {
-        if (bigMessage.textContent === data.text) {
-            bigMessage.textContent = '';
-        }
-    }, 3000);
+        // Auto-clear after 3 seconds
+        setTimeout(() => {
+            if (bigMessage && bigMessage.textContent === data.text) {
+                bigMessage.textContent = '';
+            }
+        }, 3000);
+    }
 });
 
 function updateGameDisplay(state) {
-    // Update game info
-    gameTypeDisplay.textContent = state.game_type.toUpperCase();
-    gameStatusDisplay.textContent = state.is_started ?
-        (state.is_paused ? 'Paused' : 'In Progress') : 'Not Started';
-    currentThrowDisplay.textContent = state.current_throw || 1;
+    // Update game info (check if elements exist - they might not on all pages)
+    if (gameTypeDisplay) {
+        gameTypeDisplay.textContent = state.game_type.toUpperCase();
+    }
+    if (gameStatusDisplay) {
+        gameStatusDisplay.textContent = state.is_started ?
+            (state.is_paused ? 'Paused' : 'In Progress') : 'Not Started';
+    }
+    if (currentThrowDisplay) {
+        currentThrowDisplay.textContent = state.current_throw || 1;
+    }
 
     // Update players
-    playersContainer.innerHTML = '';
+    if (playersContainer) {
+        playersContainer.innerHTML = '';
 
-    if (state.players && state.players.length > 0) {
-        state.players.forEach((player, index) => {
-            const playerCard = createPlayerCard(player, index, state);
-            playersContainer.appendChild(playerCard);
-        });
+        if (state.players && state.players.length > 0) {
+            state.players.forEach((player, index) => {
+                const playerCard = createPlayerCard(player, index, state);
+                playersContainer.appendChild(playerCard);
+            });
+        }
     }
 
     // Update throwout advice display
@@ -173,6 +185,8 @@ function updateGameDisplay(state) {
 }
 
 function displayThrowoutAdvice(advice) {
+    if (!adviceDisplay || !throwoutAdviceElement) return;
+    
     if (Array.isArray(advice) && advice.length > 0) {
         adviceDisplay.textContent = advice.join(' or ');
         throwoutAdviceElement.style.display = 'block';
