@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.app.app import app
+from src.app.app import app as flask_app
 
 # Disable TTS during tests to avoid timing issues
 os.environ["TTS_ENABLED"] = "false"
@@ -59,11 +59,18 @@ def sample_score_data():
 
 
 @pytest.fixture
+def app():
+    """Flask app fixture for pytest-flask and tests."""
+    flask_app.config["TESTING"] = True
+    return flask_app
+
+
+@pytest.fixture
 def app_client():
     """Flask test client."""
 
-    app.config["TESTING"] = True
-    with app.test_client() as client:
+    flask_app.config["TESTING"] = True
+    with flask_app.test_client() as client:
         yield client
 
 

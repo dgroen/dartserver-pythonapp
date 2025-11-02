@@ -195,6 +195,12 @@ services:
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
       WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin} # pragma: allowlist secret
       SESSION_COOKIE_SECURE: "False" # Nginx terminates SSL; safe inside Docker network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
@@ -218,9 +224,13 @@ services:
       - ./nginx/nginx.crt:/etc/nginx/nginx.crt:ro
       - ./nginx/nginx.key:/etc/nginx/nginx.key:ro
     depends_on:
-      - api-gateway
-      - darts-app
-      - wso2apim
+      api-gateway:
+        condition: service_started
+      darts-app:
+        condition: service_healthy
+      wso2apim:
+        condition: service_started
+    restart: unless-stopped
     networks:
       - darts-network
 
