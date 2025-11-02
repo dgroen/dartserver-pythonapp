@@ -164,16 +164,11 @@ socket.on('message', (data) => {
     if (alertMessage) {
         alertMessage.textContent = data.text;
     }
-    if (alertMessage) {
-        alertMessage.textContent = data.text;
-    }
 });
 
 // Big message event
 socket.on('big_message', (data) => {
     console.log('Big message:', data.text);
-    if (bigMessage) {
-        bigMessage.textContent = data.text;
     if (bigMessage) {
         bigMessage.textContent = data.text;
 
@@ -187,35 +182,22 @@ socket.on('big_message', (data) => {
 });
 
 function updateGameDisplay(state) {
-    // Update game info (check if elements exist - they might not on all pages)
-    if (gameTypeDisplay) { (only if elements exist on this page)
+    // Update game info (only if elements exist on this page)
     if (gameTypeDisplay) {
-            gameTypeDisplay.textContent = state.game_type.toUpperCase();
+        gameTypeDisplay.textContent = state.game_type.toUpperCase();
     }
-    if (gameStatusDisplay) {
-        }
     if (gameStatusDisplay) {
         gameStatusDisplay.textContent = state.is_started ?
-                (state.is_paused ? 'Paused' : 'In Progress') : 'Not Started';
+            (state.is_paused ? 'Paused' : 'In Progress') : 'Not Started';
     }
-    if (currentThrowDisplay) {
-        }
     if (currentThrowDisplay) {
         currentThrowDisplay.textContent = state.current_throw || 1;
-    }
     }
 
     // Update players (only if container exists)
     if (playersContainer) {
-    if (playersContainer) {
-            playersContainer.innerHTML = '';
+        playersContainer.innerHTML = '';
 
-        if (state.players && state.players.length > 0) {
-            state.players.forEach((player, index) => {
-                const playerCard = createPlayerCard(player, index, state);
-                playersContainer.appendChild(playerCard);
-            });
-        }
         if (state.players && state.players.length > 0) {
             state.players.forEach((player, index) => {
                 const playerCard = createPlayerCard(player, index, state);
@@ -229,8 +211,6 @@ function updateGameDisplay(state) {
 }
 
 function displayThrowoutAdvice(advice) {
-    if (!adviceDisplay || !throwoutAdviceElement) return;
-    
     // Only update if elements exist on this page
     if (!adviceDisplay || !throwoutAdviceElement) {
         return;
