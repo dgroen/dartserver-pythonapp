@@ -1,5 +1,3 @@
-/* main.js - Version 2.0 - Dynamic Game Types with Debug Logging */
-
 // Helper function to format game type names for display
 function formatGameTypeName(name) {
     // Handle special cases
@@ -18,16 +16,20 @@ function formatGameTypeName(name) {
 
 // Helper function to load game types dynamically into select elements
 async function loadGameTypes(selectElement, includeAllOption = false) {
-    console.log('loadGameTypes called with:', selectElement.id, 'includeAllOption:', includeAllOption);
+    // Only prevent double-loading if we're already in the middle of loading
+    if (selectElement.dataset.loading === 'true') {
+        return;
+    }
+    
+    // Mark as loading
+    selectElement.dataset.loading = 'true';
+    
     try {
         const response = await fetch('/api/game/types');
         const data = await response.json();
         
-        console.log('API response:', data);
-        
         if (data.status === 'success' && data.game_types) {
             // Clear existing options
-            console.log('Clearing select element and adding', data.game_types.length, 'game types');
             selectElement.innerHTML = '';
             
             // Add "All" option if requested (for filters)
@@ -42,10 +44,8 @@ async function loadGameTypes(selectElement, includeAllOption = false) {
             data.game_types.forEach(gameType => {
                 const option = document.createElement('option');
                 option.value = gameType.name;
-                // Use description or format name nicely
                 option.textContent = formatGameTypeName(gameType.name);
                 selectElement.appendChild(option);
-                console.log('Added option:', gameType.name, '->', formatGameTypeName(gameType.name));
             });
             
             // Set default selection if not a filter
@@ -54,22 +54,22 @@ async function loadGameTypes(selectElement, includeAllOption = false) {
                 const defaultGameType = data.game_types.find(gt => gt.name === '501');
                 if (defaultGameType) {
                     selectElement.value = '501';
-                    console.log('Set default value to 501');
                 } else {
                     selectElement.value = data.game_types[0].name;
-                    console.log('Set default value to', data.game_types[0].name);
                 }
             }
             
-            console.log(`Loaded ${data.game_types.length} game types into select element`);
-            console.log('Final select element HTML:', selectElement.innerHTML.substring(0, 200));
+            // Mark as loaded and no longer loading
+            selectElement.dataset.loaded = 'true';
+            selectElement.dataset.loading = 'false';
         } else {
-            console.error('Failed to load game types:', data.message);
+            selectElement.dataset.loading = 'false';
             // Fallback to hardcoded values
             loadFallbackGameTypes(selectElement, includeAllOption);
         }
     } catch (error) {
         console.error('Error loading game types:', error);
+        selectElement.dataset.loading = 'false';
         // Fallback to hardcoded values
         loadFallbackGameTypes(selectElement, includeAllOption);
     }
