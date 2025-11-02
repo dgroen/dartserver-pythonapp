@@ -107,7 +107,7 @@ class GameRoundTheClock:
 
         # Check for bull (25) - special win condition
         if base_score == 25:
-            # Already finished the sequence (1-20)
+            # Already finished the sequence (20-1)
             if current_target == 0:
                 if multiplier_type == "DBLBULL":
                     # Double bull wins immediately
