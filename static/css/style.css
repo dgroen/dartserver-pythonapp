@@ -264,8 +264,7 @@ header h1 {
     content: '✓';
     position: absolute;
     font-size: 0.7em;
-    margin-top: -10px;
-    margin-left: 20px;
+    transform: translate(20px, -10px);
 }
 
 .rtc-number.current {
@@ -273,10 +272,10 @@ header h1 {
     border-color: #00d4ff;
     color: #00d4ff;
     box-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
-    animation: pulse-rtc 2s ease-in-out infinite;
+    animation: rtc-pulse 2s ease-in-out infinite;
 }
 
-@keyframes pulse-rtc {
+@keyframes rtc-pulse {
     0%, 100% {
         box-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
     }
@@ -302,7 +301,7 @@ header h1 {
     border-color: #FFD700;
     color: #FFD700;
     box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
-    animation: pulse-rtc 2s ease-in-out infinite;
+    animation: rtc-pulse 2s ease-in-out infinite;
 }
 
 .message-container {
