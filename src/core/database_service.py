@@ -49,6 +49,11 @@ class DatabaseService:
                 {"name": "401", "description": "401 darts game"},
                 {"name": "501", "description": "501 darts game"},
                 {"name": "cricket", "description": "Cricket darts game"},
+                {
+                    "name": "round_the_clock",
+                    "description": "Round the Clock \
+                    - hit numbers 1-20 in order",
+                },
             ]
 
             for gt_data in game_types:

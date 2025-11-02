@@ -37,10 +37,7 @@
                 <div class="form-group">
                     <label for="game-type">Game Type:</label>
                     <select id="game-type">
-                        <option value="301">301</option>
-                        <option value="401">401</option>
-                        <option value="501">501</option>
-                        <option value="cricket">Cricket</option>
+                        <!-- Options loaded dynamically via JavaScript -->
                     </select>
                 </div>
                 <div class="form-group">
@@ -131,6 +128,16 @@
         </div>
     </div>
 
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/control.js') }}"></script>
+    <script>
+        // Load game types when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const gameTypeSelect = document.getElementById('game-type');
+            if (gameTypeSelect) {
+                loadGameTypes(gameTypeSelect, false);
+            }
+        });
+    </script>
 </body>
 </html>
