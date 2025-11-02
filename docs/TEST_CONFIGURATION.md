@@ -77,7 +77,7 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dartsdbtest
    ```bash
    # Manually create
    PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE dartsdbtest;"
-   
+
    # Or use the setup script
    bash helpers/setup-test-environment.sh
    ```

@@ -220,7 +220,7 @@ docker exec darts-app env | grep ENVIRONMENT
    ```bash
    # Copy test environment
    cp .env.test .env
-   
+
    # Run tests
    pytest tests/
    ```

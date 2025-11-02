@@ -14,13 +14,13 @@ services:
       APP_SCHEME: https
       FLASK_DEBUG: "True"
       FLASK_USE_SSL: "True"
-      
+
       # Database - Use test database
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dartsdbtest # pragma: allowlist secret
-      
+
       # RabbitMQ - Use test exchange
       RABBITMQ_EXCHANGE: darts_exchange_test
-      
+
       # WSO2 - Test configuration
       WSO2_IS_URL: https://test.letsplaydarts.eu/auth
       WSO2_IS_INTERNAL_URL: https://wso2is:9443
@@ -29,31 +29,31 @@ services:
       WSO2_REDIRECT_URI: https://test.letsplaydarts.eu/callback
       WSO2_POST_LOGOUT_REDIRECT_URI: https://test.letsplaydarts.eu/
       WSO2_IS_VERIFY_SSL: "False"
-      
+
       # TTS - Disabled for test
       TTS_ENABLED: "false"
       TTS_VOLUME: "0.0"
-      
+
       # Session Configuration
       SESSION_COOKIE_SECURE: "True"
       SESSION_COOKIE_SAMESITE: Lax
-      
+
       # Authentication
       AUTH_DISABLED: "False"
-      
+
       # Swagger
       SWAGGER_HOST: test.letsplaydarts.eu
 
-  # API Gateway - Test Configuration  
+  # API Gateway - Test Configuration
   api-gateway:
     environment:
       # WSO2 Configuration
       WSO2_IS_URL: https://wso2is:9443
       WSO2_IS_CLIENT_ID: z9tDR_MVfS_rHKBlqZ_6Re_TaJga
       WSO2_IS_CLIENT_SECRET: lQCbqtHliRy3j_POcCRxm9j7Cj7VqTx6ehRXnNaesUca # pragma: allowlist secret
-      
+
       # RabbitMQ - Use test exchange
       RABBITMQ_EXCHANGE: darts_exchange_test
-      
+
       # Flask Configuration
       FLASK_DEBUG: "True"

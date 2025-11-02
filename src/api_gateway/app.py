@@ -35,7 +35,8 @@ logger = logging.getLogger(__name__)
 # Initialize Flask app
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key")
-CORS(app)
+# Enable CORS with credentials support - required for session cookies to work
+CORS(app, supports_credentials=True)
 
 # WSO2 Identity Server Configuration
 WSO2_IS_URL = os.getenv("WSO2_IS_URL", "https://localhost:9443")

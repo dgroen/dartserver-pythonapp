@@ -40,7 +40,9 @@ function setupEventListeners() {
 
 function loadUsersList() {
     // Fetch list of users who have played games
-    fetch('/api/players?source=database')
+    fetch('/api/players?source=database', {
+        credentials: 'include'  // Include session cookies
+    })
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
@@ -76,7 +78,7 @@ function loadGames() {
 
     // Build URL with parameters
     let url = `/api/game/history?limit=${limit}`;
-    
+
     // Add user filter for admin
     if (window.userIsAdmin) {
         const userSelect = document.getElementById('user-select');
@@ -86,7 +88,9 @@ function loadGames() {
     }
 
     // Fetch games from API
-    fetch(url)
+    fetch(url, {
+        credentials: 'include'  // Include session cookies
+    })
         .then(response => response.json())
         .then(data => {
             loadingMessage.style.display = 'none';
@@ -235,7 +239,9 @@ function viewGameDetails(gameSessionId) {
     detailContent.innerHTML = '<p class="loading">Loading game details...</p>';
 
     // Fetch game replay data
-    fetch(`/api/game/replay/${gameSessionId}`)
+    fetch(`/api/game/replay/${gameSessionId}`, {
+        credentials: 'include'  // Include session cookies
+    })
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {

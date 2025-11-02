@@ -465,13 +465,12 @@ class DatabaseService:
             # If username is provided, filter to only games where this user participated
             if username:
                 # Join with Player table to filter by username
-                base_query = base_query.join(
-                    Player, GameResult.player_id == Player.id
-                ).filter(Player.username == username)
+                base_query = base_query.join(Player, GameResult.player_id == Player.id).filter(
+                    Player.username == username,
+                )
 
             subquery = (
-                base_query
-                .group_by(GameResult.game_session_id)
+                base_query.group_by(GameResult.game_session_id)
                 .order_by(max_timestamp_expr.desc())
                 .limit(limit)
                 .subquery()
@@ -524,7 +523,7 @@ class DatabaseService:
     def get_all_players_with_usernames(self):
         """
         Get all players who have a username (authenticated users)
-        
+
         Returns:
             List of player dictionaries with id, name, username, email
         """
@@ -532,16 +531,18 @@ class DatabaseService:
         try:
             # Get all players with usernames (authenticated users)
             players = session.query(Player).filter(Player.username.isnot(None)).all()
-            
+
             result = []
             for player in players:
-                result.append({
-                    "id": player.id,
-                    "name": player.name,
-                    "username": player.username,
-                    "email": player.email,
-                })
-            
+                result.append(
+                    {
+                        "id": player.id,
+                        "name": player.name,
+                        "username": player.username,
+                        "email": player.email,
+                    },
+                )
+
             return result
         except Exception as e:
             print(f"Error getting players: {e}")

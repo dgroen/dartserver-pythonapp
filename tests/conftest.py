@@ -7,6 +7,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.app.app import app
+
 # Disable TTS during tests to avoid timing issues
 os.environ["TTS_ENABLED"] = "false"
 # Use in-memory SQLite for tests
@@ -16,8 +18,6 @@ os.environ["AUTH_DISABLED"] = "false"
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from src.app.app import app
 
 
 @pytest.fixture
