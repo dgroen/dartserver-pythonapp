@@ -128,7 +128,7 @@ class GameRoundTheClock:
         # Check if player hit their current target
         if base_score == current_target:
             result["hit"] = True
-            
+
             # Move to next target based on multiplier
             if multiplier_type == "TRIPLE":
                 # Triple - skip 2 numbers
@@ -141,9 +141,9 @@ class GameRoundTheClock:
             else:
                 # Single - just move to next
                 player["current_target"] = max(0, current_target - 1)
-            
+
             result["new_target"] = player["current_target"]
-            
+
             # Reset bull hits when advancing (only count at the end)
             player["bull_hits"] = 0
 

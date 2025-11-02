@@ -213,16 +213,16 @@ class TestGameRoundTheClock:
         # Player 0 completes sequence with mix of singles, doubles, and triples
         game.process_throw(0, 20, 3, "TRIPLE")  # 20 -> 17
         assert game.players[0]["current_target"] == 17
-        
+
         game.process_throw(0, 17, 2, "DOUBLE")  # 17 -> 15
         assert game.players[0]["current_target"] == 15
-        
+
         # Continue with singles
         for target in range(15, 0, -1):
             game.process_throw(0, target, 1, "SINGLE")
-        
+
         assert game.players[0]["current_target"] == 0
-        
+
         # Win with double bull
         result = game.process_throw(0, 25, 2, "DBLBULL")
         assert result["winner"] is True
