@@ -291,6 +291,83 @@ function createPlayerCard(player, index, state) {
         card.appendChild(targetsDiv);
     }
 
+    // Round the Clock targets (if round_the_clock game)
+    if (state.game_type === 'round_the_clock' && playerData.current_target !== undefined) {
+        const rtcDiv = document.createElement('div');
+        rtcDiv.className = 'rtc-container';
+
+        // Current target display
+        const currentTargetDiv = document.createElement('div');
+        currentTargetDiv.className = 'rtc-current-target';
+        
+        if (playerData.current_target === 0) {
+            // Player needs to hit the bull
+            currentTargetDiv.innerHTML = `
+                <div class="rtc-target-label">Current Target:</div>
+                <div class="rtc-target-value bull">BULL</div>
+                <div class="rtc-bull-hits">Bull Hits: ${playerData.bull_hits || 0}/5</div>
+            `;
+        } else {
+            currentTargetDiv.innerHTML = `
+                <div class="rtc-target-label">Current Target:</div>
+                <div class="rtc-target-value">${playerData.current_target}</div>
+            `;
+        }
+        rtcDiv.appendChild(currentTargetDiv);
+
+        // Progress visualization - dartboard style
+        const progressDiv = document.createElement('div');
+        progressDiv.className = 'rtc-progress';
+        
+        // Show numbers 20 down to 1 in rows
+        const numbers = [];
+        for (let i = 20; i >= 1; i--) {
+            numbers.push(i);
+        }
+        
+        // Create grid of numbers in 4 rows of 5
+        const rows = [
+            numbers.slice(0, 5),   // 20-16
+            numbers.slice(5, 10),  // 15-11
+            numbers.slice(10, 15), // 10-6
+            numbers.slice(15, 20)  // 5-1
+        ];
+        
+        rows.forEach(row => {
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'rtc-progress-row';
+            
+            row.forEach(num => {
+                const numDiv = document.createElement('div');
+                numDiv.className = 'rtc-number';
+                
+                // Mark as completed if current_target is less than this number
+                if (playerData.current_target < num) {
+                    numDiv.classList.add('completed');
+                } else if (playerData.current_target === num) {
+                    numDiv.classList.add('current');
+                }
+                
+                numDiv.textContent = num;
+                rowDiv.appendChild(numDiv);
+            });
+            
+            progressDiv.appendChild(rowDiv);
+        });
+        
+        // Add bull indicator
+        const bullDiv = document.createElement('div');
+        bullDiv.className = 'rtc-bull-indicator';
+        if (playerData.current_target === 0) {
+            bullDiv.classList.add('current');
+        }
+        bullDiv.textContent = 'BULL';
+        progressDiv.appendChild(bullDiv);
+        
+        rtcDiv.appendChild(progressDiv);
+        card.appendChild(rtcDiv);
+    }
+
     return card;
 }
 
