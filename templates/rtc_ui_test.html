@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Round the Clock UI Test</title>
+    <link rel="stylesheet" href="http://localhost:5000/static/css/style.css">
+    <style>
+        body {
+            padding: 20px;
+        }
+        #test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+        .test-section h2 {
+            color: #00d4ff;
+            margin-bottom: 20px;
+        }
+        #players-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .player-card {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        .player-card.active {
+            border-color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+        .player-name {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .player-score {
+            font-size: 3em;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="test-container">
+        <div class="test-section">
+            <h2>Round the Clock UI - Player at Start (Target: 20)</h2>
+            <div id="players-container"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Round the Clock UI - Player Mid-Game (Target: 15)</h2>
+            <div id="players-container-2"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Round the Clock UI - Player at Bull Stage</h2>
+            <div id="players-container-3"></div>
+        </div>
+    </div>
+
+    <script>
+        // Test Case 1: Player at start (target 20)
+        const testState1 = {
+            game_type: 'round_the_clock',
+            game_data: {
+                players: [
+                    {
+                        id: 0,
+                        name: 'Player 1',
+                        current_target: 20,
+                        bull_hits: 0,
+                        score: 0
+                    }
+                ]
+            },
+            current_player: 0,
+            is_started: true,
+            is_paused: false
+        };
+
+        // Test Case 2: Player mid-game (target 15)
+        const testState2 = {
+            game_type: 'round_the_clock',
+            game_data: {
+                players: [
+                    {
+                        id: 0,
+                        name: 'Player 2',
+                        current_target: 15,
+                        bull_hits: 0,
+                        score: 0
+                    }
+                ]
+            },
+            current_player: 0,
+            is_started: true,
+            is_paused: false
+        };
+
+        // Test Case 3: Player at bull stage
+        const testState3 = {
+            game_type: 'round_the_clock',
+            game_data: {
+                players: [
+                    {
+                        id: 0,
+                        name: 'Player 3',
+                        current_target: 0,
+                        bull_hits: 3,
+                        score: 0
+                    }
+                ]
+            },
+            current_player: 0,
+            is_started: true,
+            is_paused: false
+        };
+
+        // Copy the createPlayerCard function from main.js
+        function createPlayerCard(player, index, state) {
+            const card = document.createElement('div');
+            card.className = 'player-card';
+
+            // Add active class if it's this player's turn
+            if (index === state.current_player && state.is_started && !state.is_paused) {
+                card.classList.add('active');
+            }
+
+            // Player name
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'player-name';
+            nameDiv.textContent = player.name;
+            card.appendChild(nameDiv);
+
+            // Get player data from game state
+            let playerData = player;
+            if (state.game_data && state.game_data.players && state.game_data.players[index]) {
+                playerData = state.game_data.players[index];
+            }
+
+            // Player score
+            const scoreDiv = document.createElement('div');
+            scoreDiv.className = 'player-score';
+            scoreDiv.textContent = playerData.score || 0;
+            card.appendChild(scoreDiv);
+
+            // Round the Clock targets (if round_the_clock game)
+            if (state.game_type === 'round_the_clock' && playerData.current_target !== undefined) {
+                const rtcDiv = document.createElement('div');
+                rtcDiv.className = 'rtc-container';
+
+                // Current target display
+                const currentTargetDiv = document.createElement('div');
+                currentTargetDiv.className = 'rtc-current-target';
+                
+                if (playerData.current_target === 0) {
+                    // Player needs to hit the bull
+                    currentTargetDiv.innerHTML = `
+                        <div class="rtc-target-label">Current Target:</div>
+                        <div class="rtc-target-value bull">BULL</div>
+                        <div class="rtc-bull-hits">Bull Hits: ${playerData.bull_hits || 0}/5</div>
+                    `;
+                } else {
+                    currentTargetDiv.innerHTML = `
+                        <div class="rtc-target-label">Current Target:</div>
+                        <div class="rtc-target-value">${playerData.current_target}</div>
+                    `;
+                }
+                rtcDiv.appendChild(currentTargetDiv);
+
+                // Progress visualization - dartboard style
+                const progressDiv = document.createElement('div');
+                progressDiv.className = 'rtc-progress';
+                
+                // Show numbers 20 down to 1 in rows
+                const numbers = [];
+                for (let i = 20; i >= 1; i--) {
+                    numbers.push(i);
+                }
+                
+                // Create grid of numbers in 4 rows of 5
+                const rows = [
+                    numbers.slice(0, 5),   // 20-16
+                    numbers.slice(5, 10),  // 15-11
+                    numbers.slice(10, 15), // 10-6
+                    numbers.slice(15, 20)  // 5-1
+                ];
+                
+                rows.forEach(row => {
+                    const rowDiv = document.createElement('div');
+                    rowDiv.className = 'rtc-progress-row';
+                    
+                    row.forEach(num => {
+                        const numDiv = document.createElement('div');
+                        numDiv.className = 'rtc-number';
+                        
+                        // Mark as completed if current_target is less than this number
+                        if (playerData.current_target < num) {
+                            numDiv.classList.add('completed');
+                        } else if (playerData.current_target === num) {
+                            numDiv.classList.add('current');
+                        }
+                        
+                        numDiv.textContent = num;
+                        rowDiv.appendChild(numDiv);
+                    });
+                    
+                    progressDiv.appendChild(rowDiv);
+                });
+                
+                // Add bull indicator
+                const bullDiv = document.createElement('div');
+                bullDiv.className = 'rtc-bull-indicator';
+                if (playerData.current_target === 0) {
+                    bullDiv.classList.add('current');
+                }
+                bullDiv.textContent = 'BULL';
+                progressDiv.appendChild(bullDiv);
+                
+                rtcDiv.appendChild(progressDiv);
+                card.appendChild(rtcDiv);
+            }
+
+            return card;
+        }
+
+        // Render test cases
+        function renderTestCase(state, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            state.game_data.players.forEach((player, index) => {
+                const card = createPlayerCard({ name: player.name }, index, state);
+                container.appendChild(card);
+            });
+        }
+
+        renderTestCase(testState1, 'players-container');
+        renderTestCase(testState2, 'players-container-2');
+        renderTestCase(testState3, 'players-container-3');
+    </script>
+</body>
+</html>
