@@ -59,3 +59,6 @@ docs/source/*
 dartserver-pythonapp.code-workspace
 .env_bu
 .zencoder/rules/repo.md
+helpers/docker-backups/
+wso2is-7-config
+node_modules/.cache
