@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function apiRequest(url, options = {}) {
     const response = await fetch(url, {
         ...options,
+        credentials: 'include',  // Include session cookies
         headers: {
             'Content-Type': 'application/json',
             ...options.headers,

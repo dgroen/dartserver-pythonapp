@@ -71,7 +71,8 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = 3600  # 1 hour
 _dsas = os.getenv("DARTBOARD_SENDS_ACTUAL_SCORE", "false")
 app.config["DARTBOARD_SENDS_ACTUAL_SCORE"] = _dsas.lower() == "true"
-CORS(app)
+# Enable CORS with credentials support - required for session cookies to work
+CORS(app, supports_credentials=True)
 
 # Log environment and configuration info
 logging.info(f"Application Configuration: {Config}")
@@ -120,7 +121,7 @@ swagger_template = {
 swagger = Swagger(app, config=swagger_config, template=swagger_template)
 
 # Initialize SocketIO
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # Initialize Game Manager
 game_manager = GameManager(socketio)
@@ -294,10 +295,78 @@ def callback():
 
         # Auto-add user to game lobby by creating/getting player in database
         try:
-            username = user_info.get("preferred_username") or user_info.get("sub")
+            # Try to get username from user_info first, but WSO2 userinfo endpoint
+            # may not include it, so fall back to SCIM2 /Me endpoint
+            username = user_info.get("preferred_username") or user_info.get("username")
             email = user_info.get("email")
-            name = user_info.get("name") or user_info.get("given_name", username)
+            name = user_info.get("name") or user_info.get("given_name")
 
+            app.logger.info(
+                f"Callback: Initial user_info username={username}, email={email}, name={name}",
+            )
+
+            # If username is still not available (or looks like a UUID), try SCIM2 /Me endpoint
+            if not username or "-" in str(username):  # UUID detection
+                import requests
+
+                app.logger.info("Fetching username from SCIM2 /Me endpoint...")
+                try:
+                    wso2_is_internal_url = os.getenv("WSO2_IS_INTERNAL_URL", "https://wso2is:9443")
+                    scim2_me_url = f"{wso2_is_internal_url}/scim2/Me"
+                    verify_ssl = os.getenv("WSO2_IS_VERIFY_SSL", "false").lower() in (
+                        "true",
+                        "1",
+                        "yes",
+                    )
+
+                    scim_response = requests.get(
+                        scim2_me_url,
+                        headers={"Authorization": f"Bearer {session['access_token']}"},
+                        verify=verify_ssl,
+                        timeout=5,
+                    )
+                    if scim_response.status_code == 200:
+                        scim_data = scim_response.json()
+                        username = scim_data.get("userName")
+                        if not email:
+                            emails = scim_data.get("emails", [])
+                            if emails and isinstance(emails, list) and len(emails) > 0:
+                                email = (
+                                    emails[0]
+                                    if isinstance(emails[0], str)
+                                    else emails[0].get("value")
+                                )
+                        if not name:
+                            name_obj = scim_data.get("name", {})
+                            if isinstance(name_obj, dict):
+                                given_name = name_obj.get("givenName", "")
+                                family_name = name_obj.get("familyName", "")
+                                name = f"{given_name} {family_name}".strip()
+                        app.logger.info(
+                            f"Retrieved user data from SCIM2: "
+                            f"username={username}, email={email}, name={name}",
+                        )
+                    else:
+                        app.logger.warning(
+                            f"SCIM2 /Me returned status {scim_response.status_code}: "
+                            f"{scim_response.text}",
+                        )
+                except Exception as e:
+                    app.logger.warning(f"Failed to get user data from SCIM2: {e}")
+
+            # Strip WSO2 tenant suffix (e.g., @carbon.super) from username if present
+            if username and "@" in username:
+                app.logger.info(f"Stripping tenant suffix from username: {username}")
+                username = username.split("@")[0]
+
+            # Fallback to sub if still no username
+            if not username or "-" in str(username):  # Still a UUID
+                app.logger.warning(f"Using sub as username fallback: {user_info.get('sub')}")
+                username = user_info.get("sub")
+            if not name:
+                name = username
+
+            app.logger.info(f"Final username for player creation: {username}")
             if username:
                 player = game_manager.db_service.get_or_create_player(
                     username=username,
@@ -603,7 +672,7 @@ def get_players():
                     description: Player email (for database source)
     """
     source = request.args.get("source", "game")
-    
+
     if source == "database":
         # Return all players from database with usernames
         try:
@@ -1196,7 +1265,7 @@ def get_game_history():
                     description: Game finish timestamp
     """
     limit = request.args.get("limit", 10, type=int)
-    filter_user = request.args.get("user", None)
+    filter_user = request.args.get("user")
 
     # Get current user info
     user_roles = getattr(request, "user_roles", [])
@@ -1207,17 +1276,21 @@ def get_game_history():
         or user_claims.get("sub")
     )
 
+    # Strip WSO2 tenant suffix (e.g., @carbon.super) from username if present
+    if current_username and "@" in current_username:
+        current_username = current_username.split("@")[0]
+
+    logger.info(f"get_game_history: current_username={current_username}, user_roles={user_roles}")
+
     # Determine which username to filter by
-    username_filter = None
-    if "admin" in user_roles:
-        # Admins can filter by specific user or see all games
-        username_filter = filter_user
-    else:
-        # Regular users only see their own games
-        username_filter = current_username
-    
+    # Admins can filter by specific user or see all games; regular users only see their own
+    username_filter = filter_user if "admin" in user_roles else current_username
+
+    logger.info(f"get_game_history: username_filter={username_filter}, limit={limit}")
+
     try:
         games = game_manager.db_service.get_recent_games(limit=limit, username=username_filter)
+        logger.info(f"get_game_history: Found {len(games)} games")
         return jsonify({"status": "success", "games": games})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

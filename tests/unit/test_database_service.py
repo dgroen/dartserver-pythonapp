@@ -220,12 +220,12 @@ class TestDatabaseService:
             session.add(player1)
             session.add(player2)
             session.commit()
-            
+
             player1_id = player1.id
             player2_id = player2.id
         finally:
             session.close()
-        
+
         # Start a game with both players
         db_service.start_new_game(
             game_type_name="301",
@@ -233,7 +233,7 @@ class TestDatabaseService:
             start_score=301,
             double_out=False,
         )
-        
+
         # Start another game with only player1
         db_service.start_new_game(
             game_type_name="301",
@@ -241,15 +241,15 @@ class TestDatabaseService:
             start_score=301,
             double_out=False,
         )
-        
+
         # Get all games (no filter)
         all_games = db_service.get_recent_games(limit=10)
         assert len(all_games) == 2
-        
+
         # Get games for alice only
         alice_games = db_service.get_recent_games(limit=10, username="alice")
         assert len(alice_games) == 2  # Alice played in both games
-        
+
         # Get games for bob only
         bob_games = db_service.get_recent_games(limit=10, username="bob")
         assert len(bob_games) == 1  # Bob only played in the first game
@@ -268,15 +268,15 @@ class TestDatabaseService:
             session.commit()
         finally:
             session.close()
-        
+
         # Get all players with usernames
         players = db_service.get_all_players_with_usernames()
         assert len(players) == 2  # Only Alice and Bob have usernames
-        
+
         usernames = [p["username"] for p in players]
         assert "alice" in usernames
         assert "bob" in usernames
-        
+
         # Verify structure
         for player in players:
             assert "id" in player

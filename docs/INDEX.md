@@ -60,6 +60,16 @@ Welcome to the Darts Game Application documentation! This index will help you fi
 
 ## 🧪 Testing & Examples
 
+### Testing Configuration
+
+- **[TEST_CONFIGURATION.md](TEST_CONFIGURATION.md)** ⭐ NEW
+  - Test environment setup
+  - SSL certificates for testing
+  - Test database configuration (dartsdbtest)
+  - WSO2 test setup
+  - Test environment variables
+  - Troubleshooting guide
+
 ### Testing Tools
 
 - **[test_rabbitmq.py](test_rabbitmq.py)**
