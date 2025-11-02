@@ -315,56 +315,50 @@ function createPlayerCard(player, index, state) {
         }
         rtcDiv.appendChild(currentTargetDiv);
 
-        // Progress visualization - dartboard style
-        const progressDiv = document.createElement('div');
-        progressDiv.className = 'rtc-progress';
+        // Dartboard visualization (circular layout)
+        const dartboardDiv = document.createElement('div');
+        dartboardDiv.className = 'rtc-dartboard';
         
-        // Show numbers 20 down to 1 in rows
-        const numbers = [];
-        for (let i = 20; i >= 1; i--) {
-            numbers.push(i);
-        }
+        // Dartboard numbers in clockwise order (standard dartboard sequence)
+        const dartboardNumbers = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
         
-        // Create grid of numbers in 4 rows of 5
-        const rows = [
-            numbers.slice(0, 5),   // 20-16
-            numbers.slice(5, 10),  // 15-11
-            numbers.slice(10, 15), // 10-6
-            numbers.slice(15, 20)  // 5-1
-        ];
-        
-        rows.forEach(row => {
-            const rowDiv = document.createElement('div');
-            rowDiv.className = 'rtc-progress-row';
+        // Create number segments around the circle
+        dartboardNumbers.forEach((num, index) => {
+            const angle = (index / 20) * 360; // Evenly distribute around circle
+            const numDiv = document.createElement('div');
+            numDiv.className = 'rtc-dartboard-number';
+            numDiv.style.transform = `rotate(${angle}deg) translateY(-120px) rotate(-${angle}deg)`;
             
-            row.forEach(num => {
-                const numDiv = document.createElement('div');
-                numDiv.className = 'rtc-number';
-                
-                // Mark as completed if current_target is less than this number
-                if (playerData.current_target < num) {
-                    numDiv.classList.add('completed');
-                } else if (playerData.current_target === num) {
-                    numDiv.classList.add('current');
-                }
-                
-                numDiv.textContent = num;
-                rowDiv.appendChild(numDiv);
-            });
+            // Determine state
+            if (playerData.current_target === num) {
+                numDiv.classList.add('current');
+            } else if (playerData.current_target < num) {
+                numDiv.classList.add('completed');
+            }
             
-            progressDiv.appendChild(rowDiv);
+            numDiv.textContent = num;
+            dartboardDiv.appendChild(numDiv);
         });
         
-        // Add bull indicator
-        const bullDiv = document.createElement('div');
-        bullDiv.className = 'rtc-bull-indicator';
-        if (playerData.current_target === 0) {
-            bullDiv.classList.add('current');
-        }
-        bullDiv.textContent = 'BULL';
-        progressDiv.appendChild(bullDiv);
+        // Center bull with double bull inside
+        const bullContainer = document.createElement('div');
+        bullContainer.className = 'rtc-bull-container';
         
-        rtcDiv.appendChild(progressDiv);
+        const doubleBull = document.createElement('div');
+        doubleBull.className = 'rtc-double-bull';
+        
+        const singleBull = document.createElement('div');
+        singleBull.className = 'rtc-single-bull';
+        
+        if (playerData.current_target === 0) {
+            bullContainer.classList.add('current');
+        }
+        
+        bullContainer.appendChild(doubleBull);
+        bullContainer.appendChild(singleBull);
+        dartboardDiv.appendChild(bullContainer);
+        
+        rtcDiv.appendChild(dartboardDiv);
         card.appendChild(rtcDiv);
     }
 

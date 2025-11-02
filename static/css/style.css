@@ -227,6 +227,116 @@ header h1 {
     color: #FFD700;
 }
 
+/* Full Dartboard Visualization */
+.rtc-dartboard {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    margin: 20px auto;
+    background: radial-gradient(circle, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.2) 100%);
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+}
+
+.rtc-dartboard-number {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    font-size: 1.1em;
+    font-weight: bold;
+    top: 50%;
+    left: 50%;
+    margin-top: -25px;
+    margin-left: -25px;
+    transition: all 0.3s ease;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.rtc-dartboard-number.completed {
+    background: rgba(100, 100, 100, 0.4);
+    border-color: rgba(100, 100, 100, 0.6);
+    color: rgba(150, 150, 150, 0.7);
+    opacity: 0.5;
+}
+
+.rtc-dartboard-number.current {
+    background: rgba(0, 212, 255, 0.4);
+    border-color: #00d4ff;
+    color: #00d4ff;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.8);
+    animation: rtc-blink 1s ease-in-out infinite;
+}
+
+@keyframes rtc-blink {
+    0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.8);
+    }
+    50% {
+        opacity: 0.4;
+        box-shadow: 0 0 40px rgba(0, 212, 255, 1);
+    }
+}
+
+/* Bull Container with Double and Single Bull */
+.rtc-bull-container {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    top: 50%;
+    left: 50%;
+    margin-top: -40px;
+    margin-left: -40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.rtc-bull-container.current {
+    animation: rtc-blink 1s ease-in-out infinite;
+}
+
+.rtc-double-bull {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(255, 0, 0, 0.3);
+    border: 2px solid rgba(255, 0, 0, 0.6);
+    z-index: 1;
+}
+
+.rtc-bull-container.current .rtc-double-bull {
+    background: rgba(255, 100, 0, 0.5);
+    border-color: #FF6400;
+    box-shadow: 0 0 20px rgba(255, 100, 0, 0.8);
+}
+
+.rtc-single-bull {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(255, 215, 0, 0.4);
+    border: 2px solid rgba(255, 215, 0, 0.7);
+    z-index: 2;
+}
+
+.rtc-bull-container.current .rtc-single-bull {
+    background: rgba(255, 215, 0, 0.7);
+    border-color: #FFD700;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+}
+
+/* Legacy grid layout for backward compatibility */
 .rtc-progress {
     background: rgba(0, 0, 0, 0.3);
     padding: 15px;
@@ -255,16 +365,10 @@ header h1 {
 }
 
 .rtc-number.completed {
-    background: rgba(76, 175, 80, 0.3);
-    border-color: #4CAF50;
-    color: #4CAF50;
-}
-
-.rtc-number.completed::after {
-    content: '✓';
-    position: absolute;
-    font-size: 0.7em;
-    transform: translate(20px, -10px);
+    background: rgba(100, 100, 100, 0.3);
+    border-color: rgba(100, 100, 100, 0.5);
+    color: rgba(150, 150, 150, 0.6);
+    opacity: 0.5;
 }
 
 .rtc-number.current {
@@ -272,16 +376,7 @@ header h1 {
     border-color: #00d4ff;
     color: #00d4ff;
     box-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
-    animation: rtc-pulse 2s ease-in-out infinite;
-}
-
-@keyframes rtc-pulse {
-    0%, 100% {
-        box-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
-    }
-    50% {
-        box-shadow: 0 0 25px rgba(0, 212, 255, 0.9);
-    }
+    animation: rtc-blink 1s ease-in-out infinite;
 }
 
 .rtc-bull-indicator {
@@ -301,7 +396,7 @@ header h1 {
     border-color: #FFD700;
     color: #FFD700;
     box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
-    animation: rtc-pulse 2s ease-in-out infinite;
+    animation: rtc-blink 1s ease-in-out infinite;
 }
 
 .message-container {
