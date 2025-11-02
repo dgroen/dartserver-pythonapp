@@ -30,12 +30,15 @@ if __name__ == "__main__":
         logger.info(f"Starting Flask-SocketIO server on {host}:{port}")
         logger.info(f"Debug mode: {debug}")
 
+        # Run the Flask application with SocketIO support
+        # Disable reloader to avoid hanging issues in Docker
         socketio.run(
             app,
             host=host,
             port=port,
             debug=debug,
             allow_unsafe_werkzeug=True,
+            use_reloader=False,
         )
     except Exception:
         logger.exception("Failed to start application")

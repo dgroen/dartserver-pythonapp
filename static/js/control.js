@@ -84,7 +84,9 @@ playerNameInput.addEventListener('input', (e) => {
     // Debounce the search
     searchTimeout = setTimeout(async () => {
         try {
-            const response = await fetch(`/api/wso2/users/search?q=${encodeURIComponent(query)}`);
+            const response = await fetch(`/api/wso2/users/search?q=${encodeURIComponent(query)}`, {
+                credentials: 'include'  // Include session cookies
+            });
             const data = await response.json();
 
             if (data.success && data.users && data.users.length > 0) {
@@ -174,6 +176,7 @@ addPlayerBtn.addEventListener('click', async () => {
 
         const response = await fetch('/api/players', {
             method: 'POST',
+            credentials: 'include',  // Include session cookies
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
