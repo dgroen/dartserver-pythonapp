@@ -187,6 +187,123 @@ header h1 {
     margin-top: 5px;
 }
 
+/* Round the Clock Styles */
+.rtc-container {
+    margin-top: 15px;
+}
+
+.rtc-current-target {
+    background: rgba(0, 212, 255, 0.15);
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 15px;
+    border: 2px solid rgba(0, 212, 255, 0.3);
+}
+
+.rtc-target-label {
+    font-size: 0.9em;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.rtc-target-value {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #00d4ff;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}
+
+.rtc-target-value.bull {
+    color: #FFD700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.rtc-bull-hits {
+    font-size: 1.1em;
+    margin-top: 8px;
+    color: #FFD700;
+}
+
+.rtc-progress {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.rtc-progress-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.rtc-number {
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    font-size: 1.1em;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.rtc-number.completed {
+    background: rgba(76, 175, 80, 0.3);
+    border-color: #4CAF50;
+    color: #4CAF50;
+}
+
+.rtc-number.completed::after {
+    content: '✓';
+    position: absolute;
+    font-size: 0.7em;
+    transform: translate(20px, -10px);
+}
+
+.rtc-number.current {
+    background: rgba(0, 212, 255, 0.3);
+    border-color: #00d4ff;
+    color: #00d4ff;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
+    animation: rtc-pulse 2s ease-in-out infinite;
+}
+
+@keyframes rtc-pulse {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(0, 212, 255, 0.9);
+    }
+}
+
+.rtc-bull-indicator {
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(255, 215, 0, 0.1);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.2em;
+    color: rgba(255, 215, 0, 0.7);
+}
+
+.rtc-bull-indicator.current {
+    background: rgba(255, 215, 0, 0.3);
+    border-color: #FFD700;
+    color: #FFD700;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+    animation: rtc-pulse 2s ease-in-out infinite;
+}
+
 .message-container {
     text-align: center;
     padding: 20px;
