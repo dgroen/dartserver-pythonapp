@@ -33,6 +33,8 @@ ENV/
 
 # Environment variables
 .env
+.env.dev
+*.db
 
 # IDE
 .vscode/
