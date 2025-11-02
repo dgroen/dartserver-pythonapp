@@ -1,3 +1,5 @@
+/* main.js - Version 2.0 - Dynamic Game Types with Debug Logging */
+
 // Helper function to format game type names for display
 function formatGameTypeName(name) {
     // Handle special cases
@@ -16,12 +18,16 @@ function formatGameTypeName(name) {
 
 // Helper function to load game types dynamically into select elements
 async function loadGameTypes(selectElement, includeAllOption = false) {
+    console.log('loadGameTypes called with:', selectElement.id, 'includeAllOption:', includeAllOption);
     try {
         const response = await fetch('/api/game/types');
         const data = await response.json();
         
+        console.log('API response:', data);
+        
         if (data.status === 'success' && data.game_types) {
             // Clear existing options
+            console.log('Clearing select element and adding', data.game_types.length, 'game types');
             selectElement.innerHTML = '';
             
             // Add "All" option if requested (for filters)
@@ -39,9 +45,24 @@ async function loadGameTypes(selectElement, includeAllOption = false) {
                 // Use description or format name nicely
                 option.textContent = formatGameTypeName(gameType.name);
                 selectElement.appendChild(option);
+                console.log('Added option:', gameType.name, '->', formatGameTypeName(gameType.name));
             });
             
+            // Set default selection if not a filter
+            if (!includeAllOption && data.game_types.length > 0) {
+                // Default to 501 if available, otherwise first option
+                const defaultGameType = data.game_types.find(gt => gt.name === '501');
+                if (defaultGameType) {
+                    selectElement.value = '501';
+                    console.log('Set default value to 501');
+                } else {
+                    selectElement.value = data.game_types[0].name;
+                    console.log('Set default value to', data.game_types[0].name);
+                }
+            }
+            
             console.log(`Loaded ${data.game_types.length} game types into select element`);
+            console.log('Final select element HTML:', selectElement.innerHTML.substring(0, 200));
         } else {
             console.error('Failed to load game types:', data.message);
             // Fallback to hardcoded values
@@ -79,6 +100,11 @@ function loadFallbackGameTypes(selectElement, includeAllOption = false) {
         option.textContent = type.label;
         selectElement.appendChild(option);
     });
+    
+    // Set default selection if not a filter
+    if (!includeAllOption && fallbackTypes.length > 0) {
+        selectElement.value = '501'; // Default to 501
+    }
 }
 
 // Connect to SocketIO
@@ -135,37 +161,49 @@ socket.on('play_video', (data) => {
 // Message event
 socket.on('message', (data) => {
     console.log('Message:', data.text);
-    alertMessage.textContent = data.text;
+    if (alertMessage) {
+        alertMessage.textContent = data.text;
+    }
 });
 
 // Big message event
 socket.on('big_message', (data) => {
     console.log('Big message:', data.text);
-    bigMessage.textContent = data.text;
+    if (bigMessage) {
+        bigMessage.textContent = data.text;
 
-    // Auto-clear after 3 seconds
-    setTimeout(() => {
-        if (bigMessage.textContent === data.text) {
-            bigMessage.textContent = '';
-        }
-    }, 3000);
+        // Auto-clear after 3 seconds
+        setTimeout(() => {
+            if (bigMessage.textContent === data.text) {
+                bigMessage.textContent = '';
+            }
+        }, 3000);
+    }
 });
 
 function updateGameDisplay(state) {
-    // Update game info
-    gameTypeDisplay.textContent = state.game_type.toUpperCase();
-    gameStatusDisplay.textContent = state.is_started ?
-        (state.is_paused ? 'Paused' : 'In Progress') : 'Not Started';
-    currentThrowDisplay.textContent = state.current_throw || 1;
+    // Update game info (only if elements exist on this page)
+    if (gameTypeDisplay) {
+        gameTypeDisplay.textContent = state.game_type.toUpperCase();
+    }
+    if (gameStatusDisplay) {
+        gameStatusDisplay.textContent = state.is_started ?
+            (state.is_paused ? 'Paused' : 'In Progress') : 'Not Started';
+    }
+    if (currentThrowDisplay) {
+        currentThrowDisplay.textContent = state.current_throw || 1;
+    }
 
-    // Update players
-    playersContainer.innerHTML = '';
+    // Update players (only if container exists)
+    if (playersContainer) {
+        playersContainer.innerHTML = '';
 
-    if (state.players && state.players.length > 0) {
-        state.players.forEach((player, index) => {
-            const playerCard = createPlayerCard(player, index, state);
-            playersContainer.appendChild(playerCard);
-        });
+        if (state.players && state.players.length > 0) {
+            state.players.forEach((player, index) => {
+                const playerCard = createPlayerCard(player, index, state);
+                playersContainer.appendChild(playerCard);
+            });
+        }
     }
 
     // Update throwout advice display
@@ -173,6 +211,11 @@ function updateGameDisplay(state) {
 }
 
 function displayThrowoutAdvice(advice) {
+    // Only update if elements exist on this page
+    if (!adviceDisplay || !throwoutAdviceElement) {
+        return;
+    }
+    
     if (Array.isArray(advice) && advice.length > 0) {
         adviceDisplay.textContent = advice.join(' or ');
         throwoutAdviceElement.style.display = 'block';

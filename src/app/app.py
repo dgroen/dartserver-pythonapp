@@ -167,6 +167,27 @@ def serve_service_worker():
     return send_from_directory(str(_root_dir / "static"), "service-worker.js")
 
 
+@app.route("/health", methods=["GET"])
+def health_check():
+    """Health check endpoint for Docker health monitoring
+    ---
+    tags:
+      - UI
+    summary: Health check endpoint
+    description: Returns 200 OK if the application is running and healthy
+    responses:
+      200:
+        description: Application is healthy
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: healthy
+    """
+    return jsonify({"status": "healthy"}), 200
+
+
 @app.route("/control")
 @login_required
 @role_required("admin", "gamemaster")
