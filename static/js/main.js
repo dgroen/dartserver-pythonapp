@@ -16,6 +16,14 @@ function formatGameTypeName(name) {
 
 // Helper function to load game types dynamically into select elements
 async function loadGameTypes(selectElement, includeAllOption = false) {
+    // Only prevent double-loading if we're already in the middle of loading
+    if (selectElement.dataset.loading === 'true') {
+        return;
+    }
+    
+    // Mark as loading
+    selectElement.dataset.loading = 'true';
+    
     try {
         const response = await fetch('/api/game/types');
         const data = await response.json();
@@ -36,19 +44,32 @@ async function loadGameTypes(selectElement, includeAllOption = false) {
             data.game_types.forEach(gameType => {
                 const option = document.createElement('option');
                 option.value = gameType.name;
-                // Use description or format name nicely
                 option.textContent = formatGameTypeName(gameType.name);
                 selectElement.appendChild(option);
             });
             
-            console.log(`Loaded ${data.game_types.length} game types into select element`);
+            // Set default selection if not a filter
+            if (!includeAllOption && data.game_types.length > 0) {
+                // Default to 501 if available, otherwise first option
+                const defaultGameType = data.game_types.find(gt => gt.name === '501');
+                if (defaultGameType) {
+                    selectElement.value = '501';
+                } else {
+                    selectElement.value = data.game_types[0].name;
+                }
+            }
+            
+            // Mark as loaded and no longer loading
+            selectElement.dataset.loaded = 'true';
+            selectElement.dataset.loading = 'false';
         } else {
-            console.error('Failed to load game types:', data.message);
+            selectElement.dataset.loading = 'false';
             // Fallback to hardcoded values
             loadFallbackGameTypes(selectElement, includeAllOption);
         }
     } catch (error) {
         console.error('Error loading game types:', error);
+        selectElement.dataset.loading = 'false';
         // Fallback to hardcoded values
         loadFallbackGameTypes(selectElement, includeAllOption);
     }
@@ -79,6 +100,11 @@ function loadFallbackGameTypes(selectElement, includeAllOption = false) {
         option.textContent = type.label;
         selectElement.appendChild(option);
     });
+    
+    // Set default selection if not a filter
+    if (!includeAllOption && fallbackTypes.length > 0) {
+        selectElement.value = '501'; // Default to 501
+    }
 }
 
 // Connect to SocketIO
@@ -148,7 +174,7 @@ socket.on('big_message', (data) => {
 
         // Auto-clear after 3 seconds
         setTimeout(() => {
-            if (bigMessage && bigMessage.textContent === data.text) {
+            if (bigMessage.textContent === data.text) {
                 bigMessage.textContent = '';
             }
         }, 3000);
@@ -156,7 +182,7 @@ socket.on('big_message', (data) => {
 });
 
 function updateGameDisplay(state) {
-    // Update game info (check if elements exist - they might not on all pages)
+    // Update game info (only if elements exist on this page)
     if (gameTypeDisplay) {
         gameTypeDisplay.textContent = state.game_type.toUpperCase();
     }
@@ -168,7 +194,7 @@ function updateGameDisplay(state) {
         currentThrowDisplay.textContent = state.current_throw || 1;
     }
 
-    // Update players
+    // Update players (only if container exists)
     if (playersContainer) {
         playersContainer.innerHTML = '';
 
@@ -185,7 +211,10 @@ function updateGameDisplay(state) {
 }
 
 function displayThrowoutAdvice(advice) {
-    if (!adviceDisplay || !throwoutAdviceElement) return;
+    // Only update if elements exist on this page
+    if (!adviceDisplay || !throwoutAdviceElement) {
+        return;
+    }
     
     if (Array.isArray(advice) && advice.length > 0) {
         adviceDisplay.textContent = advice.join(' or ');
