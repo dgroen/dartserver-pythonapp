@@ -2008,6 +2008,55 @@ def get_current_game():
     return jsonify({"success": True, "game": game_state})
 
 
+@app.route("/api/game/types", methods=["GET"])
+def get_game_types():
+    """Get available game types
+    ---
+    tags:
+      - Game
+    summary: Get all available game types
+    description: Returns a list of all game types available in the system
+    responses:
+      200:
+        description: List of game types
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            game_types:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Game type ID
+                  name:
+                    type: string
+                    description: Game type name (e.g., '301', '501', 'cricket')
+                  description:
+                    type: string
+                    description: Game type description
+    """
+    try:
+        from src.core.database_models import GameType
+
+        session = game_manager.db_service.db_manager.get_session()
+        try:
+            game_types = session.query(GameType).order_by(GameType.name).all()
+            game_types_list = [
+                {"id": gt.id, "name": gt.name, "description": gt.description} for gt in game_types
+            ]
+            return jsonify({"status": "success", "game_types": game_types_list})
+        finally:
+            session.close()
+    except Exception as e:
+        logger.exception("Error fetching game types")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @app.route("/api/game/start", methods=["POST"])
 @login_required
 @permission_required("game:create")
