@@ -254,11 +254,7 @@
                 <!-- Filters -->
                 <div class="filters">
                     <select id="gameTypeFilter" class="filter-select">
-                        <option value="">All Game Types</option>
-                        <option value="301">301</option>
-                        <option value="401">401</option>
-                        <option value="501">501</option>
-                        <option value="cricket">Cricket</option>
+                        <!-- Options loaded dynamically via JavaScript -->
                     </select>
                 </div>
 
@@ -435,14 +431,25 @@
         // Event listeners
         document.addEventListener('DOMContentLoaded', () => {
             console.log('✅ Page loaded - Starting to fetch data...');
+            
+            // Load game types into filter
+            const gameTypeFilter = document.getElementById('gameTypeFilter');
+            if (gameTypeFilter && typeof loadGameTypes === 'function') {
+                loadGameTypes(gameTypeFilter, true).then(() => {
+                    // Set "All Game Types" as default
+                    gameTypeFilter.value = 'all';
+                });
+            }
+            
             loadStatistics();
             loadHistory();
 
-            document.getElementById('gameTypeFilter').addEventListener('change', (e) => {
+            gameTypeFilter.addEventListener('change', (e) => {
                 console.log(`🔄 Filter changed to: ${e.target.value}`);
                 loadHistory(e.target.value);
             });
         });
     </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

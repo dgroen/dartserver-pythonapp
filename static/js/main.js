@@ -1,3 +1,86 @@
+// Helper function to format game type names for display
+function formatGameTypeName(name) {
+    // Handle special cases
+    const specialNames = {
+        'round_the_clock': 'Round the Clock',
+        'cricket': 'Cricket'
+    };
+    
+    if (specialNames[name]) {
+        return specialNames[name];
+    }
+    
+    // For numbered games (301, 401, 501, etc.), just return uppercase
+    return name.toUpperCase();
+}
+
+// Helper function to load game types dynamically into select elements
+async function loadGameTypes(selectElement, includeAllOption = false) {
+    try {
+        const response = await fetch('/api/game/types');
+        const data = await response.json();
+        
+        if (data.status === 'success' && data.game_types) {
+            // Clear existing options
+            selectElement.innerHTML = '';
+            
+            // Add "All" option if requested (for filters)
+            if (includeAllOption) {
+                const allOption = document.createElement('option');
+                allOption.value = 'all';
+                allOption.textContent = 'All Games';
+                selectElement.appendChild(allOption);
+            }
+            
+            // Add game type options
+            data.game_types.forEach(gameType => {
+                const option = document.createElement('option');
+                option.value = gameType.name;
+                // Use description or format name nicely
+                option.textContent = formatGameTypeName(gameType.name);
+                selectElement.appendChild(option);
+            });
+            
+            console.log(`Loaded ${data.game_types.length} game types into select element`);
+        } else {
+            console.error('Failed to load game types:', data.message);
+            // Fallback to hardcoded values
+            loadFallbackGameTypes(selectElement, includeAllOption);
+        }
+    } catch (error) {
+        console.error('Error loading game types:', error);
+        // Fallback to hardcoded values
+        loadFallbackGameTypes(selectElement, includeAllOption);
+    }
+}
+
+// Fallback to hardcoded game types if API fails
+function loadFallbackGameTypes(selectElement, includeAllOption = false) {
+    selectElement.innerHTML = '';
+    
+    if (includeAllOption) {
+        const allOption = document.createElement('option');
+        allOption.value = 'all';
+        allOption.textContent = 'All Games';
+        selectElement.appendChild(allOption);
+    }
+    
+    const fallbackTypes = [
+        { value: '301', label: '301' },
+        { value: '401', label: '401' },
+        { value: '501', label: '501' },
+        { value: 'cricket', label: 'Cricket' },
+        { value: 'round_the_clock', label: 'Round the Clock' }
+    ];
+    
+    fallbackTypes.forEach(type => {
+        const option = document.createElement('option');
+        option.value = type.value;
+        option.textContent = type.label;
+        selectElement.appendChild(option);
+    });
+}
+
 // Connect to SocketIO
 const socket = io();
 
