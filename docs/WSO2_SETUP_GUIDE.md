@@ -32,7 +32,7 @@ docker logs -f darts-wso2is
 
 ### 2. Access WSO2 IS Management Console
 
-- URL: https://localhost:9443/carbon
+- URL: <https://localhost:9443/carbon>
 - Username: `admin`
 - Password: `admin`
 
@@ -48,12 +48,12 @@ docker logs -f darts-wso2is
    - Expand **Inbound Authentication Configuration**
    - Expand **OAuth/OpenID Connect Configuration**
    - Click **Configure**
-   
+
    Settings:
    - Grant Types: Select `Client Credentials`, `Password`, `Refresh Token`
    - Callback URL: `http://localhost:8080/callback` (for testing)
    - Click **Add**
-   
+
 5. **Note the credentials:**
    - OAuth Client Key (Client ID)
    - OAuth Client Secret
@@ -67,15 +67,19 @@ docker logs -f darts-wso2is
 Create the following roles:
 
 **Role: dartboard_device**
+
 - Permissions: None (will use scopes)
 
 **Role: game_admin**
+
 - Permissions: Login, Manage
 
 **Role: player**
+
 - Permissions: Login
 
 **Role: spectator**
+
 - Permissions: Login
 
 ### 5. Create Test Users
@@ -85,14 +89,17 @@ Create the following roles:
 Create test users:
 
 **User: dartboard1**
+
 - Password: `Dartboard@123`
 - Roles: `dartboard_device`
 
 **User: admin_user**
+
 - Password: `Admin@123`
 - Roles: `game_admin`
 
 **User: player1**
+
 - Password: `Player@123`
 - Roles: `player`
 
@@ -105,19 +112,19 @@ Add the following scopes:
 
 - **Scope Name:** `score:write`
   - Description: Submit scores to the game system
-  
+
 - **Scope Name:** `score:read`
   - Description: Read score information
-  
+
 - **Scope Name:** `game:write`
   - Description: Create and manage games
-  
+
 - **Scope Name:** `game:read`
   - Description: Read game information
-  
+
 - **Scope Name:** `player:write`
   - Description: Add and manage players
-  
+
 - **Scope Name:** `player:read`
   - Description: Read player information
 
@@ -149,12 +156,14 @@ docker logs -f darts-wso2apim
 ### 2. Access WSO2 APIM Portals
 
 **Publisher Portal:**
-- URL: https://localhost:9444/publisher
+
+- URL: <https://localhost:9444/publisher>
 - Username: `admin`
 - Password: `admin`
 
 **Developer Portal:**
-- URL: https://localhost:9444/devportal
+
+- URL: <https://localhost:9444/devportal>
 - Username: `admin`
 - Password: `admin`
 
@@ -165,6 +174,7 @@ docker logs -f darts-wso2apim
 3. Select **WSO2 Identity Server**
 
 Configuration:
+
 - Name: `WSO2-IS`
 - Display Name: `WSO2 Identity Server`
 - Issuer: `https://wso2is:9443/oauth2/token`
@@ -185,6 +195,7 @@ Click **Add** to save.
 2. Select **Design a New REST API**
 
 **API Details:**
+
 - Name: `Darts Game API`
 - Context: `/api/v1`
 - Version: `1.0.0`
@@ -198,6 +209,7 @@ Click **Add** to save.
 Add the following resources:
 
 **Score Submission:**
+
 - URL Pattern: `/scores`
 - HTTP Method: `POST`
 - Auth Type: `OAuth2`
@@ -205,6 +217,7 @@ Add the following resources:
 - Rate Limiting: `100 requests per minute`
 
 **Game Management:**
+
 - URL Pattern: `/games`
 - HTTP Method: `POST`
 - Auth Type: `OAuth2`
@@ -218,6 +231,7 @@ Add the following resources:
 - Rate Limiting: `100 requests per minute`
 
 **Player Management:**
+
 - URL Pattern: `/players`
 - HTTP Method: `POST`
 - Auth Type: `OAuth2`
@@ -238,7 +252,7 @@ Add the following resources:
 
 ### 7. Subscribe to API (Developer Portal)
 
-1. Go to Developer Portal: https://localhost:9444/devportal
+1. Go to Developer Portal: <https://localhost:9444/devportal>
 2. Find **Darts Game API**
 3. Click **Subscribe**
 4. Create a new application or select existing
@@ -335,6 +349,7 @@ curl -k -X POST https://localhost:9443/oauth2/token \
 ```
 
 Response:
+
 ```json
 {
   "access_token": "eyJhbGciOiJSUzI1NiIsICJ...",
@@ -352,6 +367,7 @@ curl http://localhost:8080/health
 ```
 
 Expected response:
+
 ```json
 {
   "status": "healthy",
@@ -375,6 +391,7 @@ curl -X POST http://localhost:8080/api/v1/scores \
 ```
 
 Expected response:
+
 ```json
 {
   "status": "success",
@@ -421,6 +438,7 @@ curl -X POST http://localhost:8080/api/v1/players \
 **Issue:** Container exits or fails to start
 
 **Solutions:**
+
 1. Check available memory: `docker stats`
 2. Increase Docker memory limit to at least 4GB
 3. Check logs: `docker logs darts-wso2is`
@@ -431,11 +449,13 @@ curl -X POST http://localhost:8080/api/v1/players \
 **Issue:** API returns 401 Unauthorized
 
 **Solutions:**
+
 1. Verify token is not expired
 2. Check JWKS endpoint is accessible from API Gateway
 3. Verify client ID and secret are correct
 4. Check token scopes match required scopes
 5. Try introspection mode instead of JWKS:
+
    ```bash
    JWT_VALIDATION_MODE=introspection
    ```
@@ -445,6 +465,7 @@ curl -X POST http://localhost:8080/api/v1/players \
 **Issue:** API Gateway cannot connect to RabbitMQ
 
 **Solutions:**
+
 1. Verify RabbitMQ is running: `docker ps | grep rabbitmq`
 2. Check RabbitMQ health: `docker exec darts-rabbitmq rabbitmq-diagnostics ping`
 3. Verify network connectivity: `docker network inspect darts-network`
@@ -455,6 +476,7 @@ curl -X POST http://localhost:8080/api/v1/players \
 **Issue:** SSL certificate verification fails
 
 **Solutions:**
+
 1. For development, disable SSL verification (already done in code)
 2. For production, use proper SSL certificates
 3. Add WSO2 certificates to trusted store
@@ -465,6 +487,7 @@ curl -X POST http://localhost:8080/api/v1/players \
 **Issue:** Getting 429 Too Many Requests
 
 **Solutions:**
+
 1. Check rate limit configuration in WSO2 APIM
 2. Adjust throttling policies
 3. Use different subscription tiers
@@ -540,6 +563,7 @@ curl -X POST http://localhost:8080/api/v1/players \
 ## Support
 
 For issues and questions:
+
 1. Check the troubleshooting section above
 2. Review WSO2 documentation
 3. Check Docker logs for all services

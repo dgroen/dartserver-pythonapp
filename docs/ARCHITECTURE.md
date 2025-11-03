@@ -175,6 +175,7 @@
 ### 1. RabbitMQ Consumer (`rabbitmq_consumer.py`)
 
 **Responsibilities:**
+
 - Connect to RabbitMQ broker
 - Subscribe to topic exchange
 - Parse incoming messages
@@ -183,6 +184,7 @@
 - Auto-reconnect on failure
 
 **Message Format:**
+
 ```json
 {
   "score": 20,
@@ -194,6 +196,7 @@
 ### 2. Game Manager (`game_manager.py`)
 
 **Responsibilities:**
+
 - Maintain game state
 - Manage players
 - Coordinate game logic
@@ -202,6 +205,7 @@
 - Detect winners
 
 **State Structure:**
+
 ```python
 {
   "players": [...],
@@ -217,12 +221,14 @@
 ### 3. Game Logic (`games/`)
 
 **Game 301 (`game_301.py`):**
+
 - Start score: 301/401/501
 - Subtract each dart
 - Bust if < 0
 - Win if exactly 0
 
 **Game Cricket (`game_cricket.py`):**
+
 - Targets: 15-20, Bull
 - Track hits per target
 - Open at 3 hits
@@ -232,6 +238,7 @@
 ### 4. Flask Application (`app.py`)
 
 **Components:**
+
 - REST API routes
 - WebSocket event handlers
 - Template rendering
@@ -239,6 +246,7 @@
 - RabbitMQ consumer thread
 
 **Endpoints:**
+
 ```
 GET  /                    → Game board
 GET  /control             → Control panel
@@ -252,6 +260,7 @@ DELETE /api/players/<id>  → Remove player
 ### 5. Web Interface
 
 **Game Board (`templates/index.html`):**
+
 - Display player scores
 - Show current player
 - Display messages
@@ -259,6 +268,7 @@ DELETE /api/players/<id>  → Remove player
 - Real-time updates
 
 **Control Panel (`templates/control.html`):**
+
 - Game setup
 - Player management
 - Manual score entry
@@ -279,6 +289,7 @@ Publisher → Exchange → Queue → Consumer
 ### 2. WebSocket (Socket.IO)
 
 **Events:**
+
 ```
 Client → Server:
 - new_game
@@ -296,6 +307,7 @@ Server → Client:
 ### 3. REST API (HTTP)
 
 **Methods:**
+
 ```
 GET    - Retrieve data
 POST   - Create/update
@@ -444,6 +456,7 @@ Single instance can handle:
 The API Gateway Service provides a secure, managed entry point for all external clients:
 
 **Key Features:**
+
 - **Authentication:** OAuth2/OIDC token validation via WSO2 IS
 - **Authorization:** Role-based access control (RBAC)
 - **Rate Limiting:** Prevent abuse and ensure fair usage
@@ -456,6 +469,7 @@ The API Gateway Service provides a secure, managed entry point for all external 
 **Purpose:** Centralized identity and access management
 
 **Features:**
+
 - User authentication and authorization
 - OAuth2 2.0 / OpenID Connect provider
 - JWT token generation and validation
@@ -464,6 +478,7 @@ The API Gateway Service provides a secure, managed entry point for all external 
 - Role and permission management
 
 **Token Flow:**
+
 ```
 1. Client requests access token from WSO2 IS
    POST /oauth2/token
@@ -525,7 +540,7 @@ POST /api/v1/scores
   Security: OAuth2
   Scopes: score:write
   Rate Limit: 100 requests/minute
-  
+
   Request Body:
     {
       "score": 20,
@@ -587,15 +602,15 @@ GET /api/v1/players
 Role: dartboard_device
   Scopes: score:write
   Description: Electronic dartboard devices
-  
+
 Role: game_admin
   Scopes: game:read, game:write, player:read, player:write, score:write
   Description: Game administrators
-  
+
 Role: player
   Scopes: game:read, player:read, score:write
   Description: Regular players
-  
+
 Role: spectator
   Scopes: game:read
   Description: Read-only access to game state
@@ -637,6 +652,7 @@ Role: spectator
 ### Monitoring and Analytics
 
 **WSO2 API Manager Analytics:**
+
 - API usage statistics
 - Response time metrics
 - Error rates and types
@@ -645,6 +661,7 @@ Role: spectator
 - Throttling events
 
 **Custom Metrics:**
+
 - Score submission rate
 - Game creation frequency
 - Player activity
@@ -654,23 +671,27 @@ Role: spectator
 ### Migration Path
 
 **Phase 1: API Gateway Implementation**
+
 1. Deploy API Gateway service
 2. Configure RabbitMQ publisher
 3. Test score submission flow
 
 **Phase 2: WSO2 Identity Server Setup**
+
 1. Deploy WSO2 IS
 2. Configure OAuth2 provider
 3. Create service accounts
 4. Implement JWT validation
 
 **Phase 3: WSO2 API Manager Integration**
+
 1. Deploy WSO2 APIM
 2. Publish APIs to developer portal
 3. Configure rate limiting
 4. Enable analytics
 
 **Phase 4: Client Migration**
+
 1. Update electronic dartboard firmware
 2. Implement OAuth2 flow
 3. Update web clients

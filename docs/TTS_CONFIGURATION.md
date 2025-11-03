@@ -43,6 +43,7 @@ TTS_ENABLED=true            # Options: 'true' or 'false' (default: true)
 ### Example Configurations
 
 #### Fast Speech (pyttsx3)
+
 ```bash
 export TTS_ENGINE=pyttsx3
 export TTS_SPEED=200
@@ -51,6 +52,7 @@ export TTS_ENABLED=true
 ```
 
 #### Slow Speech (pyttsx3)
+
 ```bash
 export TTS_ENGINE=pyttsx3
 export TTS_SPEED=100
@@ -59,6 +61,7 @@ export TTS_ENABLED=true
 ```
 
 #### Google TTS (Online)
+
 ```bash
 export TTS_ENGINE=gtts
 export TTS_VOICE=en-us
@@ -66,6 +69,7 @@ export TTS_ENABLED=true
 ```
 
 #### Disable TTS
+
 ```bash
 export TTS_ENABLED=false
 ```
@@ -73,25 +77,31 @@ export TTS_ENABLED=false
 ## Engine Comparison
 
 ### pyttsx3 (Offline Engine)
+
 **Pros:**
+
 - Works offline (no internet required)
 - Faster response time
 - Configurable speed and volume
 - Multiple voice options
 
 **Cons:**
+
 - Voice quality may be lower
 - Requires system TTS libraries
 
 **Best for:** Production environments, offline use, low latency
 
 ### gTTS (Google Text-to-Speech)
+
 **Pros:**
+
 - High-quality voices
 - Natural-sounding speech
 - Multiple language support
 
 **Cons:**
+
 - Requires internet connection
 - Slightly slower (API calls)
 - Limited configuration options
@@ -101,6 +111,7 @@ export TTS_ENABLED=false
 ## Installation
 
 ### pyttsx3 Requirements
+
 ```bash
 # Install pyttsx3
 pip install pyttsx3
@@ -114,6 +125,7 @@ sudo apt-get install espeak
 ```
 
 ### gTTS Requirements
+
 ```bash
 # Install gTTS
 pip install gtts
@@ -135,6 +147,7 @@ The TTS system is integrated at these game events:
 ## API Endpoints
 
 ### Test TTS
+
 ```http
 POST /api/tts/test
 Content-Type: application/json
@@ -145,11 +158,13 @@ Content-Type: application/json
 ```
 
 ### Get TTS Configuration
+
 ```http
 GET /api/tts/config
 ```
 
 Response:
+
 ```json
 {
   "enabled": true,
@@ -161,6 +176,7 @@ Response:
 ```
 
 ### Update TTS Configuration
+
 ```http
 POST /api/tts/config
 Content-Type: application/json
@@ -179,11 +195,13 @@ Content-Type: application/json
 ### TTS Not Working
 
 1. **Check if TTS is enabled:**
+
    ```bash
    curl http://localhost:5000/api/tts/config
    ```
 
 2. **Verify engine is installed:**
+
    ```bash
    pip list | grep -E "pyttsx3|gtts"
    ```
@@ -192,6 +210,7 @@ Content-Type: application/json
    Look for TTS initialization messages in the application logs
 
 4. **Test TTS directly:**
+
    ```bash
    curl -X POST http://localhost:5000/api/tts/test \
      -H "Content-Type: application/json" \
@@ -280,6 +299,7 @@ Potential improvements for the TTS system:
 The TTS system is **fully functional and ready to use**. Simply configure the environment variables to match your preferences, and the system will automatically announce game events. The default configuration (pyttsx3, speed 150) works well for most use cases.
 
 For the best experience:
+
 - **Development/Testing**: Use pyttsx3 with speed 150-180
 - **Production**: Use pyttsx3 for reliability
 - **Demos**: Use gTTS for better voice quality (requires internet)

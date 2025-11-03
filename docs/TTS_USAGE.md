@@ -49,16 +49,16 @@ TTS_VOICE=default         # Options: default, english, male, female
 
 TTS will automatically announce these game events:
 
-| Event | Announcement |
-|-------|-------------|
-| 🎯 **Game Start** | "Welcome to the game" |
-| 👤 **Player Turn** | "[Player Name], Throw Darts" |
-| 🎪 **Triple Hit** | "Triple! [score] points" |
-| 🎯 **Double Hit** | "Double! [score] points" |
-| 🎯 **Bullseye** | "Bullseye! [score] points" |
+| Event              | Announcement                      |
+| ------------------ | --------------------------------- |
+| 🎯 **Game Start**  | "Welcome to the game"             |
+| 👤 **Player Turn** | "[Player Name], Throw Darts"      |
+| 🎪 **Triple Hit**  | "Triple! [score] points"          |
+| 🎯 **Double Hit**  | "Double! [score] points"          |
+| 🎯 **Bullseye**    | "Bullseye! [score] points"        |
 | 🎯 **Double Bull** | "Double Bullseye! [score] points" |
-| ❌ **Bust** | "Bust!" |
-| 🏆 **Winner** | "We have a winner! [name] wins!" |
+| ❌ **Bust**        | "Bust!"                           |
+| 🏆 **Winner**      | "We have a winner! [name] wins!"  |
 
 ---
 
@@ -67,11 +67,13 @@ TTS will automatically announce these game events:
 You can change TTS settings while the app is running using the REST API:
 
 ### Get Current Configuration
+
 ```bash
 curl http://localhost:5000/api/tts/config
 ```
 
 ### Change Speed
+
 ```bash
 curl -X POST http://localhost:5000/api/tts/config \
   -H "Content-Type: application/json" \
@@ -79,6 +81,7 @@ curl -X POST http://localhost:5000/api/tts/config \
 ```
 
 ### Change Volume
+
 ```bash
 curl -X POST http://localhost:5000/api/tts/config \
   -H "Content-Type: application/json" \
@@ -86,6 +89,7 @@ curl -X POST http://localhost:5000/api/tts/config \
 ```
 
 ### Enable/Disable TTS
+
 ```bash
 # Disable
 curl -X POST http://localhost:5000/api/tts/config \
@@ -99,6 +103,7 @@ curl -X POST http://localhost:5000/api/tts/config \
 ```
 
 ### Test TTS
+
 ```bash
 curl -X POST http://localhost:5000/api/tts/test \
   -H "Content-Type: application/json" \
@@ -117,6 +122,7 @@ python3 -c "from tts_service import TTSService; tts = TTSService(); voices = tts
 ```
 
 Then set your preferred voice in `.env`:
+
 ```bash
 TTS_VOICE=english
 ```
@@ -125,14 +131,14 @@ TTS_VOICE=english
 
 ## 📊 Speed Guide
 
-| Speed (WPM) | Description | Use Case |
-|-------------|-------------|----------|
-| 100 | Very Slow | Beginners, learning |
-| 125 | Slow | Clear announcements |
-| 150 | Normal | **Default, recommended** |
-| 175 | Fast | Experienced players |
-| 200 | Very Fast | Quick games |
-| 250 | Maximum | Speed tournaments |
+| Speed (WPM) | Description | Use Case                 |
+| ----------- | ----------- | ------------------------ |
+| 100         | Very Slow   | Beginners, learning      |
+| 125         | Slow        | Clear announcements      |
+| 150         | Normal      | **Default, recommended** |
+| 175         | Fast        | Experienced players      |
+| 200         | Very Fast   | Quick games              |
+| 250         | Maximum     | Speed tournaments        |
 
 ---
 
@@ -146,6 +152,7 @@ python3 test_tts_simple.py
 ```
 
 This will:
+
 - ✓ Verify TTS is initialized
 - ✓ Test speech output
 - ✓ Test speed changes
@@ -158,18 +165,23 @@ This will:
 ### TTS Not Speaking
 
 1. **Check if enabled:**
+
    ```bash
    curl http://localhost:5000/api/tts/config
    ```
+
    Make sure `"enabled": true`
 
 2. **Check .env file:**
+
    ```bash
    cat .env | grep TTS
    ```
+
    Verify `TTS_ENABLED=true`
 
 3. **Test TTS directly:**
+
    ```bash
    python3 test_tts_simple.py
    ```
@@ -177,6 +189,7 @@ This will:
 ### Audio Output Issues
 
 If you see "aplay: not found" warnings:
+
 - This is normal in headless environments
 - TTS is still working, just no audio device available
 - On systems with audio, install: `sudo apt-get install alsa-utils`
@@ -192,6 +205,7 @@ If you see "aplay: not found" warnings:
 ## 📝 Examples
 
 ### Example 1: Slow Speed for Beginners
+
 ```bash
 # Edit .env
 TTS_SPEED=100
@@ -203,6 +217,7 @@ curl -X POST http://localhost:5000/api/tts/config \
 ```
 
 ### Example 2: Fast Speed for Tournaments
+
 ```bash
 # Edit .env
 TTS_SPEED=200
@@ -214,6 +229,7 @@ curl -X POST http://localhost:5000/api/tts/config \
 ```
 
 ### Example 3: Disable TTS Temporarily
+
 ```bash
 curl -X POST http://localhost:5000/api/tts/config \
   -H "Content-Type: application/json" \
@@ -221,6 +237,7 @@ curl -X POST http://localhost:5000/api/tts/config \
 ```
 
 ### Example 4: Custom Voice
+
 ```bash
 # First, find available voices
 python3 -c "from tts_service import TTSService; tts = TTSService(); [print(v['name']) for v in tts.get_available_voices()]"

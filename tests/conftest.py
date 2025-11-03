@@ -7,12 +7,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.app.app import app as flask_app
+
 # Disable TTS during tests to avoid timing issues
 os.environ["TTS_ENABLED"] = "false"
 # Use in-memory SQLite for tests
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
-
-from app import app
+# Enable authentication for tests to verify auth decorators work correctly
+os.environ["AUTH_DISABLED"] = "false"
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -57,11 +59,18 @@ def sample_score_data():
 
 
 @pytest.fixture
+def app():
+    """Flask app fixture for pytest-flask and tests."""
+    flask_app.config["TESTING"] = True
+    return flask_app
+
+
+@pytest.fixture
 def app_client():
     """Flask test client."""
 
-    app.config["TESTING"] = True
-    with app.test_client() as client:
+    flask_app.config["TESTING"] = True
+    with flask_app.test_client() as client:
         yield client
 
 
@@ -82,7 +91,7 @@ def mock_rabbitmq_config():
 @pytest.fixture
 def mock_database_service():
     """Mock DatabaseService for testing."""
-    with patch("game_manager.DatabaseService") as mock_db:
+    with patch("src.app.game_manager.DatabaseService") as mock_db:
         mock_instance = MagicMock()
         mock_instance.initialize_database = MagicMock()
         mock_instance.start_new_game = MagicMock()
@@ -98,8 +107,19 @@ def mock_database_service():
 @pytest.fixture
 def in_memory_db():
     """Create an in-memory database for testing."""
-    from database_service import DatabaseService
+    from src.core.database_service import DatabaseService
 
     db_service = DatabaseService("sqlite:///:memory:")
     db_service.initialize_database()
     return db_service
+
+
+@pytest.fixture
+def player_ids_with_db():
+    """Helper to create player dicts with database IDs."""
+
+    def _create_players(names):
+        """Create player objects with db_ids for testing."""
+        return [{"db_id": i + 1, "name": name} for i, name in enumerate(names)]
+
+    return _create_players
