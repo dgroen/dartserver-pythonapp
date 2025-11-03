@@ -8,6 +8,7 @@ from src.core.tts_service import TTSService
 from src.games.game_301 import Game301
 from src.games.game_cricket import GameCricket
 from src.games.game_round_the_clock import GameRoundTheClock
+from src.games.game_round_the_clock_double import GameRoundTheClockDouble
 
 
 class GameManager:
@@ -82,7 +83,8 @@ class GameManager:
         Start a new game
 
         Args:
-            game_type: Type of game ('301', '401', '501', 'cricket', 'round_the_clock')
+            game_type: Type of game ('301', '401', '501', 'cricket', 'round_the_clock',
+            'round_the_clock_double')
             player_names: List of player names (DEPRECATED - use player_ids instead)
             player_ids: List of player database IDs or list of player dicts
                 with 'db_id' key
@@ -129,6 +131,9 @@ class GameManager:
             self.start_score = 0
         elif self.game_type == "round_the_clock":
             self.game = GameRoundTheClock(self.players)
+            self.start_score = 0
+        elif self.game_type == "round_the_clock_double":
+            self.game = GameRoundTheClockDouble(self.players)
             self.start_score = 0
         else:
             # Default to 301, but support 401, 501

@@ -379,6 +379,66 @@ header h1 {
     animation: rtc-blink 1s ease-in-out infinite;
 }
 
+/* Realistic SVG Dartboard */
+.rtc-dartboard-container {
+    display: flex;
+    justify-content: center;
+    margin: 20px auto;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    border-radius: 12px;
+    max-width: 450px;
+}
+
+.rtc-dartboard-svg {
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.5));
+}
+
+.rtc-current-segment {
+    animation: rtc-segment-pulse 1s ease-in-out infinite;
+    filter: drop-shadow(0 0 5px rgba(0, 206, 209, 0.8));
+}
+
+@keyframes rtc-segment-pulse {
+    0%, 100% {
+        opacity: 1;
+        filter: drop-shadow(0 0 5px rgba(0, 206, 209, 0.8));
+    }
+    50% {
+        opacity: 0.7;
+        filter: drop-shadow(0 0 15px rgba(0, 206, 209, 1));
+    }
+}
+
+.rtc-current-number {
+    animation: rtc-number-pulse 1s ease-in-out infinite;
+}
+
+@keyframes rtc-number-pulse {
+    0%, 100% {
+        font-size: 18px;
+    }
+    50% {
+        font-size: 20px;
+    }
+}
+
+.rtc-current-bull {
+    animation: rtc-bull-pulse 1s ease-in-out infinite;
+}
+
+@keyframes rtc-bull-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
 .rtc-bull-indicator {
     margin-top: 12px;
     padding: 12px;
