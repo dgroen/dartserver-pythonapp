@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # Import our models
 from dotenv import load_dotenv
 
-from database_models import Base
+from src.core.database_models import Base
 
 # Load environment variables
 load_dotenv()

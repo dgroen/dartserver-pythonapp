@@ -51,7 +51,7 @@ dartserver-pythonapp/
 
 4. **.gitignore**
    - Updated to ignore build artifacts while preserving structure
-   - Added docs/build/ and docs/source/* patterns
+   - Added docs/build/ and docs/source/\* patterns
    - Preserved .gitkeep files
 
 ### Files Created
@@ -68,6 +68,7 @@ dartserver-pythonapp/
 ### Old Files Cleaned Up
 
 The following old files/directories were removed:
+
 - `htmlcov/`, `htmlcov-py310/`, `htmlcov-py311/`, `htmlcov-py312/`
 - `coverage/`
 - `coverage.xml`, `coverage.json`, `coverage-py*.xml`

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from rabbitmq_consumer import RabbitMQConsumer
+from src.core.rabbitmq_consumer import RabbitMQConsumer
 
 
 @pytest.fixture

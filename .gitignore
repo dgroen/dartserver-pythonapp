@@ -33,6 +33,8 @@ ENV/
 
 # Environment variables
 .env
+.env.dev
+*.db
 
 # IDE
 .vscode/
@@ -59,3 +61,8 @@ docs/source/*
 dartserver-pythonapp.code-workspace
 .env_bu
 .zencoder/rules/repo.md
+node_modules/.cache
+docker-backups
+.env____
+.venv-test/
+wso2is-7-config

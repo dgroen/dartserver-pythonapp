@@ -119,7 +119,7 @@
 <body>
     <div class="container">
         <h1>🎯 Darts Game - Auto Refresh Test Page</h1>
-        
+
         <div id="connection-status" class="status disconnected">
             ⚠️ Disconnected from server
         </div>
@@ -189,10 +189,10 @@
             updateCount++;
             console.log('Game state update received:', state);
             addLog(`🔄 Game state updated (Update #${updateCount})`, 'event');
-            
+
             // Update the display
             gameStateDisplay.textContent = JSON.stringify(state, null, 2);
-            
+
             // Log key information
             if (state.game_type) {
                 addLog(`   Game Type: ${state.game_type.toUpperCase()}`);
@@ -287,10 +287,10 @@
             const multipliers = ['SINGLE', 'DOUBLE', 'TRIPLE'];
             const score = scores[Math.floor(Math.random() * scores.length)];
             const multiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
-            
+
             const mult = multiplier === 'TRIPLE' ? 3 : multiplier === 'DOUBLE' ? 2 : 1;
             addLog(`Submitting score: ${multiplier} ${score} (${score * mult} points)...`);
-            
+
             fetch('/api/score', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

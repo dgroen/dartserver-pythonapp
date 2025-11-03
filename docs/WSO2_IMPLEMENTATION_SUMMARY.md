@@ -9,6 +9,7 @@ This document summarizes the implementation of WSO2 Identity Server and API Mana
 ### 1. API Gateway Service (`api_gateway.py`)
 
 A new Flask-based API Gateway service that:
+
 - Validates OAuth2/JWT tokens from WSO2 Identity Server
 - Provides REST API endpoints for score submission, game management, and player management
 - Publishes validated messages to RabbitMQ
@@ -16,6 +17,7 @@ A new Flask-based API Gateway service that:
 - Provides comprehensive error handling and logging
 
 **Key Features:**
+
 - JWT validation using JWKS or introspection
 - Request validation and sanitization
 - RabbitMQ message publishing with automatic reconnection
@@ -25,12 +27,14 @@ A new Flask-based API Gateway service that:
 ### 2. Docker Infrastructure
 
 **New Files:**
+
 - `docker-compose-wso2.yml`: Complete stack with WSO2 IS, WSO2 APIM, API Gateway, RabbitMQ, and Darts App
 - `Dockerfile.gateway`: Docker image for API Gateway service
 - `requirements-gateway.txt`: Python dependencies for API Gateway
 - `nginx/nginx.conf`: Reverse proxy configuration with SSL and rate limiting
 
 **Services Included:**
+
 - WSO2 Identity Server (Port 9443)
 - WSO2 API Manager (Ports 9444, 8280, 8243)
 - API Gateway (Port 8080)
@@ -41,6 +45,7 @@ A new Flask-based API Gateway service that:
 ### 3. Documentation
 
 **Comprehensive Guides:**
+
 - `docs/WSO2_SETUP_GUIDE.md`: Step-by-step setup instructions
 - `docs/WSO2_INTEGRATION.md`: Integration architecture and details
 - `docs/API_GATEWAY_README.md`: API Gateway documentation
@@ -50,6 +55,7 @@ A new Flask-based API Gateway service that:
 ### 4. Client Examples
 
 **Python Client (`examples/dartboard_client.py`):**
+
 - OAuth2 authentication
 - Token management with automatic renewal
 - Score submission
@@ -57,6 +63,7 @@ A new Flask-based API Gateway service that:
 - Health checks
 
 **Arduino/ESP32 Example:**
+
 - Included in WSO2_INTEGRATION.md
 - WiFi connectivity
 - OAuth2 token acquisition
@@ -65,6 +72,7 @@ A new Flask-based API Gateway service that:
 ### 5. Automation Scripts
 
 **Startup Script (`start-wso2-stack.sh`):**
+
 - Automated service startup
 - Health checks
 - SSL certificate generation
@@ -141,23 +149,24 @@ External Apps → WSO2 APIM → WSO2 IS → API Gateway → RabbitMQ → Flask A
 
 ### Public Endpoints
 
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/health` | GET | No | Health check |
+| Endpoint  | Method | Auth | Description  |
+| --------- | ------ | ---- | ------------ |
+| `/health` | GET    | No   | Health check |
 
 ### Protected Endpoints
 
-| Endpoint | Method | Scope | Description |
-|----------|--------|-------|-------------|
-| `/api/v1/scores` | POST | score:write | Submit score |
-| `/api/v1/games` | POST | game:write | Create game |
-| `/api/v1/players` | POST | player:write | Add player |
+| Endpoint          | Method | Scope        | Description  |
+| ----------------- | ------ | ------------ | ------------ |
+| `/api/v1/scores`  | POST   | score:write  | Submit score |
+| `/api/v1/games`   | POST   | game:write   | Create game  |
+| `/api/v1/players` | POST   | player:write | Add player   |
 
 ## Message Flow
 
 ### Score Submission Flow
 
 1. **Client authenticates with WSO2 IS:**
+
    ```
    POST /oauth2/token
    grant_type=client_credentials
@@ -166,6 +175,7 @@ External Apps → WSO2 APIM → WSO2 IS → API Gateway → RabbitMQ → Flask A
    ```
 
 2. **WSO2 IS returns JWT token:**
+
    ```json
    {
      "access_token": "eyJhbGc...",
@@ -174,6 +184,7 @@ External Apps → WSO2 APIM → WSO2 IS → API Gateway → RabbitMQ → Flask A
    ```
 
 3. **Client submits score to API Gateway:**
+
    ```
    POST /api/v1/scores
    Authorization: Bearer eyJhbGc...
@@ -184,6 +195,7 @@ External Apps → WSO2 APIM → WSO2 IS → API Gateway → RabbitMQ → Flask A
    ```
 
 4. **API Gateway validates token and publishes to RabbitMQ:**
+
    ```
    Exchange: darts_exchange
    Routing Key: darts.scores.api
@@ -191,11 +203,13 @@ External Apps → WSO2 APIM → WSO2 IS → API Gateway → RabbitMQ → Flask A
    ```
 
 5. **Flask App consumes message and processes:**
+
    ```
    RabbitMQ Consumer → Game Manager → Game Logic → WebSocket
    ```
 
 6. **Web clients receive update via WebSocket:**
+
    ```
    Event: game_state
    Data: {updated game state}
@@ -269,11 +283,13 @@ SECRET_KEY=<generate_strong_random_key>
 ### Quick Start (5 Steps)
 
 1. **Start the stack:**
+
    ```bash
    ./start-wso2-stack.sh
    ```
 
 2. **Wait for services to start (5-10 minutes):**
+
    ```bash
    docker-compose -f docker-compose-wso2.yml ps
    ```
@@ -291,13 +307,14 @@ SECRET_KEY=<generate_strong_random_key>
    - Generate keys
 
 5. **Test the API:**
+
    ```bash
    # Get token
    curl -k -X POST https://localhost:9443/oauth2/token \
      -d "grant_type=client_credentials" \
      -d "client_id=YOUR_ID" \
      -d "client_secret=YOUR_SECRET"
-   
+
    # Submit score
    curl -X POST http://localhost:8080/api/v1/scores \
      -H "Authorization: Bearer YOUR_TOKEN" \
@@ -310,11 +327,13 @@ SECRET_KEY=<generate_strong_random_key>
 ### Manual Testing
 
 1. **Health Check:**
+
    ```bash
    curl http://localhost:8080/health
    ```
 
 2. **Score Submission:**
+
    ```bash
    # Get token first
    TOKEN=$(curl -k -X POST https://localhost:9443/oauth2/token \
@@ -322,7 +341,7 @@ SECRET_KEY=<generate_strong_random_key>
      -d "client_id=YOUR_ID" \
      -d "client_secret=YOUR_SECRET" \
      | jq -r .access_token)
-   
+
    # Submit score
    curl -X POST http://localhost:8080/api/v1/scores \
      -H "Authorization: Bearer $TOKEN" \
@@ -331,13 +350,13 @@ SECRET_KEY=<generate_strong_random_key>
    ```
 
 3. **Check RabbitMQ:**
-   - Open http://localhost:15672
+   - Open <http://localhost:15672>
    - Login: guest/guest
    - Check exchanges and queues
    - Verify messages are being published
 
 4. **Check Darts App:**
-   - Open http://localhost:5000
+   - Open <http://localhost:5000>
    - Verify score appears on game board
 
 ### Automated Testing
@@ -363,9 +382,10 @@ assert result["status"] == "success"
 
 ### WSO2 API Manager Analytics
 
-Access at: https://localhost:9444/analytics
+Access at: <https://localhost:9444/analytics>
 
 **Metrics Available:**
+
 - API usage statistics
 - Response times
 - Error rates
@@ -375,12 +395,14 @@ Access at: https://localhost:9444/analytics
 ### Custom Monitoring
 
 **Recommended Tools:**
+
 - Prometheus for metrics
 - Grafana for dashboards
 - ELK stack for logs
 - Alertmanager for alerts
 
 **Key Metrics to Monitor:**
+
 - API request rate
 - Error rate
 - Response time (p50, p95, p99)
@@ -438,12 +460,14 @@ docker exec darts-rabbitmq rabbitmq-diagnostics ping
 ## Migration Path
 
 ### Phase 1: API Gateway (Week 1)
+
 - Deploy API Gateway service
 - Configure RabbitMQ publisher
 - Test score submission flow
 - No client changes required yet
 
 ### Phase 2: WSO2 IS Setup (Week 2)
+
 - Deploy WSO2 Identity Server
 - Configure OAuth2 provider
 - Create service accounts
@@ -451,6 +475,7 @@ docker exec darts-rabbitmq rabbitmq-diagnostics ping
 - Test authentication flow
 
 ### Phase 3: WSO2 APIM Integration (Week 3)
+
 - Deploy WSO2 API Manager
 - Publish APIs to developer portal
 - Configure rate limiting
@@ -458,6 +483,7 @@ docker exec darts-rabbitmq rabbitmq-diagnostics ping
 - Create documentation
 
 ### Phase 4: Client Migration (Week 4)
+
 - Update electronic dartboard firmware
 - Implement OAuth2 flow in clients
 - Update web clients (optional)
@@ -467,6 +493,7 @@ docker exec darts-rabbitmq rabbitmq-diagnostics ping
 ## Benefits
 
 ### Security
+
 - ✅ Centralized authentication
 - ✅ Token-based authorization
 - ✅ Role-based access control
@@ -474,12 +501,14 @@ docker exec darts-rabbitmq rabbitmq-diagnostics ping
 - ✅ Rate limiting
 
 ### Scalability
+
 - ✅ Horizontal scaling of API Gateway
 - ✅ Load balancing support
 - ✅ Caching capabilities
 - ✅ Message queue decoupling
 
 ### Manageability
+
 - ✅ Developer portal
 - ✅ API documentation
 - ✅ Usage analytics
@@ -487,6 +516,7 @@ docker exec darts-rabbitmq rabbitmq-diagnostics ping
 - ✅ Version management
 
 ### Developer Experience
+
 - ✅ Self-service API access
 - ✅ Interactive API console
 - ✅ Code examples
@@ -525,6 +555,7 @@ docker exec darts-rabbitmq rabbitmq-diagnostics ping
 ## Support & Resources
 
 ### Documentation
+
 - [WSO2 Setup Guide](./WSO2_SETUP_GUIDE.md)
 - [WSO2 Integration](./WSO2_INTEGRATION.md)
 - [API Gateway README](./API_GATEWAY_README.md)
@@ -532,12 +563,14 @@ docker exec darts-rabbitmq rabbitmq-diagnostics ping
 - [Architecture Overview](./ARCHITECTURE.md)
 
 ### External Resources
+
 - [WSO2 IS Documentation](https://is.docs.wso2.com/)
 - [WSO2 APIM Documentation](https://apim.docs.wso2.com/)
 - [OAuth 2.0 Specification](https://oauth.net/2/)
 - [JWT.io](https://jwt.io/)
 
 ### Getting Help
+
 1. Check troubleshooting sections
 2. Review service logs
 3. Consult documentation

@@ -2,6 +2,8 @@
 
 This document describes the testing setup and how to run tests for the dartserver-pythonapp.
 
+> **📘 For test environment configuration**, see [TEST_CONFIGURATION.md](TEST_CONFIGURATION.md) for detailed setup instructions including SSL certificates, test database (dartsdbtest), and WSO2 configuration.
+
 ## Table of Contents
 
 - [Overview](#overview)

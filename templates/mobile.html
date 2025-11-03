@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1e3c72">
+    <meta name="description" content="Mobile app for dartboard connectivity and game management">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/icons/icon-512x512.png">
+    <title>🎯 Darts Mobile App</title>
+    <link rel="stylesheet" href="/static/css/mobile.css">
+</head>
+<body>
+    <div class="mobile-app">
+        <!-- Header -->
+        <header class="mobile-header">
+            <h1>🎯 Darts App</h1>
+            <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+        </header>
+
+        <!-- Menu Overlay -->
+        <div class="menu-overlay" id="menuOverlay"></div>
+
+        <!-- Navigation Menu -->
+        <nav class="mobile-nav" id="mobileNav">
+            <ul>
+                <li><a href="/mobile/gameplay" class="nav-item">🎮 Gameplay</a></li>
+                <li><a href="/mobile/gamemaster" class="nav-item">👑 Game Master</a></li>
+                <li><a href="/mobile/dartboard-setup" class="nav-item">🎯 Dartboard Setup</a></li>
+                <li><a href="/mobile/results" class="nav-item">📊 Game Results</a></li>
+                <li><a href="/mobile/account" class="nav-item">⚙️ Account</a></li>
+                <li><a href="/mobile/hotspot" class="nav-item">📡 Hotspot Control</a></li>
+                <li><a href="/logout" class="nav-item">🚪 Logout</a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="mobile-content">
+            <div class="welcome-section">
+                <h2>Welcome to Darts Mobile</h2>
+                <p>Your complete dartboard management solution</p>
+            </div>
+
+            <div class="quick-actions">
+                <h3>Quick Actions</h3>
+                <div class="action-grid">
+                    <a href="/mobile/gameplay" class="action-card">
+                        <div class="action-icon">🎮</div>
+                        <div class="action-title">Start Game</div>
+                        <div class="action-desc">Begin playing darts</div>
+                    </a>
+
+                    <a href="/mobile/gamemaster" class="action-card">
+                        <div class="action-icon">👑</div>
+                        <div class="action-title">Game Master</div>
+                        <div class="action-desc">Control games & players</div>
+                    </a>
+
+                    <a href="/mobile/dartboard-setup" class="action-card">
+                        <div class="action-icon">🎯</div>
+                        <div class="action-title">Setup Dartboard</div>
+                        <div class="action-desc">Configure your dartboard</div>
+                    </a>
+
+                    <a href="/mobile/hotspot" class="action-card">
+                        <div class="action-icon">📡</div>
+                        <div class="action-title">Hotspot</div>
+                        <div class="action-desc">Manage connections</div>
+                    </a>
+
+                    <a href="/mobile/results" class="action-card">
+                        <div class="action-icon">📊</div>
+                        <div class="action-title">Results</div>
+                        <div class="action-desc">View game history</div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="status-section">
+                <h3>Connection Status</h3>
+                <div class="status-card">
+                    <div class="status-indicator" id="connectionStatus">
+                        <span class="status-dot offline"></span>
+                        <span class="status-text">Checking connection...</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="mobile-footer">
+            <p>&copy; 2025 Darts Game System</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/mobile.js"></script>
+    <script>
+        // Service Worker Registration for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/service-worker.js')
+                .then(reg => console.log('✅ Service Worker registered'))
+                .catch(err => console.log('❌ Service Worker registration failed:', err));
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            // Show install button/banner if needed
+            console.log('💾 PWA install prompt available');
+        });
+
+        // Menu Toggle Functionality
+        const menuToggle = document.getElementById('menuToggle');
+        const mobileNav = document.getElementById('mobileNav');
+        const menuOverlay = document.getElementById('menuOverlay');
+
+        function toggleMenu() {
+            mobileNav.classList.toggle('active');
+            menuOverlay.classList.toggle('active');
+        }
+
+        menuToggle.addEventListener('click', toggleMenu);
+        menuOverlay.addEventListener('click', toggleMenu);
+
+        // Close menu when clicking a nav item
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                mobileNav.classList.remove('active');
+                menuOverlay.classList.remove('active');
+            });
+        });
+
+        // Connection Status Checker
+        async function checkConnection() {
+            const statusDot = document.querySelector('.status-dot');
+            const statusText = document.querySelector('.status-text');
+
+            try {
+                const response = await fetch('/health', {
+                    method: 'GET',
+                    cache: 'no-cache'
+                });
+
+                if (response.ok) {
+                    statusDot.className = 'status-dot online';
+                    statusText.textContent = 'Connected to server';
+                } else {
+                    statusDot.className = 'status-dot offline';
+                    statusText.textContent = 'Server error';
+                }
+            } catch (error) {
+                statusDot.className = 'status-dot offline';
+                statusText.textContent = 'Disconnected';
+            }
+        }
+
+        // Check connection on load and periodically
+        checkConnection();
+        setInterval(checkConnection, 10000); // Check every 10 seconds
+
+        // Update status on online/offline events
+        window.addEventListener('online', () => {
+            checkConnection();
+        });
+
+        window.addEventListener('offline', () => {
+            const statusDot = document.querySelector('.status-dot');
+            const statusText = document.querySelector('.status-text');
+            statusDot.className = 'status-dot offline';
+            statusText.textContent = 'No internet connection';
+        });
+    </script>
+</body>
+</html>
