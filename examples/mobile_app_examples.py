@@ -153,11 +153,18 @@ def test_api_endpoints_unauthenticated():
 
     for method, path, name in endpoints:
         try:
+            response = None
             if method == "GET":
                 response = requests.get(f"{BASE_URL}{path}", timeout=5, allow_redirects=False)
-            if response.status_code in [401, 302, 403]:
-                print_success(f"{name:25} - Properly secured ({response.status_code})")
+            elif method == "POST":
+                response = requests.post(f"{BASE_URL}{path}", timeout=5, allow_redirects=False)
             else:
+                print_error(f"{name:25} - Unsupported method {method}")
+                continue
+
+            if response and response.status_code in [401, 302, 403]:
+                print_success(f"{name:25} - Properly secured ({response.status_code})")
+            elif response:
                 print_error(f"{name:25} - Unexpected status {response.status_code}")
         except requests.RequestException as e:
             print_error(f"{name:25} - Error: {e}")
