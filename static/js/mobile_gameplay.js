@@ -10,8 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Tab switching
     document.querySelectorAll('.tab-button').forEach(button => {
         button.addEventListener('click', (event) => {
-            const tabName = button.getAttribute('data-tab');
-            switchTab(tabName, event.target);
+            const tabName = event.currentTarget.getAttribute('data-tab');
+            switchTab(tabName, event.currentTarget);
         });
     });
 });
@@ -36,13 +36,19 @@ async function apiRequest(url, options = {}) {
 }
 
 // Tab switching functionality
-function switchTab(tabName, buttonElement) {
+function switchTab(tabName, buttonElement = null) {
     // Update active tab button
     document.querySelectorAll('.tab-button').forEach(btn => {
         btn.classList.remove('active');
     });
     if (buttonElement) {
         buttonElement.classList.add('active');
+    } else {
+        // Find and activate the correct button if not provided
+        const targetButton = document.querySelector(`[data-tab="${tabName}"]`);
+        if (targetButton) {
+            targetButton.classList.add('active');
+        }
     }
 
     // Update active tab content
@@ -212,7 +218,7 @@ function createPlayerCard(player, index, state) {
     }
 
     // Add winner class if this player won
-    if (state.is_winner && index === state.current_player) {
+    if (playerData.is_winner || (state.winner_index !== undefined && index === state.winner_index)) {
         card.classList.add('winner');
     }
 
@@ -341,7 +347,8 @@ function createMobileDartboard(playerData, gameType) {
         const startAngle = (index - 0.5) * (360 / 20) - 90;
         const endAngle = (index + 0.5) * (360 / 20) - 90;
         
-        const isCompleted = playerData.current_target < num && playerData.current_target !== 0;
+        // In Round the Clock, you go from 1->20 then bull, so completed means current_target > num
+        const isCompleted = playerData.current_target > num && playerData.current_target !== 0;
         const isCurrent = playerData.current_target === num;
         
         createMobileSegment(svg, centerX, centerY, innerRadius, outerRadius, startAngle, endAngle, num, isCompleted, isCurrent, index);
@@ -468,10 +475,8 @@ function playTTSAudio(audioBase64, text) {
     try {
         // Decode base64 audio data
         const binaryString = atob(audioBase64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
+        // More efficient byte array conversion
+        const bytes = Uint8Array.from(binaryString, char => char.charCodeAt(0));
 
         // Create blob from audio data
         const blob = new Blob([bytes], { type: 'audio/mpeg' });
