@@ -2,6 +2,22 @@
 
 A Python web application for managing darts games (301 and Cricket) with RabbitMQ integration, real-time updates, and enterprise-grade authentication.
 
+## 📱 Mobile Progressive Web App (PWA)
+
+**NEW!** We now have a complete mobile app for dartboard connectivity and game management!
+
+- ✅ **Install on your phone** - Add to home screen (iOS & Android)
+- ✅ **Connect dartboards** - Via mobile hotspot with automatic scoring
+- ✅ **Play games** - Real-time gameplay with live updates
+- ✅ **Control games** - Full game master controls
+- ✅ **Works offline** - Core features available without internet
+
+**Get Started:** See **[MOBILE_APP.md](MOBILE_APP.md)** for complete mobile app documentation.
+
+**Quick Access:** `http://localhost:5000/mobile`
+
+---
+
 ## Features
 
 ### Game Features
