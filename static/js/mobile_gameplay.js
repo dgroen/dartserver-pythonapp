@@ -212,6 +212,12 @@ function createPlayerCard(player, index, state) {
     const card = document.createElement('div');
     card.className = 'mobile-player-card';
 
+    // Get player data from game state first
+    let playerData = player;
+    if (state.game_data && state.game_data.players && state.game_data.players[index]) {
+        playerData = { ...player, ...state.game_data.players[index] };
+    }
+
     // Add active class if it's this player's turn
     if (index === state.current_player && state.is_started && !state.is_paused) {
         card.classList.add('active');
@@ -220,12 +226,6 @@ function createPlayerCard(player, index, state) {
     // Add winner class if this player won
     if (playerData.is_winner || (state.winner_index !== undefined && index === state.winner_index)) {
         card.classList.add('winner');
-    }
-
-    // Get player data from game state
-    let playerData = player;
-    if (state.game_data && state.game_data.players && state.game_data.players[index]) {
-        playerData = { ...player, ...state.game_data.players[index] };
     }
 
     // Player header
