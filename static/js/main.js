@@ -449,7 +449,7 @@ function createRing(svg, dartboardNumbers, index, startAngle, endAngle, num, rin
     path.setAttribute('fill', color);
     path.setAttribute('opacity', opacity);
     path.setAttribute('stroke', '#333');
-    path.setAttribute('stroke-width', '0.5');
+    path.setAttribute('stroke-width', '2');
     
     if (isCurrent) {
         path.setAttribute('class', 'rtc-current-segment');
