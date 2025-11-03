@@ -1,18 +1,17 @@
-// Mobile Gameplay JavaScript
+// Mobile Gameplay JavaScript - Enhanced version matching web app functionality
 
 let socket;
-let currentGame = null;
+let currentGameState = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeSocket();
-    loadCurrentGame();
     loadActiveGames();
 
     // Tab switching
     document.querySelectorAll('.tab-button').forEach(button => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', (event) => {
             const tabName = button.getAttribute('data-tab');
-            switchTab(tabName);
+            switchTab(tabName, event.target);
         });
     });
 });
@@ -37,12 +36,14 @@ async function apiRequest(url, options = {}) {
 }
 
 // Tab switching functionality
-function switchTab(tabName) {
+function switchTab(tabName, buttonElement) {
     // Update active tab button
     document.querySelectorAll('.tab-button').forEach(btn => {
         btn.classList.remove('active');
     });
-    event.target.classList.add('active');
+    if (buttonElement) {
+        buttonElement.classList.add('active');
+    }
 
     // Update active tab content
     document.querySelectorAll('.tab-content').forEach(content => {
@@ -63,44 +64,35 @@ function initializeSocket() {
         console.log('Connected to game server');
     });
 
-    socket.on('game_update', (data) => {
-        updateGameDisplay(data);
-    });
-
-    socket.on('score_update', (data) => {
-        updateScoreDisplay(data);
-    });
-
-    socket.on('player_change', (data) => {
-        updateCurrentPlayer(data);
-    });
-
-    socket.on('game_state', (data) => {
-        handleGameState(data);
-    });
-
-    socket.on('game_end', (data) => {
-        handleGameEnd(data);
-    });
-
     socket.on('disconnect', () => {
         console.log('Disconnected from game server');
     });
-}
 
-async function loadCurrentGame() {
-    try {
-        const response = await apiRequest('/api/game/current');
-        if (response.game) {
-            currentGame = response.game;
-            displayGame(response.game);
-        } else {
-            displayNoGame();
-        }
-    } catch (error) {
-        console.error('Failed to load current game:', error);
-        displayNoGame();
-    }
+    socket.on('game_state', (state) => {
+        console.log('Game state update:', state);
+        currentGameState = state;
+        updateGameDisplay(state);
+    });
+
+    socket.on('play_sound', (data) => {
+        console.log('Play sound:', data.sound);
+        // Sound playback can be added here if needed for mobile
+    });
+
+    socket.on('play_tts', (data) => {
+        console.log('Play TTS:', data.text);
+        playTTSAudio(data.audio, data.text);
+    });
+
+    socket.on('message', (data) => {
+        console.log('Message:', data.text);
+        showMessage(data.text);
+    });
+
+    socket.on('big_message', (data) => {
+        console.log('Big message:', data.text);
+        showBigMessage(data.text);
+    });
 }
 
 // Load active games
@@ -149,7 +141,7 @@ function displayActiveGames(games) {
         return `
             <div class="result-card">
                 <div class="result-header">
-                    <span class="result-type">${game.game_type}</span>
+                    <span class="result-type">${formatGameType(game.game_type)}</span>
                     <span class="result-date">Started ${timeAgo}</span>
                 </div>
                 <div class="leaderboard-section">
@@ -163,80 +155,270 @@ function displayActiveGames(games) {
     container.innerHTML = gamesHtml;
 }
 
-function displayGame(game) {
-    document.getElementById('gameStatus').innerHTML = `
-        <div class="status-badge status-active">${game.game_type} - In Progress</div>
-    `;
-
-    if (game.current_player) {
-        document.getElementById('currentPlayerCard').style.display = 'block';
-        document.getElementById('currentPlayerName').textContent = game.current_player.name;
-        document.getElementById('currentPlayerScore').textContent = game.current_player.score;
+function updateGameDisplay(state) {
+    // Update game status
+    const gameStatus = document.getElementById('gameStatus');
+    if (state.is_started) {
+        gameStatus.innerHTML = `
+            <div class="status-badge status-active">${formatGameType(state.game_type)} - ${state.is_paused ? 'Paused' : 'In Progress'}</div>
+        `;
+    } else {
+        gameStatus.innerHTML = `
+            <div class="status-badge">No Active Game</div>
+        `;
     }
 
-    displayScoreboard(game.players);
+    // Update game info card
+    const gameInfoCard = document.getElementById('gameInfoCard');
+    if (state.is_started) {
+        gameInfoCard.style.display = 'block';
+        document.getElementById('gameTypeDisplay').textContent = formatGameType(state.game_type);
+        document.getElementById('gameStatusDisplay').textContent = state.is_paused ? 'Paused' : 'In Progress';
+        document.getElementById('currentThrowDisplay').textContent = `${state.current_throw || 1} / 3`;
+    } else {
+        gameInfoCard.style.display = 'none';
+    }
+
+    // Update throwout advice
+    displayThrowoutAdvice(state.throwout_advice);
+
+    // Update players display
+    displayPlayers(state);
 }
 
-function displayNoGame() {
-    document.getElementById('gameStatus').innerHTML = `
-        <div class="status-badge">No Active Game</div>
-    `;
-    document.getElementById('currentPlayerCard').style.display = 'none';
-    document.getElementById('scoreboardContent').innerHTML = `
-        <p class="empty-state">Start a game to see scores</p>
-    `;
-}
+function displayPlayers(state) {
+    const container = document.getElementById('playersContainer');
 
-function displayScoreboard(players) {
-    if (!players || players.length === 0) {
-        document.getElementById('scoreboardContent').innerHTML = `
-            <p class="empty-state">No players</p>
-        `;
+    if (!state.is_started || !state.players || state.players.length === 0) {
+        container.innerHTML = '<p class="empty-state">No active game</p>';
         return;
     }
 
-    const scoreboardHtml = players.map((player, index) => `
-        <div class="score-row ${player.is_current ? 'active' : ''}">
-            <span>${index + 1}. ${player.name}</span>
-            <span>${player.score}</span>
-        </div>
-    `).join('');
+    container.innerHTML = '';
 
-    document.getElementById('scoreboardContent').innerHTML = scoreboardHtml;
+    state.players.forEach((player, index) => {
+        const playerCard = createPlayerCard(player, index, state);
+        container.appendChild(playerCard);
+    });
 }
 
-function updateGameDisplay(data) {
-    currentGame = data.game;
-    displayGame(data.game);
-}
+function createPlayerCard(player, index, state) {
+    const card = document.createElement('div');
+    card.className = 'mobile-player-card';
 
-function updateScoreDisplay(data) {
-    if (data.throw) {
-        document.getElementById('lastThrow').style.display = 'block';
-        document.getElementById('throwDisplay').textContent = formatThrow(data.throw);
+    // Add active class if it's this player's turn
+    if (index === state.current_player && state.is_started && !state.is_paused) {
+        card.classList.add('active');
     }
 
-    if (currentGame) {
-        displayScoreboard(data.players || currentGame.players);
+    // Add winner class if this player won
+    if (state.is_winner && index === state.current_player) {
+        card.classList.add('winner');
     }
+
+    // Get player data from game state
+    let playerData = player;
+    if (state.game_data && state.game_data.players && state.game_data.players[index]) {
+        playerData = { ...player, ...state.game_data.players[index] };
+    }
+
+    // Player header
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'player-card-header';
+    headerDiv.innerHTML = `
+        <div class="player-name">${player.name}</div>
+        <div class="player-score">${playerData.score || 0}</div>
+    `;
+    card.appendChild(headerDiv);
+
+    // Cricket targets (if cricket game)
+    if (state.game_type === 'cricket' && playerData.targets) {
+        const targetsDiv = createCricketTargets(playerData.targets);
+        card.appendChild(targetsDiv);
+    }
+
+    // Round the Clock targets (if round_the_clock game)
+    if ((state.game_type === 'round_the_clock' || state.game_type === 'round_the_clock_double') && playerData.current_target !== undefined) {
+        const rtcDiv = createRoundTheClockDisplay(playerData, state.game_type);
+        card.appendChild(rtcDiv);
+    }
+
+    return card;
 }
 
-function updateCurrentPlayer(data) {
-    document.getElementById('currentPlayerName').textContent = data.player.name;
-    document.getElementById('currentPlayerScore').textContent = data.player.score;
+function createCricketTargets(targets) {
+    const targetsDiv = document.createElement('div');
+    targetsDiv.className = 'cricket-targets';
 
-    if (currentGame) {
-        displayScoreboard(data.players || currentGame.players);
-    }
+    const cricketNumbers = [15, 16, 17, 18, 19, 20, 25];
+    cricketNumbers.forEach(number => {
+        const targetData = targets[number];
+        if (targetData) {
+            const targetDiv = document.createElement('div');
+            targetDiv.className = 'cricket-target';
+
+            if (targetData.status === 1) {
+                targetDiv.classList.add('open');
+            } else if (targetData.status === 2) {
+                targetDiv.classList.add('closed');
+            }
+
+            const numberDiv = document.createElement('div');
+            numberDiv.className = 'target-number';
+            numberDiv.textContent = number === 25 ? 'B' : number;
+            targetDiv.appendChild(numberDiv);
+
+            const marksDiv = document.createElement('div');
+            marksDiv.className = 'target-marks';
+            marksDiv.textContent = '✓'.repeat(targetData.hits);
+            targetDiv.appendChild(marksDiv);
+
+            targetsDiv.appendChild(targetDiv);
+        }
+    });
+
+    return targetsDiv;
 }
 
-function handleGameState(data) {
-    // Handle game state updates which may include throwout advice
-    if (data.throwout_advice) {
-        displayThrowoutAdvice(data.throwout_advice);
+function createRoundTheClockDisplay(playerData, gameType) {
+    const rtcDiv = document.createElement('div');
+    rtcDiv.className = 'rtc-container';
+
+    // Current target display
+    const currentTargetDiv = document.createElement('div');
+    currentTargetDiv.className = 'rtc-current-target';
+    
+    if (playerData.current_target === 0) {
+        // Player needs to hit the bull
+        if (gameType === 'round_the_clock') {
+            currentTargetDiv.innerHTML = `
+                <div class="rtc-target-label">Current Target:</div>
+                <div class="rtc-target-value bull">BULL</div>
+                <div class="rtc-bull-hits">Bull Hits: ${playerData.bull_hits || 0}/5</div>
+            `;
+        } else {
+            // Round the Clock Double - only double bull counts
+            currentTargetDiv.innerHTML = `
+                <div class="rtc-target-label">Current Target:</div>
+                <div class="rtc-target-value bull">DOUBLE BULL</div>
+            `;
+        }
     } else {
-        hideThrowoutAdvice();
+        currentTargetDiv.innerHTML = `
+            <div class="rtc-target-label">Current Target:</div>
+            <div class="rtc-target-value">${playerData.current_target}</div>
+        `;
     }
+    rtcDiv.appendChild(currentTargetDiv);
+
+    // Create simplified dartboard visualization for mobile
+    const dartboardDiv = createMobileDartboard(playerData, gameType);
+    rtcDiv.appendChild(dartboardDiv);
+    
+    return rtcDiv;
+}
+
+function createMobileDartboard(playerData, gameType) {
+    const container = document.createElement('div');
+    container.className = 'mobile-dartboard-container';
+    
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 350 350');
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', 'auto');
+    svg.className = 'mobile-dartboard-svg';
+    
+    // Dartboard numbers in clockwise order (standard sequence)
+    const dartboardNumbers = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+    
+    const centerX = 175;
+    const centerY = 175;
+    const innerRadius = 50;
+    const outerRadius = 150;
+    
+    // Create segments for each number
+    dartboardNumbers.forEach((num, index) => {
+        const startAngle = (index - 0.5) * (360 / 20) - 90;
+        const endAngle = (index + 0.5) * (360 / 20) - 90;
+        
+        const isCompleted = playerData.current_target < num && playerData.current_target !== 0;
+        const isCurrent = playerData.current_target === num;
+        
+        createMobileSegment(svg, centerX, centerY, innerRadius, outerRadius, startAngle, endAngle, num, isCompleted, isCurrent, index);
+    });
+    
+    // Add bull's eye
+    const bull = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    bull.setAttribute('cx', centerX);
+    bull.setAttribute('cy', centerY);
+    bull.setAttribute('r', '25');
+    bull.setAttribute('fill', playerData.current_target === 0 ? '#FFD700' : '#8B4513');
+    bull.setAttribute('stroke', '#333');
+    bull.setAttribute('stroke-width', '2');
+    if (playerData.current_target === 0) {
+        bull.setAttribute('class', 'rtc-current-bull-mobile');
+    }
+    svg.appendChild(bull);
+    
+    container.appendChild(svg);
+    return container;
+}
+
+function createMobileSegment(svg, cx, cy, innerRadius, outerRadius, startAngle, endAngle, num, isCompleted, isCurrent, index) {
+    const isEvenSegment = index % 2 === 0;
+    const baseColor = isEvenSegment ? '#C8A682' : '#2C2C2C';
+    const highlightColor = '#00CED1';
+    const completedColor = '#555555';
+    
+    const color = isCompleted ? completedColor : (isCurrent ? highlightColor : baseColor);
+    const opacity = isCompleted ? 0.5 : 1;
+    
+    const startRad = (startAngle * Math.PI) / 180;
+    const endRad = (endAngle * Math.PI) / 180;
+    
+    const pathData = describeArcWedgeMobile(cx, cy, innerRadius, outerRadius, startRad, endRad);
+    
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathData);
+    path.setAttribute('fill', color);
+    path.setAttribute('opacity', opacity);
+    path.setAttribute('stroke', '#333');
+    path.setAttribute('stroke-width', '1');
+    
+    svg.appendChild(path);
+    
+    // Add number label
+    const midAngle = (startAngle + endAngle) / 2;
+    const midRad = (midAngle * Math.PI) / 180;
+    const labelRadius = outerRadius + 15;
+    const labelX = cx + labelRadius * Math.cos(midRad);
+    const labelY = cy + labelRadius * Math.sin(midRad);
+    
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', labelX);
+    text.setAttribute('y', labelY);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dy', '0.3em');
+    text.setAttribute('fill', isCurrent ? '#00CED1' : (isCompleted ? '#888' : '#FFF'));
+    text.setAttribute('font-size', '14');
+    text.setAttribute('font-weight', 'bold');
+    text.textContent = num;
+    svg.appendChild(text);
+}
+
+function describeArcWedgeMobile(cx, cy, innerRadius, outerRadius, startAngle, endAngle) {
+    const x1 = cx + innerRadius * Math.cos(startAngle);
+    const y1 = cy + innerRadius * Math.sin(startAngle);
+    const x2 = cx + outerRadius * Math.cos(startAngle);
+    const y2 = cy + outerRadius * Math.sin(startAngle);
+    const x3 = cx + outerRadius * Math.cos(endAngle);
+    const y3 = cy + outerRadius * Math.sin(endAngle);
+    const x4 = cx + innerRadius * Math.cos(endAngle);
+    const y4 = cy + innerRadius * Math.sin(endAngle);
+    
+    const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
+    
+    return `M ${x1} ${y1} L ${x2} ${y2} A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${x3} ${y3} L ${x4} ${y4} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x1} ${y1} Z`;
 }
 
 function displayThrowoutAdvice(advice) {
@@ -251,30 +433,74 @@ function displayThrowoutAdvice(advice) {
     }
 }
 
-function hideThrowoutAdvice() {
-    const adviceElement = document.getElementById('throwoutAdvice');
-    adviceElement.style.display = 'none';
+function showMessage(text) {
+    const messageDisplay = document.getElementById('messageDisplay');
+    if (messageDisplay) {
+        messageDisplay.style.display = 'block';
+        messageDisplay.textContent = text;
+        setTimeout(() => {
+            messageDisplay.style.display = 'none';
+        }, 3000);
+    }
 }
 
-function handleGameEnd(data) {
-    console.log('Game ended');
-
-    setTimeout(() => {
-        loadCurrentGame();
-    }, 3000);
+function showBigMessage(text) {
+    const bigMessage = document.getElementById('bigMessage');
+    const messageDisplay = document.getElementById('messageDisplay');
+    
+    if (bigMessage && messageDisplay) {
+        messageDisplay.style.display = 'block';
+        bigMessage.textContent = text;
+        bigMessage.style.fontSize = '1.5rem';
+        bigMessage.style.fontWeight = 'bold';
+        bigMessage.style.color = 'var(--highlight-color)';
+        
+        setTimeout(() => {
+            if (bigMessage.textContent === text) {
+                messageDisplay.style.display = 'none';
+                bigMessage.textContent = '';
+            }
+        }, 3000);
+    }
 }
 
-function formatThrow(throwData) {
-    if (typeof throwData === 'string') {
-        return throwData;
-    }
+function playTTSAudio(audioBase64, text) {
+    try {
+        // Decode base64 audio data
+        const binaryString = atob(audioBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
 
-    if (throwData.multiplier && throwData.value) {
-        const multiplierText = throwData.multiplier === 2 ? 'Double' : throwData.multiplier === 3 ? 'Triple' : '';
-        return `${multiplierText} ${throwData.value}`;
-    }
+        // Create blob from audio data
+        const blob = new Blob([bytes], { type: 'audio/mpeg' });
+        const audioUrl = URL.createObjectURL(blob);
 
-    return throwData.score || '-';
+        // Create and play audio element
+        const audio = new Audio(audioUrl);
+
+        // Clean up the object URL after playing
+        audio.onended = () => {
+            URL.revokeObjectURL(audioUrl);
+        };
+
+        // Handle errors
+        audio.onerror = (e) => {
+            console.error('TTS audio playback error:', e);
+            URL.revokeObjectURL(audioUrl);
+        };
+
+        // Play the audio
+        audio.play().catch(e => {
+            console.error('TTS audio play failed:', e);
+            URL.revokeObjectURL(audioUrl);
+        });
+
+        console.log(`Playing TTS audio: "${text}"`);
+    } catch (error) {
+        console.error('Error processing TTS audio:', error);
+    }
 }
 
 // Format time ago
@@ -293,4 +519,17 @@ function formatTimeAgo(date) {
     } else {
         return date.toLocaleDateString();
     }
+}
+
+// Format game type for display
+function formatGameType(gameType) {
+    const typeMap = {
+        '301': '301',
+        '401': '401',
+        '501': '501',
+        'cricket': 'Cricket',
+        'round_the_clock': 'Round the Clock',
+        'round_the_clock_double': 'Round the Clock Double'
+    };
+    return typeMap[gameType] || gameType.toUpperCase();
 }

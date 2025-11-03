@@ -49,17 +49,25 @@
                     <div class="status-badge">No Active Game</div>
                 </div>
 
-                <!-- Current Player Card -->
-                <div class="current-player-card" id="currentPlayerCard" style="display: none;">
-                    <div class="card-header">Current Player</div>
-                    <div class="player-name" id="currentPlayerName">-</div>
-                    <div class="player-score" id="currentPlayerScore">-</div>
+                <!-- Game Info -->
+                <div class="game-info-card" id="gameInfoCard" style="display: none;">
+                    <div class="info-row">
+                        <span class="info-label">Game Type:</span>
+                        <span class="info-value" id="gameTypeDisplay">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value" id="gameStatusDisplay">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Current Throw:</span>
+                        <span class="info-value" id="currentThrowDisplay">1 / 3</span>
+                    </div>
                 </div>
 
-                <!-- Last Throw -->
-                <div class="last-throw" id="lastThrow" style="display: none;">
-                    <div class="card-header">Last Throw</div>
-                    <div class="throw-display" id="throwDisplay">-</div>
+                <!-- Message Display -->
+                <div class="message-display" id="messageDisplay" style="display: none;">
+                    <div id="bigMessage" class="big-message"></div>
                 </div>
 
                 <!-- Throw-out Advice -->
@@ -68,12 +76,9 @@
                     <div class="advice-display" id="adviceDisplay">-</div>
                 </div>
 
-                <!-- Scoreboard -->
-                <div class="scoreboard" id="scoreboard">
-                    <div class="card-header">Scoreboard</div>
-                    <div id="scoreboardContent">
-                        <p class="empty-state">Start a game to see scores</p>
-                    </div>
+                <!-- Players Container -->
+                <div class="players-container" id="playersContainer">
+                    <!-- Players will be dynamically added here -->
                 </div>
             </div>
 
