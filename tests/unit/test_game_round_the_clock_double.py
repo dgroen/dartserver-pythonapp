@@ -21,7 +21,7 @@ class TestGameRoundTheClockDouble:
         players = [{"id": 0, "name": "Player 1"}]
         game = GameRoundTheClockDouble(players)
 
-        result = game.process_throw(0, 20, 1, "SINGLE")
+        result = game.process_throw(0, 20, "SINGLE")
         assert result["hit"] is True
         assert result["new_target"] == 19
 
@@ -30,7 +30,7 @@ class TestGameRoundTheClockDouble:
         players = [{"id": 0, "name": "Player 1"}]
         game = GameRoundTheClockDouble(players)
 
-        result = game.process_throw(0, 20, 2, "DOUBLE")
+        result = game.process_throw(0, 20, "DOUBLE")
         assert result["hit"] is True
         assert result["new_target"] == 18
 
@@ -39,7 +39,7 @@ class TestGameRoundTheClockDouble:
         players = [{"id": 0, "name": "Player 1"}]
         game = GameRoundTheClockDouble(players)
 
-        result = game.process_throw(0, 20, 3, "TRIPLE")
+        result = game.process_throw(0, 20, "TRIPLE")
         assert result["hit"] is True
         assert result["new_target"] == 17
 
@@ -48,7 +48,7 @@ class TestGameRoundTheClockDouble:
         players = [{"id": 0, "name": "Player 1"}]
         game = GameRoundTheClockDouble(players)
 
-        result = game.process_throw(0, 10, 1, "SINGLE")
+        result = game.process_throw(0, 10, "SINGLE")
         assert result["hit"] is False
         assert result["new_target"] == 20
 
@@ -60,7 +60,7 @@ class TestGameRoundTheClockDouble:
         # Skip to target 0 (bull needed)
         game.players[0]["current_target"] = 0
 
-        result = game.process_throw(0, 25, 2, "DBLBULL")
+        result = game.process_throw(0, 25, "DBLBULL")
         assert result["hit"] is True
         assert result["winner"] is True
 
@@ -72,7 +72,7 @@ class TestGameRoundTheClockDouble:
         # Skip to target 0 (bull needed)
         game.players[0]["current_target"] = 0
 
-        result = game.process_throw(0, 25, 1, "BULL")
+        result = game.process_throw(0, 25, "BULL")
         assert result["hit"] is False
         assert result["winner"] is False
 
@@ -82,7 +82,7 @@ class TestGameRoundTheClockDouble:
         game = GameRoundTheClockDouble(players)
 
         # Current target is 20, not 0
-        result = game.process_throw(0, 25, 2, "DBLBULL")
+        result = game.process_throw(0, 25, "DBLBULL")
         assert result["hit"] is False
 
     def test_multi_player_independent_progress(self):
@@ -91,9 +91,9 @@ class TestGameRoundTheClockDouble:
         game = GameRoundTheClockDouble(players)
 
         # Player 1 hits 20
-        game.process_throw(0, 20, 1, "SINGLE")
+        game.process_throw(0, 20, "SINGLE")
         # Player 2 hits 20 twice (double)
-        game.process_throw(1, 20, 2, "DOUBLE")
+        game.process_throw(1, 20, "DOUBLE")
 
         assert game.players[0]["current_target"] == 19
         assert game.players[1]["current_target"] == 18
@@ -104,7 +104,7 @@ class TestGameRoundTheClockDouble:
         game = GameRoundTheClockDouble(players)
 
         game.players[0]["current_target"] = 1
-        result = game.process_throw(0, 1, 3, "TRIPLE")
+        result = game.process_throw(0, 1, "TRIPLE")
         assert result["new_target"] == 0
 
     def test_sequence_progression(self):
@@ -115,7 +115,7 @@ class TestGameRoundTheClockDouble:
         # Quickly progress through sequence
         targets = [20, 19, 18, 17, 16]
         for target in targets:
-            result = game.process_throw(0, target, 1, "SINGLE")
+            result = game.process_throw(0, target, "SINGLE")
             assert result["hit"] is True
             assert result["current_target"] == target
 
@@ -124,7 +124,7 @@ class TestGameRoundTheClockDouble:
         players = [{"id": 0, "name": "Player 1"}]
         game = GameRoundTheClockDouble(players)
 
-        result = game.process_throw(5, 20, 1, "SINGLE")
+        result = game.process_throw(5, 20, "SINGLE")
         assert "error" in result
 
     def test_get_player_score(self):
@@ -199,7 +199,7 @@ class TestGameRoundTheClockDouble:
         # With singles, we progress one at a time, so it's predictable
         current_target = 20
         while current_target > 0:
-            result = game.process_throw(0, current_target, 1, "SINGLE")
+            result = game.process_throw(0, current_target, "SINGLE")
             assert result["hit"] is True
             current_target -= 1
 
@@ -207,12 +207,12 @@ class TestGameRoundTheClockDouble:
         assert game.players[0]["current_target"] == 0
 
         # Try single bull - should NOT work (key difference from base variant)
-        result = game.process_throw(0, 25, 1, "BULL")
+        result = game.process_throw(0, 25, "BULL")
         assert result["winner"] is False
         assert result["hit"] is False
         assert game.players[0]["current_target"] == 0
 
         # Try double bull - should win
-        result = game.process_throw(0, 25, 2, "DBLBULL")
+        result = game.process_throw(0, 25, "DBLBULL")
         assert result["winner"] is True
         assert result["hit"] is True

@@ -338,9 +338,9 @@ function createRealisticDartboard(playerData, gameType) {
     container.className = 'rtc-dartboard-container';
     
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', '0 0 400 400');
-    svg.setAttribute('width', '400');
-    svg.setAttribute('height', '400');
+    svg.setAttribute('viewBox', '0 0 450 450');
+    svg.setAttribute('width', '450');
+    svg.setAttribute('height', '450');
     svg.className = 'rtc-dartboard-svg';
     
     // Dartboard numbers in clockwise order (standard sequence)
@@ -359,19 +359,22 @@ function createRealisticDartboard(playerData, gameType) {
             isCompleted = true;
         }
         
-        // Create single ring (first)
-        createRing(svg, dartboardNumbers, index, startAngle, endAngle, num, 'single', isCompleted, isCurrent, 60, 90);
-        
-        // Create triple ring
-        createRing(svg, dartboardNumbers, index, startAngle, endAngle, num, 'triple', isCompleted, isCurrent, 130, 145);
-        
         // Create double ring (outer)
-        createRing(svg, dartboardNumbers, index, startAngle, endAngle, num, 'double', isCompleted, isCurrent, 165, 185);
+        createRing(svg, dartboardNumbers, index, startAngle, endAngle, num, 'double', isCompleted, isCurrent, 170, 185);
+        
+        // Create single ring (outer singles) - wider like inner singles
+        createRing(svg, dartboardNumbers, index, startAngle, endAngle, num, 'single-outer', isCompleted, isCurrent, 135, 170);
+        
+        // Create triple ring - same width as double
+        createRing(svg, dartboardNumbers, index, startAngle, endAngle, num, 'triple', isCompleted, isCurrent, 120, 135);
+        
+        // Create single ring (inner singles) - connects to bull's eye
+        createRing(svg, dartboardNumbers, index, startAngle, endAngle, num, 'single-inner', isCompleted, isCurrent, 16, 120);
     });
     
     // Add outer single ring (between double and edge)
     const outerRingPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    outerRingPath.setAttribute('d', describeArc(200, 200, 190, 0, 360));
+    outerRingPath.setAttribute('d', describeArc(225, 225, 190, 0, 360));
     outerRingPath.setAttribute('fill', 'none');
     outerRingPath.setAttribute('stroke', '#333');
     outerRingPath.setAttribute('stroke-width', '4');
@@ -380,8 +383,8 @@ function createRealisticDartboard(playerData, gameType) {
     // Add bull's eye
     // Outer bull (double bull) - should be glowing if current
     const doubleBull = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    doubleBull.setAttribute('cx', '200');
-    doubleBull.setAttribute('cy', '200');
+    doubleBull.setAttribute('cx', '225');
+    doubleBull.setAttribute('cy', '225');
     doubleBull.setAttribute('r', '16');
     doubleBull.setAttribute('fill', playerData.current_target === 0 && gameType === 'round_the_clock_double' ? '#FF6B00' : '#D4600C');
     doubleBull.setAttribute('class', playerData.current_target === 0 ? 'rtc-current-bull' : '');
@@ -392,8 +395,8 @@ function createRealisticDartboard(playerData, gameType) {
     
     // Inner bull (single bull)
     const singleBull = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    singleBull.setAttribute('cx', '200');
-    singleBull.setAttribute('cy', '200');
+    singleBull.setAttribute('cx', '225');
+    singleBull.setAttribute('cy', '225');
     singleBull.setAttribute('r', '8');
     singleBull.setAttribute('fill', playerData.current_target === 0 && gameType === 'round_the_clock' ? '#FFD700' : '#D4A600');
     singleBull.setAttribute('class', playerData.current_target === 0 && gameType === 'round_the_clock' ? 'rtc-current-bull' : '');
@@ -439,7 +442,7 @@ function createRing(svg, dartboardNumbers, index, startAngle, endAngle, num, rin
     const startRad = (startAngle * Math.PI) / 180;
     const endRad = (endAngle * Math.PI) / 180;
     
-    const pathData = describeArcWedge(200, 200, minRadius, maxRadius, startRad, endRad);
+    const pathData = describeArcWedge(225, 225, minRadius, maxRadius, startRad, endRad);
     
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', pathData);
@@ -454,13 +457,13 @@ function createRing(svg, dartboardNumbers, index, startAngle, endAngle, num, rin
     
     svg.appendChild(path);
     
-    // Add number labels for single ring
-    if (ringType === 'single') {
+    // Add number labels outside the board (for double ring only)
+    if (ringType === 'double') {
         const midAngle = (startAngle + endAngle) / 2;
         const midRad = (midAngle * Math.PI) / 180;
-        const labelRadius = 35;
-        const labelX = 200 + labelRadius * Math.cos(midRad);
-        const labelY = 200 + labelRadius * Math.sin(midRad);
+        const labelRadius = 205; // Outside the dartboard
+        const labelX = 225 + labelRadius * Math.cos(midRad);
+        const labelY = 225 + labelRadius * Math.sin(midRad);
         
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('x', labelX);
