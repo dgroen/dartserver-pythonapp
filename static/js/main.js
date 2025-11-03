@@ -3,6 +3,7 @@ function formatGameTypeName(name) {
     // Handle special cases
     const specialNames = {
         'round_the_clock': 'Round the Clock',
+        'round_the_clock_double': 'Round the Clock Double',
         'cricket': 'Cricket'
     };
     
@@ -91,7 +92,8 @@ function loadFallbackGameTypes(selectElement, includeAllOption = false) {
         { value: '401', label: '401' },
         { value: '501', label: '501' },
         { value: 'cricket', label: 'Cricket' },
-        { value: 'round_the_clock', label: 'Round the Clock' }
+        { value: 'round_the_clock', label: 'Round the Clock' },
+        { value: 'round_the_clock_double', label: 'Round the Clock Double' }
     ];
     
     fallbackTypes.forEach(type => {
@@ -291,8 +293,8 @@ function createPlayerCard(player, index, state) {
         card.appendChild(targetsDiv);
     }
 
-    // Round the Clock targets (if round_the_clock game)
-    if (state.game_type === 'round_the_clock' && playerData.current_target !== undefined) {
+    // Round the Clock targets (if round_the_clock or round_the_clock_double game)
+    if ((state.game_type === 'round_the_clock' || state.game_type === 'round_the_clock_double') && playerData.current_target !== undefined) {
         const rtcDiv = document.createElement('div');
         rtcDiv.className = 'rtc-container';
 
@@ -302,11 +304,19 @@ function createPlayerCard(player, index, state) {
         
         if (playerData.current_target === 0) {
             // Player needs to hit the bull
-            currentTargetDiv.innerHTML = `
-                <div class="rtc-target-label">Current Target:</div>
-                <div class="rtc-target-value bull">BULL</div>
-                <div class="rtc-bull-hits">Bull Hits: ${playerData.bull_hits || 0}/5</div>
-            `;
+            if (state.game_type === 'round_the_clock') {
+                currentTargetDiv.innerHTML = `
+                    <div class="rtc-target-label">Current Target:</div>
+                    <div class="rtc-target-value bull">BULL</div>
+                    <div class="rtc-bull-hits">Bull Hits: ${playerData.bull_hits || 0}/5</div>
+                `;
+            } else {
+                // Round the Clock Double - only double bull counts
+                currentTargetDiv.innerHTML = `
+                    <div class="rtc-target-label">Current Target:</div>
+                    <div class="rtc-target-value bull">DOUBLE BULL</div>
+                `;
+            }
         } else {
             currentTargetDiv.innerHTML = `
                 <div class="rtc-target-label">Current Target:</div>
@@ -315,58 +325,187 @@ function createPlayerCard(player, index, state) {
         }
         rtcDiv.appendChild(currentTargetDiv);
 
-        // Progress visualization - dartboard style
-        const progressDiv = document.createElement('div');
-        progressDiv.className = 'rtc-progress';
+        // Realistic SVG Dartboard
+        const svgDartboard = createRealisticDartboard(playerData, state.game_type);
+        rtcDiv.appendChild(svgDartboard);
         
-        // Show numbers 20 down to 1 in rows
-        const numbers = [];
-        for (let i = 20; i >= 1; i--) {
-            numbers.push(i);
-        }
-        
-        // Create grid of numbers in 4 rows of 5
-        const rows = [
-            numbers.slice(0, 5),   // 20-16
-            numbers.slice(5, 10),  // 15-11
-            numbers.slice(10, 15), // 10-6
-            numbers.slice(15, 20)  // 5-1
-        ];
-        
-        rows.forEach(row => {
-            const rowDiv = document.createElement('div');
-            rowDiv.className = 'rtc-progress-row';
-            
-            row.forEach(num => {
-                const numDiv = document.createElement('div');
-                numDiv.className = 'rtc-number';
-                
-                // Mark as completed if current_target is less than this number
-                if (playerData.current_target < num) {
-                    numDiv.classList.add('completed');
-                } else if (playerData.current_target === num) {
-                    numDiv.classList.add('current');
-                }
-                
-                numDiv.textContent = num;
-                rowDiv.appendChild(numDiv);
-            });
-            
-            progressDiv.appendChild(rowDiv);
-        });
-        
-        // Add bull indicator
-        const bullDiv = document.createElement('div');
-        bullDiv.className = 'rtc-bull-indicator';
-        if (playerData.current_target === 0) {
-            bullDiv.classList.add('current');
-        }
-        bullDiv.textContent = 'BULL';
-        progressDiv.appendChild(bullDiv);
-        
-        rtcDiv.appendChild(progressDiv);
         card.appendChild(rtcDiv);
     }
+
+// Function to create a realistic dartboard SVG
+function createRealisticDartboard(playerData, gameType) {
+    const container = document.createElement('div');
+    container.className = 'rtc-dartboard-container';
+    
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 450 450');
+    svg.setAttribute('width', '450');
+    svg.setAttribute('height', '450');
+    svg.className = 'rtc-dartboard-svg';
+    
+    // Dartboard numbers in clockwise order (standard sequence)
+    const dartboardNumbers = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+    
+    // Create SVG segments for each of the 20 numbers
+    dartboardNumbers.forEach((num, index) => {
+        const startAngle = (index - 0.5) * (360 / 20) - 90; // -90 to start at top
+        const endAngle = (index + 0.5) * (360 / 20) - 90;
+        
+        // Check if this segment is completed or current
+        let isCompleted = false;
+        let isCurrent = playerData.current_target === num;
+        
+        if (playerData.current_target < num) {
+            isCompleted = true;
+        }
+        
+        // Create double ring (outer)
+        createRing(svg, dartboardNumbers, index, startAngle, endAngle, num, 'double', isCompleted, isCurrent, 170, 185);
+        
+        // Create single ring (outer singles) - wider like inner singles
+        createRing(svg, dartboardNumbers, index, startAngle, endAngle, num, 'single-outer', isCompleted, isCurrent, 135, 170);
+        
+        // Create triple ring - same width as double
+        createRing(svg, dartboardNumbers, index, startAngle, endAngle, num, 'triple', isCompleted, isCurrent, 120, 135);
+        
+        // Create single ring (inner singles) - connects to bull's eye
+        createRing(svg, dartboardNumbers, index, startAngle, endAngle, num, 'single-inner', isCompleted, isCurrent, 16, 120);
+    });
+    
+    // Add outer single ring (between double and edge)
+    const outerRingPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    outerRingPath.setAttribute('d', describeArc(225, 225, 190, 0, 360));
+    outerRingPath.setAttribute('fill', 'none');
+    outerRingPath.setAttribute('stroke', '#333');
+    outerRingPath.setAttribute('stroke-width', '4');
+    svg.appendChild(outerRingPath);
+    
+    // Add bull's eye
+    // Outer bull (double bull) - should be glowing if current
+    const doubleBull = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    doubleBull.setAttribute('cx', '225');
+    doubleBull.setAttribute('cy', '225');
+    doubleBull.setAttribute('r', '16');
+    doubleBull.setAttribute('fill', playerData.current_target === 0 && gameType === 'round_the_clock_double' ? '#FF6B00' : '#D4600C');
+    doubleBull.setAttribute('class', playerData.current_target === 0 ? 'rtc-current-bull' : '');
+    if (playerData.current_target === 0 && gameType === 'round_the_clock_double') {
+        doubleBull.setAttribute('filter', 'url(#bullGlow)');
+    }
+    svg.appendChild(doubleBull);
+    
+    // Inner bull (single bull)
+    const singleBull = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    singleBull.setAttribute('cx', '225');
+    singleBull.setAttribute('cy', '225');
+    singleBull.setAttribute('r', '8');
+    singleBull.setAttribute('fill', playerData.current_target === 0 && gameType === 'round_the_clock' ? '#FFD700' : '#D4A600');
+    singleBull.setAttribute('class', playerData.current_target === 0 && gameType === 'round_the_clock' ? 'rtc-current-bull' : '');
+    if (playerData.current_target === 0 && gameType === 'round_the_clock') {
+        singleBull.setAttribute('filter', 'url(#bullGlow)');
+    }
+    svg.appendChild(singleBull);
+    
+    // Add glow filter for current targets
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+    filter.setAttribute('id', 'bullGlow');
+    const feGaussianBlur = document.createElementNS('http://www.w3.org/2000/svg', 'feGaussianBlur');
+    feGaussianBlur.setAttribute('stdDeviation', '3');
+    feGaussianBlur.setAttribute('result', 'coloredBlur');
+    filter.appendChild(feGaussianBlur);
+    const feMerge = document.createElementNS('http://www.w3.org/2000/svg', 'feMerge');
+    const feMergeNode1 = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode');
+    feMergeNode1.setAttribute('in', 'coloredBlur');
+    const feMergeNode2 = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode');
+    feMergeNode2.setAttribute('in', 'SourceGraphic');
+    feMerge.appendChild(feMergeNode1);
+    feMerge.appendChild(feMergeNode2);
+    filter.appendChild(feMerge);
+    defs.appendChild(filter);
+    svg.appendChild(defs);
+    
+    container.appendChild(svg);
+    return container;
+}
+
+function createRing(svg, dartboardNumbers, index, startAngle, endAngle, num, ringType, isCompleted, isCurrent, minRadius, maxRadius) {
+    // Colors for dartboard segments (alternating cream and black)
+    const isEvenSegment = index % 2 === 0;
+    const baseColor = isEvenSegment ? '#C8A682' : '#0a0a0a'; // Cream or black
+    const highlightColor = '#00CED1'; // Cyan for current
+    const completedColor = '#555555'; // Gray for completed
+    
+    const color = isCompleted ? completedColor : (isCurrent ? highlightColor : baseColor);
+    const opacity = isCompleted ? 0.5 : 1;
+    
+    // Create wedge path for this segment
+    const startRad = (startAngle * Math.PI) / 180;
+    const endRad = (endAngle * Math.PI) / 180;
+    
+    const pathData = describeArcWedge(225, 225, minRadius, maxRadius, startRad, endRad);
+    
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathData);
+    path.setAttribute('fill', color);
+    path.setAttribute('opacity', opacity);
+    path.setAttribute('stroke', '#333');
+    path.setAttribute('stroke-width', '2');
+    
+    if (isCurrent) {
+        path.setAttribute('class', 'rtc-current-segment');
+    }
+    
+    svg.appendChild(path);
+    
+    // Add number labels outside the board (for double ring only)
+    if (ringType === 'double') {
+        const midAngle = (startAngle + endAngle) / 2;
+        const midRad = (midAngle * Math.PI) / 180;
+        const labelRadius = 205; // Outside the dartboard
+        const labelX = 225 + labelRadius * Math.cos(midRad);
+        const labelY = 225 + labelRadius * Math.sin(midRad);
+        
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', labelX);
+        text.setAttribute('y', labelY);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dy', '0.3em');
+        text.setAttribute('fill', isCompleted ? '#888' : (isCurrent ? '#00CED1' : '#000'));
+        text.setAttribute('font-size', '18');
+        text.setAttribute('font-weight', 'bold');
+        text.setAttribute('class', isCurrent ? 'rtc-current-number' : '');
+        text.textContent = num;
+        svg.appendChild(text);
+    }
+}
+
+function describeArc(cx, cy, radius, startAngle, endAngle) {
+    const startRad = (startAngle * Math.PI) / 180;
+    const endRad = (endAngle * Math.PI) / 180;
+    const x1 = cx + radius * Math.cos(startRad);
+    const y1 = cy + radius * Math.sin(startRad);
+    const x2 = cx + radius * Math.cos(endRad);
+    const y2 = cy + radius * Math.sin(endRad);
+    
+    const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+    
+    return `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+}
+
+function describeArcWedge(cx, cy, innerRadius, outerRadius, startAngle, endAngle) {
+    const x1 = cx + innerRadius * Math.cos(startAngle);
+    const y1 = cy + innerRadius * Math.sin(startAngle);
+    const x2 = cx + outerRadius * Math.cos(startAngle);
+    const y2 = cy + outerRadius * Math.sin(startAngle);
+    const x3 = cx + outerRadius * Math.cos(endAngle);
+    const y3 = cy + outerRadius * Math.sin(endAngle);
+    const x4 = cx + innerRadius * Math.cos(endAngle);
+    const y4 = cy + innerRadius * Math.sin(endAngle);
+    
+    const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
+    
+    return `M ${x1} ${y1} L ${x2} ${y2} A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${x3} ${y3} L ${x4} ${y4} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x1} ${y1} Z`;
+}
 
     return card;
 }

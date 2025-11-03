@@ -541,8 +541,10 @@ def get_game_state():
               description: Index of the current player
             game_type:
               type: string
-              description: Type of game (301, 401, 501, cricket, round_the_clock)
-              enum: ['301', '401', '501', 'cricket', 'round_the_clock']
+              description: Type of game (301, 401, 501, cricket, round_the_clock,
+                round_the_clock_double)
+              enum: ['301', '401', '501', 'cricket', 'round_the_clock',
+                'round_the_clock_double']
             is_started:
               type: boolean
               description: Whether the game has started
@@ -583,7 +585,7 @@ def new_game():
             game_type:
               type: string
               description: Type of game to start
-              enum: ['301', '401', '501', 'cricket', 'round_the_clock']
+              enum: ['301', '401', '501', 'cricket', 'round_the_clock', 'round_the_clock_double']
               default: '301'
               example: '301'
             players:
@@ -2100,7 +2102,7 @@ def start_game():
             game_type:
               type: string
               description: Type of game to start
-              enum: ['301', '401', '501', 'cricket', 'round_the_clock']
+              enum: ['301', '401', '501', 'cricket', 'round_the_clock', 'round_the_clock_double']
               default: '301'
             players:
               type: array

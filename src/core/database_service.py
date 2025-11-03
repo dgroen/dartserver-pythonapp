@@ -52,7 +52,14 @@ class DatabaseService:
                 {
                     "name": "round_the_clock",
                     "description": "Round the Clock \
-                    - hit numbers 1-20 in order",
+                    - hit numbers 1-20 in order \
+                    - hit single and double bull to win",
+                },
+                {
+                    "name": "round_the_clock_double",
+                    "description": "Round the Clock Double \
+                    - hit numbers 1-20 in order \
+                    - hit double bull to win",
                 },
             ]
 
