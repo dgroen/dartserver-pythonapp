@@ -1,205 +1,279 @@
-// Network Stuff
+/**
+ * Carromco Dartboard Arduino Sketch
+ *
+ * This sketch implements the new generic board architecture for the Carromco dartboard.
+ * All zone mapping logic has been moved to the dartserver backend.
+ * This sketch now simply:
+ * 1. Scans the GPIO pin matrix for dart throws
+ * 2. Sends raw master/slave pin combinations to the server
+ * 3. Server determines zone, score, and multiplier based on database mappings
+ *
+ * BENEFITS:
+ * - No more hardcoded zone arrays (which had bugs!)
+ * - Support for multiple dartboard types
+ * - Easy zone recalibration via admin panel
+ * - Backwards compatible with legacy endpoints
+ * - Fixes issues with Triple 4 and Triple 13 that were broken in old firmware
+ *
+ * CONFIGURATION:
+ * - Board type: "carromco"
+ * - Matrix: 8x8 (64 zones)
+ * - GPIO pins defined in carromco_config.h
+ */
+
+// ============================================================================
+// INCLUDE CARROMCO CONFIGURATION
+// ============================================================================
+#include "carromco_config.h"
+
+// ============================================================================
+// LIBRARIES
+// ============================================================================
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include <ArduinoHttpClient.h>
 
+// ============================================================================
+// NETWORK CONFIGURATION
+// ============================================================================
 const char* ssid = "<SSID>";
 const char* password = "<SSID_KEY>";
 const char* serverAddress = "85.214.85.65";
-const char* userName = "Crivit";
 const int serverPort = 5001;
 
 WiFiClient wifiClient;
 HttpClient http(wifiClient, serverAddress, serverPort);
 
-//vars for ESP32
-// const int bigRedBtn = 15;
+// ============================================================================
+// BUTTON HANDLING
+// ============================================================================
 int bigRedState = 0;
 int lastButtonState = HIGH;
 unsigned long lastPressTime = 0;
 unsigned long debounceDelay = 1000;
 
-const int masterLines = 8;  //The number of rows in your dartboard matrix (higher number)
-const int slaveLines = 8;    //The number of columns in your dartboard matrix (lower number)
-
-// int matrixMaster[] = { 26, 27, 14, 12, 13, 23, 22, 21, 19, 18, 5, 17 };  //arduino pins for matrix rows
-int matrixSlave[] = {13, 12, 14, 27, 26, 25, 33, 32};
-// int matrixSlave[] = { 39, 36, 35, 34, 33, 32, 25 };                      //arduino pins for matrix columns
-int matrixMaster[] = {15 ,2 ,4 ,16 ,17 ,5 ,18 ,19};
-
-// point values based on row/column combinations. Comments are for pin reference
-int values01[masterLines][slaveLines] = {
-  // 13 ,12 ,14 ,27 ,26 ,25 ,33 ,32
-  { 12, 50, 36, 15, 5, 10, 24, 0 },     //15
-  { 9, 25, 27, 60, 20, 60, 18, 0 },    //2
-  { 28, 22, 16, 32, 14, 38, 6, 34 },      //4
-  { 14, 11, 8, 16, 7, 19, 3, 17 },  //16
-  { 3, 54, 12, 39, 18, 30, 45, 6 },   //17
-  { 42, 33, 24, 48, 21, 57, 9, 51 },    //5
-  { 1, 18, 4, 13, 6, 10, 15, 2 },    //18
-  { 2, 36, 8, 26, 12, 20, 30, 4 },       // 19
-};
-
-//create arrays specifying special multiplier points - triple, double, bull
-//each number in the array is simply to corresponding pin combo concatenated
-const int x3Len = 20;
-const int x2Len = 21;
-int x3[] = { 1713, 1712, 1714, 1727, 1726, 1725, 1733, 1732, 532, 533, 525, 526, 527, 514, 512, 513, 214, 1514, 1527, 227 };
-int x2[] = { 1913, 1912, 1914, 1927, 1926, 1925, 1933, 1932, 432, 433, 425, 426, 427, 414, 412, 413, 233, 1533, 1525, 225, 1512 };
-
-String multi = "";
-
-//timer stuff
+// ============================================================================
+// TIMING
+// ============================================================================
 unsigned long previousMillis = 0;
 const long interval = 1000;
 
+// ============================================================================
+// SETUP
+// ============================================================================
 void setup() {
   Serial.begin(115200);
-  Serial.println("Starting");
+  delay(1000);
+
+  Serial.print("Starting ");
+  Serial.println(BOARD_NAME);
+  Serial.print("Board Type: ");
+  Serial.println(BOARD_TYPE);
+  Serial.print("Matrix: ");
+  Serial.print(masterLines);
+  Serial.print("x");
+  Serial.println(slaveLines);
+
+  // WiFi Configuration
   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
-  WiFi.setHostname("esp32-dartboard");  //define hostname
-  // Connect to Wi-Fi
+  WiFi.setHostname("esp32-dartboard");
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
   Serial.print("Connecting to Wi-Fi");
-
-  while (WiFi.status() != WL_CONNECTED) {
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
     delay(500);
     Serial.print(".");
+    attempts++;
   }
-  // Serial.println();
-  Serial.println("Connected to Wi-Fi");
-  Serial.println(WiFi.localIP());
 
-  // pinMode(bigRedBtn, INPUT_PULLUP);
-  // digitalWrite(bigRedBtn, LOW);
-
+  Serial.println();
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("Connected to Wi-Fi");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("WARNING: Failed to connect to Wi-Fi - will retry in loop");
+  }
 
   // Initialize matrix pins
-
+  Serial.println("Initializing GPIO matrix pins...");
   for (int j = 0; j < slaveLines; j++) {
     pinMode(matrixSlave[j], INPUT_PULLUP);
   }
   for (int i = 0; i < masterLines; i++) {
     pinMode(matrixMaster[i], OUTPUT);
-    digitalWrite(matrixMaster[i], LOW);
+    digitalWrite(matrixMaster[i], HIGH);  // Keep HIGH by default
   }
 
+  Serial.println("Setup complete. Ready for throws.");
   delay(1000);
 }
 
+// ============================================================================
+// MAIN LOOP
+// ============================================================================
 void loop() {
+  // Check WiFi connection periodically
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {
-    throwCheck();
-    //bigRedCheck();
-    // Serial.print('.');
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("Wi-Fi disconnected. Attempting to reconnect...");
+      WiFi.reconnect();
+    }
     previousMillis = currentMillis;
   }
 
+  // Check for dart throws
   throwCheck();
-  // bigRedCheck();
 }
 
+// ============================================================================
+// DARTBOARD DETECTION
+// ============================================================================
+/**
+ * Scans the GPIO matrix for dart throws
+ * When a throw is detected, sends the raw master/slave pin combination to the server
+ * The server then uses the board type to determine the score and multiplier
+ *
+ * Carromco: 8x8 matrix = 64 zones
+ */
+void throwCheck() {
+  for (int i = 0; i < masterLines; i++) {
+    // Set this row to LOW to scan
+    digitalWrite(matrixMaster[i], LOW);
+    delayMicroseconds(100);  // Small delay for signal stabilization
 
-//Checks to see if physical button on dartboard has been pressed
+    for (int j = 0; j < slaveLines; j++) {
+      // Check if column pin is pulled LOW (dart detected)
+      if (digitalRead(matrixSlave[j]) == LOW) {
+        // Dart detected!
+        int masterPin = matrixMaster[i];
+        int slavePin = matrixSlave[j];
+
+        // Debug output
+        Serial.print("DART DETECTED - Master: ");
+        Serial.print(masterPin);
+        Serial.print(", Slave: ");
+        Serial.println(slavePin);
+
+        // Send to server
+        sendData(masterPin, slavePin);
+
+        // Debounce - wait for dart to settle
+        delay(500);
+        break;  // Exit slave loop, continue with next master row
+      }
+    }
+
+    // Reset this row to HIGH
+    digitalWrite(matrixMaster[i], HIGH);
+  }
+}
+
+// ============================================================================
+// NETWORK COMMUNICATION
+// ============================================================================
+/**
+ * Sends dart throw data to the dartserver API
+ *
+ * POST /api/Throw/zone
+ *
+ * Request body:
+ * {
+ *   "masterPin": 4,
+ *   "slavePin": 27,
+ *   "boardType": "carromco",
+ *   "boardName": "Carromco Striker",
+ *   "timestamp": 12345678
+ * }
+ *
+ * Response (example for Triple 20):
+ * {
+ *   "status": "success",
+ *   "message": "Score submitted",
+ *   "zone_info": {
+ *     "zone_number": 20,
+ *     "multiplier_type": "TRIPLE",
+ *     "base_value": 20,
+ *     "score": 60
+ *   }
+ * }
+ *
+ * The server now handles all zone mapping logic!
+ * Previously broken zones like Triple 4 (4,27) and Triple 13 (17,27) now work correctly.
+ */
+void sendData(int masterPin, int slavePin) {
+  // Reconnect WiFi if necessary
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Wi-Fi not connected. Retrying...");
+    WiFi.reconnect();
+    delay(500);
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("Failed to connect to Wi-Fi. Discarding throw.");
+      return;
+    }
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    // Create JSON payload with raw pin data
+    StaticJsonDocument<256> doc;
+    doc["masterPin"] = masterPin;
+    doc["slavePin"] = slavePin;
+    doc["boardType"] = String(BOARD_TYPE);
+    doc["boardName"] = String(BOARD_NAME);
+    doc["timestamp"] = millis();
+
+    String jsonString;
+    serializeJson(doc, jsonString);
+
+    Serial.print("Sending: ");
+    Serial.println(jsonString);
+
+    // Send to generic endpoint
+    http.beginRequest();
+    http.post("/api/Throw/zone", "application/json", jsonString);
+
+    int httpResponseCode = http.responseStatusCode();
+    String response = http.responseBody();
+
+    Serial.print("Response Code: ");
+    Serial.println(httpResponseCode);
+    if (response.length() > 0) {
+      Serial.print("Response: ");
+      Serial.println(response);
+    }
+
+    http.endRequest();
+  } else if (WiFi.status() == WL_CONNECT_FAILED ||
+             WiFi.status() == WL_CONNECTION_LOST ||
+             WiFi.status() == WL_DISCONNECTED) {
+    Serial.println("Wi-Fi connection lost.");
+  }
+}
+
+// ============================================================================
+// OPTIONAL: BIG RED BUTTON HANDLER
+// ============================================================================
+/**
+ * Uncomment this if your dartboard has a physical button for special actions
+ * (e.g., "Start Game", "Undo Last Throw", etc.)
+ */
+/*
 void bigRedCheck() {
   // bigRedState = digitalRead(bigRedBtn);
   if (lastButtonState == LOW && bigRedState == LOW) {
-    Serial.println("don't do anything, button is held");
+    // Button held down - do nothing
+    Serial.println("Button held");
   } else if (lastButtonState == HIGH && bigRedState == LOW) {
-    Serial.println("this is where everything is done");
+    // Button pressed
     lastButtonState = LOW;
-    Serial.println("Big Red");
-    sendData(0, "bigRed");
+    Serial.println("Big Red button pressed");
+    sendData(0, 0);  // Special code for button press
   } else {
     if (lastButtonState != HIGH) {
-      Serial.println("set it back to high");
       lastButtonState = HIGH;
     }
   }
 }
-
-//button cycler
-void throwCheck() {
-  // Serial.println("Throwcheck");
-  for (int i = 0; i < masterLines; i++) {
-    // Serial.print("Throwcheck: Loop masterlines");
-    digitalWrite(matrixMaster[i], LOW);
-    for (int j = 0; j < slaveLines; j++) {
-      // Serial.print("Throwcheck: Loop slavelines");
-      if (digitalRead(matrixSlave[j]) == LOW) {
-        // Serial.print("Throwcheck: matrixSlave=LOW");
-        multiCheck(matrixMaster[i], matrixSlave[j]);
-        Serial.print("matrixMaster:");
-        Serial.println(matrixMaster[i]);
-        Serial.print("matrixSlave:");
-        Serial.println(matrixSlave[j]);
-        Serial.print("Score:");
-        Serial.println(values01[i][j]);
-        sendData(values01[i][j], multiCheck(matrixMaster[i], matrixSlave[j]));
-
-        // Use these lines to map the values to the matrix
-        // Serial.print(i);
-        // Serial.print(",");
-        // Serial.println(j);
-        delay(500);
-        break;
-      }
-    }
-    digitalWrite(matrixMaster[i], HIGH);
-  }
-}
-//checks to see if multiiplier or bulls eye have been hit.
-String multiCheck(int M, int S) {
-  int count = 0;
-  int zoneCheck = M * 100 + S;
-  for (int i = 0; i < x2Len; i++) {
-    if (x2[i] == zoneCheck) {
-      count = 1;
-      multi = "DOUBLE";
-    } else if (x3[i] == zoneCheck) {
-      count = 1;
-      multi = "TRIPLE";
-    }
-    if (zoneCheck == 1512) {
-      count = 1;
-      multi = "DBLBULL";
-    };
-    if (zoneCheck == 212) {
-      count = 1;
-      multi = "BULL";
-    };
-    if (count == 0) multi = "SINGLE";
-  }
-  return multi;
-  //Serial.println(multi);
-}
-
-
-void sendData(int point, String msg) {
-
-  if (WiFi.status() == WL_CONNECTED) {
-    StaticJsonDocument<200> doc;
-    doc["score"] = String(point);
-    doc["multiplier"] = String(msg);
-    doc["user"] = String("dgroen");
-    // doc["registrationTime"] = DateTime.now();
-
-    // Serialize JSON to a String
-    String jsonString;
-    serializeJson(doc, jsonString);
-    Serial.println(jsonString);
-    // Send HTTP POST request with JSON data
-    http.beginRequest();
-
-    http.post("/api/Throw", "application/json", jsonString);
-    int httpResponseCode = http.responseStatusCode();
-    String response = http.responseBody();    
-    Serial.println(response);
-    http.endRequest();
-  } else if (WiFi.status() == WL_CONNECT_FAILED || WiFi.status() == WL_CONNECTION_LOST || WiFi.status() == WL_DISCONNECTED) {
-    Serial.println("lost connection");
-  }
-}
+*/

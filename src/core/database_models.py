@@ -209,6 +209,63 @@ class HotspotConfig(Base):
         return f"<HotspotConfig(id={self.id}, ssid='{self.ssid}', enabled={self.is_enabled})>"
 
 
+class DartboardType(Base):
+    """DartboardType table - stores dartboard model configurations"""
+
+    __tablename__ = "dartboard_type"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False, unique=True)  # e.g., 'carromco', 'winmau'
+    brand = Column(String(100), nullable=False)  # e.g., 'Carromco'
+    model = Column(String(100), nullable=True)  # e.g., 'Carromco Striker'
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+    # Relationships
+    zone_mappings = relationship(
+        "DartboardZoneMapping",
+        back_populates="dartboard_type",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self):
+        return f"<DartboardType(id={self.id}, name='{self.name}', brand='{self.brand}')>"
+
+
+class DartboardZoneMapping(Base):
+    """DartboardZoneMapping table - maps GPIO pin combinations to dartboard zones"""
+
+    __tablename__ = "dartboard_zone_mapping"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    dartboard_type_id = Column(Integer, ForeignKey("dartboard_type.id"), nullable=False)
+
+    # Pin combination (unique per dartboard type)
+    master_pin = Column(Integer, nullable=False)  # Row pin
+    slave_pin = Column(Integer, nullable=False)  # Column pin
+
+    # Zone information
+    zone_number = Column(Integer, nullable=False)  # 1-20 for segments, 25 for bull
+    multiplier_type = Column(String(20), nullable=False)  # SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL
+    base_value = Column(Integer, nullable=False)  # Base score (1-20, 25 for bull)
+
+    # Metadata
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+    # Relationships
+    dartboard_type = relationship("DartboardType", back_populates="zone_mappings")
+
+    def __repr__(self):
+        return (
+            f"<DartboardZoneMapping(id={self.id}, dartboard_type_id={self.dartboard_type_id}, "
+            f"pin={self.master_pin}x{self.slave_pin}, zone={self.zone_number}, "
+            f"mult={self.multiplier_type})>"
+        )
+
+
 class DatabaseManager:
     """Manager class for database operations"""
 

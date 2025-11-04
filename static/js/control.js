@@ -164,7 +164,7 @@ document.addEventListener('click', (e) => {
 
 addPlayerBtn.addEventListener('click', async () => {
     const name = playerNameInput.value.trim();
-    
+
     if (!name) {
         alert('Please enter a player name');
         return;

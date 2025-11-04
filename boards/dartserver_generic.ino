@@ -1,29 +1,32 @@
 /**
- * Crivit Dartboard Arduino Sketch
+ * Generic Dartboard Arduino Sketch
  *
- * This sketch implements the new generic board architecture for the Crivit dartboard.
- * All zone mapping logic has been moved to the dartserver backend.
- * This sketch now simply:
- * 1. Scans the GPIO pin matrix for dart throws
- * 2. Sends raw master/slave pin combinations to the server
- * 3. Server determines zone, score, and multiplier based on database mappings
+ * This is a generic implementation for any dartboard using a GPIO pin matrix.
+ * All board-specific configurations are defined in a separate header file.
  *
- * BENEFITS:
- * - No more hardcoded zone arrays
- * - Support for multiple dartboard types
- * - Easy zone recalibration via admin panel
- * - Backwards compatible with legacy endpoints
+ * To use this sketch:
+ * 1. Create a configuration header (e.g., carromco_config.h, crivit_config.h)
+ * 2. Include it below in the #include directive
+ * 3. Upload to your ESP32
  *
- * CONFIGURATION:
- * - Board type: "crivit"
- * - Matrix: 7x12 (84 zones)
- * - GPIO pins defined in crivit_config.h
+ * Configuration header must define:
+ * - const int masterLines
+ * - const int slaveLines
+ * - int matrixMaster[]
+ * - int matrixSlave[]
+ * - const char* BOARD_TYPE
+ * - const char* BOARD_NAME
  */
 
 // ============================================================================
-// INCLUDE CRIVIT CONFIGURATION
+// INCLUDE YOUR BOARD CONFIGURATION HERE
 // ============================================================================
-#include "crivit_config.h"
+// Uncomment the configuration you want to use:
+// #include "carromco_config.h"
+// #include "crivit_config.h"
+
+// For now, using default carromco config
+#include "carromco_config.h"
 
 // ============================================================================
 // LIBRARIES
@@ -134,8 +137,6 @@ void loop() {
  * Scans the GPIO matrix for dart throws
  * When a throw is detected, sends the raw master/slave pin combination to the server
  * The server then uses the board type to determine the score and multiplier
- *
- * Crivit: 7x12 matrix = up to 84 zones
  */
 void throwCheck() {
   for (int i = 0; i < masterLines; i++) {
@@ -176,34 +177,10 @@ void throwCheck() {
 /**
  * Sends dart throw data to the dartserver API
  *
- * POST /api/Throw/zone
- *
- * Request body:
- * {
- *   "masterPin": 2,
- *   "slavePin": 21,
- *   "boardType": "crivit",
- *   "boardName": "Crivit Dartboard",
- *   "timestamp": 12345678
- * }
- *
- * Response:
- * {
- *   "status": "success",
- *   "message": "Score submitted",
- *   "zone_info": {
- *     "zone_number": 20,
- *     "multiplier_type": "TRIPLE",
- *     "base_value": 20,
- *     "score": 60
- *   }
- * }
- *
- * OR for unmapped zones:
- * {
- *   "status": "error",
- *   "message": "Zone mapping not found for pins (X, Y) on board type 'crivit'"
- * }
+ * The API endpoint is now generic and handles board type routing:
+ * - For new boards: POST /api/Throw/zone with raw pins and boardType
+ * - Server determines score based on database mappings
+ * - For legacy boards: falls back to /api/Throw with score+multiplier
  */
 void sendData(int masterPin, int slavePin) {
   // Reconnect WiFi if necessary
@@ -259,6 +236,7 @@ void sendData(int masterPin, int slavePin) {
 // ============================================================================
 /**
  * Uncomment this if your dartboard has a physical button for special actions
+ * (e.g., "Start Game", "Undo Last Throw", etc.)
  */
 /*
 void bigRedCheck() {
