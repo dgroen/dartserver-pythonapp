@@ -29,7 +29,9 @@ from src.core.auth import (
     role_required,
 )
 from src.core.config import Config
+from src.core.dartboard_service import DartboardMappingError, DartboardService
 from src.core.database_models import Player
+from src.core.database_service import get_session, set_database_service
 from src.core.rabbitmq_consumer import RabbitMQConsumer
 
 # Load environment variables
@@ -126,6 +128,9 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 # Initialize Game Manager
 game_manager = GameManager(socketio)
 app.game_manager = game_manager  # Attach to app for access in decorators
+
+# Initialize global database service for dartboard endpoints
+set_database_service(game_manager.db_service)
 
 # Initialize RabbitMQ Consumer
 rabbitmq_consumer = None
@@ -914,12 +919,15 @@ def remove_player(player_id):
 # @login_required
 # @permission_required("score:submit")
 def submit_score():
-    """Submit a score via API - requires score:submit permission
+    """Submit a score via API (Legacy format - for backwards compatibility)
     ---
     tags:
       - Score
-    summary: Submit a dart score
-    description: Submits a dart throw score for the current player
+    summary: Submit a dart score (Legacy)
+    description: |
+        Submits a dart throw score for the current player.
+        This endpoint is for backwards compatibility with older dartboards.
+        New dartboards should use /api/Throw/zone endpoint instead.
     parameters:
       - in: body
         name: body
@@ -958,16 +966,614 @@ def submit_score():
             message:
               type: string
               example: Score submitted
+      400:
+        description: Invalid request
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: error
+            message:
+              type: string
     """
-    data = request.json
-    score = data.get("score", 0)
-    multiplier = data.get("multiplier", "SINGLE")
+    try:
+        data = request.json
+        score = data.get("score", 0)
+        multiplier = data.get("multiplier", "SINGLE")
 
-    # Process the score
-    game_manager.process_score({"score": score, "multiplier": multiplier})
-    # Game state is automatically emitted by game_manager.process_score()
+        # Validate legacy format
+        if not isinstance(score, int) or not isinstance(multiplier, str):
+            return (
+                jsonify({"status": "error", "message": "Invalid score or multiplier format"}),
+                400,
+            )
 
-    return jsonify({"status": "success", "message": "Score submitted"})
+        # Process the score
+        game_manager.process_score({"score": score, "multiplier": multiplier})
+        # Game state is automatically emitted by game_manager.process_score()
+
+        return jsonify({"status": "success", "message": "Score submitted"})
+    except Exception as e:
+        logger.exception("Error submitting score")
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/api/Throw/zone", methods=["POST"])
+# @login_required
+# @permission_required("score:submit")
+def submit_score_zone():
+    """Submit a score via dartboard zone mapping (New generic format)
+    ---
+    tags:
+      - Score
+    summary: Submit a dart score using zone mapping
+    description: |
+        Submits a dart throw using GPIO pin combination and dartboard type.
+        The server looks up the zone information based on the dartboard type and pin combination.
+        This is the preferred format for new dartboards.
+    parameters:
+      - in: body
+        name: body
+        description: Pin-based score information
+        required: true
+        schema:
+          type: object
+          required:
+            - masterPin
+            - slavePin
+            - boardType
+          properties:
+            masterPin:
+              type: integer
+              description: Master (row) GPIO pin number
+              example: 4
+            slavePin:
+              type: integer
+              description: Slave (column) GPIO pin number
+              example: 13
+            boardType:
+              type: string
+              description: Dartboard type identifier (e.g., 'carromco', 'winmau')
+              example: carromco
+            user:
+              type: string
+              description: Optional player identifier
+              example: dgroen
+    responses:
+      200:
+        description: Score submitted successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: Score submitted
+            zone_info:
+              type: object
+              properties:
+                zone_number:
+                  type: integer
+                  example: 20
+                multiplier_type:
+                  type: string
+                  example: TRIPLE
+                base_value:
+                  type: integer
+                  example: 20
+                score:
+                  type: integer
+                  example: 60
+      400:
+        description: Invalid request or zone not found
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: error
+            message:
+              type: string
+    """
+    try:
+        data = request.json
+        master_pin = data.get("masterPin")
+        slave_pin = data.get("slavePin")
+        board_type = data.get("boardType", "").lower()
+
+        # Validate input
+        if not isinstance(master_pin, int) or not isinstance(slave_pin, int):
+            return (
+                jsonify({"status": "error", "message": "masterPin and slavePin must be integers"}),
+                400,
+            )
+
+        if not board_type:
+            return jsonify({"status": "error", "message": "boardType is required"}), 400
+
+        # Get database session
+        session = get_session()
+
+        try:
+            # Look up zone information
+            zone_info = DartboardService.get_zone_from_pins(
+                session,
+                board_type,
+                master_pin,
+                slave_pin,
+            )
+
+            if not zone_info:
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": (
+                                f"Zone mapping not found for pins ({master_pin}, {slave_pin}) "
+                                f"on board type '{board_type}'"
+                            ),
+                        },
+                    ),
+                    400,
+                )
+
+            # Process the score using the zone information
+            game_manager.process_score(
+                {
+                    "score": zone_info["base_value"],
+                    "multiplier": zone_info["multiplier_type"],
+                },
+            )
+
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": "Score submitted",
+                    "zone_info": zone_info,
+                },
+            )
+        finally:
+            session.close()
+
+    except Exception as e:
+        logger.exception("Error submitting zone-based score")
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/api/dartboard/types", methods=["GET"])
+def get_dartboard_types():
+    """Get all registered dartboard types
+    ---
+    tags:
+      - Dartboard
+    summary: Get dartboard types
+    description: Returns all registered and active dartboard types
+    responses:
+      200:
+        description: List of dartboard types
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            types:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  brand:
+                    type: string
+                  model:
+                    type: string
+                  description:
+                    type: string
+    """
+    try:
+        session = get_session()
+        try:
+            types = DartboardService.list_dartboard_types(session)
+            return jsonify(
+                {
+                    "status": "success",
+                    "types": [
+                        {
+                            "id": t.id,
+                            "name": t.name,
+                            "brand": t.brand,
+                            "model": t.model,
+                            "description": t.description,
+                        }
+                        for t in types
+                    ],
+                },
+            )
+        finally:
+            session.close()
+    except Exception as e:
+        logger.exception("Error getting dartboard types")
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/api/dartboard/types/<board_type>/mappings", methods=["GET"])
+def get_dartboard_mappings(board_type):
+    """Get zone mappings for a dartboard type
+    ---
+    tags:
+      - Dartboard
+    summary: Get dartboard zone mappings
+    description: Returns all zone mappings for a specific dartboard type
+    parameters:
+      - in: path
+        name: board_type
+        type: string
+        required: true
+        description: Dartboard type name (e.g., 'carromco')
+    responses:
+      200:
+        description: List of zone mappings
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            board_type:
+              type: string
+            mappings:
+              type: array
+              items:
+                type: object
+                properties:
+                  master_pin:
+                    type: integer
+                  slave_pin:
+                    type: integer
+                  zone_number:
+                    type: integer
+                  multiplier_type:
+                    type: string
+                  base_value:
+                    type: integer
+      404:
+        description: Dartboard type not found
+    """
+    try:
+        session = get_session()
+        try:
+            mappings = DartboardService.get_dartboard_type_mappings(session, board_type.lower())
+            if not mappings:
+                return (
+                    jsonify(
+                        {"status": "error", "message": f"Dartboard type '{board_type}' not found"},
+                    ),
+                    404,
+                )
+
+            return jsonify(
+                {
+                    "status": "success",
+                    "board_type": board_type,
+                    "mappings": [
+                        {
+                            "master_pin": m.master_pin,
+                            "slave_pin": m.slave_pin,
+                            "zone_number": m.zone_number,
+                            "multiplier_type": m.multiplier_type,
+                            "base_value": m.base_value,
+                        }
+                        for m in mappings
+                    ],
+                },
+            )
+        finally:
+            session.close()
+    except Exception as e:
+        logger.exception("Error getting dartboard mappings")
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+# ==================== ADMIN DARTBOARD TESTING ENDPOINTS ====================
+
+
+@app.route("/admin/dartboard-testing")
+@login_required
+@role_required("admin")
+def admin_dartboard_testing():
+    """Admin page for dartboard testing and calibration"""
+    return render_template("admin_dartboard_testing.html")
+
+
+@app.route("/api/admin/dartboard/matrix/<board_type>", methods=["GET"])
+@login_required
+@role_required("admin")
+def get_dartboard_matrix(board_type):
+    """Get matrix visualization for a dartboard type
+    ---
+    tags:
+      - Admin/Dartboard
+    summary: Get dartboard matrix visualization
+    description: Returns the GPIO pin matrix for a dartboard type with current mappings
+    parameters:
+      - in: path
+        name: board_type
+        type: string
+        description: Dartboard type name (e.g., 'carromco')
+    responses:
+      200:
+        description: Matrix visualization data
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            dartboard_type:
+              type: object
+            master_pins:
+              type: array
+              items:
+                type: integer
+            slave_pins:
+              type: array
+              items:
+                type: integer
+            matrix:
+              type: array
+      404:
+        description: Dartboard type not found
+    """
+    try:
+        session = get_session()
+        try:
+            result = DartboardService.get_matrix_visualization(session, board_type.lower())
+            if not result or result[0] is None:
+                return (
+                    jsonify(
+                        {"status": "error", "message": f"Dartboard type '{board_type}' not found"},
+                    ),
+                    404,
+                )
+
+            dartboard_type_dict, master_pins, slave_pins, matrix = result
+
+            return jsonify(
+                {
+                    "status": "success",
+                    "dartboard_type": dartboard_type_dict,
+                    "master_pins": master_pins,
+                    "slave_pins": slave_pins,
+                    "matrix": matrix,
+                },
+            )
+        finally:
+            session.close()
+    except Exception as e:
+        logger.exception("Error getting dartboard matrix")
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/api/admin/dartboard/mapping", methods=["POST"])
+@login_required
+@role_required("admin")
+def update_dartboard_mapping():
+    """Update or create a dartboard zone mapping
+    ---
+    tags:
+      - Admin/Dartboard
+    summary: Update dartboard mapping
+    description: Update an existing zone mapping or create a new one
+    parameters:
+      - in: body
+        name: body
+        schema:
+          type: object
+          required:
+            - boardType
+            - masterPin
+            - slavePin
+            - zoneNumber
+            - multiplierType
+            - baseValue
+          properties:
+            boardType:
+              type: string
+              example: carromco
+            masterPin:
+              type: integer
+              example: 4
+            slavePin:
+              type: integer
+              example: 13
+            zoneNumber:
+              type: integer
+              example: 20
+            multiplierType:
+              type: string
+              enum: ['SINGLE', 'DOUBLE', 'TRIPLE', 'BULL', 'DBLBULL']
+              example: TRIPLE
+            baseValue:
+              type: integer
+              example: 20
+    responses:
+      200:
+        description: Mapping updated successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+      400:
+        description: Invalid request or validation error
+    """
+    try:
+        data = request.json
+        board_type = data.get("boardType", "").lower()
+        master_pin = data.get("masterPin")
+        slave_pin = data.get("slavePin")
+        zone_number = data.get("zoneNumber")
+        multiplier_type = data.get("multiplierType", "").upper()
+        base_value = data.get("baseValue")
+
+        # Validate input
+        if not all(
+            [
+                board_type,
+                master_pin is not None,
+                slave_pin is not None,
+                zone_number is not None,
+                multiplier_type,
+                base_value is not None,
+            ],
+        ):
+            return jsonify({"status": "error", "message": "Missing required fields"}), 400
+
+        session = get_session()
+        try:
+            DartboardService.update_zone_mapping(
+                session,
+                board_type,
+                int(master_pin),
+                int(slave_pin),
+                int(zone_number),
+                multiplier_type,
+                int(base_value),
+            )
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": f"Mapping for pins ({master_pin}, {slave_pin}) updated successfully",
+                },
+            )
+        finally:
+            session.close()
+    except DartboardMappingError as e:
+        logger.exception("Dartboard mapping error")
+        return jsonify({"status": "error", "message": str(e)}), 400
+    except Exception as e:
+        logger.exception("Error updating dartboard mapping")
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/api/admin/dartboard/import", methods=["POST"])
+@login_required
+@role_required("admin")
+def import_dartboard_mappings():
+    """Bulk import dartboard mappings from CSV
+    ---
+    tags:
+      - Admin/Dartboard
+    summary: Bulk import mappings
+    description: Import multiple zone mappings at once
+    parameters:
+      - in: body
+        name: body
+        schema:
+          type: object
+          required:
+            - boardType
+            - mappings
+          properties:
+            boardType:
+              type: string
+              example: carromco
+            mappings:
+              type: array
+              items:
+                type: object
+                required:
+                  - masterPin
+                  - slavePin
+                  - zoneNumber
+                  - multiplierType
+                  - baseValue
+                properties:
+                  masterPin:
+                    type: integer
+                  slavePin:
+                    type: integer
+                  zoneNumber:
+                    type: integer
+                  multiplierType:
+                    type: string
+                  baseValue:
+                    type: integer
+    responses:
+      200:
+        description: Mappings imported successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            created:
+              type: integer
+            updated:
+              type: integer
+      400:
+        description: Invalid request or import error
+    """
+    try:
+        data = request.json
+        board_type = data.get("boardType", "").lower()
+        mappings = data.get("mappings", [])
+
+        if not board_type or not mappings:
+            return (
+                jsonify({"status": "error", "message": "boardType and mappings are required"}),
+                400,
+            )
+
+        session = get_session()
+        try:
+            # Convert CSV-like format to mapping data format
+            mapping_data = []
+            for mapping in mappings:
+                mapping_data.append(
+                    {
+                        "master_pin": mapping.get("masterPin"),
+                        "slave_pin": mapping.get("slavePin"),
+                        "zone_number": mapping.get("zoneNumber"),
+                        "multiplier_type": mapping.get("multiplierType"),
+                        "base_value": mapping.get("baseValue"),
+                    },
+                )
+
+            created, updated = DartboardService.bulk_import_mappings(
+                session,
+                board_type,
+                mapping_data,
+            )
+
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": (
+                        f"Imported {created} new mappings and updated {updated} existing mappings"
+                    ),
+                    "created": created,
+                    "updated": updated,
+                },
+            )
+        finally:
+            session.close()
+    except DartboardMappingError as e:
+        logger.exception("Dartboard import error")
+        return jsonify({"status": "error", "message": str(e)}), 400
+    except Exception as e:
+        logger.exception("Error importing dartboard mappings")
+        return jsonify({"status": "error", "message": str(e)}), 400
 
 
 @app.route("/api/tts/config", methods=["GET"])
@@ -2485,6 +3091,13 @@ def handle_set_throwout_advice(data):
     """Handle toggle of throwout advice"""
     enabled = data.get("enabled", False)
     game_manager.set_show_throwout_advice(enabled)
+
+
+@socketio.on("dartboard_test_message", namespace="/")
+def handle_dartboard_test_message(data):
+    """Handle raw dartboard test messages for admin calibration"""
+    # Broadcast to all admin clients for real-time testing feedback
+    socketio.emit("dartboard_test_received", data, namespace="/")
 
 
 def start_rabbitmq_consumer():

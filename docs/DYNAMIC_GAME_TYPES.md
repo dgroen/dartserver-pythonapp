@@ -83,7 +83,7 @@ To add a new game type to the system:
 
 1. **Add to database:**
    ```sql
-   INSERT INTO gametype (name, description) 
+   INSERT INTO gametype (name, description)
    VALUES ('701', '701 darts game');
    ```
 
@@ -114,7 +114,7 @@ To add a game type selector to a new page:
     if (gameTypeSelect && typeof loadGameTypes === 'function') {
       // For game selection (no "All" option)
       loadGameTypes(gameTypeSelect, false);
-      
+
       // OR for filtering (with "All Games" option)
       loadGameTypes(gameTypeSelect, true).then(() => {
         gameTypeSelect.value = 'all';  // Set default to "All"
