@@ -61,6 +61,7 @@ docs/source/*
 dartserver-pythonapp.code-workspace
 .env_bu
 .zencoder/rules/repo.md
+docker-backups
 node_modules/.cache
 docker-backups
 .env____

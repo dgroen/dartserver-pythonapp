@@ -1,3 +1,10 @@
+docker-backups
+docs
+.tox
+.vscode
+.venv
+helpers
+examples
 # Version control
 .git
 .gitignore
