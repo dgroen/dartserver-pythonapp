@@ -64,20 +64,9 @@ class GameRoundTheClock:
             if player.get("is_turn", False):
                 current_player_id = i
                 break
+        return self.process_throw(current_player_id, base_score, multiplier_type)
 
-        # Convert multiplier type to numeric value
-        multiplier_map = {
-            "SINGLE": 1,
-            "DOUBLE": 2,
-            "TRIPLE": 3,
-            "BULL": 1,
-            "DBLBULL": 2,
-        }
-        multiplier = multiplier_map.get(multiplier_type, 1)
-
-        return self.process_throw(current_player_id, base_score, multiplier, multiplier_type)
-
-    def process_throw(self, player_id, base_score, multiplier, multiplier_type):
+    def process_throw(self, player_id, base_score, multiplier_type):
         """
         Process a dart throw
 
@@ -114,7 +103,7 @@ class GameRoundTheClock:
                     result["winner"] = True
                     result["hit"] = True
                     return result
-                elif multiplier_type == "BULL":
+                if multiplier_type == "BULL":
                     # Single bull - need 5 total
                     player["bull_hits"] += 1
                     result["hit"] = True
@@ -128,7 +117,7 @@ class GameRoundTheClock:
         # Check if player hit their current target
         if base_score == current_target:
             result["hit"] = True
-            
+
             # Move to next target based on multiplier
             if multiplier_type == "TRIPLE":
                 # Triple - skip 2 numbers
@@ -141,9 +130,9 @@ class GameRoundTheClock:
             else:
                 # Single - just move to next
                 player["current_target"] = max(0, current_target - 1)
-            
+
             result["new_target"] = player["current_target"]
-            
+
             # Reset bull hits when advancing (only count at the end)
             player["bull_hits"] = 0
 

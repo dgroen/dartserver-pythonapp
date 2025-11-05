@@ -165,7 +165,7 @@
                 // Current target display
                 const currentTargetDiv = document.createElement('div');
                 currentTargetDiv.className = 'rtc-current-target';
-                
+
                 if (playerData.current_target === 0) {
                     // Player needs to hit the bull
                     currentTargetDiv.innerHTML = `
@@ -184,13 +184,13 @@
                 // Progress visualization - dartboard style
                 const progressDiv = document.createElement('div');
                 progressDiv.className = 'rtc-progress';
-                
+
                 // Show numbers 20 down to 1 in rows
                 const numbers = [];
                 for (let i = 20; i >= 1; i--) {
                     numbers.push(i);
                 }
-                
+
                 // Create grid of numbers in 4 rows of 5
                 const rows = [
                     numbers.slice(0, 5),   // 20-16
@@ -198,29 +198,29 @@
                     numbers.slice(10, 15), // 10-6
                     numbers.slice(15, 20)  // 5-1
                 ];
-                
+
                 rows.forEach(row => {
                     const rowDiv = document.createElement('div');
                     rowDiv.className = 'rtc-progress-row';
-                    
+
                     row.forEach(num => {
                         const numDiv = document.createElement('div');
                         numDiv.className = 'rtc-number';
-                        
+
                         // Mark as completed if current_target is less than this number
                         if (playerData.current_target < num) {
                             numDiv.classList.add('completed');
                         } else if (playerData.current_target === num) {
                             numDiv.classList.add('current');
                         }
-                        
+
                         numDiv.textContent = num;
                         rowDiv.appendChild(numDiv);
                     });
-                    
+
                     progressDiv.appendChild(rowDiv);
                 });
-                
+
                 // Add bull indicator
                 const bullDiv = document.createElement('div');
                 bullDiv.className = 'rtc-bull-indicator';
@@ -229,7 +229,7 @@
                 }
                 bullDiv.textContent = 'BULL';
                 progressDiv.appendChild(bullDiv);
-                
+
                 rtcDiv.appendChild(progressDiv);
                 card.appendChild(rtcDiv);
             }
@@ -241,7 +241,7 @@
         function renderTestCase(state, containerId) {
             const container = document.getElementById(containerId);
             container.innerHTML = '';
-            
+
             state.game_data.players.forEach((player, index) => {
                 const card = createPlayerCard({ name: player.name }, index, state);
                 container.appendChild(card);

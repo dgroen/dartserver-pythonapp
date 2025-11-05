@@ -12,7 +12,7 @@ Your local development environment has been successfully configured with all fix
 - **Application**: DartsApp Local
 - **Client ID**: `zWDyLDXaMQcKiFcENwsTduXpKoka`
 - **Client Secret**: `1qiEYLgIe9LrtKxD3J1YMo1psmJ3Gg8LMXF9rTg60Vka`
-- **Callback URLs**: 
+- **Callback URLs**:
   - `https://localhost:5000/callback`
   - `http://localhost:5000/callback`
   - `https://localhost:5001` (alternate)
@@ -23,7 +23,7 @@ Your local development environment has been successfully configured with all fix
 - **SSL certificate**: `/data/dartserver-pythonapp/ssl/cert.pem`
 - **Status**: Identical (MD5: 49b721c256c9fb38847d43aefb6f56f9) ✅
 - **CN**: letsplaydarts.eu
-- **SANs**: 
+- **SANs**:
   - `*.letsplaydarts.eu`
   - `letsplaydarts.eu`
   - `localhost`
@@ -91,7 +91,7 @@ python run.py
 https://localhost:5000/
 ```
 
-**Expected**: 
+**Expected**:
 - Browser shows SSL certificate warning (self-signed cert)
 - Accept the warning (Advanced → Proceed to localhost)
 - Page should load without JavaScript errors
@@ -161,7 +161,7 @@ https://localhost:5000/dashboard
 - **Status**: ✅ Fixed - using correct credentials from DartsApp Local
 
 **Issue**: History/Dashboard empty
-- **Causes**: 
+- **Causes**:
   1. Username mismatch (WSO2 returns `testuser001@carbon.super` but DB has `testuser001`)
   2. Session doesn't have `player_id` set
   3. SCIM2 not fetching real username
