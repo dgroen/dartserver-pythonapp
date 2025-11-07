@@ -1,4 +1,6 @@
-## Repo overview — quick orientation
+# Repository Overview
+
+## Quick Orientation — quick orientation
 
 This repository is a Flask + Socket.IO web app (Darts game) with PostgreSQL and RabbitMQ integrations. Key components:
 
@@ -14,12 +16,12 @@ This repository is a Flask + Socket.IO web app (Darts game) with PostgreSQL and 
   - python -m venv .venv && . .venv/bin/activate
   - pip install -r requirements.txt
   - FLASK_DEBUG=True python run.py
-  (The Dockerfile runs `python run.py` inside the container.)
+    (The Dockerfile runs `python run.py` inside the container.)
 
 - Run tests via tox (matrix for py310/311/312):
   - tox -e py311
   - tox -e py310,py311,py312
-  Note: many tests are marked `rabbitmq` and require a running RabbitMQ instance or test fixture.
+    Note: many tests are marked `rabbitmq` and require a running RabbitMQ instance or test fixture.
 
 - Run linting / typing / security as configured in `tox.ini`:
   - tox -e lint
@@ -75,4 +77,5 @@ This repository is a Flask + Socket.IO web app (Darts game) with PostgreSQL and 
 3. If tests fail in `tox`, run the failing test directly under a virtualenv to get faster feedback.
 
 ---
+
 If you'd like, I can merge this into an existing `.github/copilot-instructions.md` (none found) or expand any section with code snippets from the files listed above. What would you like me to prioritize next?

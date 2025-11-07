@@ -2,24 +2,26 @@
 
 ## Quick Access
 
-| Task | How-To |
-|------|--------|
-| **Access Testing Page** | `https://your-server/admin/dartboard-testing` (Admin login required) |
-| **Download CSV Template** | Click "📥 Download CSV Template" button in admin page |
-| **View Matrix** | Select dartboard type from dropdown - grid loads automatically |
+| Task                      | How-To                                                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------ |
+| **Access Testing Page**   | `https://your-server/admin/dartboard-testing` (Admin login required)                       |
+| **Download CSV Template** | Click "📥 Download CSV Template" button in admin page                                      |
+| **View Matrix**           | Select dartboard type from dropdown - grid loads automatically                             |
 | **Update Single Mapping** | Click cell in grid OR enter pins manually → Fill zone/mult/value → Click "💾 Save Mapping" |
-| **Bulk Import** | Upload CSV file or drag-drop on upload area |
-| **Clear Message Log** | Click "Clear Log" button (bottom of page) |
+| **Bulk Import**           | Upload CSV file or drag-drop on upload area                                                |
+| **Clear Message Log**     | Click "Clear Log" button (bottom of page)                                                  |
 
 ## Zone & Multiplier Quick Reference
 
 ### Dartboard Zones
+
 ```
 Zone 1-20:   Regular dartboard segments
 Zone 25:     Bull's eye (center)
 ```
 
 ### Multipliers & Scoring
+
 ```
 SINGLE:   Base value × 1    (e.g., 20 × 1 = 20)
 DOUBLE:   Base value × 2    (e.g., 20 × 2 = 40)
@@ -30,18 +32,18 @@ DBLBULL:  Always 50 points (fixed value)
 
 ### Valid Combinations
 
-| Zone | Multiplier | Base Value | Valid | Example |
-|------|-----------|-----------|-------|---------|
-| 1-20 | SINGLE | 1-20 | ✅ | 20 SINGLE (20 points) |
-| 1-20 | DOUBLE | 1-20 | ✅ | 20 DOUBLE (40 points) |
-| 1-20 | TRIPLE | 1-20 | ✅ | 20 TRIPLE (60 points) |
-| 1-20 | BULL | 25 | ❌ | Invalid |
-| 1-20 | DBLBULL | 25 | ❌ | Invalid |
-| 25 | SINGLE | 25 | ✅ | BULL ring |
-| 25 | DOUBLE | 25 | ✅ | BULL ring (double) |
-| 25 | TRIPLE | 25 | ❌ | Invalid |
-| 25 | BULL | 25 | ✅ | Inner bull (25 points) |
-| 25 | DBLBULL | 25 | ✅ | Outer bull (50 points) |
+| Zone | Multiplier | Base Value | Valid | Example                |
+| ---- | ---------- | ---------- | ----- | ---------------------- |
+| 1-20 | SINGLE     | 1-20       | ✅    | 20 SINGLE (20 points)  |
+| 1-20 | DOUBLE     | 1-20       | ✅    | 20 DOUBLE (40 points)  |
+| 1-20 | TRIPLE     | 1-20       | ✅    | 20 TRIPLE (60 points)  |
+| 1-20 | BULL       | 25         | ❌    | Invalid                |
+| 1-20 | DBLBULL    | 25         | ❌    | Invalid                |
+| 25   | SINGLE     | 25         | ✅    | BULL ring              |
+| 25   | DOUBLE     | 25         | ✅    | BULL ring (double)     |
+| 25   | TRIPLE     | 25         | ❌    | Invalid                |
+| 25   | BULL       | 25         | ✅    | Inner bull (25 points) |
+| 25   | DBLBULL    | 25         | ✅    | Outer bull (50 points) |
 
 ## Common Tasks
 
@@ -127,21 +129,25 @@ DBLBULL:  Always 50 points (fixed value)
 ## Validation Rules
 
 ❌ **Invalid**: Zone 1-20 with BULL/DBLBULL multiplier
+
 ```
 Zone: 20, Multiplier: BULL → ERROR
 ```
 
 ❌ **Invalid**: Zone 25 with TRIPLE multiplier
+
 ```
 Zone: 25, Multiplier: TRIPLE → ERROR
 ```
 
 ❌ **Invalid**: Base value doesn't match zone
+
 ```
 Zone: 20, Base Value: 15 → Should both be same (OK to be same though)
 ```
 
 ✅ **Valid**: Any combination below
+
 ```
 Zone 1-20 + SINGLE/DOUBLE/TRIPLE + Base 1-20
 Zone 25 + BULL/DBLBULL + Base 25
@@ -150,22 +156,24 @@ Zone 25 + SINGLE/DOUBLE + Base 25
 
 ## Troubleshooting
 
-| Problem | Cause | Solution |
-|---------|-------|----------|
-| Dartboard not in dropdown | Not registered in DB | Register via Python: `DartboardService.register_dartboard_type()` |
-| All cells white (unmapped) | New dartboard with no mappings | Use CSV import or manually map each cell |
-| CSV import fails | Invalid format or values | Download template, verify format, check numbers are integers |
-| "Zone mapping not found" in log | Pressing unmapped pin on board | Map that pin combination in admin panel |
-| Can't access page | Not admin or not logged in | Log in with admin credentials |
-| Page won't load matrix | Dartboard type invalid | Select different dartboard from dropdown |
+| Problem                         | Cause                          | Solution                                                          |
+| ------------------------------- | ------------------------------ | ----------------------------------------------------------------- |
+| Dartboard not in dropdown       | Not registered in DB           | Register via Python: `DartboardService.register_dartboard_type()` |
+| All cells white (unmapped)      | New dartboard with no mappings | Use CSV import or manually map each cell                          |
+| CSV import fails                | Invalid format or values       | Download template, verify format, check numbers are integers      |
+| "Zone mapping not found" in log | Pressing unmapped pin on board | Map that pin combination in admin panel                           |
+| Can't access page               | Not admin or not logged in     | Log in with admin credentials                                     |
+| Page won't load matrix          | Dartboard type invalid         | Select different dartboard from dropdown                          |
 
 ## Common GPIO Values
 
 ### Carromco Striker (8×8 Matrix)
+
 **Master Pins (Rows)**: 15, 2, 4, 16, 17, 5, 18, 19
 **Slave Pins (Columns)**: 13, 12, 14, 27, 26, 25, 33, 32
 
 ### Typical Arduino Configurations
+
 ```
 Master (Rows):     0-19 (20 pins)    or  0-7 (8 pins)
 Slave (Columns):   20-39 (20 pins)   or  0-7 (8 pins)
@@ -174,6 +182,7 @@ Slave (Columns):   20-39 (20 pins)   or  0-7 (8 pins)
 ## Keyboard Shortcuts
 
 Currently none - all features use mouse/touch. Future versions may add:
+
 - ESC to clear form
 - Enter to save mapping
 - Arrow keys to navigate matrix
@@ -194,15 +203,18 @@ master_pin,slave_pin,zone_number,multiplier_type,base_value
 ## Alert Messages
 
 ### Success ✓ (Green)
+
 - "✓ Mapping saved successfully"
 - "✓ Imported 2 new and updated 0 existing mappings"
 
 ### Error ✗ (Red)
+
 - "Invalid zone mapping: zone=..., mult=..., value=..."
 - "Dartboard type 'xyz' not found"
 - "Missing required fields"
 
 ### Info 📋 (Blue)
+
 - "Please select a dartboard type"
 - "No valid mappings found in CSV"
 
@@ -268,16 +280,16 @@ Body: {"boardType":"carromco","mappings":[...]}
 
 ## Quick Stats
 
-| Metric | Value |
-|--------|-------|
-| **Zones** | 21 (1-20 + bull) |
-| **Multipliers** | 5 (SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL) |
-| **Max combinations** | ~100+ (varies by board) |
-| **Supported GPIO pins** | 0-40 (varies by Arduino) |
-| **CSV import limit** | 1,000 mappings per import |
-| **Message log entries** | 50 (oldest auto-removed) |
-| **Page load time** | <1 second |
-| **Save mapping time** | <100ms |
+| Metric                  | Value                                     |
+| ----------------------- | ----------------------------------------- |
+| **Zones**               | 21 (1-20 + bull)                          |
+| **Multipliers**         | 5 (SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL) |
+| **Max combinations**    | ~100+ (varies by board)                   |
+| **Supported GPIO pins** | 0-40 (varies by Arduino)                  |
+| **CSV import limit**    | 1,000 mappings per import                 |
+| **Message log entries** | 50 (oldest auto-removed)                  |
+| **Page load time**      | <1 second                                 |
+| **Save mapping time**   | <100ms                                    |
 
 ---
 

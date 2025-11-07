@@ -11,9 +11,9 @@ import os
 import sys
 from pathlib import Path
 
-# Add current directory to path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+# pylint: disable=wrong-import-position
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker

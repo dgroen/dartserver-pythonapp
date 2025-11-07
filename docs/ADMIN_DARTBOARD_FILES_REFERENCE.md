@@ -5,6 +5,7 @@
 ### 📄 NEW FILES CREATED
 
 #### Frontend
+
 ```
 templates/admin_dartboard_testing.html
 ├── Size: 500+ lines
@@ -21,6 +22,7 @@ templates/admin_dartboard_testing.html
 ```
 
 #### Documentation
+
 ```
 docs/
 ├── ADMIN_DARTBOARD_TESTING.md
@@ -71,6 +73,7 @@ docs/
 ### 🔧 MODIFIED FILES
 
 #### Backend - Dartboard Service
+
 ```
 src/core/dartboard_service.py
 ├── Original size: 280 lines
@@ -93,6 +96,7 @@ src/core/dartboard_service.py
 ```
 
 #### Backend - Flask Application
+
 ```
 src/app/app.py
 ├── Original size: ~2950 lines
@@ -155,6 +159,7 @@ tests/unit/test_dartboard_service.py
 ## File Dependencies
 
 ### Frontend Dependencies
+
 ```
 templates/admin_dartboard_testing.html
 ├── Depends on: Socket.IO library (CDN)
@@ -164,6 +169,7 @@ templates/admin_dartboard_testing.html
 ```
 
 ### Backend Dependencies
+
 ```
 src/app/app.py (new routes)
 ├── Imports from: src/core/dartboard_service
@@ -180,7 +186,7 @@ src/core/dartboard_service.py (new methods)
 
 ## Quick File Access Guide
 
-### I want to...
+### I want to
 
 **See the admin interface:**
 → `templates/admin_dartboard_testing.html`
@@ -217,38 +223,44 @@ src/core/dartboard_service.py (new methods)
 ### By Responsibility
 
 **User Interface (Frontend):**
+
 - `templates/admin_dartboard_testing.html` - Complete admin dashboard
 
 **Business Logic (Backend):**
+
 - `src/core/dartboard_service.py` - Dartboard operations
 - `src/app/app.py` - REST API endpoints
 
 **Data Access:**
+
 - `src/core/database_models.py` - ORM models (DartboardType, DartboardZoneMapping)
 - `src/core/database_service.py` - Session management
 
 **Security:**
+
 - `src/core/auth.py` - Authentication & authorization
 
 **Testing:**
+
 - `tests/unit/test_dartboard_service.py` - 38 unit tests
 
 **Documentation:**
+
 - `docs/` - 1000+ lines across 4 files
 
 ## File Sizes Summary
 
-| File | Type | Lines | Purpose |
-|------|------|-------|---------|
-| admin_dartboard_testing.html | HTML+CSS+JS | 500+ | Admin UI |
-| dartboard_service.py (added) | Python | 200+ | Service methods |
-| app.py (added) | Python | 280+ | API endpoints |
-| ADMIN_DARTBOARD_TESTING.md | Markdown | 300+ | User guide |
-| ADMIN_DARTBOARD_TESTING_SUMMARY.md | Markdown | 400+ | Technical docs |
-| ADMIN_DARTBOARD_QUICK_REFERENCE.md | Markdown | 200+ | Quick ref |
-| ADMIN_DARTBOARD_DELIVERY.md | Markdown | 300+ | Delivery report |
-| test_dartboard_service.py | Python | 400+ | Tests (existing) |
-| **Total** | **Various** | **~2600+** | **Complete feature** |
+| File                               | Type        | Lines      | Purpose              |
+| ---------------------------------- | ----------- | ---------- | -------------------- |
+| admin_dartboard_testing.html       | HTML+CSS+JS | 500+       | Admin UI             |
+| dartboard_service.py (added)       | Python      | 200+       | Service methods      |
+| app.py (added)                     | Python      | 280+       | API endpoints        |
+| ADMIN_DARTBOARD_TESTING.md         | Markdown    | 300+       | User guide           |
+| ADMIN_DARTBOARD_TESTING_SUMMARY.md | Markdown    | 400+       | Technical docs       |
+| ADMIN_DARTBOARD_QUICK_REFERENCE.md | Markdown    | 200+       | Quick ref            |
+| ADMIN_DARTBOARD_DELIVERY.md        | Markdown    | 300+       | Delivery report      |
+| test_dartboard_service.py          | Python      | 400+       | Tests (existing)     |
+| **Total**                          | **Various** | **~2600+** | **Complete feature** |
 
 ## Deployment File Checklist
 
@@ -263,19 +275,19 @@ Before deploying, ensure these files are present:
 
 ## API Endpoints Quick Reference
 
-| Method | Endpoint | Purpose | Auth |
-|--------|----------|---------|------|
-| GET | /admin/dartboard-testing | Admin page | Admin |
-| GET | /api/admin/dartboard/matrix/{type} | Matrix data | Admin |
-| POST | /api/admin/dartboard/mapping | Save mapping | Admin |
-| POST | /api/admin/dartboard/import | Import CSV | Admin |
-| WebSocket | dartboard_test_message | Raw signals | WebSocket |
+| Method    | Endpoint                           | Purpose      | Auth      |
+| --------- | ---------------------------------- | ------------ | --------- |
+| GET       | /admin/dartboard-testing           | Admin page   | Admin     |
+| GET       | /api/admin/dartboard/matrix/{type} | Matrix data  | Admin     |
+| POST      | /api/admin/dartboard/mapping       | Save mapping | Admin     |
+| POST      | /api/admin/dartboard/import        | Import CSV   | Admin     |
+| WebSocket | dartboard_test_message             | Raw signals  | WebSocket |
 
 ## Testing Files
 
-| File | Tests | Status |
-|------|-------|--------|
-| test_dartboard_service.py | 38 | ✅ All passing |
+| File                            | Tests  | Status                    |
+| ------------------------------- | ------ | ------------------------- |
+| test_dartboard_service.py       | 38     | ✅ All passing            |
 | test_dartboard_api_endpoints.py | Exists | ✅ Part of existing suite |
 
 ## Documentation Organization
@@ -295,14 +307,14 @@ docs/
 
 **Current Version: 1.0**
 
-| Component | Version | Status |
-|-----------|---------|--------|
-| Admin Dashboard | 1.0 | Production-ready |
-| Dartboard Service | 1.3 | Updated (3 new methods) |
-| Flask App | 1.5 | Updated (4 new endpoints) |
-| API Spec | 1.0 | New endpoints documented |
-| Documentation | 1.0 | Complete |
-| Tests | 1.0 | All passing |
+| Component         | Version | Status                    |
+| ----------------- | ------- | ------------------------- |
+| Admin Dashboard   | 1.0     | Production-ready          |
+| Dartboard Service | 1.3     | Updated (3 new methods)   |
+| Flask App         | 1.5     | Updated (4 new endpoints) |
+| API Spec          | 1.0     | New endpoints documented  |
+| Documentation     | 1.0     | Complete                  |
+| Tests             | 1.0     | All passing               |
 
 ## Related Documentation Files
 
@@ -318,6 +330,7 @@ These files provide context for the admin feature:
 ## Support Files
 
 CSV Template Format (downloadable from admin page):
+
 ```csv
 master_pin,slave_pin,zone_number,multiplier_type,base_value
 4,13,20,TRIPLE,20

@@ -29,6 +29,7 @@ RowN   pin     pin      pin              pin    (master pins)
 ```
 
 Example - Carromco with 8x8 matrix:
+
 ```
 matrixMaster[] = {15, 2, 4, 16, 17, 5, 18, 19}  (row pins)
 matrixSlave[] = {13, 12, 14, 27, 26, 25, 33, 32}  (column pins)
@@ -139,6 +140,7 @@ curl -X POST http://localhost:5000/api/Throw/zone \
 ## For Existing Carromco Users: Migration Path
 
 ### Option 1: Stay on Legacy (Current)
+
 - No changes needed
 - Continue using `/api/Throw` endpoint
 - Existing firmware works as-is
@@ -146,6 +148,7 @@ curl -X POST http://localhost:5000/api/Throw/zone \
 ### Option 2: Migrate to New System (Recommended)
 
 **Advantages:**
+
 - Server-side zone management
 - Easier debugging
 - Support for multiple board types
@@ -154,11 +157,13 @@ curl -X POST http://localhost:5000/api/Throw/zone \
 **Steps:**
 
 1. **Update Database** (if using migrations):
+
    ```bash
    alembic upgrade head
    ```
 
 2. **Initialize Carromco Mappings**:
+
    ```bash
    python helpers/setup_dartboard_types.py carromco
    ```
@@ -169,6 +174,7 @@ curl -X POST http://localhost:5000/api/Throw/zone \
    - Restart device
 
 4. **Verify**:
+
    ```bash
    # Test the new endpoint
    curl -X POST http://localhost:5000/api/Throw/zone \
@@ -197,6 +203,7 @@ python helpers/setup_dartboard_types.py list
 ## API Endpoint Migration
 
 ### Before (Legacy)
+
 ```bash
 curl -X POST http://localhost:5000/api/Throw \
   -H "Content-Type: application/json" \
@@ -204,6 +211,7 @@ curl -X POST http://localhost:5000/api/Throw \
 ```
 
 ### After (New)
+
 ```bash
 curl -X POST http://localhost:5000/api/Throw/zone \
   -H "Content-Type: application/json" \
@@ -221,6 +229,7 @@ curl -X POST http://localhost:5000/api/Throw/zone \
 ### Issue: "Zone mapping not found"
 
 **Solution:**
+
 ```bash
 # 1. Verify board type exists
 curl http://localhost:5000/api/dartboard/types
@@ -234,6 +243,7 @@ curl http://localhost:5000/api/dartboard/types/carromco/mappings
 ### Issue: "Database error"
 
 **Solution:**
+
 ```bash
 # 1. Ensure migrations are run
 alembic upgrade head
@@ -248,6 +258,7 @@ python helpers/setup_dartboard_types.py carromco
 ### Issue: Arduino fails to compile
 
 **Solution:**
+
 - Verify ArduinoJson library is installed
 - Check WiFi credentials in code
 - Verify GPIO pin numbers are correct
@@ -256,6 +267,7 @@ python helpers/setup_dartboard_types.py carromco
 ### Issue: Scores still using old format
 
 **Solution:**
+
 1. Check `/api/Throw/zone` endpoint returns data
 2. Verify game_manager receives correct score
 3. Check zone_info in response contains expected values

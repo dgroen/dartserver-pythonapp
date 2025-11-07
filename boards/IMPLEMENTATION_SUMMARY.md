@@ -43,6 +43,7 @@ helpers/
 ## Architecture Overview
 
 ### Before (Broken)
+
 ```
 Arduino Firmware
   ├── Hardcoded zone arrays (x2[], x3[])
@@ -55,6 +56,7 @@ Arduino Firmware
 ```
 
 ### After (Fixed & Generic)
+
 ```
 Arduino Firmware (Generic - One for All!)
   ├── dartserver_generic.ino (250 lines)
@@ -93,12 +95,14 @@ Result: Zone change = Admin panel update (no firmware needed!)
 ## Key Improvements
 
 ### 1. Bug Fixes ✅
+
 - **Triple 4 (3×4=12)** - Was missing, now at GPIO pins (4, 27)
 - **Triple 13 (3×13=39)** - Was missing, now at GPIO pins (17, 27)
 - **Array bounds error** - x2Len=21 but array had only 20 elements = crash
 - **Logic error** - multiCheck() set multiplier on every loop iteration
 
 ### 2. Simplification ✅
+
 ```cpp
 // Before: 100+ lines of hardcoded arrays + complex logic
 const int x3Len = 20;
@@ -121,12 +125,14 @@ void sendData(int masterPin, int slavePin) {
 ```
 
 ### 3. Flexibility ✅
+
 - New board? Just create config header + register in database
 - Calibrate zones? Use admin panel instead of reflashing firmware
 - Change multiplier logic? Update database, not code
 - Support both boards? Single generic code + different configs
 
 ### 4. Maintainability ✅
+
 - One codebase instead of multiple duplicated sketches
 - Easy to add features (buttons, LEDs, etc.)
 - Clear separation: Arduino hardware ↔ Backend software
@@ -139,6 +145,7 @@ void sendData(int masterPin, int slavePin) {
 ### Option A: Use Pre-Built Sketches (Recommended)
 
 **For Carromco:**
+
 ```bash
 1. Open: boards/carromco/dartserver_carromco.ino
 2. Configure WiFi credentials
@@ -150,6 +157,7 @@ void sendData(int masterPin, int slavePin) {
 ```
 
 **For Crivit:**
+
 ```bash
 1. Open: boards/crivit/dartserver_crivit.ino
 2. Configure WiFi credentials
@@ -179,37 +187,38 @@ void sendData(int masterPin, int slavePin) {
 
 ### Configuration Headers (New!)
 
-| File | Board | Matrix | Pins | Status |
-|------|-------|--------|------|--------|
-| `carromco_config.h` | Carromco Striker | 8×8 | 16 GPIO | ✅ Ready |
-| `crivit_config.h` | Crivit | 7×12 | 19 GPIO | ✅ Ready |
+| File                | Board            | Matrix | Pins    | Status   |
+| ------------------- | ---------------- | ------ | ------- | -------- |
+| `carromco_config.h` | Carromco Striker | 8×8    | 16 GPIO | ✅ Ready |
+| `crivit_config.h`   | Crivit           | 7×12   | 19 GPIO | ✅ Ready |
 
 ### Board Sketches (Updated!)
 
-| File | Status | What's New |
-|------|--------|-----------|
+| File                               | Status   | What's New                               |
+| ---------------------------------- | -------- | ---------------------------------------- |
 | `carromco/dartserver_carromco.ino` | ✅ Ready | Includes carromco_config.h, cleaner code |
-| `crivit/dartserver_crivit.ino` | ✅ Ready | Includes crivit_config.h, cleaner code |
+| `crivit/dartserver_crivit.ino`     | ✅ Ready | Includes crivit_config.h, cleaner code   |
 
 ### Setup Guides (New!)
 
-| File | Purpose |
-|------|---------|
+| File                      | Purpose                     |
+| ------------------------- | --------------------------- |
 | `carromco/SETUP_GUIDE.md` | Step-by-step Carromco setup |
-| `crivit/SETUP_GUIDE.md` | Step-by-step Crivit setup |
+| `crivit/SETUP_GUIDE.md`   | Step-by-step Crivit setup   |
 
 ### Architecture Docs (New!)
 
-| File | Purpose |
-|------|---------|
+| File                             | Purpose                                       |
+| -------------------------------- | --------------------------------------------- |
 | `README_GENERIC_ARCHITECTURE.md` | Complete architecture + how to add new boards |
-| `IMPLEMENTATION_SUMMARY.md` | This file - overview + migration guide |
+| `IMPLEMENTATION_SUMMARY.md`      | This file - overview + migration guide        |
 
 ---
 
 ## Database Schema
 
 ### DartboardType Table
+
 ```sql
 id (PK)           INT
 name (UNIQUE)     VARCHAR  -- 'carromco', 'crivit'
@@ -222,6 +231,7 @@ updated_at        TIMESTAMP
 ```
 
 ### DartboardZoneMapping Table
+
 ```sql
 id (PK)                          INT
 dartboard_type_id (FK)           INT  → DartboardType.id
@@ -242,6 +252,7 @@ UNIQUE(dartboard_type_id, master_pin, slave_pin)  -- Prevent duplicate mappings
 ### POST /api/Throw/zone
 
 **Request:**
+
 ```json
 {
   "masterPin": 4,
@@ -253,6 +264,7 @@ UNIQUE(dartboard_type_id, master_pin, slave_pin)  -- Prevent duplicate mappings
 ```
 
 **Response (Success):**
+
 ```json
 {
   "status": "success",
@@ -267,6 +279,7 @@ UNIQUE(dartboard_type_id, master_pin, slave_pin)  -- Prevent duplicate mappings
 ```
 
 **Response (Zone Not Mapped):**
+
 ```json
 {
   "status": "error",
@@ -279,6 +292,7 @@ UNIQUE(dartboard_type_id, master_pin, slave_pin)  -- Prevent duplicate mappings
 ## Adding a New Board Type
 
 ### Step 1: Create Configuration Header
+
 ```cpp
 // File: boards/yourboard_config.h
 
@@ -291,6 +305,7 @@ int matrixSlave[] = {13, 12, 14, 27, 26, 25, 33, 32};
 ```
 
 ### Step 2: Create Board Sketch
+
 ```cpp
 // File: boards/yourboard/dartserver_yourboard.ino
 
@@ -301,11 +316,13 @@ int matrixSlave[] = {13, 12, 14, 27, 26, 25, 33, 32};
 ```
 
 ### Step 3: Register in Database
+
 ```bash
 python helpers/setup_dartboard_types.py yourboard
 ```
 
 ### Step 4: Configure Zones
+
 1. Go to admin panel: `https://your-server/admin/dartboard-testing`
 2. Select "yourboard" from dropdown
 3. Use "Manual Mapping" or "Bulk Import" to add zones
@@ -316,11 +333,13 @@ python helpers/setup_dartboard_types.py yourboard
 ## Testing & Verification
 
 ### Setup Verification
+
 ```bash
 python helpers/setup_dartboard_types.py list
 ```
 
 Output should show:
+
 ```
 Registered Dartboard Types (2):
 ────────────────────────────────────────────────────────────
@@ -336,6 +355,7 @@ ID: 2
 ```
 
 ### Admin Panel Testing
+
 1. Go to: `https://your-server/admin/dartboard-testing`
 2. Select board type from dropdown
 3. **GPIO Matrix tab** - Should show 8×8 grid (Carromco) or 7×12 (Crivit)
@@ -344,6 +364,7 @@ ID: 2
 6. **Bulk Import tab** - Upload CSV to configure many zones
 
 ### Arduino Serial Monitor
+
 ```
 Starting Carromco Striker
 Board Type: carromco
@@ -364,23 +385,24 @@ Response: {"status":"success",...}
 
 ## Comparison: Before vs After
 
-| Aspect | Before (Broken) | After (Fixed) |
-|--------|---|---|
-| **Triple 4** | ❌ Missing | ✅ Works (pins 4,27) |
-| **Triple 13** | ❌ Missing | ✅ Works (pins 17,27) |
-| **Zone mapping** | 90+ lines hardcoded | Database-driven |
-| **Zone calibration** | Firmware update needed | Admin panel |
-| **New board support** | Code new sketch | Just config header |
-| **Multiplier logic** | In Arduino firmware | Server-side |
-| **Debugging** | Serial prints only | Admin panel + logs |
-| **Code duplication** | Per-board sketches | Single generic + configs |
-| **Maintenance** | High (multiple files) | Low (centralized) |
+| Aspect                | Before (Broken)        | After (Fixed)            |
+| --------------------- | ---------------------- | ------------------------ |
+| **Triple 4**          | ❌ Missing             | ✅ Works (pins 4,27)     |
+| **Triple 13**         | ❌ Missing             | ✅ Works (pins 17,27)    |
+| **Zone mapping**      | 90+ lines hardcoded    | Database-driven          |
+| **Zone calibration**  | Firmware update needed | Admin panel              |
+| **New board support** | Code new sketch        | Just config header       |
+| **Multiplier logic**  | In Arduino firmware    | Server-side              |
+| **Debugging**         | Serial prints only     | Admin panel + logs       |
+| **Code duplication**  | Per-board sketches     | Single generic + configs |
+| **Maintenance**       | High (multiple files)  | Low (centralized)        |
 
 ---
 
 ## Migration Guide
 
 ### For Carromco Users
+
 - **Old:** hardcoded zone arrays with bugs
 - **New:** 50 pre-configured zones (bugs fixed!)
 - **Action:**
@@ -390,6 +412,7 @@ Response: {"status":"success",...}
   4. Done! Triple 4 and 13 now work
 
 ### For Crivit Users
+
 - **Old:** large hardcoded zone arrays (7×12)
 - **New:** generic code + database mappings
 - **Action:**
@@ -402,22 +425,24 @@ Response: {"status":"success",...}
 
 ## File Sizes (Before vs After)
 
-| Sketch | Before | After | Reduction |
-|--------|--------|-------|-----------|
-| `dartserver_carromco.ino` | ~250 lines | ~200 lines | -20% |
-| `dartserver_crivit.ino` | ~210 lines (with bugs) | ~200 lines (fixed) | ✅ Cleaner |
-| Combined for both | ~460 lines | 200 (generic) + 70 (config) = 270 lines | -41% |
+| Sketch                    | Before                 | After                                   | Reduction  |
+| ------------------------- | ---------------------- | --------------------------------------- | ---------- |
+| `dartserver_carromco.ino` | ~250 lines             | ~200 lines                              | -20%       |
+| `dartserver_crivit.ino`   | ~210 lines (with bugs) | ~200 lines (fixed)                      | ✅ Cleaner |
+| Combined for both         | ~460 lines             | 200 (generic) + 70 (config) = 270 lines | -41%       |
 
 ---
 
 ## Performance Impact
 
 ### Arduino Side
+
 - **Same:** Scan speed (~50ms for 8×8 matrix)
 - **Same:** WiFi latency (100-500ms)
 - **Better:** Cleaner code = easier debugging
 
 ### Server Side
+
 - **Database lookup:** <1ms (indexed by pins)
 - **Total per throw:** 200-700ms (unchanged)
 - **No performance loss:** Zone logic moved server-side
@@ -427,6 +452,7 @@ Response: {"status":"success",...}
 ## Future Enhancements
 
 ### Potential Next Steps
+
 1. **Admin UI for CRUD:** Full board type management
 2. **Calibration wizard:** Auto-detect zones
 3. **Per-board profiles:** Save/load configurations
@@ -440,16 +466,19 @@ Response: {"status":"success",...}
 ## Troubleshooting
 
 ### "Zone mapping not found"
+
 - Check admin panel - mapping may not exist
 - Add mapping via Manual Mapping tab
 - Re-upload Arduino sketch if needed
 
 ### "Board Type X not found"
+
 - Run: `python helpers/setup_dartboard_types.py yourboard`
 - Then reload admin panel
 - Try uploading again
 
 ### Arduino won't upload
+
 - Check config header exists in correct folder
 - Verify include path: `#include "boardname_config.h"`
 - Check Arduino IDE board settings
@@ -459,6 +488,7 @@ Response: {"status":"success",...}
 ## Support Files
 
 All documentation available:
+
 - **Setup:** `carromco/SETUP_GUIDE.md`, `crivit/SETUP_GUIDE.md`
 - **Architecture:** `README_GENERIC_ARCHITECTURE.md`
 - **API:** `../docs/DARTBOARD_ZONE_MAPPING.md`

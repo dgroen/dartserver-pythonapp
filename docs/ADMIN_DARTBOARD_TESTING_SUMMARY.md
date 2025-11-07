@@ -19,18 +19,21 @@ A complete admin panel for testing and calibrating dartboard GPIO pin mappings h
 Added 3 new methods to support admin testing:
 
 **`get_matrix_visualization(session, dartboard_type_name)`**
+
 - Returns GPIO pin matrix with current mappings
 - Output: Tuple of (dartboard_type_dict, master_pins, slave_pins, matrix)
 - Purpose: Renders the grid UI in admin panel
 - Example: `result = DartboardService.get_matrix_visualization(session, "carromco")`
 
 **`update_zone_mapping(session, dartboard_type_name, master_pin, slave_pin, zone_number, multiplier_type, base_value)`**
+
 - Updates existing mapping or creates new one
 - Validates zone mapping before saving
 - Purpose: Handle both single mapping updates and CSV import
 - Idempotent: Calling twice with same data = same result
 
 **`bulk_import_mappings(session, dartboard_type_name, mappings_data)`**
+
 - Batch import mappings from list of dictionaries
 - Returns: Tuple of (created_count, updated_count)
 - Purpose: Support CSV import from admin panel
@@ -39,23 +42,27 @@ Added 3 new methods to support admin testing:
 #### 2. Flask API Endpoints (`src/app/app.py`)
 
 **`GET /admin/dartboard-testing`** (Admin only)
+
 - Renders admin testing page template
 - Authentication: `@login_required` + `@role_required("admin")`
 - Response: HTML page with JavaScript UI
 
 **`GET /api/admin/dartboard/matrix/<board_type>`** (Admin only)
+
 - Returns matrix visualization data
 - Parameters: board_type (string, e.g., "carromco")
 - Response: JSON with master pins, slave pins, and 2D matrix
 - Used by: Admin page to render GPIO grid
 
 **`POST /api/admin/dartboard/mapping`** (Admin only)
+
 - Create or update a single mapping
 - Request: JSON with boardType, masterPin, slavePin, zoneNumber, multiplierType, baseValue
 - Response: Success/error message
 - Used by: Manual mapping form in admin page
 
 **`POST /api/admin/dartboard/import`** (Admin only)
+
 - Bulk import mappings from CSV-like data
 - Request: JSON with boardType and array of mappings
 - Response: Count of created and updated mappings
@@ -64,6 +71,7 @@ Added 3 new methods to support admin testing:
 #### 3. WebSocket Event (`src/app/app.py`)
 
 **`@socketio.on("dartboard_test_message")`**
+
 - Receives raw dartboard test messages
 - Broadcasts: Emits `dartboard_test_received` to all clients
 - Purpose: Real-time message logging during testing
@@ -74,6 +82,7 @@ Added 3 new methods to support admin testing:
 #### 1. Admin Testing Page Template (`templates/admin_dartboard_testing.html`)
 
 **HTML Structure**:
+
 - Header with status indicator
 - Alert/notification container
 - 2-column main grid:
@@ -82,6 +91,7 @@ Added 3 new methods to support admin testing:
 - Full-width message log at bottom
 
 **Key Features**:
+
 - **Responsive Design**: Works on desktop and tablet
 - **Real-time Updates**: Socket.IO for live messages
 - **Data Persistence**: All changes saved to database
@@ -90,6 +100,7 @@ Added 3 new methods to support admin testing:
 - **Accessibility**: Keyboard navigation, color contrast
 
 **CSS Features**:
+
 - Modern gradient background
 - Card-based layout with shadows
 - Color-coded alerts (success/error/info)
@@ -99,6 +110,7 @@ Added 3 new methods to support admin testing:
 - Smooth transitions and animations
 
 **JavaScript Features**:
+
 - API communication with fetch()
 - Socket.IO for real-time updates
 - CSV parsing and validation
@@ -197,6 +209,7 @@ Scroll to latest, keep last 50 entries
 ## File Changes Summary
 
 ### New Files Created
+
 ```
 templates/admin_dartboard_testing.html         (500+ lines)
 docs/ADMIN_DARTBOARD_TESTING.md                (300+ lines)
@@ -204,6 +217,7 @@ docs/ADMIN_DARTBOARD_TESTING_SUMMARY.md        (this file)
 ```
 
 ### Files Modified
+
 ```
 src/core/dartboard_service.py                  (+200 lines)
   - get_matrix_visualization()
@@ -238,6 +252,7 @@ src/app/app.py                                 (+280 lines)
 ### Automated Test Coverage
 
 Existing tests in `tests/unit/test_dartboard_service.py`:
+
 - ✅ 38 tests passing
 - ✅ `get_matrix_visualization()` tested
 - ✅ `update_zone_mapping()` tested
@@ -249,18 +264,21 @@ Existing tests in `tests/unit/test_dartboard_service.py`:
 ## Security Considerations
 
 ### Authentication & Authorization
+
 - **Admin-only**: All endpoints require admin role
 - **Server-side checks**: Not reliant on client-side validation alone
 - **CSRF Protection**: Flask-WTF CSRF tokens for state-changing operations
 - **Login Required**: Decorator on all admin routes
 
 ### Input Validation
+
 - **Type checking**: All numeric inputs validated as integers
 - **Range checking**: Zone 1-20 or 25, pins 0-40, multipliers enum
 - **Database constraints**: Unique constraints on (board_type, master_pin, slave_pin)
 - **Error messages**: User-friendly, don't expose SQL/system details
 
 ### Data Protection
+
 - **No logging of sensitive data**: GPIO values logged but not sensitive
 - **HTTPS enforcement**: Should be configured at reverse proxy level
 - **Database transactions**: Atomicity ensures consistent state
@@ -269,18 +287,21 @@ Existing tests in `tests/unit/test_dartboard_service.py`:
 ## Performance Notes
 
 ### Front-End Performance
+
 - **Matrix rendering**: 8×8 = 64 cells renders instantly
 - **Large matrix**: 40×40 = 1,600 cells renders in <100ms
 - **CSV parsing**: 1,000 rows parsed in <50ms on client
 - **Message log**: Limited to 50 entries (older removed)
 
 ### Back-End Performance
+
 - **Matrix query**: Single database query + lookup dict = O(n)
 - **CSV import**: Each row is separate transaction (could batch)
 - **API response**: Sub-100ms for typical dartboard
 - **Database indexes**: Should add on (dartboard_type_id, master_pin, slave_pin)
 
 ### Optimization Opportunities
+
 1. **Batch CSV imports**: Use executemany() for bulk insert
 2. **Cache matrix data**: Redis cache with TTL (1 minute)
 3. **Lazy load message log**: Only show last 20 until scroll
@@ -289,6 +310,7 @@ Existing tests in `tests/unit/test_dartboard_service.py`:
 ## Known Limitations & Future Work
 
 ### Current Limitations
+
 1. **No live dartboard stream**: Messages must come through API/RabbitMQ
 2. **No board image overlay**: Matrix is abstract grid only
 3. **No multi-user conflict detection**: Two admins editing same board concurrently
@@ -296,6 +318,7 @@ Existing tests in `tests/unit/test_dartboard_service.py`:
 5. **No import validation UI**: Must be valid before submission
 
 ### Recommended Future Enhancements
+
 1. **Calibration Wizard**: Step-by-step guide for new board setup
 2. **Export Mappings**: Save board configuration as CSV
 3. **Board Profiles**: Save/load multiple configurations per board
@@ -312,6 +335,7 @@ Existing tests in `tests/unit/test_dartboard_service.py`:
 ### Tables Used
 
 **`dartboard_type`**
+
 ```
 - id: Primary key
 - name: Unique name (e.g., 'carromco')
@@ -323,6 +347,7 @@ Existing tests in `tests/unit/test_dartboard_service.py`:
 ```
 
 **`dartboard_zone_mapping`**
+
 ```
 - id: Primary key
 - dartboard_type_id: Foreign key
@@ -366,11 +391,13 @@ Before deploying to production:
 ### Example 2: Bulk Import with CSV
 
 1. Create CSV file:
+
    ```
    master_pin,slave_pin,zone_number,multiplier_type,base_value
    4,13,20,TRIPLE,20
    4,12,20,DOUBLE,20
    ```
+
 2. Open admin testing page
 3. Select dartboard type
 4. Drag CSV file onto upload area (or click to select)
@@ -384,11 +411,14 @@ Before deploying to production:
 2. Have someone press dartboard in one setup
 3. In admin page: messages appear in log automatically
 4. Example log entry:
+
    ```
    [14:32:45] GPIO: master=4, slave=13
    Zone: 20, Mult: TRIPLE, Value: 20, Score: 60
    ```
+
 5. If pressing unmapped zone:
+
    ```
    [14:32:46] GPIO: master=5, slave=14
    (no mapping found)

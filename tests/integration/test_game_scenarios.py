@@ -6,7 +6,7 @@ from src.app.game_manager import GameManager
 from src.core.database_service import DatabaseService
 
 
-@pytest.fixture
+@pytest.fixture()
 def db_service():
     """Create in-memory database service for testing."""
     db = DatabaseService("sqlite:///:memory:")

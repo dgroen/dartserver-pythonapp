@@ -14,7 +14,7 @@ This directory contains a new **generic architecture** for all dartboard types. 
 ✅ **Zero firmware updates for calibration** - Change zones via web admin panel  
 ✅ **Easy to add new boards** - Just create a config header file  
 ✅ **Bugs fixed** - Triple 4 and Triple 13 now work correctly  
-✅ **Backwards compatible** - Legacy endpoints still supported  
+✅ **Backwards compatible** - Legacy endpoints still supported
 
 ---
 
@@ -69,9 +69,10 @@ Calculate Score: 20 × 3 = 60
 Send to Game Manager and WebSocket Clients
 ```
 
-### 3. No More Hardcoded Arrays!
+### 3. No More Hardcoded Arrays
 
 **Before (Broken):**
+
 ```cpp
 // Hardcoded with bugs
 const int x3Len = 20;
@@ -91,6 +92,7 @@ String multiCheck(int M, int S) {
 ```
 
 **After (Generic):**
+
 ```cpp
 void sendData(int masterPin, int slavePin) {
   // Just send raw pins - server handles mapping
@@ -108,12 +110,14 @@ void sendData(int masterPin, int slavePin) {
 ### Option A: Use Board-Specific Sketches (Recommended)
 
 1. **For Carromco:**
+
    ```bash
    # Use: boards/carromco/dartserver_carromco.ino
    # This includes carromco_config.h automatically
    ```
 
 2. **For Crivit:**
+
    ```bash
    # Use: boards/crivit/dartserver_crivit.ino
    # This includes crivit_config.h automatically
@@ -123,10 +127,12 @@ void sendData(int masterPin, int slavePin) {
 
 1. Open `dartserver_generic.ino`
 2. Uncomment the board you want:
+
    ```cpp
    // #include "carromco_config.h"
    #include "crivit_config.h"  // ← Use this one
    ```
+
 3. Upload to ESP32
 
 ---
@@ -207,15 +213,15 @@ int matrixSlave[]           // Array of column pin numbers
 
 ## Board Comparison
 
-| Feature | Carromco | Crivit |
-|---------|----------|--------|
-| **Board Type** | `carromco` | `crivit` |
-| **Matrix Size** | 8×8 = 64 zones | 7×12 = 84 zones |
-| **Master Pins** | 15,2,4,16,17,5,18,19 | 2,4,16,17,5,18,19 |
-| **Slave Pins** | 13,12,14,27,26,25,33,32 | 21,22,23,13,12,14,27,26,25,33,32,15 |
-| **Total GPIO Used** | 16 pins | 19 pins |
-| **Known Issues Fixed** | Triple 4, Triple 13 | Previously all hardcoded |
-| **Config File** | `carromco_config.h` | `crivit_config.h` |
+| Feature                | Carromco                | Crivit                              |
+| ---------------------- | ----------------------- | ----------------------------------- |
+| **Board Type**         | `carromco`              | `crivit`                            |
+| **Matrix Size**        | 8×8 = 64 zones          | 7×12 = 84 zones                     |
+| **Master Pins**        | 15,2,4,16,17,5,18,19    | 2,4,16,17,5,18,19                   |
+| **Slave Pins**         | 13,12,14,27,26,25,33,32 | 21,22,23,13,12,14,27,26,25,33,32,15 |
+| **Total GPIO Used**    | 16 pins                 | 19 pins                             |
+| **Known Issues Fixed** | Triple 4, Triple 13     | Previously all hardcoded            |
+| **Config File**        | `carromco_config.h`     | `crivit_config.h`                   |
 
 ---
 
@@ -330,11 +336,13 @@ curl -X POST http://your-server/api/admin/dartboard/mapping \
 ### Issue: "Zone mapping not found for pins (X, Y)"
 
 **Causes:**
+
 - Zone not configured in admin panel yet
 - Wrong board type selected
 - Pins not pressed correctly on dartboard
 
 **Solution:**
+
 1. Go to admin panel
 2. Select correct dartboard type
 3. Check GPIO Matrix tab to see current mappings
@@ -343,11 +351,13 @@ curl -X POST http://your-server/api/admin/dartboard/mapping \
 ### Issue: Wrong zones detected
 
 **Causes:**
+
 - GPIO pin mapping incorrect in config file
 - Dartboard hardware issue
 - Physical pins reversed/crossed
 
 **Solution:**
+
 1. Verify pin order in config header matches physical board
 2. Test individual pins using Serial monitor
 3. Use admin panel Message Log to watch raw signals
@@ -356,11 +366,13 @@ curl -X POST http://your-server/api/admin/dartboard/mapping \
 ### Issue: Arduino won't upload with config header
 
 **Causes:**
+
 - Config header in wrong location
 - Include path wrong
 - Syntax error in header file
 
 **Solution:**
+
 ```
 # Correct file structure:
 boards/
@@ -373,16 +385,20 @@ boards/
 ### Issue: WiFi connection fails
 
 **Causes:**
+
 - SSID/password not set
 - Network timeout
 - Weak signal
 
 **Solution:**
+
 1. Edit sketch:
+
    ```cpp
    const char* ssid = "<YOUR_SSID>";
    const char* password = "<YOUR_PASSWORD>";
    ```
+
 2. Check Arduino Serial Monitor for connection logs
 3. Move router closer to device
 4. Verify server IP and port correct
@@ -391,44 +407,47 @@ boards/
 
 ## Performance Characteristics
 
-| Operation | Time | Notes |
-|-----------|------|-------|
-| **Single matrix scan** | ~50ms | Scans all 64 zones (8×8) |
-| **WiFi request** | 100-500ms | Depends on network latency |
-| **Server zone lookup** | <1ms | Indexed database query |
-| **Total throw-to-update** | 200-700ms | Per throw detection |
+| Operation                 | Time      | Notes                      |
+| ------------------------- | --------- | -------------------------- |
+| **Single matrix scan**    | ~50ms     | Scans all 64 zones (8×8)   |
+| **WiFi request**          | 100-500ms | Depends on network latency |
+| **Server zone lookup**    | <1ms      | Indexed database query     |
+| **Total throw-to-update** | 200-700ms | Per throw detection        |
 
 ---
 
 ## File Comparison Matrix
 
-| File | Purpose | Size | Updated | Status |
-|------|---------|------|---------|--------|
-| `dartserver_generic.ino` | Universal sketch | 250 lines | ✅ | Ready |
-| `carromco_config.h` | Carromco config | 180 lines | ✅ | Ready |
-| `carromco/dartserver_carromco.ino` | Carromco sketch | 200 lines | ✅ | Ready |
-| `crivit_config.h` | Crivit config | 190 lines | ✅ | Ready |
-| `crivit/dartserver_crivit.ino` | Crivit sketch | 200 lines | ✅ | Ready |
-| `(old) crivit_config.h` | Legacy config | - | ❌ Replaced | Deprecated |
+| File                               | Purpose          | Size      | Updated     | Status     |
+| ---------------------------------- | ---------------- | --------- | ----------- | ---------- |
+| `dartserver_generic.ino`           | Universal sketch | 250 lines | ✅          | Ready      |
+| `carromco_config.h`                | Carromco config  | 180 lines | ✅          | Ready      |
+| `carromco/dartserver_carromco.ino` | Carromco sketch  | 200 lines | ✅          | Ready      |
+| `crivit_config.h`                  | Crivit config    | 190 lines | ✅          | Ready      |
+| `crivit/dartserver_crivit.ino`     | Crivit sketch    | 200 lines | ✅          | Ready      |
+| `(old) crivit_config.h`            | Legacy config    | -         | ❌ Replaced | Deprecated |
 
 ---
 
 ## Next Steps
 
-### For Current Boards:
+### For Current Boards
+
 1. ✅ Download updated `.ino` files
 2. ✅ Update Arduino IDE with new sketches
 3. ✅ Configure zones via admin panel
 4. ✅ Test each zone to verify detection
 
-### For New Boards:
+### For New Boards
+
 1. Create board config header (`.h` file)
 2. Create board sketch (`.ino` file or use generic)
 3. Register in database: `python helpers/setup_dartboard_types.py yourboard`
 4. Configure zones via admin panel
 5. Upload to ESP32 - done!
 
-### For Developers:
+### For Developers
+
 1. Review `dartserver_generic.ino` architecture
 2. Understand pin matrix scanning algorithm
 3. Study config header requirements
@@ -450,27 +469,31 @@ boards/
 ## Support & Contributing
 
 ### Questions?
+
 Check the admin panel's quick reference guide or documentation files.
 
 ### Found a bug?
+
 Update the `.h` config file and re-upload sketch.
 
 ### Adding new board?
+
 Follow the "Adding a New Dartboard Type" section above.
 
 ### Have improvements?
+
 Submit configuration headers for new boards!
 
 ---
 
 ## Summary
 
-| Legacy Approach | New Generic Approach |
-|---|---|
-| 90+ line hardcoded zone arrays | 10 line generic scan + database |
-| Zone change = firmware update | Zone change = admin panel |
-| Separate sketch per board | Shared generic code + configs |
-| Bugs in firmware (Triple 4/13) | Bugs fixed server-side |
-| ~500 lines per board | ~30 lines per board (config only) |
+| Legacy Approach                | New Generic Approach              |
+| ------------------------------ | --------------------------------- |
+| 90+ line hardcoded zone arrays | 10 line generic scan + database   |
+| Zone change = firmware update  | Zone change = admin panel         |
+| Separate sketch per board      | Shared generic code + configs     |
+| Bugs in firmware (Triple 4/13) | Bugs fixed server-side            |
+| ~500 lines per board           | ~30 lines per board (config only) |
 
 **Result: Simpler, faster, more maintainable, and most importantly - it works!** ✅

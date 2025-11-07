@@ -248,6 +248,84 @@ def dashboard():
     return render_template("dashboard.html", user_roles=user_roles, user_claims=user_claims)
 
 
+def _verify_callback_state():
+    """Verify state parameter to prevent CSRF."""
+    state = request.args.get("state")
+    stored_state = session.get("oauth_state")
+    app.logger.info(f"Callback state check: {state}")
+    if state != stored_state:
+        app.logger.error(f"State mismatch! {state} vs {stored_state}")
+        return False
+    return True
+
+
+def _handle_auth_code_exchange():
+    """Get code and exchange for tokens."""
+    code = request.args.get("code")
+    if not code:
+        error = request.args.get("error", "Authorization failed")
+        return None, error
+
+    token_response = exchange_code_for_token(code)
+    if not token_response:
+        return None, "Failed to obtain access token"
+
+    session["access_token"] = token_response.get("access_token")
+    session["refresh_token"] = token_response.get("refresh_token")
+    session["id_token"] = token_response.get("id_token")
+    return session["access_token"], None
+
+
+def _process_scim2_data(scim_data, username, email, name):
+    """Extract user data from SCIM2 response."""
+    username = scim_data.get("userName") or username
+    if not email:
+        emails = scim_data.get("emails", [])
+        if emails:
+            email = emails[0] if isinstance(emails[0], str) else emails[0].get("value")
+    if not name:
+        name_obj = scim_data.get("name", {})
+        if isinstance(name_obj, dict):
+            given = name_obj.get("givenName", "")
+            family = name_obj.get("familyName", "")
+            name = f"{given} {family}".strip()
+    return username, email, name
+
+
+def _fetch_scim2_user(access_token):
+    """Fetch user data from SCIM2 /Me endpoint."""
+    try:
+        import requests
+
+        wso2_url = os.getenv("WSO2_IS_INTERNAL_URL", "https://wso2is:9443")
+        verify_ssl = os.getenv("WSO2_IS_VERIFY_SSL", "false").lower() in ("true", "1", "yes")
+        resp = requests.get(
+            f"{wso2_url}/scim2/Me",
+            headers={"Authorization": f"Bearer {access_token}"},
+            verify=verify_ssl,
+            timeout=5,
+        )
+        return resp.json() if resp.status_code == 200 else None
+    except Exception:
+        return None
+
+
+def _ensure_player_exists(username, email, name):
+    """Create or get player in database."""
+    if not username:
+        return
+    try:
+        player = game_manager.db_service.get_or_create_player(
+            username=username,
+            email=email,
+            name=name,
+        )
+        if player:
+            session["player_id"] = player.id
+    except Exception as e:
+        app.logger.warning(f"Player creation failed: {e}")
+
+
 @app.route("/login")
 def login():
     """Login page"""
@@ -285,149 +363,45 @@ def login():
 @app.route("/callback")
 def callback():
     """OAuth2 callback endpoint"""
-    # Verify state to prevent CSRF
-    state = request.args.get("state")
-    stored_state = session.get("oauth_state")
+    app.logger.info(f"Callback - Session ID: {session.get('_id', 'No session ID')}")
 
-    # Debug logging
-    app.logger.info(f"Callback received - State from request: {state}")
-    app.logger.info(f"Callback received - State from session: {stored_state}")
-    app.logger.info(f"Session ID: {session.get('_id', 'No session ID')}")
-
-    if state != stored_state:
-        app.logger.error(f"State mismatch! Request: {state}, Session: {stored_state}")
+    if not _verify_callback_state():
         return redirect(url_for("login", error="Invalid state parameter"))
 
-    # Get authorization code
-    code = request.args.get("code")
-    if not code:
-        error = request.args.get("error", "Authorization failed")
+    access_token, error = _handle_auth_code_exchange()
+    if error:
         return redirect(url_for("login", error=error))
 
-    # Exchange code for token
-    token_response = exchange_code_for_token(code)
-    if not token_response:
-        return redirect(url_for("login", error="Failed to obtain access token"))
-
-    # Store tokens in session
-    session["access_token"] = token_response.get("access_token")
-    session["refresh_token"] = token_response.get("refresh_token")
-    session["id_token"] = token_response.get("id_token")
-
-    # Get user info
-    user_info = get_user_info(session["access_token"])
+    user_info = get_user_info(access_token)
     if user_info:
         session["user_info"] = user_info
+        username = user_info.get("preferred_username") or user_info.get("username")
+        email = user_info.get("email")
+        name = user_info.get("name") or user_info.get("given_name")
 
-        # Auto-add user to game lobby by creating/getting player in database
-        try:
-            # Try to get username from user_info first, but WSO2 userinfo endpoint
-            # may not include it, so fall back to SCIM2 /Me endpoint
-            username = user_info.get("preferred_username") or user_info.get("username")
-            email = user_info.get("email")
-            name = user_info.get("name") or user_info.get("given_name")
+        if not username or "-" in str(username):
+            scim_data = _fetch_scim2_user(access_token)
+            if scim_data:
+                username, email, name = _process_scim2_data(scim_data, username, email, name)
 
-            app.logger.info(
-                f"Callback: Initial user_info username={username}, email={email}, name={name}",
-            )
+        if username and "@" in username:
+            username = username.split("@")[0]
 
-            # If username is still not available (or looks like a UUID), try SCIM2 /Me endpoint
-            if not username or "-" in str(username):  # UUID detection
-                import requests
+        if not username or "-" in str(username):
+            username = user_info.get("sub")
+        if not name:
+            name = username
 
-                app.logger.info("Fetching username from SCIM2 /Me endpoint...")
-                try:
-                    wso2_is_internal_url = os.getenv("WSO2_IS_INTERNAL_URL", "https://wso2is:9443")
-                    scim2_me_url = f"{wso2_is_internal_url}/scim2/Me"
-                    verify_ssl = os.getenv("WSO2_IS_VERIFY_SSL", "false").lower() in (
-                        "true",
-                        "1",
-                        "yes",
-                    )
+        _ensure_player_exists(username, email, name)
 
-                    scim_response = requests.get(
-                        scim2_me_url,
-                        headers={"Authorization": f"Bearer {session['access_token']}"},
-                        verify=verify_ssl,
-                        timeout=5,
-                    )
-                    if scim_response.status_code == 200:
-                        scim_data = scim_response.json()
-                        username = scim_data.get("userName")
-                        if not email:
-                            emails = scim_data.get("emails", [])
-                            if emails and isinstance(emails, list) and len(emails) > 0:
-                                email = (
-                                    emails[0]
-                                    if isinstance(emails[0], str)
-                                    else emails[0].get("value")
-                                )
-                        if not name:
-                            name_obj = scim_data.get("name", {})
-                            if isinstance(name_obj, dict):
-                                given_name = name_obj.get("givenName", "")
-                                family_name = name_obj.get("familyName", "")
-                                name = f"{given_name} {family_name}".strip()
-                        app.logger.info(
-                            f"Retrieved user data from SCIM2: "
-                            f"username={username}, email={email}, name={name}",
-                        )
-                    else:
-                        app.logger.warning(
-                            f"SCIM2 /Me returned status {scim_response.status_code}: "
-                            f"{scim_response.text}",
-                        )
-                except Exception as e:
-                    app.logger.warning(f"Failed to get user data from SCIM2: {e}")
-
-            # Strip WSO2 tenant suffix (e.g., @carbon.super) from username if present
-            if username and "@" in username:
-                app.logger.info(f"Stripping tenant suffix from username: {username}")
-                username = username.split("@")[0]
-
-            # Fallback to sub if still no username
-            if not username or "-" in str(username):  # Still a UUID
-                app.logger.warning(f"Using sub as username fallback: {user_info.get('sub')}")
-                username = user_info.get("sub")
-            if not name:
-                name = username
-
-            app.logger.info(f"Final username for player creation: {username}")
-            if username:
-                player = game_manager.db_service.get_or_create_player(
-                    username=username,
-                    email=email,
-                    name=name,
-                )
-                if player:
-                    session["player_id"] = player.id
-                    app.logger.info(f"Player created/retrieved: {username} (ID: {player.id})")
-        except Exception as e:
-            app.logger.warning(f"Failed to create/get player in callback: {e}")
-
-    # Clear OAuth state
     session.pop("oauth_state", None)
-
-    # Redirect to original destination or home
-    # First, try to get the redirect URL from session (set during login)
-    # Otherwise fall back to home page using relative URL (preserves scheme/host from proxy)
-    next_url = session.pop("login_next_url", None)
-
-    app.logger.info(f"Callback - Retrieved login_next_url from session: {next_url}")
-    app.logger.info(f"Callback - Session contents: {dict(session)}")
-
-    # Use "/" as fallback if no next_url was stored
-    if not next_url:
-        app.logger.warning("No login_next_url found in session, redirecting to home page")
-        next_url = "/"
-
-    # Mark session as modified to ensure changes are persisted
+    next_url = session.pop("login_next_url", None) or "/"
     session.modified = True
-
     app.logger.info(f"Callback redirecting to: {next_url}")
     return redirect(next_url)
 
 
+@app.route
 @app.route("/logout")
 def logout():
     """Logout endpoint"""
@@ -1106,7 +1080,23 @@ def submit_score_zone():
                 slave_pin,
             )
 
+            # Emit WebSocket event for admin dartboard testing page (even if zone not found)
+            socketio.emit(
+                "dartboard_test_received",
+                {
+                    "masterPin": master_pin,
+                    "slavePin": slave_pin,
+                    "boardType": board_type,
+                    "zoneInfo": zone_info,
+                },
+                namespace="/",
+            )
+
             if not zone_info:
+                logger.warning(
+                    f"Zone mapping not found - Received pinout: masterPin={master_pin}, "
+                    f"slavePin={slave_pin}, boardType={board_type}",
+                )
                 return (
                     jsonify(
                         {
@@ -1121,9 +1111,11 @@ def submit_score_zone():
                 )
 
             # Process the score using the zone information
+            # Use the calculated 'score' field since the zone mapping already computed it
+            # This ensures correct scoring regardless of DARTBOARD_SENDS_ACTUAL_SCORE setting
             game_manager.process_score(
                 {
-                    "score": zone_info["base_value"],
+                    "score": zone_info["score"],  # Use calculated score, not base_value
                     "multiplier": zone_info["multiplier_type"],
                 },
             )
@@ -1249,7 +1241,7 @@ def get_dartboard_mappings(board_type):
         session = get_session()
         try:
             mappings = DartboardService.get_dartboard_type_mappings(session, board_type.lower())
-            if not mappings:
+            if mappings is None:
                 return (
                     jsonify(
                         {"status": "error", "message": f"Dartboard type '{board_type}' not found"},

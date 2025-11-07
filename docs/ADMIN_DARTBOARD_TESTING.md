@@ -37,6 +37,7 @@ Example:
 **Location**: Right side of screen
 
 **Features**:
+
 - **Grid Layout**: Master pins (rows) × Slave pins (columns)
 - **Color Coding**:
   - **White cells**: Unmapped pin combinations
@@ -45,6 +46,7 @@ Example:
 - **Interactive**: Click any cell to populate the manual mapping form
 
 **Matrix Example** (Carromco 8×8):
+
 ```
      13   12   14   27   26   25   33   32   (slave pins)
 15    12   50   36   15    5   10   24    0   (master pin 15)
@@ -62,6 +64,7 @@ Example:
 **Location**: Left side, below Configuration
 
 **Fields**:
+
 - **Master Pin (Row)**: GPIO pin number for row (0-40 typically)
 - **Slave Pin (Column)**: GPIO pin number for column (0-40 typically)
 - **Zone Number**: 1-20 for dartboard segments, 25 for bull's eye
@@ -69,12 +72,14 @@ Example:
 - **Base Value**: 1-20 for segments, 25 for bull (must match zone for BULL/DBLBULL)
 
 **Usage**:
+
 1. Select a dartboard type
 2. Click a cell in the matrix OR manually enter pin values
 3. Select zone number, multiplier type, and base value
 4. Click **Save Mapping**
 
 **Validation Rules**:
+
 - BULL and DBLBULL only valid for zone 25
 - Base value must be 1-20 for segments, 25 for bull
 - Zone and base value typically match (both represent the score)
@@ -84,6 +89,7 @@ Example:
 **Location**: Bottom full-width section
 
 **Display Format**:
+
 ```
 [14:32:45] GPIO: master=4, slave=13
 Zone: 20, Mult: TRIPLE, Value: 20, Score: 60
@@ -93,6 +99,7 @@ Zone: 20, Mult: DOUBLE, Value: 20, Score: 40
 ```
 
 **Features**:
+
 - **Auto-scroll**: New messages appear at top
 - **Color-coded**: Green text on black background (terminal style)
 - **Raw data**: Shows GPIO pins, zone info, and calculated score
@@ -104,6 +111,7 @@ Zone: 20, Mult: DOUBLE, Value: 20, Score: 40
 **Location**: Left side, bottom section
 
 **Supported Format**:
+
 ```csv
 master_pin,slave_pin,zone_number,multiplier_type,base_value
 4,13,20,TRIPLE,20
@@ -115,6 +123,7 @@ master_pin,slave_pin,zone_number,multiplier_type,base_value
 ```
 
 **Features**:
+
 - **Drag & Drop**: Drop CSV file on the upload area
 - **Click to Upload**: Click to select file from system
 - **Template Download**: Download pre-formatted template
@@ -132,6 +141,7 @@ master_pin,slave_pin,zone_number,multiplier_type,base_value
 | base_value | integer | 1-20, 25 | Base score value |
 
 **Example CSV (Carromco 8×8 full matrix)**:
+
 ```csv
 master_pin,slave_pin,zone_number,multiplier_type,base_value
 15,13,12,SINGLE,12
@@ -154,9 +164,11 @@ master_pin,slave_pin,zone_number,multiplier_type,base_value
 Returns matrix visualization data for admin interface.
 
 **Parameters**:
+
 - `board_type` (path): Dartboard type name (e.g., 'carromco')
 
 **Response**:
+
 ```json
 {
   "status": "success",
@@ -196,6 +208,7 @@ Returns matrix visualization data for admin interface.
 Update or create a single zone mapping.
 
 **Request Body**:
+
 ```json
 {
   "boardType": "carromco",
@@ -208,6 +221,7 @@ Update or create a single zone mapping.
 ```
 
 **Response**:
+
 ```json
 {
   "status": "success",
@@ -220,6 +234,7 @@ Update or create a single zone mapping.
 Bulk import multiple mappings from CSV data.
 
 **Request Body**:
+
 ```json
 {
   "boardType": "carromco",
@@ -243,6 +258,7 @@ Bulk import multiple mappings from CSV data.
 ```
 
 **Response**:
+
 ```json
 {
   "status": "success",
@@ -257,6 +273,7 @@ Bulk import multiple mappings from CSV data.
 ### Example 1: Testing a New Dartboard
 
 1. **Register Dartboard Type**:
+
    ```python
    from src.core.dartboard_service import DartboardService
    from src.core.database_service import get_session
@@ -315,18 +332,22 @@ Bulk import multiple mappings from CSV data.
 ## Troubleshooting
 
 ### "Dartboard type not found"
+
 - **Cause**: Dartboard type not registered in database
 - **Fix**: Register dartboard type first using `DartboardService.register_dartboard_type()`
 
 ### "Zone mapping not found" in message log
+
 - **Cause**: GPIO pins haven't been mapped yet
 - **Fix**: Click the cell to select pins, fill form, and save mapping
 
 ### Matrix shows all white cells
+
 - **Cause**: No mappings exist for this dartboard type
 - **Fix**: Start creating mappings using manual form or CSV import
 
 ### CSV import fails
+
 - **Cause**: Invalid CSV format or values
 - **Fix**:
   - Download template to see correct format
@@ -335,6 +356,7 @@ Bulk import multiple mappings from CSV data.
   - Verify multiplier types are uppercase
 
 ### Cannot access admin page
+
 - **Cause**: Not logged in or don't have admin role
 - **Fix**:
   - Log in with admin credentials
@@ -367,6 +389,7 @@ When dartboards send test messages during testing:
 ## Future Enhancements
 
 Potential improvements:
+
 - **Live dartboard streaming**: Real-time pin detection from connected board
 - **Calibration wizard**: Step-by-step guide for new board setup
 - **Import templates**: Pre-built templates for popular dartboard types

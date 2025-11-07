@@ -5,6 +5,7 @@
 A complete refactor of dartboard Arduino implementations from **hardcoded zone mapping** to a **generic, database-driven architecture**.
 
 ### Key Achievement
+
 ✅ **One generic Arduino sketch** + **Board-specific config headers** = Supports all dartboards  
 ✅ **Triple 4 and Triple 13 fixed!** (were broken in old firmware)  
 ✅ **Zero firmware updates for zone calibration** (use admin panel instead)  
@@ -80,6 +81,7 @@ python helpers/setup_dartboard_types.py crivit
 ## 🎯 How It Works
 
 ### Old System (Broken)
+
 ```
 Dartboard
     ↓
@@ -92,6 +94,7 @@ Arduino (with hardcoded zone arrays)
 ```
 
 ### New System (Fixed & Generic)
+
 ```
 Dartboard
     ↓
@@ -112,21 +115,22 @@ Server (database-driven)
 
 ## 📊 Comparison
 
-| Feature | Before | After |
-|---------|--------|-------|
-| **Triple 4** | ❌ Missing/Broken | ✅ Fixed (GPIO 4,27) |
-| **Triple 13** | ❌ Missing/Broken | ✅ Fixed (GPIO 17,27) |
-| **Zone Calibration** | ❌ Firmware update | ✅ Admin panel (instant) |
+| Feature               | Before              | After                       |
+| --------------------- | ------------------- | --------------------------- |
+| **Triple 4**          | ❌ Missing/Broken   | ✅ Fixed (GPIO 4,27)        |
+| **Triple 13**         | ❌ Missing/Broken   | ✅ Fixed (GPIO 17,27)       |
+| **Zone Calibration**  | ❌ Firmware update  | ✅ Admin panel (instant)    |
 | **New Board Support** | ❌ Write new sketch | ✅ Config header + register |
-| **Code Size** | 460 lines | 270 lines |
-| **Duplication** | 95% | 0% |
-| **Bugs** | Multiple | None known |
+| **Code Size**         | 460 lines           | 270 lines                   |
+| **Duplication**       | 95%                 | 0%                          |
+| **Bugs**              | Multiple            | None known                  |
 
 ---
 
 ## 🔧 Setup Steps (5 minutes)
 
 ### Step 1: Configure WiFi
+
 ```cpp
 // Edit your board's .ino file:
 // boards/carromco/dartserver_carromco.ino
@@ -138,6 +142,7 @@ const char* serverAddress = "YOUR_SERVER_IP";
 ```
 
 ### Step 2: Upload to ESP32
+
 ```
 Arduino IDE
   → Tools → Board → ESP32 Dev Module
@@ -147,6 +152,7 @@ Arduino IDE
 ```
 
 ### Step 3: Register Board
+
 ```bash
 # Carromco (pre-configured)
 python helpers/setup_dartboard_types.py carromco
@@ -159,6 +165,7 @@ python helpers/setup_dartboard_types.py list
 ```
 
 ### Step 4: Configure Zones (if needed)
+
 ```
 Admin Panel: https://your-server/admin/dartboard-testing
   1. Select dartboard type (carromco or crivit)
@@ -169,6 +176,7 @@ Admin Panel: https://your-server/admin/dartboard-testing
 ```
 
 ### Step 5: Test
+
 ```
 Press zones on dartboard
   → Should see GPIO pins in admin panel message log
@@ -181,6 +189,7 @@ Press zones on dartboard
 ## 📋 Pre-Configured Zones
 
 ### Carromco (50 zones pre-configured)
+
 - Triple 4 at GPIO (4, 27) ← Was broken, now fixed! ✅
 - Triple 13 at GPIO (17, 27) ← Was broken, now fixed! ✅
 - Triple 20 at GPIO (4, 13)
@@ -189,6 +198,7 @@ Press zones on dartboard
 - ... and 45 more zones automatically configured!
 
 ### Crivit (0 zones initially)
+
 - You configure via admin panel
 - 7×12 = 84 possible zones
 - Download CSV template, fill in, upload
@@ -197,14 +207,14 @@ Press zones on dartboard
 
 ## 🎓 Documentation
 
-| Document | Purpose | Read Time |
-|----------|---------|-----------|
-| **This file** | Quick start | 5 min ⚡ |
-| `MIGRATION_GUIDE.md` | Migrate from old system | 10 min 📖 |
-| `README_GENERIC_ARCHITECTURE.md` | Full system guide | 20 min 📚 |
-| `IMPLEMENTATION_SUMMARY.md` | Technical details | 15 min 🔧 |
-| `carromco/SETUP_GUIDE.md` | Carromco specifics | 10 min 🎯 |
-| `crivit/SETUP_GUIDE.md` | Crivit specifics | 10 min 🎯 |
+| Document                         | Purpose                 | Read Time |
+| -------------------------------- | ----------------------- | --------- |
+| **This file**                    | Quick start             | 5 min ⚡  |
+| `MIGRATION_GUIDE.md`             | Migrate from old system | 10 min 📖 |
+| `README_GENERIC_ARCHITECTURE.md` | Full system guide       | 20 min 📚 |
+| `IMPLEMENTATION_SUMMARY.md`      | Technical details       | 15 min 🔧 |
+| `carromco/SETUP_GUIDE.md`        | Carromco specifics      | 10 min 🎯 |
+| `crivit/SETUP_GUIDE.md`          | Crivit specifics        | 10 min 🎯 |
 
 ---
 
@@ -248,27 +258,35 @@ Special Zones (Carromco):
 ## 🆘 Troubleshooting
 
 ### Problem: Arduino won't upload
+
 **Solution:**
+
 1. Check board selected: Tools → Board → ESP32 Dev Module
 2. Check port: Tools → Port → (select COM port)
 3. Verify config header exists in same folder as .ino
 4. Try different USB cable/port
 
 ### Problem: "Zone mapping not found"
+
 **Solution:**
+
 1. Check admin panel - zones may not be configured
 2. For Carromco: Run `python helpers/setup_dartboard_types.py carromco`
 3. For Crivit: Use admin panel to add zones
 4. Reload admin panel page
 
 ### Problem: Wrong zone detected
+
 **Solution:**
+
 1. Check admin panel message log - see raw GPIO pins
 2. Update zone mapping for those pins
 3. Re-test dartboard
 
 ### Problem: WiFi connection failed
+
 **Solution:**
+
 1. Edit Arduino sketch with correct SSID/password
 2. Verify server IP and port correct
 3. Check network is accessible from device
@@ -297,6 +315,7 @@ Special Zones (Carromco):
 ## 📞 Support
 
 **Questions about:**
+
 - **Architecture?** → Read `README_GENERIC_ARCHITECTURE.md`
 - **Setup?** → Read `carromco/SETUP_GUIDE.md` or `crivit/SETUP_GUIDE.md`
 - **API?** → Read `../docs/DARTBOARD_ZONE_MAPPING.md`
@@ -312,7 +331,7 @@ Special Zones (Carromco):
 ✅ Pre-configured zones (Carromco)  
 ✅ Admin panel for calibration  
 ✅ Zero code duplication  
-✅ Production ready  
+✅ Production ready
 
 **You're all set! Deploy with confidence. 🚀**
 

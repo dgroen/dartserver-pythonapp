@@ -560,7 +560,7 @@
                         <input type="file" id="csvFile" accept=".csv" onchange="handleCSVUpload(event)">
                     </div>
                     <button class="btn-primary" style="width: 100%; margin-top: 15px;" onclick="downloadCSVTemplate()">
-                        📥 Download CSV Template
+                        📥 Download Current Mappings (CSV)
                     </button>
                 </div>
             </div>
@@ -639,6 +639,8 @@
 
             if (mappingInfo) {
                 html += `<div class="log-mapping">Zone: ${mappingInfo.zone_number}, Mult: ${mappingInfo.multiplier_type}, Value: ${mappingInfo.base_value}, Score: ${mappingInfo.score}</div>`;
+            } else {
+                html += `<div class="log-mapping" style="color: #d32f2f;"><strong>❌ Mapping not found</strong></div>`;
             }
 
             entry.innerHTML = html;
@@ -903,8 +905,12 @@
             return mappings;
         }
 
-        function downloadCSVTemplate() {
-            const csv = `master_pin,slave_pin,zone_number,multiplier_type,base_value
+        async function downloadCSVTemplate() {
+            const boardType = document.getElementById('boardType').value;
+
+            // If no board type selected, download empty template
+            if (!boardType) {
+                const csv = `master_pin,slave_pin,zone_number,multiplier_type,base_value
 4,13,20,TRIPLE,20
 4,12,20,DOUBLE,20
 4,11,20,SINGLE,20
@@ -913,31 +919,124 @@
 16,13,25,BULL,25
 16,12,25,DBLBULL,25`;
 
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'dartboard_mappings_template.csv';
-            a.click();
-            window.URL.revokeObjectURL(url);
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'dartboard_mappings_template.csv';
+                a.click();
+                window.URL.revokeObjectURL(url);
+                return;
+            }
+
+            // Fetch current mappings for selected board type
+            try {
+                const response = await fetch(`/api/dartboard/types/${boardType}/mappings`);
+                const data = await response.json();
+
+                if (data.status === 'success' && data.mappings && data.mappings.length > 0) {
+                    // Create CSV from actual mappings
+                    let csv = 'master_pin,slave_pin,zone_number,multiplier_type,base_value\n';
+                    data.mappings.forEach(mapping => {
+                        csv += `${mapping.master_pin},${mapping.slave_pin},${mapping.zone_number},${mapping.multiplier_type},${mapping.base_value}\n`;
+                    });
+
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `dartboard_mappings_${boardType}.csv`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    showAlert(`✓ Downloaded ${data.mappings.length} mappings for ${boardType}`, 'success');
+                } else {
+                    // No mappings found, download empty template
+                    showAlert('No mappings found for this board type. Downloading empty template.', 'info');
+                    const csv = 'master_pin,slave_pin,zone_number,multiplier_type,base_value\n';
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `dartboard_mappings_${boardType}_empty.csv`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                }
+            } catch (error) {
+                console.error('Error downloading mappings:', error);
+                showAlert('Failed to download mappings. Downloading template instead.', 'error');
+
+                // Fallback to template
+                const csv = `master_pin,slave_pin,zone_number,multiplier_type,base_value
+4,13,20,TRIPLE,20
+4,12,20,DOUBLE,20
+4,11,20,SINGLE,20`;
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'dartboard_mappings_template.csv';
+                a.click();
+                window.URL.revokeObjectURL(url);
+            }
         }
 
         // ==================== WebSocket Listeners ====================
 
         socket.on('dartboard_test_received', (data) => {
+            console.log('Received dartboard test data:', data);
+
             const masterPin = data.masterPin;
             const slavePin = data.slavePin;
+            const zoneInfo = data.zoneInfo;
 
-            // Fetch mapping info from the server
-            fetch(`/api/dartboard/types/${document.getElementById('boardType').value}/mappings`)
-                .then(r => r.json())
-                .then(response => {
-                    if (response.status === 'success') {
-                        const mapping = response.mappings.find(m => m.master_pin === masterPin && m.slave_pin === slavePin);
-                        addLogEntry(masterPin, slavePin, mapping);
-                    }
+            // Add to log with zone info if available
+            if (zoneInfo) {
+                addLogEntry(masterPin, slavePin, {
+                    zone_number: zoneInfo.zone_number,
+                    multiplier_type: zoneInfo.multiplier_type,
+                    base_value: zoneInfo.base_value,
+                    score: zoneInfo.score
                 });
+            } else {
+                // Fallback: fetch mapping info from the server
+                const boardType = document.getElementById('boardType').value;
+                if (boardType) {
+                    fetch(`/api/dartboard/types/${boardType}/mappings`)
+                        .then(r => r.json())
+                        .then(response => {
+                            if (response.status === 'success') {
+                                const mapping = response.mappings.find(m => m.master_pin === masterPin && m.slave_pin === slavePin);
+                                addLogEntry(masterPin, slavePin, mapping);
+                            } else {
+                                addLogEntry(masterPin, slavePin, null);
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Error fetching mapping:', err);
+                            addLogEntry(masterPin, slavePin, null);
+                        });
+                } else {
+                    addLogEntry(masterPin, slavePin, null);
+                }
+            }
+
+            // Highlight the cell in the matrix if it exists
+            highlightMatrixCell(masterPin, slavePin);
         });
+
+        function highlightMatrixCell(masterPin, slavePin) {
+            // Find and flash the corresponding cell in the matrix
+            const cells = document.querySelectorAll('.matrix-cell');
+            cells.forEach(cell => {
+                const cellOnClick = cell.getAttribute('onclick');
+                if (cellOnClick && cellOnClick.includes(`${masterPin}, ${slavePin}`)) {
+                    cell.classList.add('cell-highlight-animation');
+                    setTimeout(() => {
+                        cell.classList.remove('cell-highlight-animation');
+                    }, 600);
+                }
+            });
+        }
 
         // Keep dartboard types updated
         setInterval(loadDartboardTypes, 30000);

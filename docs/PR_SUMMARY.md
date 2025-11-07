@@ -28,25 +28,29 @@ This PR adds a complete test environment configuration for `test.letsplaydarts.e
 ### Application Fixes
 
 #### 1. CORS Credentials Support
+
 **Files**: `src/app/app.py`, `src/api_gateway/app.py`
 
 **Problem**: Dashboard and history pages showed empty game lists because session cookies weren't being sent with API requests.
 
 **Solution**: Added `supports_credentials=True` to CORS configuration
+
 ```python
 # Before
 CORS(app)
 
-# After  
+# After
 CORS(app, supports_credentials=True)
 ```
 
 #### 2. Frontend Credentials in Fetch Requests
+
 **Files**: `static/js/*.js`, `templates/history.html`
 
 **Problem**: JavaScript fetch() doesn't send cookies by default.
 
 **Solution**: Added `credentials: 'include'` to all API requests
+
 ```javascript
 fetch(url, {
     credentials: 'include',  // Include session cookies
@@ -55,6 +59,7 @@ fetch(url, {
 ```
 
 **Modified files**:
+
 - `static/js/control.js` (2 fetch calls)
 - `static/js/dashboard.js` (3 fetch calls)
 - `static/js/mobile.js` (apiRequest helper)
@@ -64,11 +69,13 @@ fetch(url, {
 - `templates/history.html` (apiRequest helper)
 
 #### 3. WSO2 Username Handling
+
 **File**: `src/app/app.py`
 
 **Problem**: WSO2 userinfo endpoint doesn't return username, only UUID. Also, usernames have `@carbon.super` tenant suffix.
 
 **Solution**:
+
 - Fetch username from SCIM2 `/Me` endpoint when userinfo doesn't provide it
 - Strip `@carbon.super` suffix from usernames before database lookups
 
@@ -87,11 +94,13 @@ if username and "@" in username:
 ```
 
 #### 4. SocketIO Configuration
+
 **File**: `run.py`, `src/app/app.py`
 
 **Problem**: Eventlet async mode caused hanging issues in Docker.
 
 **Solution**: Changed to threading mode and disabled reloader
+
 ```python
 # run.py
 socketio.run(app, use_reloader=False)
@@ -101,13 +110,15 @@ socketio = SocketIO(app, async_mode="threading")
 ```
 
 #### 5. Docker Compose SSL Configuration
+
 **File**: `docker-compose-wso2.yml`
 
 **Problem**: SESSION_COOKIE_SECURE=True inside Docker caused issues (nginx terminates SSL).
 
 **Solution**: Set to False for Docker internal communication
+
 ```yaml
-SESSION_COOKIE_SECURE: "False"  # Nginx terminates SSL; safe inside Docker network
+SESSION_COOKIE_SECURE: "False" # Nginx terminates SSL; safe inside Docker network
 ```
 
 ### Helper Scripts
@@ -155,11 +166,13 @@ SESSION_COOKIE_SECURE: "False"  # Nginx terminates SSL; safe inside Docker netwo
 ## Testing
 
 ### Automated Tests
+
 - All existing tests pass
 - No new test failures introduced
 
 ### Manual Testing
-1. ✅ Test server accessible at https://test.letsplaydarts.eu
+
+1. ✅ Test server accessible at <https://test.letsplaydarts.eu>
 2. ✅ OAuth2 login flow works correctly
 3. ✅ Dashboard displays game statistics
 4. ✅ History page shows game list
@@ -168,6 +181,7 @@ SESSION_COOKIE_SECURE: "False"  # Nginx terminates SSL; safe inside Docker netwo
 7. ✅ Username handling with WSO2 tenant suffixes
 
 ### Test Environment
+
 - **Database**: `dartsdbtest` (isolated from dev/prod)
 - **Domain**: `test.letsplaydarts.eu`
 - **OAuth2 Client**: `DartsTestServer` (QG32mHju2Gs5JJTh4RO60982cxsa)
@@ -176,11 +190,13 @@ SESSION_COOKIE_SECURE: "False"  # Nginx terminates SSL; safe inside Docker netwo
 ## Deployment
 
 ### Prerequisites
+
 1. Docker and Docker Compose installed
 2. SSL certificates for `*.letsplaydarts.eu` in `ssl/` directory
 3. DNS configured for `test.letsplaydarts.eu`
 
 ### Deployment Steps
+
 ```bash
 # 1. Start containers
 docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d
@@ -219,6 +235,7 @@ None. All changes are additive or fixes to existing functionality.
 ## Documentation Updates
 
 All new features are documented:
+
 - Quick start guide for test server setup
 - Detailed troubleshooting guides
 - API testing procedures
@@ -234,6 +251,7 @@ All new features are documented:
 ## Reviewers
 
 Please verify:
+
 1. CORS configuration is secure
 2. Session cookie handling is correct
 3. WSO2 username handling covers edge cases
@@ -243,6 +261,7 @@ Please verify:
 ## Related Issues
 
 Fixes issues with:
+
 - Empty dashboard/history pages
 - Session cookies not sent with API requests
 - WSO2 username/tenant suffix handling

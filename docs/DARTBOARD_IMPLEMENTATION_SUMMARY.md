@@ -8,20 +8,22 @@ This implementation resolves the issue of hardcoded dartboard zone mappings in A
 ✅ **Multiple dartboard types** - Register different board configurations  
 ✅ **Backwards compatibility** - Legacy boards continue to work  
 ✅ **Centralized management** - All mappings in database  
-✅ **Easy debugging** - Issues identified server-side  
+✅ **Easy debugging** - Issues identified server-side
 
 ## Problem Solved
 
 ### Original Issues in Arduino Code
+
 The old `dartserver_carromco.ino` had several critical bugs:
 
 1. **Array bounds overflow** - Loop running 21 iterations accessing `x3[]` with only 20 elements
-2. **Missing zone mappings** - Triple 4 and Triple 13 not in hardcoded arrays  
+2. **Missing zone mappings** - Triple 4 and Triple 13 not in hardcoded arrays
 3. **Logic errors** - `multi = "SINGLE"` being set on every loop iteration
 4. **Firmware dependency** - Changes required firmware update to add new dartboards
 5. **Unmaintainable** - 90+ lines of hardcoded multiplier arrays per board
 
 ### After Implementation
+
 - ✓ All zone mapping logic moved to backend
 - ✓ Arduino code simplified to 10 lines
 - ✓ New dartboards can be added without firmware changes
@@ -31,6 +33,7 @@ The old `dartserver_carromco.ino` had several critical bugs:
 ## Files Created/Modified
 
 ### New Files
+
 ```
 src/core/dartboard_service.py
   └─ DartboardService class with zone mapping logic
@@ -59,6 +62,7 @@ boards/carromco/dartserver_carromco.ino
 ```
 
 ### Modified Files
+
 ```
 src/core/database_models.py
   ├─ Added DartboardType model
@@ -80,6 +84,7 @@ src/app/app.py
 ## Database Schema
 
 ### DartboardType Table
+
 ```sql
 id (PK)
 name (UNIQUE) - 'carromco', 'winmau', etc.
@@ -91,6 +96,7 @@ created_at, updated_at
 ```
 
 ### DartboardZoneMapping Table
+
 ```sql
 id (PK)
 dartboard_type_id (FK)
@@ -106,6 +112,7 @@ UNIQUE(dartboard_type_id, master_pin, slave_pin)
 ## API Endpoints
 
 ### Legacy Endpoint (Backwards Compatible)
+
 ```
 POST /api/Throw
 Request:  {"score": 20, "multiplier": "TRIPLE"}
@@ -113,6 +120,7 @@ Response: {"status": "success", "message": "Score submitted"}
 ```
 
 ### New Generic Endpoint
+
 ```
 POST /api/Throw/zone
 Request:  {"masterPin": 4, "slavePin": 13, "boardType": "carromco"}
@@ -129,6 +137,7 @@ Response: {
 ```
 
 ### Management Endpoints
+
 ```
 GET /api/dartboard/types
   └─ List all registered dartboard types
@@ -140,6 +149,7 @@ GET /api/dartboard/types/<board_type>/mappings
 ## Arduino Code Changes
 
 ### Before (Broken)
+
 ```cpp
 // Hardcoded arrays with bugs
 const int x3Len = 20;
@@ -171,6 +181,7 @@ void sendData(int point, String msg) {
 ```
 
 ### After (Fixed & Generic)
+
 ```cpp
 // Simple, generic implementation
 void sendData(int masterPin, String slavePin) {
@@ -200,6 +211,7 @@ void throwCheck() {
 ### Unit Tests: 38 tests all passing ✓
 
 **DartboardService Tests:**
+
 - ✓ 4 tests - Basic dartboard registration and mapping
 - ✓ 5 tests - Zone validation (valid/invalid zones, bulls, etc.)
 - ✓ 6 tests - Score calculation (single, double, triple, bull, dblbull)
@@ -210,6 +222,7 @@ void throwCheck() {
 - ✓ 3 tests - Multiplier and zone validation constants
 
 **Critical Test Cases:**
+
 - ✓ Triple 4 mapping (was broken)
 - ✓ Triple 13 mapping (was broken)
 - ✓ Bull (25 points)
@@ -221,6 +234,7 @@ void throwCheck() {
 ## Key Features
 
 ### 1. Dartboard Type Registration
+
 ```python
 board_type = DartboardService.register_dartboard_type(
     session,
@@ -231,6 +245,7 @@ board_type = DartboardService.register_dartboard_type(
 ```
 
 ### 2. Zone Mapping
+
 ```python
 DartboardService.add_zone_mapping(
     session,
@@ -244,6 +259,7 @@ DartboardService.add_zone_mapping(
 ```
 
 ### 3. Zone Lookup
+
 ```python
 zone_info = DartboardService.get_zone_from_pins(
     session, "carromco", 4, 13
@@ -257,12 +273,14 @@ zone_info = DartboardService.get_zone_from_pins(
 ```
 
 ### 4. Score Calculation
+
 ```python
 score = DartboardService.calculate_score(20, "TRIPLE")  # Returns: 60
 score = DartboardService.calculate_score(25, "DBLBULL") # Returns: 50
 ```
 
 ### 5. Validation
+
 ```python
 valid = DartboardService.validate_zone_mapping(
     zone_number=20,
@@ -281,6 +299,7 @@ valid = DartboardService.validate_zone_mapping(
 ## Setup Instructions
 
 ### 1. Run Database Migrations
+
 ```bash
 # The new models will be created by the framework
 # If using Alembic, create migration:
@@ -289,6 +308,7 @@ alembic upgrade head
 ```
 
 ### 2. Register Dartboard Types
+
 ```bash
 # Use the helper script
 python helpers/setup_dartboard_types.py setup
@@ -299,6 +319,7 @@ python helpers/setup_dartboard_types.py test
 ```
 
 ### 3. Verify Setup
+
 ```bash
 # List registered boards
 python helpers/setup_dartboard_types.py list
@@ -311,6 +332,7 @@ curl http://localhost:5000/api/dartboard/types/carromco/mappings
 ```
 
 ### 4. Flash Arduino with New Code
+
 ```cpp
 // Update boards/carromco/dartserver_carromco.ino
 // Or create new board files for other dartboard types
@@ -327,6 +349,7 @@ curl http://localhost:5000/api/dartboard/types/carromco/mappings
 ## Error Handling
 
 ### Validation Errors
+
 ```python
 DartboardMappingError: "Invalid multiplier type: QUAD"
 DartboardMappingError: "Dartboard type 'xyz' already exists"
@@ -334,6 +357,7 @@ DartboardMappingError: "Zone mapping not found for pins (99, 99)"
 ```
 
 ### API Responses
+
 ```json
 {
   "status": "error",
@@ -344,6 +368,7 @@ DartboardMappingError: "Zone mapping not found for pins (99, 99)"
 ## Extension Points
 
 ### Add New Dartboard Type
+
 1. Create pin mapping matrix physically
 2. Register board type: `register_dartboard_type()`
 3. Add all zone mappings: `add_zone_mapping()`
@@ -351,6 +376,7 @@ DartboardMappingError: "Zone mapping not found for pins (99, 99)"
 5. Verify via `/api/dartboard/types/<type>/mappings`
 
 ### Add Custom Multiplier
+
 1. Update `MULTIPLIER_MAP` in DartboardService
 2. Update `MULTIPLIER_TYPES` validation set
 3. Update validation logic in `validate_zone_mapping()`
@@ -369,16 +395,19 @@ DartboardMappingError: "Zone mapping not found for pins (99, 99)"
 ## Troubleshooting
 
 ### Zone mapping not found
+
 - Verify board type exists: `GET /api/dartboard/types`
 - Check pins match exactly: `GET /api/dartboard/types/<type>/mappings`
 - Ensure pins are GPIO numbers, not array indices
 
 ### Wrong score calculated
+
 - Verify zone_number in database matches dartboard
 - Check multiplier_type and base_value
 - Test with simple zones (single values) first
 
 ### Arduino compilation errors
+
 - Ensure ArduinoJson library installed
 - Verify WiFi credentials
 - Check GPIO pin numbers match physical board

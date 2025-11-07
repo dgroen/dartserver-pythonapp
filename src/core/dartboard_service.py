@@ -17,7 +17,7 @@ class DartboardMappingError(Exception):
 class DartboardService:
     """Service for dartboard zone mapping and validation"""
 
-    MULTIPLIER_MAP: ClassVar = {
+    MULTIPLIER_MAP: ClassVar[dict[str, int]] = {
         "SINGLE": 1,
         "DOUBLE": 2,
         "TRIPLE": 3,
@@ -184,7 +184,7 @@ class DartboardService:
             return 25
         if multiplier_type == "DBLBULL":
             return 50
-        return base_value * DartboardService.MULTIPLIER_MAP[multiplier_type]
+        return int(base_value * DartboardService.MULTIPLIER_MAP[multiplier_type])
 
     @staticmethod
     def validate_zone_mapping(
@@ -269,7 +269,7 @@ class DartboardService:
     def get_dartboard_type_mappings(
         session: Session,
         dartboard_type_name: str,
-    ) -> list | None:
+    ) -> list:
         """Get all zone mappings for a dartboard type"""
         dartboard_type = session.query(DartboardType).filter_by(name=dartboard_type_name).first()
         if not dartboard_type:
@@ -282,7 +282,7 @@ class DartboardService:
     def get_matrix_visualization(
         session: Session,
         dartboard_type_name: str,
-    ) -> tuple[dict | None, list | None]:
+    ) -> tuple[dict, list, list, list] | None:
         """
         Get matrix visualization data for a dartboard type
 

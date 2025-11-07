@@ -13,7 +13,7 @@ import pytest
 from src.app.app import app as flask_app
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_auth():
     """Mock authentication decorators."""
     with patch("src.core.auth.validate_token") as mock_validate:
@@ -26,7 +26,7 @@ def mock_auth():
         yield mock_validate
 
 
-@pytest.fixture
+@pytest.fixture()
 def app(mock_auth):
     """Create Flask app for testing."""
     with patch("src.app.app.start_rabbitmq_consumer"):
@@ -34,7 +34,7 @@ def app(mock_auth):
         yield flask_app
 
 
-@pytest.fixture
+@pytest.fixture()
 def client(app):
     """Create test client with authenticated session."""
     client = app.test_client()
@@ -44,13 +44,13 @@ def client(app):
     return client
 
 
-@pytest.fixture
+@pytest.fixture()
 def auth_headers():
     """Authorization headers for authenticated requests."""
     return {"Authorization": "Bearer test-token"}
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_db_service():
     """Mock database service."""
     with patch("src.app.game_manager.DatabaseService") as mock_db:

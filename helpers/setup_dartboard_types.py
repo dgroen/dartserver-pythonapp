@@ -239,7 +239,7 @@ def setup_test_board():
 
 
 def setup_crivit_board():
-    """Set up Crivit dartboard with 7x12 GPIO matrix"""
+    """Set up Crivit dartboard with 7x12 GPIO matrix - complete matrix"""
     session = get_session()
 
     try:
@@ -271,32 +271,100 @@ def setup_crivit_board():
             else:
                 raise
 
-        # Define sample zone mappings for the 7x12 matrix
+        # Complete zone mappings for the 7x12 matrix based on original Arduino code
         # Format: (master_pin, slave_pin, zone_number, multiplier_type, base_value)
         # Master pins: 2, 4, 16, 17, 5, 18, 19 (7 rows)
         # Slave pins: 21, 22, 23, 13, 12, 14, 27, 26, 25, 33, 32, 15 (12 columns)
-        # This provides a template for basic zone detection
-
-        sample_mappings = [
-            # Row 2 - Sample zones
-            (2, 21, 20, "SINGLE", 20),
-            (2, 22, 20, "DOUBLE", 20),
-            (2, 23, 20, "TRIPLE", 20),
-            # Row 4 - Sample zones
-            (4, 21, 4, "SINGLE", 4),
-            (4, 22, 4, "DOUBLE", 4),
-            (4, 23, 4, "TRIPLE", 4),
-            # Row 17 - Sample zones
-            (17, 21, 13, "SINGLE", 13),
-            (17, 22, 13, "DOUBLE", 13),
-            (17, 23, 13, "TRIPLE", 13),
-            # Bull zone (typically in the middle)
-            (5, 15, 25, "BULL", 25),
-            (5, 33, 25, "DBLBULL", 25),
+        
+        # Original values matrix and multiplier arrays from Arduino code:
+        # values01[7][12] with comments showing slave pins
+        # x3[] = triple zones (encoded as master*100 + slave)
+        # x2[] = double zones (encoded as master*100 + slave)
+        
+        # Mapping helper functions
+        def decode_score(raw_value):
+            """Decode the raw score value to proper zone and multiplier"""
+            # Values like 48, 60, 42, etc. are triples (score = value / 3)
+            # Values like 14, 16, 22, etc. could be doubles or singles
+            # Need to check against x3 and x2 arrays
+            if raw_value == 0:
+                return None  # Invalid/unmapped zone
+            return raw_value
+        
+        # Build complete mappings from the original code
+        master_pins = [2, 4, 16, 17, 5, 18, 19]
+        slave_pins = [21, 22, 23, 13, 12, 14, 27, 26, 25, 33, 32, 15]
+        
+        # Values matrix from original code (7 rows x 12 columns)
+        values_matrix = [
+            [14, 32, 16, 22, 28, 38, 18, 24, 10, 40, 2, 36],   # Row 0: master pin 2
+            [1, 16, 8, 11, 14, 6, 9, 8, 5, 20, 1, 18],         # Row 1: master pin 4
+            [19, 48, 24, 33, 42, 34, 12, 26, 15, 60, 3, 4],    # Row 2: master pin 16
+            [21, 3, 0, 0, 0, 4, 27, 0, 12, 0, 13, 54],         # Row 3: master pin 17
+            [0, 9, 51, 6, 45, 25, 0, 50, 0, 0, 0, 0],          # Row 4: master pin 5
+            [0, 0, 0, 0, 0, 0, 0, 0, 30, 18, 13, 0],           # Row 5: master pin 18
+            [57, 0, 17, 2, 15, 30, 36, 20, 10, 6, 0, 12],      # Row 6: master pin 19
         ]
-
-        print(f"Adding {len(sample_mappings)} sample zone mappings...")
-        for master_pin, slave_pin, zone, mult_type, base_val in sample_mappings:
+        
+        # Triple zones (master*100 + slave)
+        x3_zones = {1622, 1623, 1613, 1612, 1625, 1633, 1632, 1721, 1727, 1715, 
+                    522, 523, 513, 512, 1825, 1833, 1832, 1921, 1927, 1915}
+        
+        # Double zones (master*100 + slave)
+        x2_zones = {221, 222, 223, 213, 212, 214, 227, 226, 225, 233, 232, 215, 
+                    414, 426, 1614, 1626, 1714, 1725, 526, 1914, 1926}
+        
+        # Bull zones
+        bull_single = (5, 14)  # Zone 514 -> BULL
+        bull_double = (5, 26)  # Zone 526 -> DBLBULL
+        
+        all_mappings = []
+        
+        for row_idx, master_pin in enumerate(master_pins):
+            for col_idx, slave_pin in enumerate(slave_pins):
+                raw_value = values_matrix[row_idx][col_idx]
+                
+                # Skip invalid zones (0 values)
+                if raw_value == 0:
+                    continue
+                
+                zone_code = master_pin * 100 + slave_pin
+                
+                # Determine multiplier type
+                if zone_code == 514:  # Bull single
+                    mult_type = "BULL"
+                    base_value = 25
+                    zone_number = 25
+                elif zone_code == 526:  # Bull double
+                    mult_type = "DBLBULL"
+                    base_value = 25
+                    zone_number = 25
+                elif zone_code in x3_zones:
+                    mult_type = "TRIPLE"
+                    base_value = raw_value // 3
+                    zone_number = base_value
+                elif zone_code in x2_zones:
+                    mult_type = "DOUBLE"
+                    base_value = raw_value // 2
+                    zone_number = base_value
+                else:
+                    mult_type = "SINGLE"
+                    base_value = raw_value
+                    zone_number = raw_value
+                
+                # Validate zone_number and base_value are in valid range
+                if not (1 <= base_value <= 20 or base_value == 25):
+                    continue
+                if not (1 <= zone_number <= 20 or zone_number == 25):
+                    continue
+                
+                all_mappings.append((master_pin, slave_pin, zone_number, mult_type, base_value))
+        
+        print(f"Adding {len(all_mappings)} complete zone mappings from original Arduino code...")
+        added_count = 0
+        skipped_count = 0
+        
+        for master_pin, slave_pin, zone, mult_type, base_val in all_mappings:
             try:
                 DartboardService.add_zone_mapping(
                     session,
@@ -307,16 +375,18 @@ def setup_crivit_board():
                     mult_type,
                     base_val,
                 )
+                added_count += 1
                 print(
-                    f"  ✓ Pins ({master_pin},{slave_pin}) -> Zone {zone} {mult_type} = {base_val}",
+                    f"  ✓ Pins ({master_pin:2d},{slave_pin:2d}) -> Zone {zone:2d} {mult_type:8s} = {base_val:2d} (score: {base_val if mult_type in ['BULL', 'SINGLE'] else base_val * (3 if mult_type == 'TRIPLE' else 2)})",
                 )
             except Exception as e:
-                print(f"  ✗ Pins ({master_pin},{slave_pin}): {e}")
+                skipped_count += 1
+                print(f"  ⊘ Pins ({master_pin:2d},{slave_pin:2d}): {e}")
 
-        print("\n✓ Crivit board setup complete!")
-        print("  → Use admin panel to configure remaining zones")
-        print("  → Navigate to: https://yourserver/admin/dartboard-testing")
-        print("  → Select 'crivit' from dartboard type dropdown")
+        print(f"\n✓ Crivit board setup complete!")
+        print(f"  → Added: {added_count} mappings")
+        print(f"  → Skipped: {skipped_count} (duplicates or errors)")
+        print(f"  → Matrix coverage: {added_count}/84 possible positions")
         return board_type
 
     except Exception as e:

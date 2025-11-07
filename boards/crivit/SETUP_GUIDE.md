@@ -3,24 +3,31 @@
 ## Quick Start (5 minutes)
 
 ### 1. Flash Arduino Sketch
+
 - Open: `boards/crivit/dartserver_crivit.ino`
 - Configure WiFi:
+
   ```cpp
   const char* ssid = "<YOUR_SSID>";
   const char* password = "<YOUR_PASSWORD>";
   ```
+
 - Configure server:
+
   ```cpp
   const char* serverAddress = "YOUR_SERVER_IP";
   ```
+
 - Upload to ESP32
 
 ### 2. Register Dartboard Type
+
 ```bash
 python helpers/setup_dartboard_types.py crivit
 ```
 
 ### 3. Configure Zone Mappings
+
 1. Open admin panel: `https://your-server/admin/dartboard-testing`
 2. Select "crivit" from dropdown
 3. Use "Manual Mapping" or "Bulk Import" to add zones
@@ -30,21 +37,22 @@ python helpers/setup_dartboard_types.py crivit
 
 ## Specifications
 
-| Property | Value |
-|----------|-------|
-| **Board Type** | `crivit` |
-| **Board Name** | Crivit Dartboard |
-| **Matrix Size** | 7 rows × 12 columns = 84 zones |
-| **GPIO Master Pins** | 2, 4, 16, 17, 5, 18, 19 |
-| **GPIO Slave Pins** | 21, 22, 23, 13, 12, 14, 27, 26, 25, 33, 32, 15 |
-| **Total GPIO Used** | 19 pins |
-| **API Endpoint** | `POST /api/Throw/zone` |
+| Property             | Value                                          |
+| -------------------- | ---------------------------------------------- |
+| **Board Type**       | `crivit`                                       |
+| **Board Name**       | Crivit Dartboard                               |
+| **Matrix Size**      | 7 rows × 12 columns = 84 zones                 |
+| **GPIO Master Pins** | 2, 4, 16, 17, 5, 18, 19                        |
+| **GPIO Slave Pins**  | 21, 22, 23, 13, 12, 14, 27, 26, 25, 33, 32, 15 |
+| **Total GPIO Used**  | 19 pins                                        |
+| **API Endpoint**     | `POST /api/Throw/zone`                         |
 
 ---
 
 ## Pin Configuration
 
 ### Master Pins (Rows)
+
 ```
 Row 0 → GPIO 2
 Row 1 → GPIO 4
@@ -56,6 +64,7 @@ Row 6 → GPIO 19
 ```
 
 ### Slave Pins (Columns)
+
 ```
 Col 0  → GPIO 21    Col 6  → GPIO 27
 Col 1  → GPIO 22    Col 7  → GPIO 26
@@ -109,6 +118,7 @@ Dartboard Physical Layout
    - Test each zone works on dartboard
 
 2. **Register board type:**
+
    ```bash
    python helpers/setup_dartboard_types.py crivit
    ```
@@ -128,12 +138,14 @@ Dartboard Physical Layout
 5. **Map zones (Option B - CSV Import):**
    - Download template CSV
    - Fill in all zones:
+
      ```csv
      masterPin,slavePin,zoneNumber,multiplierType,baseValue
      2,21,14,SINGLE,14
      2,22,32,SINGLE,32
      ...
      ```
+
    - Upload CSV
    - Verify results
 
@@ -157,9 +169,11 @@ Dartboard Physical Layout
 ## Troubleshooting
 
 ### Arduino Upload Fails
+
 **Error:** "Board not found" or "Port not available"
 
 **Solution:**
+
 1. Check USB cable connection
 2. Verify correct board selected (ESP32 Dev Module)
 3. Check port in Tools → Port
@@ -169,9 +183,11 @@ Dartboard Physical Layout
 ---
 
 ### Zone Not Detected
+
 **Symptom:** Press zone on dartboard, nothing happens
 
 **Steps:**
+
 1. Check Serial Monitor (115200 baud)
    - Should see: `DART DETECTED - Master: X, Slave: Y`
 2. If no output:
@@ -188,9 +204,11 @@ Dartboard Physical Layout
 ---
 
 ### Wrong Zone Detected
+
 **Symptom:** Press zone 20, get zone 18
 
 **Solution:**
+
 1. Use admin panel Message Log
 2. Note the master/slave pins from real press
 3. Find what they're currently mapped to
@@ -200,9 +218,11 @@ Dartboard Physical Layout
 ---
 
 ### WiFi Connection Failed
+
 **Error:** "Wi-Fi not connected" in serial
 
 **Solution:**
+
 1. Edit sketch - verify SSID/password correct
 2. Check network is accessible from device location
 3. Verify IP address/port reachable
@@ -212,9 +232,11 @@ Dartboard Physical Layout
 ---
 
 ### Server Says "Zone mapping not found"
+
 **Error:** HTTP response says pins unmapped
 
 **Solution:**
+
 1. Go to admin panel
 2. Select "crivit" board type
 3. Check if mappings exist in GPIO Matrix tab
@@ -227,6 +249,7 @@ Dartboard Physical Layout
 ## CSV Format for Bulk Import
 
 ### Template
+
 ```csv
 masterPin,slavePin,zoneNumber,multiplierType,baseValue
 2,21,14,SINGLE,14
@@ -237,13 +260,13 @@ masterPin,slavePin,zoneNumber,multiplierType,baseValue
 
 ### Column Descriptions
 
-| Column | Type | Valid Values | Example |
-|--------|------|--------------|---------|
-| `masterPin` | int | 2,4,16,17,5,18,19 | 2 |
-| `slavePin` | int | 21,22,23,13,12,14,27,26,25,33,32,15 | 21 |
-| `zoneNumber` | int | 1-20, 25 | 20 (or 25 for bull) |
-| `multiplierType` | string | SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL | TRIPLE |
-| `baseValue` | int | 1-20, 25 | 20 |
+| Column           | Type   | Valid Values                          | Example             |
+| ---------------- | ------ | ------------------------------------- | ------------------- |
+| `masterPin`      | int    | 2,4,16,17,5,18,19                     | 2                   |
+| `slavePin`       | int    | 21,22,23,13,12,14,27,26,25,33,32,15   | 21                  |
+| `zoneNumber`     | int    | 1-20, 25                              | 20 (or 25 for bull) |
+| `multiplierType` | string | SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL | TRIPLE              |
+| `baseValue`      | int    | 1-20, 25                              | 20                  |
 
 ### Valid Combinations
 
@@ -265,6 +288,7 @@ masterPin,slavePin,zoneNumber,multiplierType,baseValue
 ```
 
 ### Invalid Examples (Won't Import)
+
 ```csv
 # Zone > 25
 2,21,30,SINGLE,30          ❌ Invalid zone
@@ -284,12 +308,14 @@ masterPin,slavePin,zoneNumber,multiplierType,baseValue
 ## Performance Notes
 
 ### Scan Speed
+
 - Single full scan: ~50ms (7×12 matrix)
 - WiFi transmission: 100-500ms (network dependent)
 - Server processing: <1ms (database query)
 - **Total per throw:** 200-700ms
 
 ### Optimization Tips
+
 - Position router near dartboard for WiFi speed
 - Ensure server has good database performance
 - Don't run excessive zone queries
@@ -299,7 +325,9 @@ masterPin,slavePin,zoneNumber,multiplierType,baseValue
 ## Advanced Configuration
 
 ### Modify Scan Delay
+
 In `dartserver_crivit.ino`, change:
+
 ```cpp
 delay(500);  // Debounce time after dart detected
 ```
@@ -308,22 +336,24 @@ Shorter = faster but may cause double-detects
 Longer = more stable but slower response
 
 ### Add Button Support
+
 Uncomment the `bigRedCheck()` function in sketch to enable physical button
 
 ### Custom Callbacks
+
 Edit `sendData()` function to add logging, validation, etc.
 
 ---
 
 ## Reference Files
 
-| File | Purpose |
-|------|---------|
-| `boards/crivit/dartserver_crivit.ino` | Arduino sketch for Crivit |
-| `boards/crivit_config.h` | GPIO pin mappings |
-| `boards/README_GENERIC_ARCHITECTURE.md` | Full architecture docs |
-| `src/core/dartboard_service.py` | Backend service |
-| `docs/DARTBOARD_ZONE_MAPPING.md` | API documentation |
+| File                                    | Purpose                   |
+| --------------------------------------- | ------------------------- |
+| `boards/crivit/dartserver_crivit.ino`   | Arduino sketch for Crivit |
+| `boards/crivit_config.h`                | GPIO pin mappings         |
+| `boards/README_GENERIC_ARCHITECTURE.md` | Full architecture docs    |
+| `src/core/dartboard_service.py`         | Backend service           |
+| `docs/DARTBOARD_ZONE_MAPPING.md`        | API documentation         |
 
 ---
 
@@ -358,6 +388,7 @@ A: Yes, just upload different sketch and select board in admin panel
 ## Summary
 
 Crivit is now using the **new generic architecture**:
+
 - ✅ No hardcoded zone arrays
 - ✅ Configure zones via web admin panel
 - ✅ Share codebase with other boards

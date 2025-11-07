@@ -9,6 +9,7 @@ You now have a **production-ready generic Arduino architecture** for all dartboa
 ## What's New
 
 ### The Problem We Solved
+
 ```
 OLD SYSTEM:
   hardcoded zones in firmware
@@ -25,6 +26,7 @@ OLD SYSTEM:
 ```
 
 ### The Solution
+
 ```
 NEW SYSTEM:
   Arduino sends raw pins to server
@@ -45,6 +47,7 @@ NEW SYSTEM:
 ## Files Created
 
 ### Generic Framework (Universal for All Boards)
+
 ```
 boards/
 ├── dartserver_generic.ino              (250 lines, reusable)
@@ -67,6 +70,7 @@ boards/
 ### Board-Specific Configurations
 
 **Carromco:**
+
 ```
 boards/carromco_config.h                (8×8 matrix, 16 GPIO pins)
 boards/carromco/dartserver_carromco.ino (Updated to use config)
@@ -74,6 +78,7 @@ boards/carromco/SETUP_GUIDE.md          (Step-by-step setup)
 ```
 
 **Crivit:**
+
 ```
 boards/crivit_config.h                  (7×12 matrix, 19 GPIO pins)
 boards/crivit/dartserver_crivit.ino     (Updated to use config)
@@ -85,6 +90,7 @@ boards/crivit/SETUP_GUIDE.md            (Step-by-step setup)
 ## Migration Steps
 
 ### Step 1: Backup Old Sketches (Optional)
+
 ```bash
 # Save old versions if you want to compare
 git checkout HEAD -- boards/  # or copy old files elsewhere
@@ -93,11 +99,13 @@ git checkout HEAD -- boards/  # or copy old files elsewhere
 ### Step 2: Update Arduino Sketches
 
 **For Carromco:**
+
 - Replace: `boards/carromco/dartserver_carromco.ino`
 - With: New version (already done! ✅)
 - Uses: `boards/carromco_config.h`
 
 **For Crivit:**
+
 - Replace: `boards/crivit/dartserver_crivit.ino`
 - With: New version (already done! ✅)
 - Uses: `boards/crivit_config.h`
@@ -105,6 +113,7 @@ git checkout HEAD -- boards/  # or copy old files elsewhere
 ### Step 3: Flash Arduino Boards
 
 **Step 3a: Configure WiFi**
+
 ```cpp
 const char* ssid = "<YOUR_SSID>";
 const char* password = "<YOUR_PASSWORD>";
@@ -112,6 +121,7 @@ const char* serverAddress = "YOUR_SERVER_IP";
 ```
 
 **Step 3b: Flash to ESP32**
+
 ```
 Arduino IDE → Tools → Board → ESP32 Dev Module
             → Select COM port
@@ -119,6 +129,7 @@ Arduino IDE → Tools → Board → ESP32 Dev Module
 ```
 
 **Step 3c: Verify in Serial Monitor**
+
 ```
 Starting [Board Name]
 Board Type: [carromco/crivit]
@@ -142,6 +153,7 @@ python helpers/setup_dartboard_types.py list
 ```
 
 **Expected output:**
+
 ```
 Registered Dartboard Types (2):
 ────────────────────────────────────────────────────────────
@@ -167,12 +179,14 @@ ID: 3
 ### Step 5: Configure Zones
 
 **For Carromco (Pre-configured):**
+
 1. Open admin panel: `https://your-server/admin/dartboard-testing`
 2. Select "carromco" → Should see 8×8 grid with zones pre-filled
 3. Test each zone on dartboard
 4. Verify Triple 4 and Triple 13 work! ✅
 
 **For Crivit (Manual configuration):**
+
 1. Open admin panel: `https://your-server/admin/dartboard-testing`
 2. Select "crivit" → See 7×12 empty grid
 3. **Option A - Manual Mapping:**
@@ -210,6 +224,7 @@ ID: 3
 ### Code Changes
 
 **Before:**
+
 ```cpp
 // dartserver_crivit.ino - 210 lines with bugs
 const int x3Len = 20;
@@ -231,6 +246,7 @@ String multiCheck(int M, int S) {
 ```
 
 **After:**
+
 ```cpp
 // dartserver_crivit.ino - 200 lines, clean
 #include "crivit_config.h"  // GPIO pins from header
@@ -248,6 +264,7 @@ void sendData(int masterPin, int slavePin) {
 ### File Organization
 
 **Before:**
+
 ```
 boards/
 ├── carromco/
@@ -259,6 +276,7 @@ Total: ~460 lines of duplicated code
 ```
 
 **After:**
+
 ```
 boards/
 ├── dartserver_generic.ino           (250 lines - reusable)
@@ -277,6 +295,7 @@ Reduction: -41% code duplication
 ## Data in Database
 
 ### Before (No Database)
+
 ```
 Zones stored: Firmware only (hardcoded)
 Zone changes: Requires firmware update
@@ -284,6 +303,7 @@ Calibration: Not possible
 ```
 
 ### After (Database-Driven)
+
 ```
 DartboardType table:
   id: 1, name: "carromco", brand: "Carromco", model: "Striker"
@@ -303,28 +323,31 @@ Calibration: Admin panel configuration
 ## Key Improvements
 
 ### Bug Fixes ✅
-| Bug | Before | After |
-|-----|--------|-------|
-| Triple 4 | ❌ Missing | ✅ GPIO pins (4,27) |
-| Triple 13 | ❌ Missing | ✅ GPIO pins (17,27) |
-| Array bounds | ❌ x2Len=21, array=20 | ✅ No arrays |
-| Multiplier logic | ❌ Set every iteration | ✅ Server handles |
+
+| Bug              | Before                 | After                |
+| ---------------- | ---------------------- | -------------------- |
+| Triple 4         | ❌ Missing             | ✅ GPIO pins (4,27)  |
+| Triple 13        | ❌ Missing             | ✅ GPIO pins (17,27) |
+| Array bounds     | ❌ x2Len=21, array=20  | ✅ No arrays         |
+| Multiplier logic | ❌ Set every iteration | ✅ Server handles    |
 
 ### Flexibility ✅
-| Feature | Before | After |
-|---------|--------|-------|
-| Zone calibration | ❌ Firmware update | ✅ Admin panel |
-| New board type | ❌ Code new sketch | ✅ Config header |
-| Code reuse | ❌ Per-board duplicates | ✅ Generic + configs |
-| Debugging | ❌ Serial prints only | ✅ Admin panel + logs |
+
+| Feature          | Before                  | After                 |
+| ---------------- | ----------------------- | --------------------- |
+| Zone calibration | ❌ Firmware update      | ✅ Admin panel        |
+| New board type   | ❌ Code new sketch      | ✅ Config header      |
+| Code reuse       | ❌ Per-board duplicates | ✅ Generic + configs  |
+| Debugging        | ❌ Serial prints only   | ✅ Admin panel + logs |
 
 ### Maintainability ✅
-| Metric | Before | After |
-|--------|--------|-------|
-| Code duplication | 460 lines | 270 lines (-41%) |
-| Board-specific code | Per-board | Config header only |
-| Documentation | Minimal | Complete guides |
-| Testing | Manual | Automated + admin panel |
+
+| Metric              | Before    | After                   |
+| ------------------- | --------- | ----------------------- |
+| Code duplication    | 460 lines | 270 lines (-41%)        |
+| Board-specific code | Per-board | Config header only      |
+| Documentation       | Minimal   | Complete guides         |
+| Testing             | Manual    | Automated + admin panel |
 
 ---
 
@@ -367,11 +390,13 @@ After migration, verify:
 ## Performance
 
 ### Arduino Side (No Change)
+
 - Matrix scan: ~50ms (8×8) or ~60ms (7×12)
 - WiFi latency: 100-500ms (network)
 - **Total per throw:** 200-700ms
 
 ### Server Side (Much Better)
+
 - Database lookup: <1ms (indexed)
 - Zone mapping: <1ms (simple query)
 - Multiplier calculation: <1ms (arithmetic)
@@ -384,16 +409,19 @@ After migration, verify:
 ## File Reference
 
 ### Setup & Configuration
+
 - `helpers/setup_dartboard_types.py` - Register boards
 - `boards/carromco_config.h` - Carromco GPIO pins
 - `boards/crivit_config.h` - Crivit GPIO pins
 
 ### Arduino Sketches
+
 - `boards/dartserver_generic.ino` - Universal code
 - `boards/carromco/dartserver_carromco.ino` - Carromco (uses generic)
 - `boards/crivit/dartserver_crivit.ino` - Crivit (uses generic)
 
 ### Documentation
+
 - `boards/README_GENERIC_ARCHITECTURE.md` - Full system guide
 - `boards/IMPLEMENTATION_SUMMARY.md` - Architecture overview
 - `boards/carromco/SETUP_GUIDE.md` - Carromco quickstart
@@ -401,6 +429,7 @@ After migration, verify:
 - `boards/MIGRATION_GUIDE.md` - This file
 
 ### Database & Backend
+
 - `src/core/database_models.py` - DartboardType, DartboardZoneMapping models
 - `src/core/dartboard_service.py` - Zone lookup logic
 - `src/app/app.py` - API endpoint `/api/Throw/zone`
@@ -432,17 +461,17 @@ A: Check admin panel message log - see GPIO pins when you press zones.
 
 ## Summary
 
-| Phase | Task | Status |
-|-------|------|--------|
-| **Code** | Create generic architecture | ✅ Done |
-| **Code** | Update Carromco sketch | ✅ Done |
-| **Code** | Update Crivit sketch | ✅ Done |
-| **Database** | Create zone mapping tables | ✅ Done |
+| Phase        | Task                         | Status             |
+| ------------ | ---------------------------- | ------------------ |
+| **Code**     | Create generic architecture  | ✅ Done            |
+| **Code**     | Update Carromco sketch       | ✅ Done            |
+| **Code**     | Update Crivit sketch         | ✅ Done            |
+| **Database** | Create zone mapping tables   | ✅ Done            |
 | **Database** | Pre-configure Carromco zones | ✅ Done (50 zones) |
-| **Setup** | Fix setup helper script | ✅ Done |
-| **Docs** | Architecture documentation | ✅ Done |
-| **Docs** | Setup guides | ✅ Done |
-| **Testing** | All systems tested | ✅ Done |
+| **Setup**    | Fix setup helper script      | ✅ Done            |
+| **Docs**     | Architecture documentation   | ✅ Done            |
+| **Docs**     | Setup guides                 | ✅ Done            |
+| **Testing**  | All systems tested           | ✅ Done            |
 
 **Migration Ready:** You can now move to the new system whenever you're ready!
 

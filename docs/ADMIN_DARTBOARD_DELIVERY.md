@@ -7,6 +7,7 @@ A comprehensive admin dashboard for dartboard testing and calibration has been s
 ## 📦 Deliverables
 
 ### Frontend
+
 - **`templates/admin_dartboard_testing.html`** (500+ lines)
   - Modern responsive admin panel
   - Accessible at: `/admin/dartboard-testing` (admin login required)
@@ -19,6 +20,7 @@ A comprehensive admin dashboard for dartboard testing and calibration has been s
     - Success/error alerts
 
 ### Backend
+
 - **`src/core/dartboard_service.py`** (additions: +200 lines)
   - `get_matrix_visualization()` - Matrix data for UI
   - `update_zone_mapping()` - Single mapping save/update
@@ -34,6 +36,7 @@ A comprehensive admin dashboard for dartboard testing and calibration has been s
   - All endpoints admin-only with proper authentication
 
 ### Documentation
+
 - **`docs/ADMIN_DARTBOARD_TESTING.md`** (300+ lines)
   - Complete user guide
   - Feature descriptions
@@ -58,6 +61,7 @@ A comprehensive admin dashboard for dartboard testing and calibration has been s
 ## 🎯 Key Features
 
 ### 1. GPIO Pin Matrix Visualization
+
 - ✅ Display master (row) × slave (column) pin grid
 - ✅ Color-coded cells:
   - White: Unmapped pins
@@ -69,6 +73,7 @@ A comprehensive admin dashboard for dartboard testing and calibration has been s
 - ✅ Responsive: Works on desktop and tablet
 
 ### 2. Real-Time Message Log
+
 - ✅ Display raw GPIO signals as dartboard presses arrive
 - ✅ Format: `GPIO: master=4, slave=13`
 - ✅ Show current mapping if it exists
@@ -78,6 +83,7 @@ A comprehensive admin dashboard for dartboard testing and calibration has been s
 - ✅ Clear button for manual reset
 
 ### 3. Manual Mapping Form
+
 - ✅ Auto-populate from matrix click
 - ✅ Or manually enter pin values
 - ✅ Dropdowns for zone and multiplier selection
@@ -87,6 +93,7 @@ A comprehensive admin dashboard for dartboard testing and calibration has been s
 - ✅ Clear button to reset form
 
 ### 4. CSV Bulk Import
+
 - ✅ Drag-and-drop file upload
 - ✅ Click to select file from system
 - ✅ Download CSV template button
@@ -97,6 +104,7 @@ A comprehensive admin dashboard for dartboard testing and calibration has been s
 - ✅ Supports up to 1,000 mappings per import
 
 ### 5. Board Configuration
+
 - ✅ Dropdown list of all registered dartboard types
 - ✅ Auto-populated from database
 - ✅ Board info display (brand, model, mapping count)
@@ -116,6 +124,7 @@ A comprehensive admin dashboard for dartboard testing and calibration has been s
 ## 📊 Testing & Validation
 
 ### Test Results
+
 ```
 ✅ 38 unit tests PASSING (dartboard_service.py)
 ✅ All core functionality tested
@@ -127,6 +136,7 @@ A comprehensive admin dashboard for dartboard testing and calibration has been s
 ```
 
 ### Manual Testing Completed
+
 - ✅ Page loads with admin role
 - ✅ Page blocks without admin role (403)
 - ✅ Dartboard types load in dropdown
@@ -140,14 +150,14 @@ A comprehensive admin dashboard for dartboard testing and calibration has been s
 
 ## 📈 Performance
 
-| Operation | Time | Notes |
-|-----------|------|-------|
-| Page load | <1s | Initial HTML + CSS + JS |
-| Matrix render | <100ms | 8×8 to 40×40 grids |
-| Save mapping | <100ms | Database insert/update |
-| CSV parse | <50ms | 1,000 rows on client |
-| CSV import | 1-5s | Depends on row count |
-| Message log update | <50ms | Real-time via WebSocket |
+| Operation          | Time   | Notes                   |
+| ------------------ | ------ | ----------------------- |
+| Page load          | <1s    | Initial HTML + CSS + JS |
+| Matrix render      | <100ms | 8×8 to 40×40 grids      |
+| Save mapping       | <100ms | Database insert/update  |
+| CSV parse          | <50ms  | 1,000 rows on client    |
+| CSV import         | 1-5s   | Depends on row count    |
+| Message log update | <50ms  | Real-time via WebSocket |
 
 ## 🎨 UI/UX Highlights
 
@@ -231,6 +241,7 @@ All documentation is Markdown format and located in `docs/`:
 ## 🔄 Integration Points
 
 ### With Existing System
+
 - ✅ Uses existing DartboardService for data operations
 - ✅ Uses existing database models (DartboardType, DartboardZoneMapping)
 - ✅ Uses existing authentication system (WSO2)
@@ -238,6 +249,7 @@ All documentation is Markdown format and located in `docs/`:
 - ✅ Compatible with existing /api/Throw endpoints
 
 ### Data Flow
+
 ```
 Admin Panel
     ↓
@@ -271,6 +283,7 @@ PostgreSQL Database
 ## 🐛 Known Issues & Limitations
 
 ### Current Version (1.0)
+
 - No live dartboard hardware streaming (uses API/RabbitMQ messages)
 - No board image overlay (matrix is abstract grid)
 - No multi-user edit conflict detection
@@ -278,6 +291,7 @@ PostgreSQL Database
 - Matrix limited to ~40×40 cells (performance)
 
 ### Future Enhancements
+
 - Real-time dartboard hardware streaming
 - Visual dartboard image with zone overlay
 - Collision detection for concurrent edits
@@ -290,28 +304,32 @@ PostgreSQL Database
 ## 💬 Support
 
 ### For Usage Questions
+
 → See **ADMIN_DARTBOARD_TESTING.md**
 
 ### For Technical Details
+
 → See **ADMIN_DARTBOARD_TESTING_SUMMARY.md**
 
 ### For Quick Reference
+
 → See **ADMIN_DARTBOARD_QUICK_REFERENCE.md**
 
 ### For API Details
+
 → See **DARTBOARD_ZONE_MAPPING.md**
 
 ## 📊 Code Statistics
 
-| Metric | Value |
-|--------|-------|
-| Frontend (HTML/CSS/JS) | 500+ lines |
-| Backend methods added | 3 new methods |
-| API endpoints added | 4 new endpoints |
-| WebSocket events | 1 new event |
-| Documentation | 1000+ lines |
-| Test coverage | 38 tests passing |
-| Total changes | ~1500 lines across 3 files |
+| Metric                 | Value                      |
+| ---------------------- | -------------------------- |
+| Frontend (HTML/CSS/JS) | 500+ lines                 |
+| Backend methods added  | 3 new methods              |
+| API endpoints added    | 4 new endpoints            |
+| WebSocket events       | 1 new event                |
+| Documentation          | 1000+ lines                |
+| Test coverage          | 38 tests passing           |
+| Total changes          | ~1500 lines across 3 files |
 
 ## 🎉 Summary
 

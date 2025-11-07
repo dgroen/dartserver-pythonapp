@@ -7,6 +7,7 @@ This guide explains how to use the new realistic dartboard visualization and the
 ## Features
 
 ### 🎯 Realistic SVG Dartboard
+
 - **Authentic Dartboard Layout**: All 20 segments in correct positions (20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5)
 - **Alternating Colors**: Cream (#C8A682) and Black (#0a0a0a) segments
 - **Ring Areas**: Single, Triple, and Double ring visualization
@@ -19,6 +20,7 @@ This guide explains how to use the new realistic dartboard visualization and the
 ### 🎲 Game Variants
 
 #### Original Round the Clock
+
 - **Type**: `round_the_clock`
 - **Targets**: 20 numbers (20→1) + Double Bull + Single Bull (×5)
 - **Total**: 22 targets
@@ -27,6 +29,7 @@ This guide explains how to use the new realistic dartboard visualization and the
   - Hit single bull 5 times to win
 
 #### NEW: Round the Clock Double
+
 - **Type**: `round_the_clock_double`
 - **Targets**: 20 numbers (20→1) + Double Bull ONLY
 - **Total**: 21 targets
@@ -38,6 +41,7 @@ This guide explains how to use the new realistic dartboard visualization and the
 ### Via API
 
 #### Round the Clock (Original)
+
 ```bash
 curl -X POST http://localhost:5000/api/game/new \
   -H "Content-Type: application/json" \
@@ -48,6 +52,7 @@ curl -X POST http://localhost:5000/api/game/new \
 ```
 
 #### Round the Clock Double (NEW)
+
 ```bash
 curl -X POST http://localhost:5000/api/game/new \
   -H "Content-Type: application/json" \
@@ -58,6 +63,7 @@ curl -X POST http://localhost:5000/api/game/new \
 ```
 
 ### Via Web Interface
+
 1. Open the application
 2. Select game type:
    - "Round the Clock" (original - 22 targets)
@@ -69,18 +75,21 @@ curl -X POST http://localhost:5000/api/game/new \
 ## Visual Indicators
 
 ### Current Target
+
 - **Segments**: Cyan (#00CED1) with glowing outline
 - **Animation**: Pulsing glow (expands and contracts)
 - **Number**: Cyan text, slightly larger
 - **Bull**: Orange glow (double) or gold glow (single)
 
 ### Completed Targets
+
 - **Segments**: Gray (#555555) background
 - **Opacity**: 50% transparent
 - **Number**: Muted gray text
 - **Meaning**: Already hit and scored
 
 ### Upcoming Targets
+
 - **Segments**: Normal color (cream or black)
 - **Number**: White text
 - **Meaning**: Still to be achieved
@@ -88,6 +97,7 @@ curl -X POST http://localhost:5000/api/game/new \
 ## Gameplay
 
 ### Round the Clock
+
 1. Start at 20, progress backwards to 1
 2. Hit required number to advance
 3. At 0 (bull needed):
@@ -96,6 +106,7 @@ curl -X POST http://localhost:5000/api/game/new \
 4. Skip turn goes to next player
 
 ### Round the Clock Double
+
 1. Start at 20, progress backwards to 1
 2. Hit required number to advance
 3. At 0 (bull needed):
@@ -106,6 +117,7 @@ curl -X POST http://localhost:5000/api/game/new \
 ## Multiplayer
 
 Both variants support unlimited players:
+
 - Each player has independent dartboard tracking
 - Dartboard shows current progress for that player
 - Players take turns sequentially
@@ -114,6 +126,7 @@ Both variants support unlimited players:
 ## Game Progression
 
 ### Example: Alice's Turn
+
 ```
 Turn 1:
   Current: 20
@@ -146,6 +159,7 @@ Final Turn:
 ## API Response Examples
 
 ### Get Game State - Round the Clock
+
 ```json
 {
   "status": "success",
@@ -167,6 +181,7 @@ Final Turn:
 ```
 
 ### Get Game State - Round the Clock Double
+
 ```json
 {
   "status": "success",
@@ -199,12 +214,14 @@ Note: `bull_hits` only appears in `round_the_clock`, not in `round_the_clock_dou
 ## Tips & Tricks
 
 ### For Players
+
 1. **Current Target Display**: Text shows current number or "BULL"
 2. **Dartboard View**: Glowing segments show progress visually
 3. **Quick Reference**: Numbers arranged in dartboard order (not numerical)
 4. **Pacing**: Watch for glowing animation to know whose turn it is
 
 ### For Game Masters
+
 1. **Variant Selection**: Choose appropriate variant for skill level
    - Double Bull only = Shorter, more challenging
    - Both Bulls = Longer, more varied gameplay
@@ -212,6 +229,7 @@ Note: `bull_hits` only appears in `round_the_clock`, not in `round_the_clock_dou
 3. **Broadcasting**: SVG scales responsively for displays
 
 ### For Developers
+
 1. **Game Logic**: Classes are independent and testable
 2. **API Integration**: RESTful endpoints for both variants
 3. **WebSocket Events**: Real-time updates via SocketIO
@@ -220,18 +238,21 @@ Note: `bull_hits` only appears in `round_the_clock`, not in `round_the_clock_dou
 ## Troubleshooting
 
 ### Dartboard Not Showing
+
 - ✅ Ensure browser supports SVG (modern browsers only)
 - ✅ Check browser console for JavaScript errors
 - ✅ Verify game type is `round_the_clock` or `round_the_clock_double`
 - ✅ Refresh page
 
 ### Bull Target Not Working
+
 - ✅ For Round the Clock: Need current_target = 0 (bull reached)
 - ✅ For Round the Clock Double: Double bull is only valid option
 - ✅ Single bull only works in original variant
 - ✅ Check multiplier type (BULL vs DBLBULL)
 
 ### Animation Lag
+
 - ✅ Modern browser should handle animations smoothly
 - ✅ Disable other animations if experiencing lag
 - ✅ Clear browser cache
@@ -246,12 +267,12 @@ Note: `bull_hits` only appears in `round_the_clock`, not in `round_the_clock_dou
 
 ## Browser Compatibility
 
-| Feature | Chrome | Firefox | Safari | Edge |
-|---------|--------|---------|--------|------|
-| SVG Dartboard | ✅ | ✅ | ✅ | ✅ |
-| Animations | ✅ | ✅ | ✅ | ✅ |
-| WebSocket | ✅ | ✅ | ✅ | ✅ |
-| Mobile | ✅ | ✅ | ✅ | ✅ |
+| Feature       | Chrome | Firefox | Safari | Edge |
+| ------------- | ------ | ------- | ------ | ---- |
+| SVG Dartboard | ✅     | ✅      | ✅     | ✅   |
+| Animations    | ✅     | ✅      | ✅     | ✅   |
+| WebSocket     | ✅     | ✅      | ✅     | ✅   |
+| Mobile        | ✅     | ✅      | ✅     | ✅   |
 
 ## Related Files
 
@@ -265,6 +286,7 @@ Note: `bull_hits` only appears in `round_the_clock`, not in `round_the_clock_dou
 ## Questions?
 
 For more details, see:
+
 - `IMPLEMENTATION_SUMMARY_REALISTIC_DARTBOARD.md` - Technical implementation details
 - `.zencoder/rules/repo.md` - Project overview
 - Game logic files - Source code documentation

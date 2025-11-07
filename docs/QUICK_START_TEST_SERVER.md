@@ -3,12 +3,14 @@
 ## What to Do RIGHT NOW
 
 ### Step 1: Start Containers (if not already running)
+
 ```bash
 cd /data/dartserver-pythonapp
 docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d
 ```
 
 ### Step 2: Wait for WSO2 to Initialize
+
 ```bash
 # Wait about 2-3 minutes for WSO2 to fully start
 sleep 120
@@ -22,6 +24,7 @@ docker logs darts-wso2is | grep "Server started successfully"
 **Option A: Automatic (Recommended)**
 
 From inside the darts-app container:
+
 ```bash
 docker exec -it darts-app bash
 cd /app
@@ -30,6 +33,7 @@ exit
 ```
 
 **Option B: From Host**
+
 ```bash
 cd /data/dartserver-pythonapp
 # Install requests if needed
@@ -42,6 +46,7 @@ python3 helpers/register_wso2_test_client.py
 ### Step 4: Verify Registration
 
 You should see output like:
+
 ```
 ✅ SUCCESS - Test Server OAuth2 Client is configured!
 ```
@@ -65,6 +70,7 @@ If you see errors, check **Troubleshooting** section below.
 WSO2 isn't fully initialized yet.
 
 **Fix:**
+
 ```bash
 # Wait longer
 sleep 180
@@ -81,12 +87,16 @@ docker logs darts-wso2is | tail -30
 OAuth2 client wasn't registered.
 
 **Fix:**
+
 1. Make sure you ran Step 3 above
 2. If script showed errors, check:
+
    ```bash
    docker logs darts-wso2is | grep -i "error\|exception" | tail -20
    ```
+
 3. Try running the script again:
+
    ```bash
    docker exec -it darts-app python3 /app/helpers/register_wso2_test_client.py
    ```
@@ -97,6 +107,7 @@ Redirect URI mismatch in WSO2.
 
 **Fix:**
 Make sure `docker-compose-test.yml` has:
+
 ```yaml
 WSO2_REDIRECT_URI: https://test.letsplaydarts.eu/callback
 ```
@@ -108,6 +119,7 @@ Then re-run the registration script.
 Usually means the login was successful but something else is broken.
 
 **Fix:**
+
 1. Check CORS is configured (already done in our fix)
 2. Clear browser cookies and try again
 3. Check browser console for errors (F12)
@@ -162,7 +174,7 @@ docker exec -it darts-app python3 /app/helpers/register_wso2_test_client.py
 ## Next Steps After Successful Login
 
 1. ✅ Create some test games
-2. ✅ Verify dashboard shows game statistics  
+2. ✅ Verify dashboard shows game statistics
 3. ✅ Check history page shows your games
 4. ✅ Verify mobile results page works
 5. ✅ Test replay functionality

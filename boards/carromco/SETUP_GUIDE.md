@@ -3,24 +3,31 @@
 ## Quick Start (5 minutes)
 
 ### 1. Flash Arduino Sketch
+
 - Open: `boards/carromco/dartserver_carromco.ino`
 - Configure WiFi:
+
   ```cpp
   const char* ssid = "<YOUR_SSID>";
   const char* password = "<YOUR_PASSWORD>";
   ```
+
 - Configure server:
+
   ```cpp
   const char* serverAddress = "YOUR_SERVER_IP";
   ```
+
 - Upload to ESP32
 
 ### 2. Register Dartboard Type
+
 ```bash
 python helpers/setup_dartboard_types.py carromco
 ```
 
 ### 3. Configure Zone Mappings
+
 1. Open admin panel: `https://your-server/admin/dartboard-testing`
 2. Select "carromco" from dropdown
 3. Use "Manual Mapping" or "Bulk Import" to add zones
@@ -30,15 +37,15 @@ python helpers/setup_dartboard_types.py carromco
 
 ## Specifications
 
-| Property | Value |
-|----------|-------|
-| **Board Type** | `carromco` |
-| **Board Name** | Carromco Striker |
-| **Matrix Size** | 8 rows × 8 columns = 64 zones |
-| **GPIO Master Pins** | 15, 2, 4, 16, 17, 5, 18, 19 |
-| **GPIO Slave Pins** | 13, 12, 14, 27, 26, 25, 33, 32 |
-| **Total GPIO Used** | 16 pins |
-| **API Endpoint** | `POST /api/Throw/zone` |
+| Property                 | Value                             |
+| ------------------------ | --------------------------------- |
+| **Board Type**           | `carromco`                        |
+| **Board Name**           | Carromco Striker                  |
+| **Matrix Size**          | 8 rows × 8 columns = 64 zones     |
+| **GPIO Master Pins**     | 15, 2, 4, 16, 17, 5, 18, 19       |
+| **GPIO Slave Pins**      | 13, 12, 14, 27, 26, 25, 33, 32    |
+| **Total GPIO Used**      | 16 pins                           |
+| **API Endpoint**         | `POST /api/Throw/zone`            |
 | **Pre-configured Zones** | 50 zones (Triple 4 and 13 fixed!) |
 
 ---
@@ -46,6 +53,7 @@ python helpers/setup_dartboard_types.py carromco
 ## Pin Configuration
 
 ### Master Pins (Rows)
+
 ```
 Row 0 → GPIO 15
 Row 1 → GPIO 2
@@ -58,6 +66,7 @@ Row 7 → GPIO 19
 ```
 
 ### Slave Pins (Columns)
+
 ```
 Col 0 → GPIO 13
 Col 1 → GPIO 12
@@ -74,12 +83,14 @@ Col 7 → GPIO 32
 ## What's New? ✨
 
 ### Previous Issues (Broken Firmware)
+
 - Triple 4: Not in array → Didn't work ❌
 - Triple 13: Not in array → Didn't work ❌
 - Array bounds error: x2Len = 21 but array only 20 elements → Crashes ❌
 - Hardcoded multiplier logic: ~100 lines of code per board ❌
 
 ### Now Fixed! ✅
+
 - All zones stored in database
 - Server-side mapping = easy to fix
 - No firmware updates needed for calibration
@@ -103,6 +114,7 @@ Col 7 → GPIO 32
    - Purpose: Identify which column is active
 
 ### Dartboard Connection
+
 ```
 Dartboard Physical Layout
         ↓
@@ -126,6 +138,7 @@ When dart presses zone:
 ### First Time Setup
 
 1. **Verify Setup:**
+
    ```bash
    python helpers/setup_dartboard_types.py carromco
    # Output should show: 50 zone mappings pre-configured
@@ -192,9 +205,11 @@ D19 = Double 19 (19 × 2 = 38)
 ## Troubleshooting
 
 ### Arduino Upload Fails
+
 **Error:** "Board not found" or "Port not available"
 
 **Solution:**
+
 1. Check USB cable connection
 2. Verify correct board selected (ESP32 Dev Module)
 3. Check port in Tools → Port
@@ -204,9 +219,11 @@ D19 = Double 19 (19 × 2 = 38)
 ---
 
 ### Zone Not Detected
+
 **Symptom:** Press zone on dartboard, nothing happens
 
 **Steps:**
+
 1. Check Serial Monitor (115200 baud)
    - Should see: `DART DETECTED - Master: X, Slave: Y`
 2. If no output:
@@ -223,18 +240,23 @@ D19 = Double 19 (19 × 2 = 38)
 ---
 
 ### Triple 4 or Triple 13 Not Working
+
 **This was the original bug - now fixed!**
 
 **Check:**
+
 1. Verify database has these mappings:
+
    ```sql
    SELECT * FROM dartboard_zone_mappings
    WHERE zone_number IN (4, 13)
    AND multiplier_type = 'TRIPLE';
    ```
+
    Should return 2 rows (one each for Triple 4 and 13)
 
 2. Re-run setup if missing:
+
    ```bash
    python helpers/setup_dartboard_types.py carromco
    ```
@@ -244,9 +266,11 @@ D19 = Double 19 (19 × 2 = 38)
 ---
 
 ### Wrong Zone Detected
+
 **Symptom:** Press zone 20, get zone 18
 
 **Solution:**
+
 1. Use admin panel Message Log
 2. Note the master/slave pins from real press
 3. Find what they're currently mapped to
@@ -256,9 +280,11 @@ D19 = Double 19 (19 × 2 = 38)
 ---
 
 ### WiFi Connection Failed
+
 **Error:** "Wi-Fi not connected" in serial
 
 **Solution:**
+
 1. Edit sketch - verify SSID/password correct
 2. Check network is accessible from device location
 3. Verify IP address/port reachable
@@ -268,9 +294,11 @@ D19 = Double 19 (19 × 2 = 38)
 ---
 
 ### Server Says "Zone mapping not found"
+
 **Error:** HTTP response says pins unmapped
 
 **Solution:**
+
 1. Go to admin panel
 2. Select "carromco" board type
 3. Check if mappings exist in GPIO Matrix tab
@@ -283,9 +311,11 @@ D19 = Double 19 (19 × 2 = 38)
 ## CSV Format for Bulk Import/Export
 
 ### Download Current Mappings
+
 In admin panel, "Bulk Import" tab has a download button to get current CSV
 
 ### Format
+
 ```csv
 masterPin,slavePin,zoneNumber,multiplierType,baseValue
 15,13,12,SINGLE,12
@@ -297,15 +327,16 @@ masterPin,slavePin,zoneNumber,multiplierType,baseValue
 
 ### Column Descriptions
 
-| Column | Type | Valid Values | Example |
-|--------|------|--------------|---------|
-| `masterPin` | int | 15,2,4,16,17,5,18,19 | 4 |
-| `slavePin` | int | 13,12,14,27,26,25,33,32 | 27 |
-| `zoneNumber` | int | 1-20, 25 | 4 (or 25 for bull) |
-| `multiplierType` | string | SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL | TRIPLE |
-| `baseValue` | int | 1-20, 25 | 4 |
+| Column           | Type   | Valid Values                          | Example            |
+| ---------------- | ------ | ------------------------------------- | ------------------ |
+| `masterPin`      | int    | 15,2,4,16,17,5,18,19                  | 4                  |
+| `slavePin`       | int    | 13,12,14,27,26,25,33,32               | 27                 |
+| `zoneNumber`     | int    | 1-20, 25                              | 4 (or 25 for bull) |
+| `multiplierType` | string | SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL | TRIPLE             |
+| `baseValue`      | int    | 1-20, 25                              | 4                  |
 
 ### Examples
+
 ```csv
 # Triple 4 (4 × 3 = 12)
 4,27,4,TRIPLE,4
@@ -325,6 +356,7 @@ masterPin,slavePin,zoneNumber,multiplierType,baseValue
 ## Performance Notes
 
 ### Scan Speed
+
 - Single full scan: ~50ms (8×8 matrix)
 - WiFi transmission: 100-500ms (network dependent)
 - Server processing: <1ms (database query)
@@ -335,7 +367,9 @@ masterPin,slavePin,zoneNumber,multiplierType,baseValue
 ## Advanced Configuration
 
 ### Modify Scan Delay
+
 In `dartserver_carromco.ino`, change:
+
 ```cpp
 delay(500);  // Debounce time after dart detected
 ```
@@ -344,19 +378,20 @@ Shorter = faster but may cause double-detects
 Longer = more stable but slower response
 
 ### Add Button Support
+
 Uncomment the `bigRedCheck()` function in sketch to enable physical button
 
 ---
 
 ## Reference Files
 
-| File | Purpose |
-|------|---------|
-| `boards/carromco/dartserver_carromco.ino` | Arduino sketch |
-| `boards/carromco_config.h` | GPIO pin mappings |
-| `boards/README_GENERIC_ARCHITECTURE.md` | Full architecture docs |
-| `helpers/setup_dartboard_types.py` | Database setup |
-| `src/core/dartboard_service.py` | Backend service |
+| File                                      | Purpose                |
+| ----------------------------------------- | ---------------------- |
+| `boards/carromco/dartserver_carromco.ino` | Arduino sketch         |
+| `boards/carromco_config.h`                | GPIO pin mappings      |
+| `boards/README_GENERIC_ARCHITECTURE.md`   | Full architecture docs |
+| `helpers/setup_dartboard_types.py`        | Database setup         |
+| `src/core/dartboard_service.py`           | Backend service        |
 
 ---
 
@@ -390,20 +425,21 @@ A: Use admin panel to correct them - instant fix, no firmware updates needed!
 
 ## What's Different from Old Firmware?
 
-| Feature | Old (Broken) | New (Fixed) |
-|---------|--------------|------------|
-| Triple 4 | ❌ Missing | ✅ Works |
-| Triple 13 | ❌ Missing | ✅ Works |
-| Zone changes | ❌ Firmware update | ✅ Admin panel |
-| Code size | ~500 lines | ~200 lines |
-| Array bugs | ❌ Yes (x2Len/x3 mismatch) | ✅ No arrays |
-| Support new boards | ❌ Requires coding | ✅ Just config |
+| Feature            | Old (Broken)               | New (Fixed)    |
+| ------------------ | -------------------------- | -------------- |
+| Triple 4           | ❌ Missing                 | ✅ Works       |
+| Triple 13          | ❌ Missing                 | ✅ Works       |
+| Zone changes       | ❌ Firmware update         | ✅ Admin panel |
+| Code size          | ~500 lines                 | ~200 lines     |
+| Array bugs         | ❌ Yes (x2Len/x3 mismatch) | ✅ No arrays   |
+| Support new boards | ❌ Requires coding         | ✅ Just config |
 
 ---
 
 ## Summary
 
 Carromco is now using the **new generic architecture**:
+
 - ✅ Triple 4 and Triple 13 fixed!
 - ✅ No hardcoded zone arrays
 - ✅ Configure zones via web admin panel

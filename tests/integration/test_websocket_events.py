@@ -10,7 +10,7 @@ from src.app.app import game_manager, socketio
 from src.core.database_service import DatabaseService
 
 
-@pytest.fixture
+@pytest.fixture()
 def db_service():
     """Create in-memory database service for testing."""
     db = DatabaseService("sqlite:///:memory:")
@@ -25,7 +25,7 @@ def db_service():
     return db
 
 
-@pytest.fixture
+@pytest.fixture()
 def app(db_service):
     """Create Flask app for testing."""
     with (
@@ -40,7 +40,7 @@ def app(db_service):
         yield flask_app
 
 
-@pytest.fixture
+@pytest.fixture()
 def socketio_client(app, db_service):
     """Create SocketIO test client."""
     # Make sure game_manager uses the test database

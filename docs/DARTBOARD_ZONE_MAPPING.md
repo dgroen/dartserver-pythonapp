@@ -24,11 +24,13 @@ Previously, dartboards had hardcoded zone mappings in their firmware (Arduino co
 The new architecture separates concerns:
 
 ### Arduino/Hardware Layer
+
 - Send raw **GPIO pin combinations** to the server
 - Send **dartboard type identifier** for lookup
 - No zone mapping logic on hardware
 
 ### Server Layer
+
 - Maintain **dartboard type registry** in database
 - Store **GPIO pin to zone mappings** per dartboard type
 - **Calculate scores** from base value and multiplier
@@ -37,6 +39,7 @@ The new architecture separates concerns:
 ## Database Schema
 
 ### DartboardType Table
+
 ```sql
 CREATE TABLE dartboard_type (
   id INTEGER PRIMARY KEY,
@@ -51,6 +54,7 @@ CREATE TABLE dartboard_type (
 ```
 
 ### DartboardZoneMapping Table
+
 ```sql
 CREATE TABLE dartboard_zone_mapping (
   id INTEGER PRIMARY KEY,
@@ -71,9 +75,11 @@ CREATE TABLE dartboard_zone_mapping (
 ### New Generic Format Endpoint
 
 #### POST /api/Throw/zone
+
 Send raw GPIO pin combination for zone lookup
 
 **Request:**
+
 ```json
 {
   "masterPin": 4,
@@ -84,6 +90,7 @@ Send raw GPIO pin combination for zone lookup
 ```
 
 **Response:**
+
 ```json
 {
   "status": "success",
@@ -100,9 +107,11 @@ Send raw GPIO pin combination for zone lookup
 ### Legacy Endpoint (Backwards Compatibility)
 
 #### POST /api/Throw
+
 Old format for existing boards - still supported
 
 **Request:**
+
 ```json
 {
   "score": 20,
@@ -112,6 +121,7 @@ Old format for existing boards - still supported
 ```
 
 **Response:**
+
 ```json
 {
   "status": "success",
@@ -122,9 +132,11 @@ Old format for existing boards - still supported
 ### Dartboard Management Endpoints
 
 #### GET /api/dartboard/types
+
 Get all registered dartboard types
 
 **Response:**
+
 ```json
 {
   "status": "success",
@@ -148,9 +160,11 @@ Get all registered dartboard types
 ```
 
 #### GET /api/dartboard/types/<board_type>/mappings
+
 Get all zone mappings for a specific dartboard type
 
 **Response:**
+
 ```json
 {
   "status": "success",
@@ -177,6 +191,7 @@ Get all zone mappings for a specific dartboard type
 ## Arduino/ESP32 Code Changes
 
 ### Before (Hardcoded)
+
 ```cpp
 // Hardcoded multiplier arrays with errors (triple 4, 13 missing)
 const int x3Len = 20;
@@ -195,6 +210,7 @@ void sendData(int point, String msg) {
 ```
 
 ### After (Generic)
+
 ```cpp
 // Simple, generic implementation
 void sendData(int masterPin, String slavePin) {
@@ -223,6 +239,7 @@ void throwCheck() {
 ## Adding New Dartboard Types
 
 ### Step 1: Register Dartboard Type
+
 ```python
 from src.core.dartboard_service import DartboardService
 from src.core.database_service import get_session
@@ -239,6 +256,7 @@ board_type = DartboardService.register_dartboard_type(
 ```
 
 ### Step 2: Create Pin Mapping Matrix
+
 Physically map each GPIO pin combination to the corresponding zone:
 
 ```
@@ -255,6 +273,7 @@ GPIO Matrix (Carromco example):
 ```
 
 ### Step 3: Add Mappings to Database
+
 ```python
 # Triple 20 at master_pin=4, slave_pin=13
 DartboardService.add_zone_mapping(
@@ -282,6 +301,7 @@ DartboardService.add_zone_mapping(
 ```
 
 ### Step 4: Update Arduino Code
+
 ```cpp
 const char* ssid = "<SSID>";
 const char* password = "<PASSWORD>";
@@ -309,19 +329,20 @@ void sendData(int masterPin, String slavePin) {
 
 ## Multiplier Values
 
-| Type | Value | Example |
-|------|-------|---------|
-| SINGLE | 1x | 20 × 1 = 20 |
-| DOUBLE | 2x | 20 × 2 = 40 |
-| TRIPLE | 3x | 20 × 3 = 60 |
-| BULL | 25 | Always 25 |
-| DBLBULL | 50 | Always 50 |
+| Type    | Value | Example     |
+| ------- | ----- | ----------- |
+| SINGLE  | 1x    | 20 × 1 = 20 |
+| DOUBLE  | 2x    | 20 × 2 = 40 |
+| TRIPLE  | 3x    | 20 × 3 = 60 |
+| BULL    | 25    | Always 25   |
+| DBLBULL | 50    | Always 50   |
 
 ## Score Calculation
 
 Final Score = Base Value × Multiplier Value
 
 Examples:
+
 - Triple 20: 20 × 3 = 60
 - Triple 4: 4 × 3 = 12
 - Triple 13: 13 × 3 = 39 (now properly supported!)
@@ -330,6 +351,7 @@ Examples:
 ## DartboardService Methods
 
 ### register_dartboard_type()
+
 Register a new dartboard type
 
 ```python
@@ -343,6 +365,7 @@ def register_dartboard_type(
 ```
 
 ### add_zone_mapping()
+
 Add a GPIO pin to zone mapping
 
 ```python
@@ -358,6 +381,7 @@ def add_zone_mapping(
 ```
 
 ### get_zone_from_pins()
+
 Look up zone information from pin combination
 
 ```python
@@ -370,6 +394,7 @@ def get_zone_from_pins(
 ```
 
 Returns:
+
 ```python
 {
     "zone_number": int,
@@ -380,6 +405,7 @@ Returns:
 ```
 
 ### calculate_score()
+
 Calculate final score from base value and multiplier
 
 ```python
@@ -387,6 +413,7 @@ def calculate_score(base_value: int, multiplier_type: str) -> int
 ```
 
 ### validate_zone_mapping()
+
 Validate zone mapping configuration
 
 ```python
@@ -398,6 +425,7 @@ def validate_zone_mapping(
 ```
 
 ### convert_legacy_to_zone()
+
 Convert legacy (score, multiplier) format to zone info
 
 ```python
@@ -412,11 +440,13 @@ def convert_legacy_to_zone(
 ## Migration Guide
 
 ### For Old Dartboards
+
 - **No changes required** - legacy `/api/Throw` endpoint still works
 - Can continue sending score/multiplier format indefinitely
 - No performance impact
 
 ### For New Dartboards
+
 1. Flash updated Arduino code with generic pin-based format
 2. Update `boardType` to match registered dartboard type
 3. Ensure dartboard type is registered in database with all zone mappings
@@ -426,6 +456,7 @@ def convert_legacy_to_zone(
 ## Testing
 
 See `/data/dartserver-pythonapp/tests/unit/test_dartboard_service.py` for comprehensive unit tests covering:
+
 - Zone mapping registration
 - Zone lookup functionality
 - Score calculation
@@ -434,6 +465,7 @@ See `/data/dartserver-pythonapp/tests/unit/test_dartboard_service.py` for compre
 - Error handling
 
 Run tests with:
+
 ```bash
 pytest tests/unit/test_dartboard_service.py -v
 pytest tests/unit/test_dartboard_api_endpoints.py -v
@@ -442,16 +474,19 @@ pytest tests/unit/test_dartboard_api_endpoints.py -v
 ## Troubleshooting
 
 ### Zone mapping not found
+
 - Verify dartboard type is registered: `GET /api/dartboard/types`
 - Verify pins are mapped: `GET /api/dartboard/types/<board_type>/mappings`
 - Check pins match exactly (Arduino sends actual GPIO pin numbers)
 
 ### Wrong score calculated
+
 - Verify zone_number and base_value in database
 - Verify multiplier_type is correct
 - Use `/api/dartboard/types/<board_type>/mappings` to inspect mappings
 
 ### Arduino compilation errors
+
 - Ensure ArduinoJson library is installed
 - Ensure WiFi credentials are correct
 - Verify GPIO pin numbers match your board

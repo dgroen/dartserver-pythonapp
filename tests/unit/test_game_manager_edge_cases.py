@@ -13,13 +13,13 @@ DEFAULT_PLAYER_IDS = [
 ]
 
 
-@pytest.fixture
+@pytest.fixture()
 def socketio():
     """Mock SocketIO instance."""
     return MagicMock()
 
 
-@pytest.fixture
+@pytest.fixture()
 def game_manager(socketio):
     """Create GameManager instance."""
     return GameManager(socketio)
