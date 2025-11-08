@@ -100,7 +100,6 @@ https://localhost:5000/
 ```
 
 **Expected**:
-
 - Browser shows SSL certificate warning (self-signed cert)
 - Accept the warning (Advanced → Proceed to localhost)
 - Page should load without JavaScript errors
@@ -179,7 +178,6 @@ https://localhost:5000/dashboard
 - **Status**: ✅ Fixed - using correct credentials from DartsApp Local
 
 **Issue**: History/Dashboard empty
-
 - **Causes**:
   1. Username mismatch (WSO2 returns `testuser001@carbon.super` but DB has `testuser001`)
   2. Session doesn't have `player_id` set

@@ -127,7 +127,7 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # Initialize Game Manager
 game_manager = GameManager(socketio)
-app.game_manager = game_manager  # type: ignore  # Attach to app for access in decorators
+app.game_manager = game_manager  # Attach to app for access in decorators
 
 # Initialize global database service for dartboard endpoints
 set_database_service(game_manager.db_service)
@@ -401,7 +401,7 @@ def callback():
     return redirect(next_url)
 
 
-@app.route  # type: ignore
+@app.route
 @app.route("/logout")
 def logout():
     """Logout endpoint"""
@@ -593,12 +593,6 @@ def new_game():
               example: New game started
     """
     data = request.json
-    if data is None:
-        data = {}
-
-    if data is None:
-
-        data = {}
     game_type = data.get("game_type", "301")
     player_data = data.get("players", [])
     double_out = data.get("double_out", False)
@@ -629,7 +623,7 @@ def new_game():
             )
 
     if not player_ids:
-        player_ids = [session.get("player_id")]  # type: ignore
+        player_ids = [session.get("player_id")]
 
     game_manager.new_game(game_type, player_ids=player_ids, double_out=double_out)
     # Game state is automatically emitted by game_manager.new_game()
@@ -959,12 +953,6 @@ def submit_score():
     """
     try:
         data = request.json
-        if data is None:
-            data = {}
-
-        if data is None:
-
-            data = {}
         score = data.get("score", 0)
         multiplier = data.get("multiplier", "SINGLE")
 
@@ -1066,12 +1054,6 @@ def submit_score_zone():
     """
     try:
         data = request.json
-        if data is None:
-            data = {}
-
-        if data is None:
-
-            data = {}
         master_pin = data.get("masterPin")
         slave_pin = data.get("slavePin")
         board_type = data.get("boardType", "").lower()
@@ -1428,12 +1410,6 @@ def update_dartboard_mapping():
     """
     try:
         data = request.json
-        if data is None:
-            data = {}
-
-        if data is None:
-
-            data = {}
         board_type = data.get("boardType", "").lower()
         master_pin = data.get("masterPin")
         slave_pin = data.get("slavePin")
@@ -1459,11 +1435,11 @@ def update_dartboard_mapping():
             DartboardService.update_zone_mapping(
                 session,
                 board_type,
-                int(master_pin),  # type: ignore
-                int(slave_pin),  # type: ignore
-                int(zone_number),  # type: ignore
+                int(master_pin),
+                int(slave_pin),
+                int(zone_number),
                 multiplier_type,
-                int(base_value),  # type: ignore
+                int(base_value),
             )
             return jsonify(
                 {
@@ -1542,12 +1518,6 @@ def import_dartboard_mappings():
     """
     try:
         data = request.json
-        if data is None:
-            data = {}
-
-        if data is None:
-
-            data = {}
         board_type = data.get("boardType", "").lower()
         mappings = data.get("mappings", [])
 
@@ -1685,12 +1655,6 @@ def update_tts_config():
               example: TTS configuration updated
     """
     data = request.json
-    if data is None:
-        data = {}
-
-    if data is None:
-
-        data = {}
 
     if "enabled" in data:
         if data["enabled"]:
@@ -1781,12 +1745,6 @@ def test_tts():
               example: TTS test completed
     """
     data = request.json
-    if data is None:
-        data = {}
-
-    if data is None:
-
-        data = {}
     text = data.get("text", "This is a test")
 
     success = game_manager.tts.speak(text)
@@ -1857,12 +1815,6 @@ def generate_tts_audio():
     from flask import Response
 
     data = request.json
-    if data is None:
-        data = {}
-
-    if data is None:
-
-        data = {}
     text = data.get("text")
     lang = data.get("lang", "en")
 
@@ -2264,12 +2216,6 @@ def create_api_key():
               type: object
     """
     data = request.json
-    if data is None:
-        data = {}
-
-    if data is None:
-
-        data = {}
     key_name = data.get("key_name", "Default Key")
     player_id = session.get("player_id")
     if not player_id:
@@ -2381,12 +2327,6 @@ def register_dartboard():
               type: object
     """
     data = request.json
-    if data is None:
-        data = {}
-
-    if data is None:
-
-        data = {}
     dartboard_id = data.get("dartboard_id")
     name = data.get("name")
     wpa_key = data.get("wpa_key")
@@ -2503,12 +2443,6 @@ def create_hotspot_config():
               type: object
     """
     data = request.json
-    if data is None:
-        data = {}
-
-    if data is None:
-
-        data = {}
     dartboard_id = data.get("dartboard_id")
     ssid = data.get("ssid")
     password = data.get("password")
@@ -2559,12 +2493,6 @@ def toggle_hotspot(config_id):
               type: boolean
     """
     data = request.json
-    if data is None:
-        data = {}
-
-    if data is None:
-
-        data = {}
     enabled = data.get("enabled", False)
     player_id = session.get("player_id")
     if not player_id:
@@ -2614,12 +2542,6 @@ def dartboard_connect():
               type: string
     """
     data = request.json
-    if data is None:
-        data = {}
-
-    if data is None:
-
-        data = {}
     dartboard_id = data.get("dartboard_id")
 
     if not dartboard_id:
@@ -2672,12 +2594,6 @@ def dartboard_submit_score():
               type: string
     """
     data = request.json
-    if data is None:
-        data = {}
-
-    if data is None:
-
-        data = {}
     # Process score through game manager
     game_manager.process_score(data)
     return jsonify({"success": True, "message": "Score submitted"})
@@ -2809,12 +2725,6 @@ def start_game():
               type: object
     """
     data = request.json
-    if data is None:
-        data = {}
-
-    if data is None:
-
-        data = {}
     game_type = data.get("game_type", "301")
     player_data = data.get("players", [])
     double_out = data.get("double_out", False)
@@ -2845,7 +2755,7 @@ def start_game():
             )
 
     if not player_ids:
-        player_ids = [session.get("player_id")]  # type: ignore
+        player_ids = [session.get("player_id")]
 
     game_manager.new_game(game_type, player_ids=player_ids, double_out=double_out)
     game_state = game_manager.get_game_state()
@@ -3128,7 +3038,7 @@ def handle_new_game(data):
             )
 
     if not player_ids:
-        player_ids = [session.get("player_id")]  # type: ignore
+        player_ids = [session.get("player_id")]
 
     game_manager.new_game(game_type, player_ids=player_ids, double_out=double_out)
 

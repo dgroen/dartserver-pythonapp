@@ -76,7 +76,7 @@ class GameRoundTheClock:
         multiplier = multiplier_map.get(multiplier_type, 1)
         return self.process_throw(current_player_id, base_score, multiplier, multiplier_type)
 
-    def process_throw(self, player_id, base_score, multiplier, multiplier_type):
+    def process_throw(self, player_id, base_score, multiplier_type):
         """
         Process a dart throw
 
@@ -89,7 +89,6 @@ class GameRoundTheClock:
         Returns:
             Dictionary with result information
         """
-        del multiplier
         if player_id < 0 or player_id >= len(self.players):
             return {"error": "Invalid player ID"}
 
