@@ -444,6 +444,53 @@ class GameManager:
         self._emit_sound(f"Player{self.current_player + 1}", message)
         self._emit_message(message)
 
+    def end_turn_early(self):
+        """
+        End the current player's turn early.
+        Records any remaining throws (up to 3 total) as misses with score 0.
+        """
+        if not self.is_started or self.is_paused:
+            print("Game not active or already paused, cannot end turn early")
+            return
+
+        # Get score before recording missing throws
+        score_before = self._get_player_current_score(self.current_player)
+
+        # Record missing throws as 0 score
+        throws_to_record = self.throws_per_turn - self.current_throw + 1
+        for i in range(throws_to_record):
+            # Record throw in database as a miss (0 score)
+            self._record_throw_in_db(
+                base_score=0,
+                multiplier="SINGLE",
+                multiplier_value=1,
+                actual_score=0,
+                score_before=score_before,
+                score_after=score_before,  # Score doesn't change
+                is_bust=False,
+                is_finish=False,
+            )
+
+            # Track this throw
+            throw_data = {
+                "base_score": 0,
+                "multiplier": "SINGLE",
+                "multiplier_value": 1,
+                "actual_score": 0,
+                "throw_number": self.current_throw,
+                "score_before": score_before,
+            }
+            self.turn_throws.append(throw_data)
+
+            # Increment throw counter
+            self.current_throw += 1
+
+        # End the turn
+        self._end_turn()
+        self._emit_game_state()
+
+        print(f"Turn ended early for {self.players[self.current_player]['name']}")
+
     def get_game_state(self):
         """Get current game state"""
         state = {
