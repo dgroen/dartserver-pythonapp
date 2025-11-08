@@ -2669,7 +2669,7 @@ def get_current_user():
             "username": username,
             "roles": user_roles,
             "player_id": player_id,
-        }
+        },
     )
 
 

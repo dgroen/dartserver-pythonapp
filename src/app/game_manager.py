@@ -458,7 +458,7 @@ class GameManager:
 
         # Record missing throws as 0 score
         throws_to_record = self.throws_per_turn - self.current_throw + 1
-        for i in range(throws_to_record):
+        for _i in range(throws_to_record):
             # Record throw in database as a miss (0 score)
             self._record_throw_in_db(
                 base_score=0,
