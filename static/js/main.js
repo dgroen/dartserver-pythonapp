@@ -123,6 +123,12 @@ const videoContainer = document.getElementById('video-container');
 const effectVideo = document.getElementById('effect-video');
 const throwoutAdviceElement = document.getElementById('throwoutAdvice');
 const adviceDisplay = document.getElementById('adviceDisplay');
+const nextPlayerButtonContainer = document.getElementById('nextPlayerButtonContainer');
+const nextPlayerButton = document.getElementById('nextPlayerButton');
+
+// Game state tracking
+let currentGame = null;
+let currentUser = null;
 
 // Audio elements (optional - can be added later)
 const audioCache = {};
@@ -130,16 +136,135 @@ const audioCache = {};
 // Initialize
 socket.on('connect', () => {
     console.log('Connected to server');
+    loadCurrentUser();
 });
 
 socket.on('disconnect', () => {
     console.log('Disconnected from server');
 });
 
+// Load current user information
+async function loadCurrentUser() {
+    try {
+        const response = await fetch('/api/user/current', {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        if (data.success) {
+            currentUser = data;
+            console.log('Current user loaded:', currentUser);
+        }
+    } catch (error) {
+        console.error('Failed to load current user:', error);
+    }
+}
+
+// Initialize Next Player button if it exists
+if (nextPlayerButton) {
+    nextPlayerButton.addEventListener('click', handleNextPlayerClick);
+}
+
+// Handle Next Player button click
+function handleNextPlayerClick() {
+    console.log('Button clicked!');
+    console.log('currentGame:', currentGame);
+    
+    if (!socket || !currentGame) {
+        console.error('Cannot continue: no active game or socket connection');
+        return;
+    }
+
+    console.log('Game is_paused:', currentGame.is_paused);
+    
+    // If game is paused (waiting for continue), just emit next_player
+    if (currentGame.is_paused) {
+        console.log('Emitting next_player event');
+        socket.emit('next_player');
+        return;
+    }
+
+    // Game is active - end turn early (record remaining throws as misses)
+    // For single-player games, skip confirmation
+    const isSinglePlayer = currentGame.players && currentGame.players.length === 1;
+    
+    console.log('Game is active, ending turn early. Single player:', isSinglePlayer);
+    
+    if (isSinglePlayer) {
+        socket.emit('end_turn_early');
+    } else {
+        // Confirm action for multi-player games
+        if (confirm('End your turn early? Any remaining throws will be recorded as misses.')) {
+            socket.emit('end_turn_early');
+        }
+    }
+}
+
+// Update visibility of Next Player button based on user role and current player
+function updateNextPlayerButton(state) {
+    if (!nextPlayerButtonContainer || !state) {
+        return;
+    }
+    
+    // Don't show button if no game or no user info
+    if (!currentUser || !state.is_started) {
+        nextPlayerButtonContainer.style.display = 'none';
+        return;
+    }
+
+    // Show button if user is gamemaster (always)
+    const isGamemaster = currentUser.roles && currentUser.roles.includes('gamemaster');
+    if (isGamemaster) {
+        nextPlayerButtonContainer.style.display = 'block';
+        updateButtonText(state);
+        return;
+    }
+
+    // Show button if user is the current player
+    const currentPlayerIndex = state.current_player;
+    if (currentPlayerIndex !== undefined && state.players && state.players[currentPlayerIndex]) {
+        const currentPlayerDbId = state.players[currentPlayerIndex].db_id;
+        const userPlayerId = currentUser.player_id;
+        
+        if (currentPlayerDbId && userPlayerId && currentPlayerDbId === userPlayerId) {
+            nextPlayerButtonContainer.style.display = 'block';
+            updateButtonText(state);
+            return;
+        }
+    }
+
+    // Hide button otherwise
+    nextPlayerButtonContainer.style.display = 'none';
+}
+
+// Update button text based on game state
+function updateButtonText(state) {
+    const buttonHint = document.getElementById('buttonHint');
+    
+    if (state.is_paused) {
+        // Game is paused - button continues to next player
+        if (nextPlayerButton) {
+            nextPlayerButton.textContent = '▶️ Continue Game';
+        }
+        if (buttonHint) {
+            buttonHint.textContent = 'Continue to next player';
+        }
+    } else {
+        // Game is active - button ends turn early
+        if (nextPlayerButton) {
+            nextPlayerButton.textContent = '⏭️ End Turn Early';
+        }
+        if (buttonHint) {
+            buttonHint.textContent = 'Skip remaining throws (records as misses)';
+        }
+    }
+}
+
 // Game state update
 socket.on('game_state', (state) => {
     console.log('Game state:', state);
+    currentGame = state;
     updateGameDisplay(state);
+    updateNextPlayerButton(state);
 });
 
 // Sound event
