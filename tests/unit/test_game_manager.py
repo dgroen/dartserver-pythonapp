@@ -502,3 +502,89 @@ class TestGameManager:
         # All throws should be undone
         assert manager.game.players[0]["score"] == initial_score
         assert manager.is_paused is True
+
+    def test_end_turn_early_records_missing_throws(self, mock_socketio):
+        """Test ending turn early records remaining throws as misses."""
+        manager = GameManager(mock_socketio)
+        manager.new_game(
+            "301",
+            player_ids=[{"db_id": 1, "name": "Alice"}, {"db_id": 2, "name": "Bob"}],
+        )
+
+        # Throw one dart
+        manager.process_score({"score": 20, "multiplier": "SINGLE"})
+        assert manager.current_throw == 2
+
+        # End turn early
+        manager.end_turn_early()
+
+        # Should have recorded 3 throws total (1 real + 2 misses)
+        assert len(manager.turn_throws) == 3
+        # Check that last 2 throws are misses
+        assert manager.turn_throws[1]["actual_score"] == 0
+        assert manager.turn_throws[2]["actual_score"] == 0
+        # Turn should be paused
+        assert manager.is_paused is True
+
+    def test_end_turn_early_with_no_throws(self, mock_socketio):
+        """Test ending turn early with no throws records 3 misses."""
+        manager = GameManager(mock_socketio)
+        manager.new_game(
+            "301",
+            player_ids=[{"db_id": 1, "name": "Alice"}, {"db_id": 2, "name": "Bob"}],
+        )
+
+        # No throws, just end turn
+        assert manager.current_throw == 1
+        manager.end_turn_early()
+
+        # Should have recorded 3 throws as misses
+        assert len(manager.turn_throws) == 3
+        assert all(throw["actual_score"] == 0 for throw in manager.turn_throws)
+        assert manager.is_paused is True
+
+    def test_end_turn_early_after_two_throws(self, mock_socketio):
+        """Test ending turn early after 2 throws records 1 miss."""
+        manager = GameManager(mock_socketio)
+        manager.new_game(
+            "301",
+            player_ids=[{"db_id": 1, "name": "Alice"}, {"db_id": 2, "name": "Bob"}],
+        )
+
+        # Throw two darts
+        manager.process_score({"score": 20, "multiplier": "SINGLE"})
+        manager.process_score({"score": 15, "multiplier": "DOUBLE"})
+        assert manager.current_throw == 3
+
+        # End turn early
+        manager.end_turn_early()
+
+        # Should have recorded 3 throws total (2 real + 1 miss)
+        assert len(manager.turn_throws) == 3
+        assert manager.turn_throws[0]["actual_score"] == 20
+        assert manager.turn_throws[1]["actual_score"] == 30  # double 15
+        assert manager.turn_throws[2]["actual_score"] == 0  # miss
+        assert manager.is_paused is True
+
+    def test_end_turn_early_when_game_not_started(self, mock_socketio):
+        """Test ending turn early when game not started does nothing."""
+        manager = GameManager(mock_socketio)
+        # Don't start a game
+        manager.end_turn_early()
+        # Should not crash and turn_throws should be empty
+        assert len(manager.turn_throws) == 0
+
+    def test_end_turn_early_when_paused(self, mock_socketio):
+        """Test ending turn early when game is paused does nothing."""
+        manager = GameManager(mock_socketio)
+        manager.new_game(
+            "301",
+            player_ids=[{"db_id": 1, "name": "Alice"}, {"db_id": 2, "name": "Bob"}],
+        )
+        manager.is_paused = True
+        initial_throw_count = len(manager.turn_throws)
+
+        manager.end_turn_early()
+
+        # Should not record any throws
+        assert len(manager.turn_throws) == initial_throw_count

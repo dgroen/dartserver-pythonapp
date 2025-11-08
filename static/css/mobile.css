@@ -388,6 +388,44 @@ body {
     color: var(--success-color);
 }
 
+/* Next Player Button */
+.next-player-button-container {
+    padding: 1rem 0;
+    margin: 1rem 0;
+    text-align: center;
+}
+
+.btn-next-player {
+    width: 100%;
+    padding: 1.2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--highlight-color), #d63851);
+    color: var(--text-primary);
+    border: none;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.btn-next-player:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.btn-next-player:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.button-hint {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    opacity: 0.8;
+}
+
 /* Scoreboard */
 .scoreboard {
     background-color: var(--card-bg);

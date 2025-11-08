@@ -2629,6 +2629,50 @@ def get_current_game():
     return jsonify({"success": True, "game": game_state})
 
 
+@app.route("/api/user/current", methods=["GET"])
+@login_required
+def get_current_user():
+    """Get current user information
+    ---
+    tags:
+      - User
+    summary: Get current user info
+    description: Returns the current authenticated user's username, roles, and player ID
+    responses:
+      200:
+        description: Current user information
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            username:
+              type: string
+              description: User's username
+            roles:
+              type: array
+              items:
+                type: string
+              description: User's roles (admin, gamemaster, player, etc.)
+            player_id:
+              type: integer
+              description: User's player database ID
+    """
+    user_info = session.get("user_info", {})
+    user_roles = getattr(request, "user_roles", [])
+    username = user_info.get("preferred_username") or user_info.get("username")
+    player_id = session.get("player_id")
+
+    return jsonify(
+        {
+            "success": True,
+            "username": username,
+            "roles": user_roles,
+            "player_id": player_id,
+        },
+    )
+
+
 @app.route("/api/game/types", methods=["GET"])
 def get_game_types():
     """Get available game types
@@ -3070,6 +3114,12 @@ def handle_skip_to_player(data):
     player_id = data.get("player_id")
     if player_id is not None:
         game_manager.skip_to_player(player_id)
+
+
+@socketio.on("end_turn_early", namespace="/")
+def handle_end_turn_early():
+    """Handle end turn early request - records remaining throws as misses"""
+    game_manager.end_turn_early()
 
 
 @socketio.on("manual_score", namespace="/")
