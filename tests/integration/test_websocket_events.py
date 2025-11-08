@@ -36,7 +36,7 @@ def app(db_service):
     ):
         mock_db_class.return_value = db_service
         flask_app.config["TESTING"] = True
-        flask_app.db_service = db_service
+        flask_app.db_service = db_service  # type: ignore
         yield flask_app
 
 

@@ -3,6 +3,7 @@
 ## Problem
 
 Dashboard and History pages were displaying empty game lists despite:
+
 - User authentication working correctly
 - Pages rendering properly
 - API endpoints being called via JavaScript fetch requests
@@ -17,12 +18,13 @@ The **backend CORS configuration did not support credentials**, which prevented 
 When JavaScript makes a fetch request with `credentials: 'include'`:
 
 ```javascript
-fetch('/api/game/history', {
-    credentials: 'include'  // Include session cookies
-})
+fetch("/api/game/history", {
+  credentials: "include", // Include session cookies
+});
 ```
 
 The browser requires the server to respond with **both**:
+
 1. `Access-Control-Allow-Credentials: true`
 2. `Access-Control-Allow-Origin: [specific-origin]` (NOT `*`)
 
@@ -31,6 +33,7 @@ Without these headers, the browser **silently blocks the response** and doesn't 
 ### What Was Happening
 
 **Before the fix:**
+
 ```
 Backend: CORS(app)  → Sends Access-Control-Allow-Origin: *
 Browser: credentials: 'include' → Requests include cookies
@@ -39,9 +42,10 @@ Effect: API sees no session → Returns empty games list
 ```
 
 **After the fix:**
+
 ```
 Backend: CORS(app, supports_credentials=True)  → Sends Access-Control-Allow-Credentials: true
-Browser: credentials: 'include' → Requests include cookies  
+Browser: credentials: 'include' → Requests include cookies
 Result: ✅ Browser accepts response - cookies included
 Effect: API gets session context → Returns user's actual game history
 ```
@@ -51,6 +55,7 @@ Effect: API gets session context → Returns user's actual game history
 Changed CORS initialization to support credentials in two files:
 
 ### 1. Main Application (`src/app/app.py`)
+
 ```python
 # Before
 CORS(app)
@@ -60,6 +65,7 @@ CORS(app, supports_credentials=True)
 ```
 
 ### 2. API Gateway (`src/api_gateway/app.py`)
+
 ```python
 # Before
 CORS(app)
@@ -87,6 +93,7 @@ With `supports_credentials=True`, Flask-CORS:
 After deployment, verify the fix works:
 
 ### 1. Browser DevTools Method
+
 1. Open browser DevTools (F12)
 2. Go to Network tab
 3. Refresh the page and log in
@@ -99,6 +106,7 @@ After deployment, verify the fix works:
    - ✅ Should see: `Cookie: [session_cookie_data]`
 
 ### 2. Expected Behavior After Fix
+
 - ✅ Dashboard shows game statistics
 - ✅ History page displays game list
 - ✅ Mobile results page shows player stats
@@ -107,6 +115,7 @@ After deployment, verify the fix works:
 ## Security Implications
 
 ✅ **This fix is secure because:**
+
 - Credentials are only sent to **same-origin** (defined by specific domain in CORS headers)
 - Cookies cannot be leaked to cross-origin sites
 - Session tokens are still HttpOnly and Secure (cannot be accessed via JavaScript)
@@ -115,6 +124,7 @@ After deployment, verify the fix works:
 ## Deployment Notes
 
 1. **Docker:** Rebuild and redeploy the containers
+
    ```bash
    docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml build
    docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d

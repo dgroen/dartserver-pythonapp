@@ -318,6 +318,8 @@ def submit_score():
     """
     try:
         data = request.json
+        if data is None:
+            data = {}
         error_response = None
 
         if not data:
@@ -423,6 +425,8 @@ def create_game():
     """
     try:
         data = request.json
+        if data is None:
+            data = {}
         if not data:
             return (
                 jsonify(
@@ -518,6 +522,8 @@ def add_player():
     """
     try:
         data = request.json
+        if data is None:
+            data = {}
         if not data:
             return (
                 jsonify(

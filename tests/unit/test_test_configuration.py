@@ -20,7 +20,7 @@ class TestTestEnvironmentConfiguration:
 
         # Load test environment
         env_test_path = Path(__file__).resolve().parent.parent.parent / ".env.test"
-        load_dotenv(env_test_path)
+        load_dotenv(env_test_path, override=True)
 
         yield
 

@@ -118,7 +118,7 @@ class TestHistoryRedirectFix:
         assert response.status_code == 200
         # Session should contain the login_next_url
         with client.session_transaction() as sess:
-            assert "login_next_url" in sess or sess.get("login_next_url") == "/history" or True
+            assert "login_next_url" in sess or sess.get("login_next_url") == "/history"
             # Note: Session might not be available yet without authentication
 
     def test_callback_uses_session_next_url(self, client, mock_db_service):

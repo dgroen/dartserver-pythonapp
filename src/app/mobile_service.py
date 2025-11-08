@@ -133,7 +133,7 @@ class MobileService:
             )
 
             if dartboard:
-                dartboard.last_connected = datetime.now(tz=timezone.utc)
+                dartboard.last_connected = datetime.now(tz=timezone.utc)  # type: ignore
                 self.db_session.commit()
                 return True
 
@@ -266,7 +266,7 @@ class MobileService:
                 return None
 
             # Update last used timestamp
-            key_obj.last_used = datetime.now(tz=timezone.utc)
+            key_obj.last_used = datetime.now(tz=timezone.utc)  # type: ignore
             self.db_session.commit()
 
             # Get player info
@@ -304,7 +304,7 @@ class MobileService:
             if not api_key:
                 return {"success": False, "error": "API key not found"}
 
-            api_key.is_active = False
+            api_key.is_active = False  # type: ignore
             self.db_session.commit()
 
             logger.info(f"API key revoked: {api_key.key_name}")
@@ -355,9 +355,9 @@ class MobileService:
 
             if existing:
                 # Update existing config
-                existing.ssid = ssid
-                existing.password = password
-                existing.updated_at = datetime.now(tz=timezone.utc)
+                existing.ssid = ssid  # type: ignore
+                existing.password = password  # type: ignore
+                existing.updated_at = datetime.now(tz=timezone.utc)  # type: ignore
                 config = existing
             else:
                 # Create new config
@@ -411,8 +411,8 @@ class MobileService:
             if not config:
                 return {"success": False, "error": "Hotspot configuration not found"}
 
-            config.is_enabled = enabled
-            config.updated_at = datetime.now(tz=timezone.utc)
+            config.is_enabled = enabled  # type: ignore
+            config.updated_at = datetime.now(tz=timezone.utc)  # type: ignore
             self.db_session.commit()
 
             logger.info(f"Hotspot {'enabled' if enabled else 'disabled'}: {config.ssid}")

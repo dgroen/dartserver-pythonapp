@@ -3,6 +3,7 @@
 ## Problem
 
 When logging in to test.letsplaydarts.eu, you get:
+
 ```
 "Cannot find an application associated with the given consumer key."
 ```
@@ -31,6 +32,7 @@ docker logs darts-wso2is | tail -20
 ```
 
 Look for messages like:
+
 ```
 [2024-XX-XX XX:XX:XX] INFO {org.wso2.carbon.core.init.CarbonServerManager}
 - Server started successfully
@@ -123,6 +125,7 @@ WSO2 Identity Server - Register Test Server OAuth2 Client
 **Problem:** The WSO2 container is not running or not fully initialized
 
 **Solution:**
+
 ```bash
 # Check if container is running
 docker ps | grep wso2is
@@ -145,13 +148,17 @@ docker exec darts-wso2is curl -k https://localhost:9443/carbon/admin/login.jsp
 **Problem:** OAuth2 client was not successfully registered
 
 **Solution:**
+
 1. Verify WSO2 is fully initialized (check logs above)
 2. Run the registration script again:
+
    ```bash
    docker exec -it darts-app python3 /app/helpers/register_wso2_test_client.py
    ```
+
 3. Check for error messages in output
 4. If script shows "FAILED", check WSO2 logs for details:
+
    ```bash
    docker logs darts-wso2is | grep -i "error\|exception" | tail -20
    ```
@@ -162,10 +169,12 @@ docker exec darts-wso2is curl -k https://localhost:9443/carbon/admin/login.jsp
 
 **Solution:**
 The redirect URIs configured are:
+
 - `https://test.letsplaydarts.eu/callback`
 - `https://test.letsplaydarts.eu/`
 
 Ensure `docker-compose-test.yml` has:
+
 ```yaml
 WSO2_REDIRECT_URI: https://test.letsplaydarts.eu/callback
 WSO2_POST_LOGOUT_REDIRECT_URI: https://test.letsplaydarts.eu/
@@ -179,6 +188,7 @@ If changed, re-run the registration script and restart the app container.
 
 **Solution:**
 Check WSO2 admin password:
+
 ```bash
 # Default is "admin"
 # Check docker-compose-wso2.yml for any overrides
@@ -209,9 +219,11 @@ If the script doesn't work, manually register via WSO2 Admin Console:
 2. Expand: **OAuth/OpenID Connect Configuration**
 3. Click: **Configure**
 4. Set **Callback Url**:
+
    ```
    https://test.letsplaydarts.eu/callback
    ```
+
 5. Set **Grant Types**: `Authorization Code`, `Refresh Token`
 6. Click **Add**
 7. Copy the generated:
@@ -221,12 +233,14 @@ If the script doesn't work, manually register via WSO2 Admin Console:
 ### Update Configuration
 
 Update `docker-compose-test.yml`:
+
 ```yaml
 WSO2_CLIENT_ID: <your_client_id>
 WSO2_CLIENT_SECRET: <your_client_secret>
 ```
 
 Restart the app:
+
 ```bash
 docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml restart darts-app
 ```

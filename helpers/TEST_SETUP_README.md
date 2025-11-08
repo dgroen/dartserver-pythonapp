@@ -11,6 +11,7 @@ bash helpers/setup-test-environment.sh
 ```
 
 This script will:
+
 1. ✓ Check PostgreSQL connectivity
 2. ✓ Create `dartsdbtest` database
 3. ✓ Run database migrations
@@ -20,6 +21,7 @@ This script will:
 ## Configuration Files
 
 ### Test Environment
+
 - **`.env.test`** - Test environment configuration file
   - Database: `dartsdbtest` (PostgreSQL)
   - SSL: Enabled with self-signed certificates
@@ -28,27 +30,33 @@ This script will:
   - RabbitMQ: Test exchange
 
 ### SSL Certificates
+
 Located in `ssl/` directory:
+
 - `ssl/cert.pem` - SSL certificate (self-signed)
 - `ssl/key.pem` - SSL private key
 - `ssl/openssl.cnf` - OpenSSL configuration
 
-Valid for: localhost, *.localhost, 127.0.0.1, letsplaydarts.eu
+Valid for: localhost, \*.localhost, 127.0.0.1, letsplaydarts.eu
 
 To regenerate:
+
 ```bash
 bash helpers/generate_ssl_certs.sh localhost
 ```
 
 ### WSO2 Configuration
+
 For integration tests with WSO2:
 
 1. Start WSO2 Identity Server:
+
    ```bash
    docker-compose -f docker-compose-wso2.yml up -d wso2is
    ```
 
 2. Configure OAuth2 client:
+
    ```bash
    bash helpers/configure-wso2.sh
    ```
@@ -60,6 +68,7 @@ For integration tests with WSO2:
 ## Running Tests
 
 ### Quick Test Run
+
 ```bash
 # Load test environment
 cp .env.test .env
@@ -73,6 +82,7 @@ pytest tests/integration/
 ```
 
 ### Using Tox (Recommended for CI)
+
 ```bash
 # Run tests on all Python versions
 tox
@@ -85,6 +95,7 @@ tox -e lint
 ```
 
 ### Manual Environment Setup
+
 ```bash
 # Export test environment variables
 export $(cat .env.test | grep -v '^#' | xargs)
@@ -96,16 +107,19 @@ pytest tests/
 ## Test Database
 
 ### Create Test Database
+
 ```bash
 PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE dartsdbtest;"
 ```
 
 ### Run Migrations
+
 ```bash
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dartsdbtest alembic upgrade head
 ```
 
 ### Reset Test Database
+
 ```bash
 # Drop database
 PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -c "DROP DATABASE dartsdbtest;"
@@ -118,6 +132,7 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dartsdbtest alembic u
 ## Troubleshooting
 
 ### PostgreSQL Not Running
+
 ```bash
 # Check status
 pg_isready -h localhost -p 5432
@@ -127,6 +142,7 @@ docker-compose -f docker-compose-wso2.yml up -d postgres
 ```
 
 ### WSO2 Connection Issues
+
 ```bash
 # Start WSO2
 docker-compose -f docker-compose-wso2.yml up -d wso2is
@@ -141,6 +157,7 @@ curl -k https://localhost:9443/api/health-check/v1.0/health
 ## Documentation
 
 For complete documentation, see:
+
 - **[docs/TEST_CONFIGURATION.md](../docs/TEST_CONFIGURATION.md)** - Comprehensive test environment guide
 - **[docs/TESTING.md](../docs/TESTING.md)** - General testing documentation
 - **[docs/SSL_CONFIGURATION.md](../docs/SSL_CONFIGURATION.md)** - SSL setup details

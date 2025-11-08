@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 # Add parent directory to path
-sys.path.insert(0, Path.parent(Path.parent(Path.resolve(__file__))))
+sys.path.insert(0, Path.parent(Path.parent(Path.resolve(__file__))))  # type: ignore
 
 from game_manager import GameManager
 
@@ -36,7 +36,7 @@ def demo_turn_tracking():
     print("Starting a new 301 game with Alice and Bob...")
     manager.new_game("301", ["Alice", "Bob"])
 
-    print(f"Initial score for Alice: {manager.game.players[0]['score']}")
+    print(f"Initial score for Alice: {manager.game.players[0]['score']}")  # type: ignore
     print_separator()
 
     # Scenario 1: Normal turn without bust
@@ -45,17 +45,17 @@ def demo_turn_tracking():
 
     print("\nThrow 1: Single 20")
     manager.process_score({"score": 20, "multiplier": "SINGLE"})
-    print(f"  - Alice's score: {manager.game.players[0]['score']}")
+    print(f"  - Alice's score: {manager.game.players[0]['score']}")  # type: ignore
     print(f"  - Throws tracked: {len(manager.turn_throws)}")
 
     print("\nThrow 2: Triple 19")
     manager.process_score({"score": 19, "multiplier": "TRIPLE"})
-    print(f"  - Alice's score: {manager.game.players[0]['score']}")
+    print(f"  - Alice's score: {manager.game.players[0]['score']}")  # type: ignore
     print(f"  - Throws tracked: {len(manager.turn_throws)}")
 
     print("\nThrow 3: Double 18")
     manager.process_score({"score": 18, "multiplier": "DOUBLE"})
-    print(f"  - Alice's score: {manager.game.players[0]['score']}")
+    print(f"  - Alice's score: {manager.game.players[0]['score']}")  # type: ignore
     print(f"  - Throws tracked: {len(manager.turn_throws)}")
     print(f"  - Turn is paused: {manager.is_paused}")
 
@@ -74,25 +74,25 @@ def demo_turn_tracking():
     print("-" * 70)
 
     # Set Bob's score to something manageable for demonstration
-    manager.game.players[1]["score"] = 100
-    initial_score = manager.game.players[1]["score"]
+    manager.game.players[1]["score"] = 100  # type: ignore
+    initial_score = manager.game.players[1]["score"]  # type: ignore
     print(f"\nBob's initial score: {initial_score}")
 
     print("\nThrow 1: Single 20")
     manager.process_score({"score": 20, "multiplier": "SINGLE"})
-    score_after_throw1 = manager.game.players[1]["score"]
+    score_after_throw1 = manager.game.players[1]["score"]  # type: ignore
     print(f"  - Bob's score: {score_after_throw1}")
     print(f"  - Throws tracked: {len(manager.turn_throws)}")
 
     print("\nThrow 2: Triple 15")
     manager.process_score({"score": 15, "multiplier": "TRIPLE"})
-    score_after_throw2 = manager.game.players[1]["score"]
+    score_after_throw2 = manager.game.players[1]["score"]  # type: ignore
     print(f"  - Bob's score: {score_after_throw2}")
     print(f"  - Throws tracked: {len(manager.turn_throws)}")
 
     print("\nThrow 3: Single 50 (BUST - score would go negative)")
     manager.process_score({"score": 50, "multiplier": "SINGLE"})
-    final_score = manager.game.players[1]["score"]
+    final_score = manager.game.players[1]["score"]  # type: ignore
     print(f"  - Bob's score after bust: {final_score}")
     print(f"  - Score restored to initial: {final_score == initial_score}")
     print(f"  - Game is paused: {manager.is_paused}")
@@ -113,17 +113,17 @@ def demo_turn_tracking():
     manager2.new_game("cricket", ["Charlie", "Diana"])
 
     print("\nStarting Cricket game...")
-    print(f"Charlie's initial score: {manager2.game.players[0]['score']}")
-    print(f"Charlie's 20s hits: {manager2.game.players[0]['targets'][20]['hits']}")
+    print(f"Charlie's initial score: {manager2.game.players[0]['score']}")  # type: ignore
+    print(f"Charlie's 20s hits: {manager2.game.players[0]['targets'][20]['hits']}")  # type: ignore
 
     print("\nThrow 1: Triple 20")
     manager2.process_score({"score": 20, "multiplier": "TRIPLE"})
-    print(f"  - Charlie's 20s hits: {manager2.game.players[0]['targets'][20]['hits']}")
+    print(f"  - Charlie's 20s hits: {manager2.game.players[0]['targets'][20]['hits']}")  # type: ignore
     print(f"  - Throws tracked: {len(manager2.turn_throws)}")
 
     print("\nThrow 2: Single 19")
     manager2.process_score({"score": 19, "multiplier": "SINGLE"})
-    print(f"  - Charlie's 19s hits: {manager2.game.players[0]['targets'][19]['hits']}")
+    print(f"  - Charlie's 19s hits: {manager2.game.players[0]['targets'][19]['hits']}")  # type: ignore
     print(f"  - Throws tracked: {len(manager2.turn_throws)}")
 
     print("\n✓ Turn tracking works for Cricket too!")

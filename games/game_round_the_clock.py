@@ -77,7 +77,7 @@ class GameRoundTheClock:
 
         return self.process_throw(current_player_id, base_score, multiplier, multiplier_type)
 
-    def process_throw(self, player_id, base_score, multiplier, multiplier_type):
+    def process_throw(self, player_id, base_score, _multiplier, multiplier_type):
         """
         Process a dart throw
 
@@ -114,7 +114,7 @@ class GameRoundTheClock:
                     result["winner"] = True
                     result["hit"] = True
                     return result
-                elif multiplier_type == "BULL":
+                if multiplier_type == "BULL":
                     # Single bull - need 5 total
                     player["bull_hits"] += 1
                     result["hit"] = True

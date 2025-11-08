@@ -1,16 +1,19 @@
 # Dynamic Game Type Selection
 
 ## Overview
+
 Game type selection dropdowns are now populated dynamically from the database instead of being hardcoded in HTML templates. This means when new game types are added to the `gametype` table, they will automatically appear in all game type selectors across the application without requiring HTML template changes.
 
 ## Implementation
 
 ### Backend API Endpoint
+
 **Endpoint:** `GET /api/game/types`
 
 Returns a list of all available game types from the database.
 
 **Response:**
+
 ```json
 {
   "status": "success",
@@ -33,6 +36,7 @@ Returns a list of all available game types from the database.
 **Location:** `src/app/app.py` (lines ~2011-2055)
 
 ### JavaScript Helper Functions
+
 **File:** `static/js/main.js`
 
 Two helper functions have been added:
@@ -82,8 +86,9 @@ All templates with game type selectors have been updated:
 To add a new game type to the system:
 
 1. **Add to database:**
+
    ```sql
-   INSERT INTO gametype (name, description) 
+   INSERT INTO gametype (name, description)
    VALUES ('701', '701 darts game');
    ```
 
@@ -109,15 +114,15 @@ To add a game type selector to a new page:
 
 <!-- Initialize the select on page load -->
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const gameTypeSelect = document.getElementById('myGameTypeSelect');
-    if (gameTypeSelect && typeof loadGameTypes === 'function') {
+  document.addEventListener("DOMContentLoaded", function () {
+    const gameTypeSelect = document.getElementById("myGameTypeSelect");
+    if (gameTypeSelect && typeof loadGameTypes === "function") {
       // For game selection (no "All" option)
       loadGameTypes(gameTypeSelect, false);
-      
+
       // OR for filtering (with "All Games" option)
       loadGameTypes(gameTypeSelect, true).then(() => {
-        gameTypeSelect.value = 'all';  // Set default to "All"
+        gameTypeSelect.value = "all"; // Set default to "All"
       });
     }
   });
@@ -137,6 +142,7 @@ The implementation includes robust error handling:
 To verify the feature works:
 
 1. **Test API endpoint:**
+
    ```bash
    curl http://localhost:5000/api/game/types
    ```

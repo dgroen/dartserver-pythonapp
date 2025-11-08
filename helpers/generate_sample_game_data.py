@@ -142,23 +142,23 @@ def generate_sample_data():
                 session.query(GameResult)
                 .filter(
                     GameResult.started_at
-                    == (now - timedelta(hours=sample["time_offset"])).replace(minute=0, second=0),
+                    == (now - timedelta(hours=sample["time_offset"])).replace(minute=0, second=0),  # type: ignore
                 )
                 .first()
             )
             if existing:
-                print(f"⏭️  Game already exists for {sample['game_type'].name}")
+                print(f"⏭️  Game already exists for {sample['game_type'].name}")  # type: ignore
                 continue
 
-            start_time = now - timedelta(hours=sample["time_offset"])
-            finish_time = start_time + timedelta(minutes=sample["duration_minutes"])
+            start_time = now - timedelta(hours=sample["time_offset"])  # type: ignore
+            finish_time = start_time + timedelta(minutes=sample["duration_minutes"])  # type: ignore
             game_session_id = f"sample_{start_time.timestamp()}"
 
             # Create GameResult for each player
-            for player_order, p in enumerate(sample["players"]):
+            for player_order, p in enumerate(sample["players"]):  # type: ignore
                 is_winner = p.id == sample["winner_id"]
                 # Set start score based on game type
-                game_type_name = sample["game_type"].name
+                game_type_name = sample["game_type"].name  # type: ignore
                 if game_type_name == "301":
                     start_score = 301
                 elif game_type_name == "501":
@@ -170,7 +170,7 @@ def generate_sample_data():
                 final_score = 0 if is_winner else 50 + (player_order * 10)
 
                 game_result = GameResult(
-                    game_type_id=sample["game_type"].id,
+                    game_type_id=sample["game_type"].id,  # type: ignore
                     player_id=p.id,
                     player_order=player_order,
                     start_score=start_score,
@@ -204,7 +204,7 @@ def generate_sample_data():
             session.commit()
             created_count += 1
             print(
-                f"✅ Created {sample['game_type'].name} game "
+                f"✅ Created {sample['game_type'].name} game "  # type: ignore
                 f"({sample['time_offset']}h ago, winner: {sample['winner_name']})",
             )
 
