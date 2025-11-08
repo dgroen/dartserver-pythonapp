@@ -13,10 +13,7 @@ try:
     from PIL import Image, ImageDraw
 except ImportError:
     print("❌ Pillow not installed. Installing...")
-    subprocess.run(  # noqa: S603
-        [sys.executable, "-m", "pip", "install", "pillow"],
-        check=True,
-    )
+    subprocess.run([sys.executable, "-m", "pip", "install", "pillow"], check=True)  # noqa: S603
     from PIL import Image, ImageDraw
 
 

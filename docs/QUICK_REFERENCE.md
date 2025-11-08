@@ -27,21 +27,21 @@ python3 setup_wso2_roles.py
 
 ## Important URLs
 
-| Purpose | URL |
-|---------|-----|
-| **Logout** | https://letsplaydarts.eu/logout |
-| **Login** | https://letsplaydarts.eu/login |
-| **Debug Auth** | https://letsplaydarts.eu/debug/auth |
-| **Control Panel** | https://letsplaydarts.eu/control |
-| **WSO2 Console** | https://letsplaydarts.eu/auth/console |
+| Purpose           | URL                                     |
+| ----------------- | --------------------------------------- |
+| **Logout**        | <https://letsplaydarts.eu/logout>       |
+| **Login**         | <https://letsplaydarts.eu/login>        |
+| **Debug Auth**    | <https://letsplaydarts.eu/debug/auth>   |
+| **Control Panel** | <https://letsplaydarts.eu/control>      |
+| **WSO2 Console**  | <https://letsplaydarts.eu/auth/console> |
 
 ## After Role Changes
 
 **Always do this after changing roles:**
 
-1. Logout: https://letsplaydarts.eu/logout
-2. Login: https://letsplaydarts.eu/login
-3. Test: https://letsplaydarts.eu/control
+1. Logout: <https://letsplaydarts.eu/logout>
+2. Login: <https://letsplaydarts.eu/login>
+3. Test: <https://letsplaydarts.eu/control>
 
 ## Check Logs
 
@@ -58,11 +58,11 @@ docker-compose -f docker-compose-wso2.yml logs -f wso2is
 
 ## Available Roles
 
-| Role | Description | Access |
-|------|-------------|--------|
+| Role         | Description     | Access                                      |
+| ------------ | --------------- | ------------------------------------------- |
 | `gamemaster` | Game management | Control panel, create games, manage players |
-| `admin` | Full access | Everything |
-| `player` | Basic access | View games, submit scores |
+| `admin`      | Full access     | Everything                                  |
+| `player`     | Basic access    | View games, submit scores                   |
 
 ## Current Configuration
 
@@ -107,12 +107,12 @@ docker-compose -f docker-compose-wso2.yml logs --tail=50 darts-app | grep -E "ro
 
 ## Common Issues
 
-| Issue | Solution |
-|-------|----------|
-| 403 on /control | Logout and login again |
-| Roles not showing | Check debug endpoint |
-| SCIM2 403 error | Add API permissions in WSO2 console |
-| User not found | Check username spelling (case-sensitive) |
+| Issue             | Solution                                 |
+| ----------------- | ---------------------------------------- |
+| 403 on /control   | Logout and login again                   |
+| Roles not showing | Check debug endpoint                     |
+| SCIM2 403 error   | Add API permissions in WSO2 console      |
+| User not found    | Check username spelling (case-sensitive) |
 
 ## Files Created
 

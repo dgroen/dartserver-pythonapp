@@ -1,16 +1,19 @@
 # Redirect Issue - Complete Summary
 
 ## Issue Report
+
 **Date**: Current  
 **Status**: ✅ Solution Identified  
 **Severity**: High (Blocks logout functionality)
 
 ### Symptoms
+
 1. ❌ After successful login, redirect may fail
 2. ❌ After logout, error: "Post logout URI does not match with registered callback URI"
 3. ❌ Users cannot properly log out of the application
 
 ### Error Message
+
 ```
 Post logout URI does not match with registered callback URI.
 ```
@@ -18,12 +21,16 @@ Post logout URI does not match with registered callback URI.
 ## Root Cause Analysis
 
 ### The Problem
+
 WSO2 Identity Server validates **all redirect URIs** for security:
+
 - ✅ **Login redirect**: `https://letsplaydarts.eu/callback` - **Registered** ✅
 - ❌ **Logout redirect**: `https://letsplaydarts.eu/` - **NOT Registered** ❌
 
 ### Why This Happens
+
 OAuth2/OIDC security requires that all redirect URIs be explicitly registered in the authorization server (WSO2 IS). This prevents:
+
 - Open redirect attacks
 - Authorization code theft
 - Phishing attacks
@@ -31,11 +38,13 @@ OAuth2/OIDC security requires that all redirect URIs be explicitly registered in
 ### Current Configuration
 
 **WSO2 IS Service Provider:**
+
 ```
 Callback URLs: https://letsplaydarts.eu/callback
 ```
 
 **Flask Application (auth.py):**
+
 ```python
 # Login - redirects to /callback
 redirect_uri = "https://letsplaydarts.eu/callback"  ✅ Registered
@@ -51,11 +60,13 @@ post_logout_redirect_uri = "https://letsplaydarts.eu/"  ❌ NOT Registered
 Update WSO2 IS Service Provider to register **both** URIs:
 
 **Option 1: Regex Pattern (Recommended)**
+
 ```
 regexp=https://letsplaydarts\.eu(/callback|/)
 ```
 
 **Option 2: Comma-Separated List**
+
 ```
 https://letsplaydarts.eu/callback,https://letsplaydarts.eu/
 ```
@@ -63,6 +74,7 @@ https://letsplaydarts.eu/callback,https://letsplaydarts.eu/
 ### Implementation Steps
 
 1. **Access WSO2 IS Management Console**
+
    ```
    URL: https://letsplaydarts.eu/auth/carbon
    Username: admin
@@ -70,6 +82,7 @@ https://letsplaydarts.eu/callback,https://letsplaydarts.eu/
    ```
 
 2. **Navigate to Service Providers**
+
    ```
    Main → Identity → Service Providers → List
    ```
@@ -91,6 +104,7 @@ https://letsplaydarts.eu/callback,https://letsplaydarts.eu/
 ### Verification
 
 **Test Login:**
+
 ```bash
 1. Navigate to: https://letsplaydarts.eu
 2. Click "Login"
@@ -99,6 +113,7 @@ https://letsplaydarts.eu/callback,https://letsplaydarts.eu/
 ```
 
 **Test Logout:**
+
 ```bash
 1. While logged in, click "Logout"
 2. Should redirect to WSO2 IS logout
@@ -127,6 +142,7 @@ https://letsplaydarts.eu/callback,https://letsplaydarts.eu/
 ### OAuth2 Flow
 
 **Login Flow:**
+
 ```
 1. User clicks "Login"
 2. Flask → WSO2 IS: /oauth2/authorize?redirect_uri=.../callback
@@ -139,6 +155,7 @@ https://letsplaydarts.eu/callback,https://letsplaydarts.eu/
 ```
 
 **Logout Flow:**
+
 ```
 1. User clicks "Logout"
 2. Flask → WSO2 IS: /oidc/logout?post_logout_redirect_uri=.../
@@ -147,6 +164,7 @@ https://letsplaydarts.eu/callback,https://letsplaydarts.eu/
 ```
 
 **After Fix:**
+
 ```
 1. User clicks "Logout"
 2. Flask → WSO2 IS: /oidc/logout?post_logout_redirect_uri=.../
@@ -217,19 +235,20 @@ This is purely a **configuration issue** in WSO2 IS. No application code needs t
 ### Configuration Changes
 
 **WSO2 IS Service Provider** (via Management Console):
+
 - **Before**: `Callback URLs: https://letsplaydarts.eu/callback`
 - **After**: `Callback URLs: regexp=https://letsplaydarts\.eu(/callback|/)`
 
 ## Documentation Created
 
-| File | Purpose |
-|------|---------|
-| `QUICK_FIX_REDIRECTS.md` | 5-minute quick fix guide |
-| `FIX_REDIRECT_URIS.md` | Detailed step-by-step instructions |
-| `REDIRECT_FLOW_EXPLAINED.md` | Visual explanation of the issue |
-| `REDIRECT_ISSUE_SUMMARY.md` | This file - complete summary |
-| `update_wso2_callback_urls.sh` | Helper script with instructions |
-| `configure_wso2_redirects.py` | Python script (for reference) |
+| File                           | Purpose                            |
+| ------------------------------ | ---------------------------------- |
+| `QUICK_FIX_REDIRECTS.md`       | 5-minute quick fix guide           |
+| `FIX_REDIRECT_URIS.md`         | Detailed step-by-step instructions |
+| `REDIRECT_FLOW_EXPLAINED.md`   | Visual explanation of the issue    |
+| `REDIRECT_ISSUE_SUMMARY.md`    | This file - complete summary       |
+| `update_wso2_callback_urls.sh` | Helper script with instructions    |
+| `configure_wso2_redirects.py`  | Python script (for reference)      |
 
 ## Testing Checklist
 
@@ -265,6 +284,7 @@ If you need to revert the changes:
 ### Why Regex Pattern is Safe
 
 The pattern `regexp=https://letsplaydarts\.eu(/callback|/)` is secure because:
+
 - ✅ Exact domain match (escaped dots prevent subdomain wildcards)
 - ✅ Limited to specific paths (`/callback` or `/`)
 - ✅ No wildcards that could match unintended URLs
@@ -273,12 +293,14 @@ The pattern `regexp=https://letsplaydarts\.eu(/callback|/)` is secure because:
 ### What NOT to Do
 
 ❌ **Don't use overly broad patterns:**
+
 ```
 regexp=https://letsplaydarts\.eu/.*  # Too broad!
 regexp=.*                             # NEVER do this!
 ```
 
 ✅ **Do use specific patterns:**
+
 ```
 regexp=https://letsplaydarts\.eu(/callback|/)  # Good!
 ```
@@ -290,11 +312,13 @@ regexp=https://letsplaydarts\.eu(/callback|/)  # Good!
 **Symptoms**: Error persists after updating callback URLs
 
 **Causes**:
+
 - Changes not saved properly
 - Browser cache
 - Session still has old state
 
 **Solutions**:
+
 1. Verify you clicked "Update" **twice**
 2. Clear browser cache and cookies
 3. Try in incognito/private window
@@ -305,11 +329,13 @@ regexp=https://letsplaydarts\.eu(/callback|/)  # Good!
 **Symptoms**: Can't access `https://letsplaydarts.eu/auth/carbon`
 
 **Causes**:
+
 - WSO2 IS not running
 - Nginx not routing correctly
 - Network issues
 
 **Solutions**:
+
 ```bash
 # Check if WSO2 IS is running
 docker ps | grep wso2is
@@ -328,20 +354,25 @@ docker-compose -f docker-compose-wso2.yml restart wso2is
 **Symptoms**: Still getting validation error with regex pattern
 
 **Causes**:
+
 - Some WSO2 IS versions have regex issues
 - Syntax error in pattern
 
 **Solutions**:
+
 1. Use comma-separated list instead:
+
    ```
    https://letsplaydarts.eu/callback,https://letsplaydarts.eu/
    ```
+
 2. Verify regex syntax (no typos)
 3. Check WSO2 IS version compatibility
 
 ## Performance Impact
 
 ✅ **No performance impact**
+
 - Configuration change only
 - No additional processing
 - No latency added
@@ -363,22 +394,23 @@ docker logs -f nginx
 ```
 
 Look for:
+
 - ✅ Successful redirects
 - ✅ No error messages
 - ✅ Proper OAuth2 flow completion
 
 ## Summary
 
-| Aspect | Details |
-|--------|---------|
-| **Issue** | Post-logout redirect URI not registered |
-| **Impact** | Logout functionality broken |
-| **Severity** | High |
-| **Fix Time** | 5 minutes |
-| **Code Changes** | None required |
-| **Restart Required** | No |
-| **Testing Required** | Yes (login + logout) |
-| **Rollback Risk** | Low (easy to revert) |
+| Aspect               | Details                                 |
+| -------------------- | --------------------------------------- |
+| **Issue**            | Post-logout redirect URI not registered |
+| **Impact**           | Logout functionality broken             |
+| **Severity**         | High                                    |
+| **Fix Time**         | 5 minutes                               |
+| **Code Changes**     | None required                           |
+| **Restart Required** | No                                      |
+| **Testing Required** | Yes (login + logout)                    |
+| **Rollback Risk**    | Low (easy to revert)                    |
 
 ## Next Steps
 
@@ -398,6 +430,7 @@ Look for:
 ## Contact
 
 If you need further assistance:
+
 1. Check the documentation files listed above
 2. Review application logs
 3. Check WSO2 IS documentation

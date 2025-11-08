@@ -9,7 +9,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from functools import wraps
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import jwt
 import pika
@@ -18,6 +18,9 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from jwt import PyJWKClient
+
+if TYPE_CHECKING:
+    import pika.adapters.blocking_connection
 
 # Load environment variables
 load_dotenv()
@@ -32,7 +35,8 @@ logger = logging.getLogger(__name__)
 # Initialize Flask app
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key")
-CORS(app)
+# Enable CORS with credentials support - required for session cookies to work
+CORS(app, supports_credentials=True)
 
 # WSO2 Identity Server Configuration
 WSO2_IS_URL = os.getenv("WSO2_IS_URL", "https://localhost:9443")
@@ -94,10 +98,10 @@ class RabbitMQPublisher:
                 blocked_connection_timeout=300,
             )
             self.connection = pika.BlockingConnection(parameters)
-            self.channel = self.connection.channel()
+            self.channel = self.connection.channel()  # type: ignore
 
             # Declare exchange
-            self.channel.exchange_declare(
+            self.channel.exchange_declare(  # type: ignore
                 exchange=self.config["exchange"],
                 exchange_type="topic",
                 durable=True,
@@ -115,7 +119,7 @@ class RabbitMQPublisher:
                 self._connect()
 
             # Publish message
-            self.channel.basic_publish(
+            self.channel.basic_publish(  # type: ignore
                 exchange=self.config["exchange"],
                 routing_key=routing_key,
                 body=json.dumps(message),
@@ -282,7 +286,7 @@ def require_auth(required_scopes: list | None = None):
                     )
 
             # Add claims to request context
-            request.user_claims = claims
+            request.user_claims = claims  # type: ignore
 
             return f(*args, **kwargs)
 
@@ -314,6 +318,8 @@ def submit_score():
     """
     try:
         data = request.json
+        if data is None:
+            data = {}
         error_response = None
 
         if not data:
@@ -368,7 +374,7 @@ def submit_score():
             "multiplier": multiplier,
             "player_id": data.get("player_id"),
             "game_id": data.get("game_id"),
-            "user": request.user_claims.get("sub", "unknown"),
+            "user": request.user_claims.get("sub", "unknown"),  # type: ignore
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -419,6 +425,8 @@ def create_game():
     """
     try:
         data = request.json
+        if data is None:
+            data = {}
         if not data:
             return (
                 jsonify(
@@ -463,7 +471,7 @@ def create_game():
             "game_type": game_type,
             "players": players,
             "double_out": data.get("double_out", False),
-            "created_by": request.user_claims.get("sub", "unknown"),
+            "created_by": request.user_claims.get("sub", "unknown"),  # type: ignore
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -514,6 +522,8 @@ def add_player():
     """
     try:
         data = request.json
+        if data is None:
+            data = {}
         if not data:
             return (
                 jsonify(
@@ -542,7 +552,7 @@ def add_player():
         message = {
             "action": "add_player",
             "name": player_name,
-            "added_by": request.user_claims.get("sub", "unknown"),
+            "added_by": request.user_claims.get("sub", "unknown"),  # type: ignore
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 

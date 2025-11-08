@@ -5,6 +5,7 @@ Provides configurable TTS with speed and voice type options
 
 import io
 import logging
+from typing import Any
 
 try:
     from gtts import gTTS
@@ -47,7 +48,7 @@ class TTSService:
         self.voice_type = voice_type
         self.speed = speed
         self.volume = volume
-        self.engine = None
+        self.engine: Any = None
         self.enabled = True
 
         # Initialize the selected engine

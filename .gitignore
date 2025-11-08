@@ -33,6 +33,8 @@ ENV/
 
 # Environment variables
 .env
+.env.dev
+*.db
 
 # IDE
 .vscode/
@@ -59,13 +61,11 @@ docs/source/*
 dartserver-pythonapp.code-workspace
 .env_bu
 .zencoder/rules/repo.md
-node_modules/.cache
-docker-backups/2025-10-14_18-02-07/postgres_data.tar.gz
-docker-backups/2025-10-14_18-02-07/postgres_dump.sql.gz
-docker-backups/2025-10-14_18-02-07/rabbitmq_data.tar.gz
-docker-backups/2025-10-14_18-02-07/wso2apim_data.tar.gz
-docker-backups/2025-10-14_18-02-07/wso2is_data.tar.gz
-wso2is_data_backup_20251014_180429.tar.gz
 docker-backups
 wso2is-7-config/deployment.prod.example.toml
 wso2is-7-config/deployment.dev.example.toml
+node_modules/.cache
+docker-backups
+.env____
+.venv-test/
+wso2is-7-config

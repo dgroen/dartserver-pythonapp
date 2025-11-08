@@ -9,15 +9,18 @@ The WSO2 Identity Server role configuration for user **Dennis** has been success
 ## 📊 Current Configuration
 
 ### User Information
+
 - **Username:** Dennis
-- **Email:** dennis@it-groen.com
+- **Email:** <dennis@it-groen.com>
 - **User ID:** d39f3c2c-dc26-4067-a21d-de932d79b53c
 - **Status:** ✅ Active
 
 ### Assigned Roles
+
 - ✅ **gamemaster** - Access to control panel and game management
 
 ### Group Membership
+
 ```
 📋 User is member of 1 group(s):
    1. gamemaster (Group ID: 90a344ca-e87e-437d-8c5d-eaf30a1ca99e)
@@ -30,37 +33,45 @@ The WSO2 Identity Server role configuration for user **Dennis** has been success
 Three Python scripts have been created for managing WSO2 roles:
 
 ### 1. `setup_wso2_roles.py` - Automated Role Setup
+
 **Purpose:** Automatically configure roles for users
 
 **Usage:**
+
 ```bash
 python3 setup_wso2_roles.py
 ```
 
 **Features:**
+
 - Searches for users by username
 - Creates groups if they don't exist
 - Adds users to specified groups
 - Verifies final configuration
 
 ### 2. `verify_wso2_roles.py` - Configuration Verification
+
 **Purpose:** Verify current role configuration
 
 **Usage:**
+
 ```bash
 python3 verify_wso2_roles.py
 ```
 
 **Features:**
+
 - Shows user information
 - Lists current group membership
 - Displays all available groups
 - Provides recommendations
 
 ### 3. `manage_user_roles.py` - Interactive Role Management
+
 **Purpose:** Interactive CLI for managing user roles
 
 **Usage:**
+
 ```bash
 # Add a role
 python3 manage_user_roles.py add Dennis gamemaster
@@ -73,6 +84,7 @@ python3 manage_user_roles.py list Dennis
 ```
 
 **Features:**
+
 - Add roles to users
 - Remove roles from users
 - List user roles
@@ -83,21 +95,25 @@ python3 manage_user_roles.py list Dennis
 ## 🚀 Next Steps for User Dennis
 
 ### Step 1: Logout from Current Session
+
 The current session has cached tokens without the new role. You must logout first.
 
-**URL:** https://letsplaydarts.eu/logout
+**URL:** <https://letsplaydarts.eu/logout>
 
 ### Step 2: Login Again
+
 Login to get a fresh token with the `gamemaster` role.
 
-**URL:** https://letsplaydarts.eu/login
+**URL:** <https://letsplaydarts.eu/login>
 
 ### Step 3: Verify Role Extraction (Optional)
+
 Check the debug endpoint to verify roles are being extracted correctly.
 
-**URL:** https://letsplaydarts.eu/debug/auth
+**URL:** <https://letsplaydarts.eu/debug/auth>
 
 **Expected Output:**
+
 ```json
 {
   "extracted_roles": ["gamemaster"],
@@ -112,9 +128,10 @@ Check the debug endpoint to verify roles are being extracted correctly.
 ```
 
 ### Step 4: Access Control Panel
+
 Now you can access the control panel!
 
-**URL:** https://letsplaydarts.eu/control
+**URL:** <https://letsplaydarts.eu/control>
 
 **Expected Result:** ✅ Access granted - Control panel loads successfully
 
@@ -153,6 +170,7 @@ The Darts application uses a multi-tier approach to extract roles from WSO2 IS:
 ### OAuth2 Scopes
 
 The application requests the following scopes:
+
 - `openid` - Basic OpenID Connect
 - `profile` - User profile information
 - `email` - User email address
@@ -163,14 +181,16 @@ The application requests the following scopes:
 
 ## 📋 Role Permissions Matrix
 
-| Role | Control Panel | Create Games | Manage Players | Submit Scores | View Games |
-|------|--------------|--------------|----------------|---------------|------------|
-| **admin** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **gamemaster** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **player** | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Role           | Control Panel | Create Games | Manage Players | Submit Scores | View Games |
+| -------------- | ------------- | ------------ | -------------- | ------------- | ---------- |
+| **admin**      | ✅            | ✅           | ✅             | ✅            | ✅         |
+| **gamemaster** | ✅            | ✅           | ✅             | ✅            | ✅         |
+| **player**     | ❌            | ❌           | ❌             | ✅            | ✅         |
 
 ### Dennis's Current Permissions
+
 With the `gamemaster` role, Dennis can:
+
 - ✅ Access control panel (`/control`)
 - ✅ Create new games (`POST /api/game`)
 - ✅ Add players to games (`POST /api/player`)
@@ -185,20 +205,24 @@ With the `gamemaster` role, Dennis can:
 ### Issue: Still getting 403 on /control
 
 **Solution:**
+
 1. ✅ Verify role is assigned: `python3 verify_wso2_roles.py`
-2. ✅ **Logout completely:** https://letsplaydarts.eu/logout
-3. ✅ **Login again:** https://letsplaydarts.eu/login
-4. ✅ Check debug endpoint: https://letsplaydarts.eu/debug/auth
+2. ✅ **Logout completely:** <https://letsplaydarts.eu/logout>
+3. ✅ **Login again:** <https://letsplaydarts.eu/login>
+4. ✅ Check debug endpoint: <https://letsplaydarts.eu/debug/auth>
 5. ✅ Check logs: `docker-compose -f docker-compose-wso2.yml logs -f darts-app | grep -E "roles|SCIM2"`
 
 ### Issue: Roles not showing in debug endpoint
 
 **Solution:**
+
 1. Check if SCIM2 is returning groups:
+
    ```bash
    curl -k -u admin:admin \
      "https://letsplaydarts.eu/auth/scim2/Users?filter=userName%20eq%20%22Dennis%22"
    ```
+
 2. Verify the access token has `internal_login` scope
 3. Check application logs for SCIM2 API errors
 
@@ -206,7 +230,8 @@ With the `gamemaster` role, Dennis can:
 
 **Solution:**
 The OAuth application may need SCIM2 API permissions:
-1. Login to WSO2 IS Console: https://letsplaydarts.eu/auth/console
+
+1. Login to WSO2 IS Console: <https://letsplaydarts.eu/auth/console>
 2. Go to **Applications** → Your OAuth App
 3. Under **API Authorization**, add:
    - SCIM2 Users API → `internal_user_mgt_view`
@@ -251,9 +276,9 @@ Before testing in the application:
 
 ### What User Needs to Do
 
-1. **Logout:** https://letsplaydarts.eu/logout
-2. **Login:** https://letsplaydarts.eu/login
-3. **Test:** https://letsplaydarts.eu/control
+1. **Logout:** <https://letsplaydarts.eu/logout>
+2. **Login:** <https://letsplaydarts.eu/login>
+3. **Test:** <https://letsplaydarts.eu/control>
 
 ### Expected Result
 
@@ -267,7 +292,7 @@ If you encounter any issues:
 
 1. Check the troubleshooting section above
 2. Run verification script: `python3 verify_wso2_roles.py`
-3. Check debug endpoint: https://letsplaydarts.eu/debug/auth
+3. Check debug endpoint: <https://letsplaydarts.eu/debug/auth>
 4. Review application logs: `docker-compose -f docker-compose-wso2.yml logs -f darts-app`
 
 ---

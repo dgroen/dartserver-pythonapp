@@ -7,6 +7,8 @@ from src.core.database_service import DatabaseService
 from src.core.tts_service import TTSService
 from src.games.game_301 import Game301
 from src.games.game_cricket import GameCricket
+from src.games.game_round_the_clock import GameRoundTheClock
+from src.games.game_round_the_clock_double import GameRoundTheClockDouble
 
 
 class GameManager:
@@ -76,30 +78,62 @@ class GameManager:
         if not tts_enabled:
             self.tts.disable()
 
-    def new_game(self, game_type="301", player_names=None, double_out=False):
+    def new_game(self, game_type="301", player_names=None, player_ids=None, double_out=False):
         """
         Start a new game
 
         Args:
-            game_type: Type of game ('301', '401', '501', 'cricket')
-            player_names: List of player names
-            double_out: Whether to require double-out to finish (only for 301/401/501)
+            game_type: Type of game ('301', '401', '501', 'cricket', 'round_the_clock',
+            'round_the_clock_double')
+            player_names: List of player names (DEPRECATED - use player_ids instead)
+            player_ids: List of player database IDs or list of player dicts
+                with 'db_id' key
+            double_out: Whether to require double-out to finish
+                (only for 301/401/501)
         """
         self.game_type = game_type.lower()
         self.double_out = double_out
 
         # Initialize players
-        if player_names:
-            self.players = [{"name": name, "id": i} for i, name in enumerate(player_names)]
-        elif not self.players:
+        if player_ids:
+            # Use player IDs (WSO2 authenticated users)
             self.players = [
-                {"name": "Player 1", "id": 0},
-                {"name": "Player 2", "id": 1},
+                {
+                    "name": (
+                        pid.get("name", f"Player {i+1}")
+                        if isinstance(pid, dict)
+                        else f"Player {i+1}"
+                    ),
+                    "id": i,
+                    "db_id": pid if isinstance(pid, int) else (pid.get("db_id") if pid else None),
+                }
+                for i, pid in enumerate(player_ids)
+                if pid is not None
             ]
+            # If all player_ids were None, fall through to create defaults
+            if not self.players:
+                player_ids = None
+
+        if not self.players:
+            if player_names:
+                # Fallback to player names (DEPRECATED - for backwards compatibility)
+                self.players = [{"name": name, "id": i} for i, name in enumerate(player_names)]
+            else:
+                # Default players
+                self.players = [
+                    {"name": "Player 1", "id": 0},
+                    {"name": "Player 2", "id": 1},
+                ]
 
         # Create appropriate game instance
         if self.game_type == "cricket":
             self.game = GameCricket(self.players)
+            self.start_score = 0
+        elif self.game_type == "round_the_clock":
+            self.game = GameRoundTheClock(self.players)
+            self.start_score = 0
+        elif self.game_type == "round_the_clock_double":
+            self.game = GameRoundTheClockDouble(self.players)
             self.start_score = 0
         else:
             # Default to 301, but support 401, 501
@@ -125,11 +159,24 @@ class GameManager:
         self._save_turn_start_state()
 
         # Start new game in database
+        # Pass player database IDs to ensure proper tracking
+        # Each player MUST have a db_id (WSO2 authenticated)
+        player_ids = [p.get("db_id") for p in self.players]
+
+        # Validate that all players have database IDs
+        missing_ids = [i for i, pid in enumerate(player_ids) if not pid]
+        if missing_ids:
+            player_names = [f"{self.players[i]['name']} (pos {i})" for i in missing_ids]
+            msg = (
+                "Cannot save game: Players missing database IDs "
+                f"(only WSO2 users allowed): {', '.join(player_names)}"
+            )
+            raise ValueError(msg)
+
         try:
-            player_name_list = [p["name"] for p in self.players]
             self.db_service.start_new_game(
                 game_type_name=self.game_type,
-                player_names=player_name_list,
+                player_ids=player_ids,
                 start_score=self.start_score if self.game_type != "cricket" else None,
                 double_out=double_out,
             )
@@ -148,6 +195,20 @@ class GameManager:
             f"New {self.game_type} game started with {len(self.players)} \
             players (double-out: {double_out})",
         )
+
+    def reset_game(self):
+        """Reset the game state to initial state"""
+        self.players = []
+        self.current_player = 0
+        self.game_type = "301"
+        self.game = None
+        self.is_started = False
+        self.is_paused = True
+        self.current_throw = 1
+        self.is_winner = False
+        self.turn_throws = []
+        self.turn_start_state = None
+        self.turn_number = {}
 
     def add_player(self, name=None):
         """Add a new player"""
@@ -168,6 +229,30 @@ class GameManager:
         self._emit_game_state()
         self._emit_sound("addPlayer", f"Player {name} added")
         print(f"Player added: {name}")
+
+    def add_player_with_id(self, name=None, db_player_id=None):
+        """Add a new player with database player ID tracking"""
+        if not name:
+            name = f"Player {len(self.players) + 1}"
+
+        # Cricket supports max 4 players
+        if self.game_type == "cricket" and len(self.players) >= 4:
+            print("Cricket game supports maximum 4 players")
+            return
+
+        player_id = len(self.players)
+        player_data = {"name": name, "id": player_id}
+        if db_player_id:
+            player_data["db_id"] = db_player_id
+
+        self.players.append(player_data)
+
+        if self.game:
+            self.game.add_player(player_data)
+
+        self._emit_game_state()
+        self._emit_sound("addPlayer", f"Player {name} added")
+        print(f"Player added: {name} (db_id={db_player_id})")
 
     def remove_player(self, player_id):
         """Remove a player"""
@@ -738,7 +823,7 @@ class GameManager:
             audio_data = self.tts.speak(text, generate_audio=True)
             if audio_data:
                 # Encode audio data as base64 for transmission
-                audio_base64 = base64.b64encode(audio_data).decode("utf-8")
+                audio_base64 = base64.b64encode(audio_data).decode("utf-8")  # type: ignore
                 self.socketio.emit(
                     "play_tts",
                     {

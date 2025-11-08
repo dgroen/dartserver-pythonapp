@@ -94,7 +94,7 @@ async function loadCurrentGame() {
         }
 
         const data = await response.json();
-        
+
         if (data.game && Object.keys(data.game).length > 0) {
             currentGame = data.game;
             updateGameDisplay(data.game);
@@ -113,14 +113,14 @@ async function startNewGame(e) {
     const gameType = document.getElementById('gameType').value;
     const doubleOut = document.getElementById('doubleOut').checked;
     const playerNamesText = document.getElementById('playerNames').value;
-    
+
     const playerNames = playerNamesText
         .split('\n')
         .map(name => name.trim())
         .filter(name => name.length > 0);
 
-    if (playerNames.length < 2) {
-        showToast('Please enter at least 2 players', 'error');
+    if (playerNames.length < 1) {
+        showToast('Please enter at least 1 player', 'error');
         return;
     }
 
@@ -194,7 +194,7 @@ async function togglePause() {
     isPaused = !isPaused;
     const pauseBtn = document.getElementById('pauseBtn');
     const icon = pauseBtn.querySelector('.btn-icon');
-    
+
     if (isPaused) {
         icon.textContent = '▶️';
         pauseBtn.innerHTML = '<span class="btn-icon">▶️</span>Resume Game';
@@ -251,7 +251,7 @@ function addPlayer() {
     }
 
     const playerName = document.getElementById('newPlayerName').value.trim();
-    
+
     if (!playerName) {
         showToast('Please enter a player name', 'error');
         return;
@@ -339,7 +339,7 @@ function updateGameDisplay(game) {
     statusText.textContent = 'Game in progress';
     gameInfo.style.display = 'block';
     gameTypeDisplay.textContent = game.game_type || 'Unknown';
-    
+
     // Find current player
     const currentPlayer = game.players?.find(p => p.is_current);
     currentPlayerDisplay.textContent = currentPlayer ? currentPlayer.name : 'Unknown';
@@ -390,7 +390,7 @@ function displayNoGame() {
 
 function displayPlayers(players) {
     const playersList = document.getElementById('playersList');
-    
+
     if (!players || players.length === 0) {
         playersList.innerHTML = '<p class="empty-state">No players</p>';
         return;
@@ -411,9 +411,9 @@ function displayPlayers(players) {
 function handleGameEnd(data) {
     const winner = data.winner || data.game?.winner;
     const winnerName = winner?.name || 'Unknown';
-    
+
     showToast(`🏆 Game Over! Winner: ${winnerName}`, 'success');
-    
+
     setTimeout(() => {
         displayNoGame();
     }, 2000);
@@ -423,10 +423,10 @@ function showToast(message, type = 'info') {
     const toast = document.getElementById('toast');
     toast.textContent = message;
     toast.className = `toast ${type}`;
-    
+
     // Trigger reflow to restart animation
     void toast.offsetWidth;
-    
+
     toast.classList.add('show');
 
     setTimeout(() => {
@@ -439,11 +439,11 @@ async function apiRequest(url, options = {}) {
     try {
         const response = await fetch(url, {
             ...options,
+            credentials: 'include',  // Include session cookies
             headers: {
                 'Content-Type': 'application/json',
                 ...options.headers
-            },
-            credentials: 'include'
+            }
         });
 
         if (!response.ok) {

@@ -1,6 +1,26 @@
 version: "3.8"
 
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: darts-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres # pragma: allowlist secret
+      POSTGRES_DB: dartsdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - darts-network
+
   # RabbitMQ Message Broker
   rabbitmq:
     image: rabbitmq:3-management
@@ -10,7 +30,7 @@ services:
       - "15672:15672" # Management UI
     environment:
       RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_PASS: guest # pragma: allowlist secret
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -157,13 +177,13 @@ services:
       TTS_VOICE: ${TTS_VOICE:-default}
 
       # Database Configuration
-      # Use host.docker.internal to access host's PostgreSQL from container
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:5432/dartsdb}
+      # Use postgres service name for Docker internal networking
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dartsdb # pragma: allowlist secret
 
       # WSO2 Authentication Configuration
       # WSO2_IS_URL: Public URL for browser redirects (authorize, logout)
       WSO2_IS_URL: https://letsplaydarts.eu/auth
-      # WSO2_IS_INTERNAL_URL: Internal Docker network URL for backend API calls
+      # WSO2_IS_INTERNAL_URL: Internal Docker network URL for backend API calls (introspection, token endpoint)
       WSO2_IS_INTERNAL_URL: https://wso2is:9443
       WSO2_CLIENT_ID: ${WSO2_CLIENT_ID:-your_client_id_here}
       WSO2_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-your_client_secret_here}
@@ -173,11 +193,17 @@ services:
       WSO2_IS_VERIFY_SSL: "False"
       JWT_VALIDATION_MODE: introspection
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
-      WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin}
-      SESSION_COOKIE_SECURE: "True" # Enable secure cookies for HTTPS
-    extra_hosts:
-      - "host.docker.internal:host-gateway"  # Allow container to access host services
+      WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin} # pragma: allowlist secret
+      SESSION_COOKIE_SECURE: "False" # Nginx terminates SSL; safe inside Docker network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
+      postgres:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
       wso2is:
@@ -198,13 +224,18 @@ services:
       - ./nginx/nginx.crt:/etc/nginx/nginx.crt:ro
       - ./nginx/nginx.key:/etc/nginx/nginx.key:ro
     depends_on:
-      - api-gateway
-      - darts-app
-      - wso2apim
+      api-gateway:
+        condition: service_started
+      darts-app:
+        condition: service_healthy
+      wso2apim:
+        condition: service_started
+    restart: unless-stopped
     networks:
       - darts-network
 
 volumes:
+  postgres_data:
   wso2is_7_data:
   rabbitmq_data:
   wso2is_data:

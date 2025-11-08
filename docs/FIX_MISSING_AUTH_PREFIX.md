@@ -3,11 +3,13 @@
 ## Problem
 
 When clicking login, the redirect goes to:
+
 ```
 ❌ https://letsplaydarts.eu/oauth2/authorize?sessionDataKey=...
 ```
 
 But it should go to:
+
 ```
 ✅ https://letsplaydarts.eu/auth/oauth2/authorize?sessionDataKey=...
 ```
@@ -25,6 +27,7 @@ WSO2 Identity Server is not aware of the **proxy context path** (`/auth`). While
 **File**: `/data/dartserver-pythonapp/wso2is-config/deployment.toml`
 
 **Added**:
+
 ```toml
 [server]
 hostname = "letsplaydarts.eu"
@@ -34,6 +37,7 @@ proxy_context_path = "/auth"  # ← NEW: Tells WSO2 to include /auth in URLs
 ```
 
 This configuration tells WSO2 IS:
+
 - `base_path`: The full public URL including the context path
 - `proxy_context_path`: The context path to prepend to all generated URLs
 
@@ -57,6 +61,7 @@ docker logs -f wso2is
 ```
 
 Wait until you see:
+
 ```
 WSO2 Carbon started in X sec
 ```
@@ -115,11 +120,13 @@ location /auth/ {
 ### WSO2 IS URL Generation
 
 With `proxy_context_path = "/auth"`, WSO2 IS will:
+
 - ✅ Generate URLs like: `/auth/oauth2/authorize`
 - ✅ Generate URLs like: `/auth/authenticationendpoint/login.do`
 - ✅ Include `/auth` in all redirects and links
 
 Without `proxy_context_path`, WSO2 IS generates:
+
 - ❌ URLs like: `/oauth2/authorize` (missing /auth)
 - ❌ URLs like: `/authenticationendpoint/login.do` (missing /auth)
 
@@ -173,6 +180,7 @@ docker logs darts-app 2>&1 | grep -i "authorization URL"
 **Cause**: WSO2 IS not fully started or configuration not loaded
 
 **Solution**:
+
 ```bash
 # Check if WSO2 IS is running
 docker ps | grep wso2is
@@ -189,6 +197,7 @@ docker exec wso2is cat /home/wso2carbon/wso2is-6.1.0/repository/conf/deployment.
 **Cause**: Configuration file not mounted correctly
 
 **Solution**:
+
 ```bash
 # Verify the volume mount in docker-compose-wso2.yml
 docker-compose -f docker-compose-wso2.yml config | grep -A 5 "wso2is-config"
@@ -216,20 +225,22 @@ This fix addresses the **missing /auth prefix** issue. You may also need to fix:
 
 ## Summary
 
-| Aspect | Before | After |
-|--------|--------|-------|
-| **OAuth2 Authorize URL** | `/oauth2/authorize` ❌ | `/auth/oauth2/authorize` ✅ |
-| **Login Endpoint** | `/authenticationendpoint/login.do` ❌ | `/auth/authenticationendpoint/login.do` ✅ |
-| **Logout Endpoint** | `/oidc/logout` ❌ | `/auth/oidc/logout` ✅ |
-| **Configuration** | Only `base_path` | `base_path` + `proxy_context_path` ✅ |
-| **Restart Required** | N/A | Yes (WSO2 IS only) |
+| Aspect                   | Before                                | After                                      |
+| ------------------------ | ------------------------------------- | ------------------------------------------ |
+| **OAuth2 Authorize URL** | `/oauth2/authorize` ❌                | `/auth/oauth2/authorize` ✅                |
+| **Login Endpoint**       | `/authenticationendpoint/login.do` ❌ | `/auth/authenticationendpoint/login.do` ✅ |
+| **Logout Endpoint**      | `/oidc/logout` ❌                     | `/auth/oidc/logout` ✅                     |
+| **Configuration**        | Only `base_path`                      | `base_path` + `proxy_context_path` ✅      |
+| **Restart Required**     | N/A                                   | Yes (WSO2 IS only)                         |
 
 ## Quick Reference
 
 ### Files Modified
+
 - ✅ `/data/dartserver-pythonapp/wso2is-config/deployment.toml`
 
 ### Commands to Run
+
 ```bash
 # Restart WSO2 IS
 docker-compose -f docker-compose-wso2.yml restart wso2is
@@ -242,6 +253,7 @@ docker logs -f wso2is
 ```
 
 ### Expected Behavior
+
 - ✅ Login redirects to: `https://letsplaydarts.eu/auth/oauth2/authorize`
 - ✅ Login page loads at: `https://letsplaydarts.eu/auth/authenticationendpoint/login.do`
 - ✅ Logout redirects to: `https://letsplaydarts.eu/auth/oidc/logout`

@@ -63,10 +63,7 @@
                     <div class="form-group">
                         <label for="gameType">Game Type</label>
                         <select id="gameType" name="gameType" class="form-control">
-                            <option value="301">301</option>
-                            <option value="401">401</option>
-                            <option value="501" selected>501</option>
-                            <option value="cricket">Cricket</option>
+                            <!-- Options loaded dynamically via JavaScript -->
                         </select>
                     </div>
 
@@ -81,7 +78,7 @@
                         <label for="playerNames">Players (one per line)</label>
                         <textarea id="playerNames" name="playerNames" rows="5" class="form-control"
                                   placeholder="Player 1&#10;Player 2&#10;Player 3"></textarea>
-                        <small class="form-hint">Enter at least 2 players</small>
+                        <small class="form-hint">Enter at least 1 player</small>
                     </div>
 
                     <button type="submit" class="btn btn-primary btn-large">
@@ -97,11 +94,11 @@
                 <div id="playersList" class="players-list">
                     <p class="empty-state">No active game</p>
                 </div>
-                
+
                 <!-- Add Player During Game -->
                 <div class="add-player-section" id="addPlayerSection" style="display: none;">
                     <div class="form-group">
-                        <input type="text" id="newPlayerName" class="form-control" 
+                        <input type="text" id="newPlayerName" class="form-control"
                                placeholder="New player name">
                     </div>
                     <button class="btn btn-success" id="addPlayerBtn">
@@ -137,7 +134,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="scoreValue">Score</label>
-                            <input type="number" id="scoreValue" class="form-control" 
+                            <input type="number" id="scoreValue" class="form-control"
                                    min="0" max="60" value="20">
                         </div>
                         <div class="form-group">
@@ -183,9 +180,21 @@
     <div id="toast" class="toast"></div>
 
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="/static/js/main.js"></script>
     <script src="/static/js/mobile.js"></script>
     <script src="/static/js/mobile_gamemaster.js"></script>
     <script>
+        // Load game types when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const gameTypeSelect = document.getElementById('gameType');
+            if (gameTypeSelect && typeof loadGameTypes === 'function') {
+                loadGameTypes(gameTypeSelect, false).then(() => {
+                    // Set default to 501 if available
+                    gameTypeSelect.value = '501';
+                });
+            }
+        });
+
         // Menu Toggle Functionality
         const menuToggle = document.getElementById('menuToggle');
         const mobileNav = document.getElementById('mobileNav');

@@ -11,6 +11,7 @@
 ## 📊 What Was Backed Up
 
 ### 1. **PostgreSQL Database** ✓
+
 - **Method:** pg_dump (SQL dump)
 - **File:** `postgres_dump.sql.gz`
 - **Size:** 8.0 KB
@@ -18,31 +19,37 @@
 - **Status:** ✅ Successfully backed up
 
 ### 2. **PostgreSQL Volume** ✓
+
 - **Volume:** `dartserver-pythonapp_postgres_data`
 - **File:** `postgres_data.tar.gz`
 - **Size:** 6.9 MB
 - **Status:** ✅ Successfully backed up
 
 ### 3. **RabbitMQ Volume** ✓
+
 - **Volume:** `dartserver-pythonapp_rabbitmq_data`
 - **File:** `rabbitmq_data.tar.gz`
 - **Size:** 136 KB
 - **Status:** ✅ Successfully backed up
 
 ### 4. **WSO2 Identity Server Volume** ✓
+
 - **Volume:** `dartserver-pythonapp_wso2is_data`
 - **File:** `wso2is_data.tar.gz`
 - **Size:** 392 MB
 - **Status:** ✅ Successfully backed up
 
 ### 5. **WSO2 API Manager Volume** ✓
+
 - **Volume:** `dartserver-pythonapp_wso2apim_data`
 - **File:** `wso2apim_data.tar.gz`
 - **Size:** 453 MB
 - **Status:** ✅ Successfully backed up
 
 ### 6. **Configuration Files** ✓
+
 Backed up in `config/` directory:
+
 - ✅ `wso2is-deployment.toml` - WSO2 IS configuration
 - ✅ `docker-compose-wso2.yml` - Docker Compose configuration
 - ✅ `.env` - Environment variables
@@ -124,16 +131,19 @@ docker-compose -f docker-compose-wso2.yml up -d
 The backup script is located at: `./backup_docker_volumes.sh`
 
 ### Run Backup Interactively
+
 ```bash
 ./backup_docker_volumes.sh
 ```
 
 ### Run Backup Automatically (No Prompts)
+
 ```bash
 ./backup_docker_volumes.sh --yes
 ```
 
 ### Show Help
+
 ```bash
 ./backup_docker_volumes.sh --help
 ```

@@ -41,7 +41,7 @@ class DartsAPIClient:
         self.wso2_token_url = wso2_token_url
         self.client_id = client_id
         self.client_secret = client_secret
-        self.tokens = {}  # Cache tokens by scope
+        self.tokens: dict[str, str] = {}  # Cache tokens by scope  # type: ignore
 
     def get_access_token(self, scope: str) -> str | None:
         """
@@ -75,7 +75,7 @@ class DartsAPIClient:
                 token_data = response.json()
                 access_token = token_data.get("access_token")
                 self.tokens[scope] = access_token
-                return access_token
+                return access_token  # type: ignore
             print(f"Failed to get token: {response.status_code}")
             print(f"Response: {response.text}")
             return None
@@ -138,7 +138,7 @@ class DartsAPIClient:
             )
 
             if response.status_code in [200, 201]:
-                return response.json()
+                return response.json()  # type: ignore
             print(f"Failed to submit score: {response.status_code}")
             print(f"Response: {response.text}")
             return None
@@ -184,7 +184,7 @@ class DartsAPIClient:
             )
 
             if response.status_code in [200, 201]:
-                return response.json()
+                return response.json()  # type: ignore
             print(f"Failed to create game: {response.status_code}")
             print(f"Response: {response.text}")
             return None
@@ -219,7 +219,7 @@ class DartsAPIClient:
             )
 
             if response.status_code in [200, 201]:
-                return response.json()
+                return response.json()  # type: ignore
             print(f"Failed to add player: {response.status_code}")
             print(f"Response: {response.text}")
             return None
@@ -285,9 +285,9 @@ def main():
 
     for i, score_data in enumerate(scores, 1):
         result = client.submit_score(
-            score=score_data["score"],
-            multiplier=score_data["multiplier"],
-            player_id=score_data["player_id"],
+            score=score_data["score"],  # type: ignore
+            multiplier=score_data["multiplier"],  # type: ignore
+            player_id=score_data["player_id"],  # type: ignore
             game_id="game-001",
         )
         if result:

@@ -3,6 +3,7 @@
 ## 📚 Documentation
 
 ### Start Here
+
 1. **[IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)** (READ THIS FIRST!)
    - What was implemented
    - How it works
@@ -25,6 +26,7 @@
 ## 🔧 Configuration Files
 
 ### Example Templates (Copy These!)
+
 - **[.env.production.example](./.env.production.example)**
   - Use for: `https://letsplaydarts.eu`
   - When: Production deployment
@@ -41,6 +43,7 @@
   - Action: `cp .env.local.example .env` then edit
 
 ### Current Configuration
+
 - **[.env](./.env)** (your active configuration)
   - Contains current environment settings
   - Edit this file to switch environments
@@ -49,6 +52,7 @@
 ## 💻 New Code
 
 ### Configuration Module
+
 - **[src/config.py](./src/config.py)**
   - The core configuration class
   - 34 lines, 97.5% test coverage
@@ -56,6 +60,7 @@
   - Detects environment and adjusts security settings
 
 ### Tests
+
 - **[tests/unit/test_config.py](./tests/unit/test_config.py)**
   - 26 comprehensive tests
   - 97.5% code coverage
@@ -64,6 +69,7 @@
 ## 📋 Modified Files
 
 ### Core Application Files
+
 1. **[app.py](./app.py)** (modified)
    - Added: `from src.config import Config`
    - Uses: `Config.SESSION_COOKIE_SECURE`
@@ -77,6 +83,7 @@
    - Improved: X-Forwarded header handling
 
 ### Configuration Files
+
 3. **[.env](./.env)** (updated)
    - Added: `ENVIRONMENT`, `APP_DOMAIN`, `APP_SCHEME`
    - Removed: Hardcoded `WSO2_REDIRECT_URI`
@@ -91,6 +98,7 @@
 ### 3-Step Setup
 
 **Step 1: Choose Your Environment**
+
 ```bash
 # Production
 cp .env.production.example .env
@@ -103,6 +111,7 @@ cp .env.local.example .env
 ```
 
 **Step 2: Edit Configuration**
+
 ```bash
 nano .env  # or your preferred editor
 
@@ -113,6 +122,7 @@ APP_SCHEME=https
 ```
 
 **Step 3: Run Application**
+
 ```bash
 python app.py
 ```
@@ -122,6 +132,7 @@ That's it! ✅
 ## 🔍 How It Works
 
 ### Automatic URL Generation
+
 ```
 You set in .env:
   APP_DOMAIN=letsplaydarts.eu
@@ -134,6 +145,7 @@ System auto-generates:
 ```
 
 ### Dynamic Redirect URIs
+
 ```
 User Request → Check X-Forwarded Headers (nginx)
             → Fall back to Request Headers
@@ -152,26 +164,29 @@ User Request → Check X-Forwarded Headers (nginx)
 
 ## 🎯 Supported Environments
 
-| Environment | Domain | Scheme | Debug | Use Case |
-|-------------|--------|--------|-------|----------|
-| Production | letsplaydarts.eu | https | false | Live deployment |
-| Development | dev.letsplaydarts.eu | http | true | Development/Staging |
-| Local | localhost:5000 | http | true | Local testing |
+| Environment | Domain               | Scheme | Debug | Use Case            |
+| ----------- | -------------------- | ------ | ----- | ------------------- |
+| Production  | letsplaydarts.eu     | https  | false | Live deployment     |
+| Development | dev.letsplaydarts.eu | http   | true  | Development/Staging |
+| Local       | localhost:5000       | http   | true  | Local testing       |
 
 ## 🔑 Configuration Variables
 
 ### Required (Set These)
+
 - `ENVIRONMENT` - production/development/staging
 - `APP_DOMAIN` - your domain (no scheme)
 - `APP_SCHEME` - http or https
 
 ### Auto-Generated (Don't Set)
+
 - `APP_URL` - automatically created
 - `CALLBACK_URL` - automatically created
 - `LOGOUT_REDIRECT_URL` - automatically created
 - `SESSION_COOKIE_SECURE` - auto-detected if not set
 
 ### Environment-Specific
+
 - `FLASK_DEBUG` - true for dev, false for prod
 - `WSO2_CLIENT_ID` - different per environment
 - `WSO2_CLIENT_SECRET` - different per environment
@@ -189,20 +204,26 @@ User Request → Check X-Forwarded Headers (nginx)
 ## 🐛 Troubleshooting
 
 ### "redirect_uri mismatch" from WSO2
-**Fix**: 
+
+**Fix**:
+
 1. Check `APP_DOMAIN` matches your domain
 2. Check `APP_SCHEME` matches URL scheme
 3. Register new redirect URI in WSO2:
    - `{APP_SCHEME}://{APP_DOMAIN}/callback`
 
 ### Cookies not persisting
+
 **Fix**:
+
 - For http: Set `SESSION_COOKIE_SECURE=False`
 - For https: Set `SESSION_COOKIE_SECURE=True`
 - Then restart app
 
 ### Can't reach from different domain
+
 **Fix**:
+
 1. Update `APP_DOMAIN` to match
 2. Update WSO2 redirect URI
 3. If behind nginx, ensure headers forwarded:
@@ -218,28 +239,31 @@ User Request → Check X-Forwarded Headers (nginx)
 
 ## ✨ What's New
 
-| Item | Description |
-|------|-------------|
-| `src/config.py` | New centralized configuration module |
-| `tests/unit/test_config.py` | New comprehensive tests |
-| `docs/MULTI_ENVIRONMENT_SETUP.md` | Detailed configuration guide |
-| `docs/ENVIRONMENT_QUICK_START.md` | Quick reference guide |
-| `.env.*.example` files | Environment-specific templates |
+| Item                              | Description                          |
+| --------------------------------- | ------------------------------------ |
+| `src/config.py`                   | New centralized configuration module |
+| `tests/unit/test_config.py`       | New comprehensive tests              |
+| `docs/MULTI_ENVIRONMENT_SETUP.md` | Detailed configuration guide         |
+| `docs/ENVIRONMENT_QUICK_START.md` | Quick reference guide                |
+| `.env.*.example` files            | Environment-specific templates       |
 
 ## 🎓 Learning Path
 
 **Beginner** (Just want to use it)
+
 1. Read: IMPLEMENTATION_SUMMARY.md
 2. Do: Copy `.env.production.example` → `.env`
 3. Do: Edit 3 variables
 4. Run: `python app.py`
 
 **Intermediate** (Want to understand)
+
 1. Read: ENVIRONMENT_QUICK_START.md
 2. Read: src/config.py (brief code review)
 3. Read: Modified sections of app.py and auth.py
 
 **Advanced** (Want to master it)
+
 1. Read: MULTI_ENVIRONMENT_SETUP.md (complete guide)
 2. Review: All documentation
 3. Review: tests/unit/test_config.py

@@ -33,19 +33,21 @@ class Config:
 
     # SSL/Session configuration
     FLASK_USE_SSL = os.getenv("FLASK_USE_SSL", "true").lower() == "true"
-    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "").lower() == "true"
+    _explicit_secure_cookie = os.getenv("SESSION_COOKIE_SECURE", "")
+    SESSION_COOKIE_SECURE = _explicit_secure_cookie.lower() == "true"
 
     # If SESSION_COOKIE_SECURE not explicitly set, derive from scheme
-    if not os.getenv("SESSION_COOKIE_SECURE"):
+    if not _explicit_secure_cookie:
         SESSION_COOKIE_SECURE = APP_SCHEME == "https" or FLASK_USE_SSL
 
-    # Special handling for localhost to prevent cookie issues
-    # On localhost, if using http:// scheme, SESSION_COOKIE_SECURE must be False
-    if "localhost" in APP_DOMAIN and APP_SCHEME == "http":
+    # Special handling for localhost to prevent cookie issues with self-signed certs
+    # Only force to False if NOT explicitly configured and using https on localhost
+    if "localhost" in APP_DOMAIN and APP_SCHEME == "https" and not _explicit_secure_cookie:
         SESSION_COOKIE_SECURE = False
         logger.info(
-            "Localhost detected with http:// scheme - "
-            "SESSION_COOKIE_SECURE forced to False to allow cookies",
+            "Localhost HTTPS detected without explicit SESSION_COOKIE_SECURE setting - "
+            "forcing to False to prevent cookie issues with self-signed certificates. "
+            "SameSite=Lax provides sufficient security for local development.",
         )
 
     @classmethod

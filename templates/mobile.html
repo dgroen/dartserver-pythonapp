@@ -140,13 +140,13 @@
         async function checkConnection() {
             const statusDot = document.querySelector('.status-dot');
             const statusText = document.querySelector('.status-text');
-            
+
             try {
-                const response = await fetch('/health', { 
+                const response = await fetch('/health', {
                     method: 'GET',
                     cache: 'no-cache'
                 });
-                
+
                 if (response.ok) {
                     statusDot.className = 'status-dot online';
                     statusText.textContent = 'Connected to server';

@@ -10,12 +10,15 @@ There are **TWO separate issues** with the redirect flow:
 ## Issue 1: Missing /auth Prefix ✅ FIXED
 
 ### Problem
+
 Redirects go to `https://letsplaydarts.eu/oauth2/authorize` instead of `https://letsplaydarts.eu/auth/oauth2/authorize`
 
 ### Solution Applied
+
 Added `proxy_context_path = "/auth"` to `deployment.toml`
 
 ### How to Apply
+
 ```bash
 cd /data/dartserver-pythonapp
 docker-compose -f docker-compose-wso2.yml restart wso2is
@@ -24,6 +27,7 @@ docker-compose -f docker-compose-wso2.yml restart wso2is
 Wait 2-3 minutes for WSO2 IS to start.
 
 ### Details
+
 See: `FIX_MISSING_AUTH_PREFIX.md`
 
 ---
@@ -31,14 +35,17 @@ See: `FIX_MISSING_AUTH_PREFIX.md`
 ## Issue 2: Post-Logout Redirect URI ⚠️ REQUIRES ACTION
 
 ### Problem
+
 Error: "Post logout URI does not match with registered callback URI"
 
 ### Solution Required
+
 Register both callback and post-logout URIs in WSO2 IS Service Provider
 
 ### How to Apply
 
 #### Step 1: Access WSO2 IS Console
+
 ```
 URL: https://letsplaydarts.eu/auth/carbon
 Username: admin
@@ -46,39 +53,48 @@ Password: admin
 ```
 
 #### Step 2: Navigate to Service Providers
+
 ```
 Main → Identity → Service Providers → List
 ```
 
 #### Step 3: Edit Your Application
+
 - Find your OAuth2 application
 - Click "Edit"
 
 #### Step 4: Update Callback URLs
+
 1. Expand "Inbound Authentication Configuration"
 2. Click "Configure" under "OAuth/OpenID Connect Configuration"
 3. Update "Callback Url" field
 
 **Change from:**
+
 ```
 https://letsplaydarts.eu/callback
 ```
-oregexp=(https://localhost:5000/callback|https://letsplaydarts\.eu:5000/callback|https://letsplaydarts\.eu/callback)
+
+oregexp=(<https://localhost:5000/callback|https://letsplaydarts\.eu:5000/callback|https://letsplaydarts\.eu/callback>)
 **Change to (regex pattern):**
+
 ```
 regexp=https://letsplaydarts\.eu(/callback|/)
 ```
 
 **OR (comma-separated):**
+
 ```
 https://letsplaydarts.eu/callback,https://letsplaydarts.eu/
 ```
 
 #### Step 5: Save
+
 1. Click "Update" (OAuth dialog)
 2. Click "Update" (Service Provider page)
 
 ### Details
+
 See: `FIX_REDIRECT_URIS.md` or `QUICK_FIX_REDIRECTS.md`
 
 ---
@@ -86,12 +102,14 @@ See: `FIX_REDIRECT_URIS.md` or `QUICK_FIX_REDIRECTS.md`
 ## Complete Fix Checklist
 
 ### Part 1: Configuration Fix (Done ✅)
+
 - [x] Added `proxy_context_path = "/auth"` to deployment.toml
 - [ ] Restart WSO2 IS container
 - [ ] Wait for startup (2-3 minutes)
 - [ ] Verify URLs include `/auth` prefix
 
 ### Part 2: Service Provider Fix (To Do ⚠️)
+
 - [ ] Access WSO2 IS Management Console
 - [ ] Navigate to Service Providers
 - [ ] Edit OAuth2 application
@@ -104,18 +122,21 @@ See: `FIX_REDIRECT_URIS.md` or `QUICK_FIX_REDIRECTS.md`
 ## Quick Start
 
 ### Step 1: Restart WSO2 IS (Apply Configuration Fix)
+
 ```bash
 cd /data/dartserver-pythonapp
 docker-compose -f docker-compose-wso2.yml restart wso2is
 ```
 
 ### Step 2: Wait for Startup
+
 ```bash
 docker logs -f wso2is
 # Wait for: "WSO2 Carbon started in X sec"
 ```
 
 ### Step 3: Update Service Provider (Manual)
+
 ```bash
 # Run this script for instructions
 ./update_wso2_callback_urls.sh
@@ -124,6 +145,7 @@ docker logs -f wso2is
 Or follow the steps in `QUICK_FIX_REDIRECTS.md`
 
 ### Step 4: Test Everything
+
 1. Navigate to: `https://letsplaydarts.eu`
 2. Click "Login" → Should work ✅
 3. Authenticate → Should redirect back ✅
@@ -137,6 +159,7 @@ Or follow the steps in `QUICK_FIX_REDIRECTS.md`
 ### Fix 1: proxy_context_path
 
 **Before:**
+
 ```
 WSO2 IS generates: /oauth2/authorize
 Browser tries: https://letsplaydarts.eu/oauth2/authorize
@@ -144,6 +167,7 @@ Result: ❌ 404 Error (nginx doesn't route this)
 ```
 
 **After:**
+
 ```
 WSO2 IS generates: /auth/oauth2/authorize
 Browser tries: https://letsplaydarts.eu/auth/oauth2/authorize
@@ -153,6 +177,7 @@ Result: ✅ Success (nginx routes to WSO2 IS)
 ### Fix 2: Callback URL Registration
 
 **Before:**
+
 ```
 Registered: https://letsplaydarts.eu/callback
 Login redirect: /callback ✅ Works
@@ -160,6 +185,7 @@ Logout redirect: / ❌ Fails (not registered)
 ```
 
 **After:**
+
 ```
 Registered: regexp=https://letsplaydarts\.eu(/callback|/)
 Login redirect: /callback ✅ Works
@@ -193,6 +219,7 @@ Logout redirect: / ✅ Works
 ### URL Flow
 
 **Login Flow:**
+
 ```
 1. User clicks "Login"
 2. Flask → Browser: Redirect to /auth/oauth2/authorize
@@ -205,6 +232,7 @@ Logout redirect: / ✅ Works
 ```
 
 **Without proxy_context_path:**
+
 ```
 5. WSO2 IS → Nginx: Redirect to /authenticationendpoint/login.do
    (missing /auth!)
@@ -217,6 +245,7 @@ Logout redirect: / ✅ Works
 ## Configuration Files
 
 ### deployment.toml (Updated ✅)
+
 ```toml
 [server]
 hostname = "letsplaydarts.eu"
@@ -239,6 +268,7 @@ oidc_logout_page = "${carbon.protocol}://letsplaydarts.eu/auth/authenticationend
 ```
 
 ### Service Provider (Needs Update ⚠️)
+
 ```
 Callback URLs: regexp=https://letsplaydarts\.eu(/callback|/)
 ```
@@ -248,6 +278,7 @@ Callback URLs: regexp=https://letsplaydarts\.eu(/callback|/)
 ## Testing
 
 ### Test 1: Login Flow
+
 ```bash
 1. Navigate to: https://letsplaydarts.eu
 2. Click "Login"
@@ -259,6 +290,7 @@ Callback URLs: regexp=https://letsplaydarts\.eu(/callback|/)
 ```
 
 ### Test 2: Logout Flow
+
 ```bash
 1. While logged in, click "Logout"
 2. Check URL: Should be https://letsplaydarts.eu/auth/oidc/logout?...
@@ -268,6 +300,7 @@ Callback URLs: regexp=https://letsplaydarts\.eu(/callback|/)
 ```
 
 ### Test 3: Direct URL Access
+
 ```bash
 # Test OAuth2 authorize endpoint
 curl -I https://letsplaydarts.eu/auth/oauth2/authorize
@@ -287,6 +320,7 @@ curl -I https://letsplaydarts.eu/auth/authenticationendpoint/login.do
 **Cause**: WSO2 IS not restarted or configuration not loaded
 
 **Solution**:
+
 ```bash
 # Restart WSO2 IS
 docker-compose -f docker-compose-wso2.yml restart wso2is
@@ -308,6 +342,7 @@ docker exec wso2is cat /home/wso2carbon/wso2is-6.1.0/repository/conf/deployment.
 **Cause**: WSO2 IS not running
 
 **Solution**:
+
 ```bash
 docker ps | grep wso2is
 docker logs wso2is 2>&1 | tail -50
@@ -318,10 +353,10 @@ docker-compose -f docker-compose-wso2.yml up -d wso2is
 
 ## Summary Table
 
-| Issue | Status | Fix Type | Time | Restart Required |
-|-------|--------|----------|------|------------------|
-| Missing /auth prefix | ✅ Fixed | Configuration | 5 min | Yes (WSO2 IS) |
-| Post-logout URI | ⚠️ To Do | Manual (Console) | 5 min | No |
+| Issue                | Status   | Fix Type         | Time  | Restart Required |
+| -------------------- | -------- | ---------------- | ----- | ---------------- |
+| Missing /auth prefix | ✅ Fixed | Configuration    | 5 min | Yes (WSO2 IS)    |
+| Post-logout URI      | ⚠️ To Do | Manual (Console) | 5 min | No               |
 
 **Total Time**: ~10 minutes (plus 2-3 minutes for WSO2 IS restart)
 
@@ -329,26 +364,28 @@ docker-compose -f docker-compose-wso2.yml up -d wso2is
 
 ## Documentation Reference
 
-| Document | Purpose |
-|----------|---------|
-| `COMPLETE_REDIRECT_FIX.md` | This file - Complete overview |
-| `FIX_MISSING_AUTH_PREFIX.md` | Detailed fix for /auth prefix issue |
-| `FIX_REDIRECT_URIS.md` | Detailed fix for post-logout URI issue |
-| `QUICK_FIX_REDIRECTS.md` | Quick 5-minute guide for URI issue |
-| `REDIRECT_FLOW_EXPLAINED.md` | Visual explanation of OAuth2 flow |
-| `REDIRECT_ISSUE_SUMMARY.md` | Technical summary |
-| `update_wso2_callback_urls.sh` | Helper script with instructions |
+| Document                       | Purpose                                |
+| ------------------------------ | -------------------------------------- |
+| `COMPLETE_REDIRECT_FIX.md`     | This file - Complete overview          |
+| `FIX_MISSING_AUTH_PREFIX.md`   | Detailed fix for /auth prefix issue    |
+| `FIX_REDIRECT_URIS.md`         | Detailed fix for post-logout URI issue |
+| `QUICK_FIX_REDIRECTS.md`       | Quick 5-minute guide for URI issue     |
+| `REDIRECT_FLOW_EXPLAINED.md`   | Visual explanation of OAuth2 flow      |
+| `REDIRECT_ISSUE_SUMMARY.md`    | Technical summary                      |
+| `update_wso2_callback_urls.sh` | Helper script with instructions        |
 
 ---
 
 ## Next Steps
 
 1. **Apply Configuration Fix** (5 minutes)
+
    ```bash
    docker-compose -f docker-compose-wso2.yml restart wso2is
    ```
 
 2. **Wait for Startup** (2-3 minutes)
+
    ```bash
    docker logs -f wso2is
    ```
@@ -373,7 +410,7 @@ docker-compose -f docker-compose-wso2.yml up -d wso2is
 ✅ Logout redirects to: `https://letsplaydarts.eu/auth/oidc/logout`  
 ✅ After logout, redirects to home page  
 ✅ No error messages appear  
-✅ User is logged out successfully  
+✅ User is logged out successfully
 
 ---
 

@@ -12,7 +12,7 @@ import requests
 # Configuration
 BASE_URL = "http://localhost:5000"
 TEST_USERNAME = "test_user"
-TEST_PASSWORD = "test_password"
+TEST_PASSWORD = "test_password"  # pragma: allowlist secret
 
 
 class Colors:
@@ -209,7 +209,7 @@ def main():
     print(f"{Colors.BLUE}Mobile App Test Suite{Colors.END}")
     print(f"{Colors.BLUE}{'='*60}{Colors.END}")
     print(f"Testing: {BASE_URL}")
-    print(f"Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")  # type: ignore
 
     # Test server
     if not test_server_running():

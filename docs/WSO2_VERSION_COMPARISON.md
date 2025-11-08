@@ -1,26 +1,27 @@
 # WSO2 Identity Server Version Comparison
+
 ## 5.11.0 vs 7.1.0
 
 ---
 
 ## 📊 Quick Comparison
 
-| Feature | WSO2 IS 5.11.0 (Current) | WSO2 IS 7.1.0 (Latest) |
-|---------|--------------------------|------------------------|
-| **Release Date** | May 2020 | September 2024 |
-| **Support Status** | Available (as of Oct 2025) | Active |
-| **Management UI** | Carbon Console (old) | Modern Web Console |
-| **Console URL** | `/carbon` | `/console` |
-| **Reverse Proxy Support** | Basic | Enhanced |
-| **Configuration** | `deployment.toml` (v1) | `deployment.toml` (v2) |
-| **API Management** | Separate product | Integrated options |
-| **Authentication** | Standard OAuth2/OIDC | Enhanced + App-Native |
-| **MFA Options** | TOTP, SMS, Email | + Passkeys, Push, Magic Link |
-| **AI Features** | ❌ None | ✅ Login Flow AI, Branding AI |
-| **Organizations (B2B)** | ❌ Limited | ✅ Full B2B support |
-| **Docker Image Size** | ~800 MB | ~900 MB |
-| **Startup Time** | ~60 seconds | ~50 seconds |
-| **Memory Usage** | 512MB-1GB | 512MB-1GB |
+| Feature                   | WSO2 IS 5.11.0 (Current)   | WSO2 IS 7.1.0 (Latest)        |
+| ------------------------- | -------------------------- | ----------------------------- |
+| **Release Date**          | May 2020                   | September 2024                |
+| **Support Status**        | Available (as of Oct 2025) | Active                        |
+| **Management UI**         | Carbon Console (old)       | Modern Web Console            |
+| **Console URL**           | `/carbon`                  | `/console`                    |
+| **Reverse Proxy Support** | Basic                      | Enhanced                      |
+| **Configuration**         | `deployment.toml` (v1)     | `deployment.toml` (v2)        |
+| **API Management**        | Separate product           | Integrated options            |
+| **Authentication**        | Standard OAuth2/OIDC       | Enhanced + App-Native         |
+| **MFA Options**           | TOTP, SMS, Email           | + Passkeys, Push, Magic Link  |
+| **AI Features**           | ❌ None                    | ✅ Login Flow AI, Branding AI |
+| **Organizations (B2B)**   | ❌ Limited                 | ✅ Full B2B support           |
+| **Docker Image Size**     | ~800 MB                    | ~900 MB                       |
+| **Startup Time**          | ~60 seconds                | ~50 seconds                   |
+| **Memory Usage**          | 512MB-1GB                  | 512MB-1GB                     |
 
 ---
 
@@ -29,12 +30,14 @@
 ### 1. Modern Management Console
 
 **5.11.0**:
+
 - Old Carbon console (`/carbon`)
 - JSP-based UI
 - Limited mobile support
 - Complex navigation
 
 **7.1.0**:
+
 - Modern React-based console (`/console`)
 - Responsive design
 - Mobile-friendly
@@ -44,6 +47,7 @@
 ### 2. Enhanced Reverse Proxy Support
 
 **5.11.0**:
+
 ```toml
 [server]
 base_path = "https://letsplaydarts.eu/auth"
@@ -53,6 +57,7 @@ proxyPort = 443
 ```
 
 **7.1.0**:
+
 ```toml
 [server]
 base_path = "https://letsplaydarts.eu/auth"
@@ -64,6 +69,7 @@ https_port = 443
 ```
 
 **Benefits**:
+
 - ✅ Better context path handling
 - ✅ Improved URL generation
 - ✅ Easier configuration
@@ -72,6 +78,7 @@ https_port = 443
 ### 3. AI-Powered Features
 
 **NEW in 7.1.0**:
+
 - **Login Flow AI**: Automatically generate authentication flows
 - **Branding AI**: AI-assisted branding customization
 - **Smart Recommendations**: Intelligent security suggestions
@@ -79,6 +86,7 @@ https_port = 443
 ### 4. App-Native Authentication
 
 **NEW in 7.1.0**:
+
 - Direct API-based authentication
 - Better mobile app support
 - Reduced redirects
@@ -87,11 +95,13 @@ https_port = 443
 ### 5. Enhanced Passwordless Authentication
 
 **5.11.0**:
+
 - TOTP
 - Email OTP
 - SMS OTP
 
 **7.1.0** (All of above plus):
+
 - ✅ **Passkeys** (FIDO2/WebAuthn)
 - ✅ **Magic Links**
 - ✅ **Push Notifications**
@@ -100,10 +110,12 @@ https_port = 443
 ### 6. B2B/Multi-Organization Support
 
 **5.11.0**:
+
 - Basic multi-tenancy
 - Limited organization features
 
 **7.1.0**:
+
 - ✅ Full B2B organization management
 - ✅ Hierarchical organizations
 - ✅ Organization-level branding
@@ -113,6 +125,7 @@ https_port = 443
 ### 7. Improved Security
 
 **NEW in 7.1.0**:
+
 - ✅ Enhanced FAPI compliance
 - ✅ Better CORS handling
 - ✅ Improved token security
@@ -122,11 +135,13 @@ https_port = 443
 ### 8. API Improvements
 
 **5.11.0**:
+
 - SCIM 1.1 + 2.0
 - REST APIs (limited)
 - SOAP APIs (legacy)
 
 **7.1.0**:
+
 - ✅ SCIM 2.0 (primary)
 - ✅ Comprehensive REST APIs
 - ✅ GraphQL support (beta)
@@ -143,7 +158,7 @@ https_port = 443
 ✅ **User Data**: Can be migrated  
 ✅ **Basic Configuration**: Similar structure  
 ✅ **LDAP Integration**: Same approach  
-✅ **Database Support**: Same databases supported  
+✅ **Database Support**: Same databases supported
 
 ### What Changes
 
@@ -151,13 +166,13 @@ https_port = 443
 ⚠️ **Configuration Format**: Some parameters renamed  
 ⚠️ **API Endpoints**: Some endpoints updated  
 ⚠️ **Docker Paths**: Different directory structure  
-⚠️ **Health Check**: New endpoint  
+⚠️ **Health Check**: New endpoint
 
 ### What's Removed
 
 ❌ **Carbon Console**: Old `/carbon` UI removed  
 ❌ **Some Legacy APIs**: Deprecated APIs removed  
-❌ **Old Connectors**: Some old connectors retired  
+❌ **Old Connectors**: Some old connectors retired
 
 ---
 
@@ -190,6 +205,7 @@ https_port = 443
 ### For Your Use Case (Darts Game Application)
 
 **Current Setup**:
+
 - Flask web application
 - OAuth2/OIDC authentication
 - Nginx reverse proxy
@@ -199,6 +215,7 @@ https_port = 443
 **Recommendation**: ✅ **UPGRADE to 7.1.0**
 
 **Reasons**:
+
 1. ✅ **Better Reverse Proxy Support**: Solves your current `/auth` context path issues
 2. ✅ **Modern Console**: Easier Service Provider management
 3. ✅ **Security**: Latest security features
@@ -207,6 +224,7 @@ https_port = 443
 6. ✅ **Fresh Start**: Good opportunity for clean configuration
 
 **Approach**: **Fresh Installation** (not migration)
+
 - Easier than migration
 - Cleaner configuration
 - Less risk of issues
@@ -219,24 +237,28 @@ https_port = 443
 ### Recommended Schedule
 
 **Week 1: Preparation**
+
 - Read upgrade guide
 - Backup current setup
 - Document current configuration
 - Test current functionality
 
 **Week 2: Development Testing**
+
 - Set up WSO2 IS 7.1.0 in dev
 - Recreate Service Provider
 - Test all flows
 - Document any issues
 
 **Week 3: Staging Testing**
+
 - Deploy to staging
 - Full integration testing
 - Performance testing
 - Security testing
 
 **Week 4: Production Upgrade**
+
 - Schedule maintenance window
 - Execute upgrade
 - Monitor closely
@@ -248,43 +270,43 @@ https_port = 443
 
 ### Authentication Methods
 
-| Method | 5.11.0 | 7.1.0 |
-|--------|--------|-------|
-| Username/Password | ✅ | ✅ |
-| Social Login (Google, Facebook, etc.) | ✅ | ✅ |
-| SAML Federation | ✅ | ✅ |
-| OIDC Federation | ✅ | ✅ |
-| TOTP (Authenticator App) | ✅ | ✅ |
-| Email OTP | ✅ | ✅ |
-| SMS OTP | ✅ | ✅ |
-| **Passkeys (FIDO2)** | ❌ | ✅ |
-| **Magic Links** | ❌ | ✅ |
-| **Push Notifications** | ❌ | ✅ |
-| **App-Native Auth** | ❌ | ✅ |
+| Method                                | 5.11.0 | 7.1.0 |
+| ------------------------------------- | ------ | ----- |
+| Username/Password                     | ✅     | ✅    |
+| Social Login (Google, Facebook, etc.) | ✅     | ✅    |
+| SAML Federation                       | ✅     | ✅    |
+| OIDC Federation                       | ✅     | ✅    |
+| TOTP (Authenticator App)              | ✅     | ✅    |
+| Email OTP                             | ✅     | ✅    |
+| SMS OTP                               | ✅     | ✅    |
+| **Passkeys (FIDO2)**                  | ❌     | ✅    |
+| **Magic Links**                       | ❌     | ✅    |
+| **Push Notifications**                | ❌     | ✅    |
+| **App-Native Auth**                   | ❌     | ✅    |
 
 ### Management Features
 
-| Feature | 5.11.0 | 7.1.0 |
-|---------|--------|-------|
-| User Management | ✅ | ✅ |
-| Role Management | ✅ | ✅ |
-| Service Provider Management | ✅ | ✅ |
-| Identity Provider Management | ✅ | ✅ |
-| **Organization Management** | ⚠️ Limited | ✅ Full |
-| **Branding Customization** | ⚠️ Basic | ✅ Advanced |
-| **AI-Assisted Configuration** | ❌ | ✅ |
-| **Self-Service Portal** | ✅ Basic | ✅ Enhanced |
+| Feature                       | 5.11.0     | 7.1.0       |
+| ----------------------------- | ---------- | ----------- |
+| User Management               | ✅         | ✅          |
+| Role Management               | ✅         | ✅          |
+| Service Provider Management   | ✅         | ✅          |
+| Identity Provider Management  | ✅         | ✅          |
+| **Organization Management**   | ⚠️ Limited | ✅ Full     |
+| **Branding Customization**    | ⚠️ Basic   | ✅ Advanced |
+| **AI-Assisted Configuration** | ❌         | ✅          |
+| **Self-Service Portal**       | ✅ Basic   | ✅ Enhanced |
 
 ### Developer Experience
 
-| Aspect | 5.11.0 | 7.1.0 |
-|--------|--------|-------|
+| Aspect            | 5.11.0     | 7.1.0            |
+| ----------------- | ---------- | ---------------- |
 | API Documentation | ⚠️ Limited | ✅ Comprehensive |
-| SDKs | ⚠️ Few | ✅ Many |
-| Code Samples | ⚠️ Basic | ✅ Extensive |
-| Developer Portal | ❌ | ✅ |
-| OpenAPI Specs | ⚠️ Partial | ✅ Complete |
-| GraphQL Support | ❌ | ✅ Beta |
+| SDKs              | ⚠️ Few     | ✅ Many          |
+| Code Samples      | ⚠️ Basic   | ✅ Extensive     |
+| Developer Portal  | ❌         | ✅               |
+| OpenAPI Specs     | ⚠️ Partial | ✅ Complete      |
+| GraphQL Support   | ❌         | ✅ Beta          |
 
 ---
 
@@ -310,26 +332,26 @@ See `WSO2_IS_UPGRADE_GUIDE.md` for detailed manual upgrade steps.
 
 ## 📞 Support Resources
 
-- **Documentation**: https://is.docs.wso2.com/en/7.1.0
-- **Community**: https://stackoverflow.com/questions/tagged/wso2is
-- **GitHub**: https://github.com/wso2/product-is
-- **Docker Hub**: https://hub.docker.com/r/wso2/wso2is
-- **Support Matrix**: https://wso2.com/products/support-matrix
+- **Documentation**: <https://is.docs.wso2.com/en/7.1.0>
+- **Community**: <https://stackoverflow.com/questions/tagged/wso2is>
+- **GitHub**: <https://github.com/wso2/product-is>
+- **Docker Hub**: <https://hub.docker.com/r/wso2/wso2is>
+- **Support Matrix**: <https://wso2.com/products/support-matrix>
 
 ---
 
 ## ✅ Decision Matrix
 
-| Factor | Stay on 5.11.0 | Upgrade to 7.1.0 |
-|--------|----------------|------------------|
-| **Security** | ⚠️ Older patches | ✅ Latest security |
-| **Features** | ⚠️ Limited | ✅ Full feature set |
-| **Support** | ⚠️ Declining | ✅ Active |
-| **Effort** | ✅ No work | ⚠️ 2-4 hours |
-| **Risk** | ✅ Known issues | ⚠️ New issues possible |
-| **Future** | ❌ End of life coming | ✅ Long-term support |
-| **Console** | ❌ Old UI | ✅ Modern UI |
-| **Reverse Proxy** | ⚠️ Issues | ✅ Better support |
+| Factor            | Stay on 5.11.0        | Upgrade to 7.1.0       |
+| ----------------- | --------------------- | ---------------------- |
+| **Security**      | ⚠️ Older patches      | ✅ Latest security     |
+| **Features**      | ⚠️ Limited            | ✅ Full feature set    |
+| **Support**       | ⚠️ Declining          | ✅ Active              |
+| **Effort**        | ✅ No work            | ⚠️ 2-4 hours           |
+| **Risk**          | ✅ Known issues       | ⚠️ New issues possible |
+| **Future**        | ❌ End of life coming | ✅ Long-term support   |
+| **Console**       | ❌ Old UI             | ✅ Modern UI           |
+| **Reverse Proxy** | ⚠️ Issues             | ✅ Better support      |
 
 **Verdict**: ✅ **Upgrade Recommended**
 
@@ -339,10 +361,10 @@ See `WSO2_IS_UPGRADE_GUIDE.md` for detailed manual upgrade steps.
 
 ### For WSO2 IS 7.1.0
 
-1. **Quick Start Guide**: https://is.docs.wso2.com/en/latest/quick-start-guide/
+1. **Quick Start Guide**: <https://is.docs.wso2.com/en/latest/quick-start-guide/>
 2. **Video Tutorials**: Search "WSO2 IS 7.0" on YouTube
-3. **Sample Applications**: https://github.com/wso2/samples-is
-4. **Community Forum**: https://discord.gg/wso2
+3. **Sample Applications**: <https://github.com/wso2/samples-is>
+4. **Community Forum**: <https://discord.gg/wso2>
 
 ---
 

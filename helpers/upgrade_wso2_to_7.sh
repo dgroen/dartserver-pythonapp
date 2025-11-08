@@ -91,7 +91,7 @@ base_path = "https://letsplaydarts.eu/auth"
 
 [super_admin]
 username = "admin"
-password = "admin"
+password = "admin"  # pragma: allowlist secret
 create_admin_account = true
 
 # Reverse proxy configuration
@@ -105,20 +105,20 @@ https_port = 443
 type = "h2"
 url = "jdbc:h2:./repository/database/WSO2IDENTITY_DB;DB_CLOSE_ON_EXIT=FALSE;LOCK_TIMEOUT=60000"
 username = "wso2carbon"
-password = "wso2carbon"
+password = "wso2carbon"  # pragma: allowlist secret
 
 [database.shared_db]
 type = "h2"
 url = "jdbc:h2:./repository/database/WSO2SHARED_DB;DB_CLOSE_ON_EXIT=FALSE;LOCK_TIMEOUT=60000"
 username = "wso2carbon"
-password = "wso2carbon"
+password = "wso2carbon"  # pragma: allowlist secret
 
 # User store configuration
 [user_store]
 type = "read_write_ldap_unique_id"
 connection_url = "ldap://localhost:${Ports.EmbeddedLDAP.LDAPServerPort}"
 connection_name = "uid=admin,ou=system"
-connection_password = "admin"
+connection_password = "admin"  # pragma: allowlist secret
 base_dn = "dc=wso2,dc=org"
 
 # OAuth configurations
@@ -237,26 +237,26 @@ read -p "Would you like me to create a backup of docker-compose-wso2.yml and upd
 if [ "$update_compose" = "yes" ]; then
     print_info "Backing up docker-compose-wso2.yml..."
     cp docker-compose-wso2.yml "docker-compose-wso2.yml.backup.$(date +%Y%m%d_%H%M%S)"
-    
+
     print_info "Updating docker-compose-wso2.yml..."
-    
+
     # Update the image version
     sed -i 's|image: wso2/wso2is:5\.11\.0|image: wso2/wso2is:7.1.0|g' docker-compose-wso2.yml
-    
+
     # Update volume paths
     sed -i 's|wso2is-5\.11\.0|wso2is-7.1.0|g' docker-compose-wso2.yml
-    
+
     # Update config path
     sed -i 's|./wso2is-config/deployment\.toml|./wso2is-7-config/deployment.toml|g' docker-compose-wso2.yml
-    
+
     # Update health check
     sed -i 's|https://localhost:9443/carbon/admin/login\.jsp|https://localhost:9443/api/health-check/v1.0/health|g' docker-compose-wso2.yml
-    
+
     # Add new volume (if not exists)
     if ! grep -q "wso2is_7_data:" docker-compose-wso2.yml; then
         sed -i '/^volumes:/a\  wso2is_7_data:' docker-compose-wso2.yml
     fi
-    
+
     print_info "✅ docker-compose-wso2.yml updated"
     print_warning "⚠️  Please review the changes before proceeding!"
     echo ""

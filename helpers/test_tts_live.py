@@ -31,7 +31,7 @@ def test_tts_basic():
 
     # Test configuration
     print("\n2. Testing Configuration...")
-    config = tts.get_config()
+    config = tts.get_config()  # type: ignore
     print(f"   - Enabled: {config['enabled']}")
     print(f"   - Engine: {config['engine']}")
     print(f"   - Speed: {config['speed']}")

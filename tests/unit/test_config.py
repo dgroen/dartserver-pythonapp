@@ -12,7 +12,7 @@ class TestConfigMethods:
         """Test get_environment returns a string"""
         result = Config.get_environment()
         assert isinstance(result, str)
-        assert result in ["production", "development", "staging"]
+        assert result in ["production", "development", "staging", "test"]
 
     def test_is_production_returns_bool(self):
         """Test is_production returns boolean"""
@@ -102,8 +102,8 @@ class TestConfigSecurity:
         assert isinstance(Config.FLASK_USE_SSL, bool)
 
     def test_session_cookie_secure_matches_scheme_when_https(self):
-        """Test SESSION_COOKIE_SECURE should be true for https"""
-        if Config.APP_SCHEME == "https":
+        """Test SESSION_COOKIE_SECURE should be true for https (except localhost)"""
+        if Config.APP_SCHEME == "https" and "localhost" not in Config.APP_DOMAIN:
             assert Config.SESSION_COOKIE_SECURE is True
 
     def test_session_cookie_secure_can_be_false_for_http(self):
@@ -164,4 +164,4 @@ class TestConfigEnvironmentVariable:
 
     def test_environment_is_valid_value(self):
         """Test ENVIRONMENT is a valid value"""
-        assert Config.ENVIRONMENT in ["production", "development", "staging"]
+        assert Config.ENVIRONMENT in ["production", "development", "staging", "test"]

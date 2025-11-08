@@ -1,5 +1,5 @@
-// Connect to SocketIO
-const socket = io();
+// control.js - Control Panel functionality
+// Note: socket is already defined in main.js, so we don't redeclare it here
 
 // DOM Elements
 const gameTypeSelect = document.getElementById('game-type');
@@ -7,6 +7,7 @@ const doubleOutCheckbox = document.getElementById('double-out');
 const newGameBtn = document.getElementById('new-game-btn');
 const playersList = document.getElementById('players-list');
 const playerNameInput = document.getElementById('player-name');
+const playerSearchResults = document.getElementById('player-search-results');
 const addPlayerBtn = document.getElementById('add-player-btn');
 const nextPlayerBtn = document.getElementById('next-player-btn');
 const pauseBtn = document.getElementById('pause-btn');
@@ -17,6 +18,8 @@ const gameStateJson = document.getElementById('game-state-json');
 const showThrowoutAdviceCheckbox = document.getElementById('show-throwout-advice');
 
 let currentGameState = null;
+let selectedUser = null;
+let selectedSearchIndex = -1;  // Track selected search result for keyboard navigation
 
 // Initialize
 socket.on('connect', () => {
@@ -65,11 +68,133 @@ newGameBtn.addEventListener('click', () => {
     });
 });
 
-addPlayerBtn.addEventListener('click', () => {
+// WSO2 User search
+let searchTimeout;
+playerNameInput.addEventListener('input', (e) => {
+    const query = e.target.value.trim();
+    clearTimeout(searchTimeout);
+    selectedSearchIndex = -1;  // Reset keyboard selection on new input
+
+    if (query.length < 2) {
+        playerSearchResults.style.display = 'none';
+        selectedUser = null;
+        return;
+    }
+
+    // Debounce the search
+    searchTimeout = setTimeout(async () => {
+        try {
+            const response = await fetch(`/api/wso2/users/search?q=${encodeURIComponent(query)}`, {
+                credentials: 'include'  // Include session cookies
+            });
+            const data = await response.json();
+
+            if (data.success && data.users && data.users.length > 0) {
+                const html = data.users.map(user => `
+                    <div class="search-result-item"
+                         onclick="selectUser('${user.username}', '${user.name || user.username}', '${user.email || ''}')">
+                        <div class="search-result-name">${user.name || user.username}</div>
+                        <div class="search-result-email">${user.email || user.username}</div>
+                    </div>
+                `).join('');
+                playerSearchResults.innerHTML = html;
+                playerSearchResults.style.display = 'block';
+            } else {
+                playerSearchResults.style.display = 'none';
+                selectedUser = null;
+            }
+        } catch (error) {
+            console.error('Search error:', error);
+            playerSearchResults.style.display = 'none';
+        }
+    }, 300);
+});
+
+// Keyboard navigation for search results
+playerNameInput.addEventListener('keydown', (e) => {
+    const results = playerSearchResults.querySelectorAll('.search-result-item');
+
+    if (results.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedSearchIndex = Math.min(selectedSearchIndex + 1, results.length - 1);
+        updateSearchSelection(results);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedSearchIndex = Math.max(selectedSearchIndex - 1, -1);
+        updateSearchSelection(results);
+    } else if (e.key === 'Enter' && selectedSearchIndex >= 0) {
+        e.preventDefault();
+        results[selectedSearchIndex].click();
+    } else if (e.key === 'Escape') {
+        e.preventDefault();
+        playerSearchResults.style.display = 'none';
+        selectedSearchIndex = -1;
+    }
+});
+
+// Update search result selection highlighting
+function updateSearchSelection(results) {
+    results.forEach((result, index) => {
+        if (index === selectedSearchIndex) {
+            result.classList.add('selected');
+            result.scrollIntoView({ block: 'nearest' });
+        } else {
+            result.classList.remove('selected');
+        }
+    });
+}
+
+// Select WSO2 user from search results
+window.selectUser = function(username, displayName, email) {
+    selectedUser = { username, displayName, email };
+    playerNameInput.value = displayName;
+    playerSearchResults.style.display = 'none';
+    selectedSearchIndex = -1;
+};
+
+// Hide search results when clicking outside
+document.addEventListener('click', (e) => {
+    if (playerSearchResults && e.target !== playerNameInput && !playerSearchResults.contains(e.target)) {
+        playerSearchResults.style.display = 'none';
+        selectedSearchIndex = -1;
+    }
+});
+
+addPlayerBtn.addEventListener('click', async () => {
     const name = playerNameInput.value.trim();
-    if (name) {
-        socket.emit('add_player', { name: name });
-        playerNameInput.value = '';
+
+    if (!name) {
+        alert('Please enter a player name');
+        return;
+    }
+
+    try {
+        const payload = selectedUser
+            ? { username: selectedUser.username }
+            : { username: name };
+
+        const response = await fetch('/api/players', {
+            method: 'POST',
+            credentials: 'include',  // Include session cookies
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            playerNameInput.value = '';
+            selectedUser = null;
+            playerSearchResults.style.display = 'none';
+            // Note: The API endpoint already broadcasts the game state via add_player_with_id,
+            // so we don't need to emit a socket event here. Emitting would duplicate the player.
+        } else {
+            const error = await response.json();
+            alert('Error adding player: ' + (error.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('❌ Exception caught:', error);
+        alert('Failed to add player: ' + error.message);
     }
 });
 
@@ -133,6 +258,21 @@ function updateDisplay(state) {
     // Update throwout advice checkbox state
     if (state.show_throwout_advice !== undefined) {
         showThrowoutAdviceCheckbox.checked = state.show_throwout_advice;
+    }
+
+    // Update throwout advice display
+    const adviceContent = document.getElementById('throwout-advice-content');
+    if (adviceContent) {
+        if (state.throwout_advice && state.show_throwout_advice) {
+            const adviceText = Array.isArray(state.throwout_advice)
+                ? state.throwout_advice.join(' or ')
+                : state.throwout_advice;
+            adviceContent.textContent = adviceText;
+        } else if (state.is_started) {
+            adviceContent.textContent = state.throwout_advice ? '(No finishing needed yet)' : 'No advice available';
+        } else {
+            adviceContent.textContent = 'No active game';
+        }
     }
 }
 

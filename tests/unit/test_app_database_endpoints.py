@@ -25,6 +25,13 @@ class TestDatabaseEndpoints:
             mock_gm.db_service = mock_db_service
             yield mock_gm, mock_db_service
 
+    @pytest.fixture
+    def _mock_auth(self):
+        """Mock authentication to bypass login_required."""
+        with patch("src.core.auth.AUTH_DISABLED", True):
+            yield
+
+    @pytest.mark.usefixtures("_mock_auth")
     def test_get_game_history_success(self, client, mock_game_manager):
         """Test getting game history successfully."""
         _mock_gm, mock_db = mock_game_manager
@@ -45,6 +52,7 @@ class TestDatabaseEndpoints:
         assert data["status"] == "success"
         assert len(data["games"]) == 1
 
+    @pytest.mark.usefixtures("_mock_auth")
     def test_get_game_history_with_limit(self, client, mock_game_manager):
         """Test getting game history with limit parameter."""
         _mock_gm, mock_db = mock_game_manager
@@ -52,8 +60,34 @@ class TestDatabaseEndpoints:
 
         response = client.get("/api/game/history?limit=5")
         assert response.status_code == 200
-        mock_db.get_recent_games.assert_called_once_with(limit=5)
+        # With auth bypass, user is admin, so no filtering (username=None)
+        # unless user param is provided
+        mock_db.get_recent_games.assert_called_once_with(limit=5, username=None)
 
+    @pytest.mark.usefixtures("_mock_auth")
+    def test_get_game_history_filters_by_user(self, client, mock_game_manager):
+        """Test that game history filters by logged-in user for non-admin."""
+        _mock_gm, mock_db = mock_game_manager
+        mock_db.get_recent_games.return_value = []
+
+        # In bypass mode, user is admin, so no filtering should happen unless user param is provided
+        response = client.get("/api/game/history?limit=10")
+        assert response.status_code == 200
+        # Admin without user param should see all games (username=None)
+        mock_db.get_recent_games.assert_called_once_with(limit=10, username=None)
+
+    @pytest.mark.usefixtures("_mock_auth")
+    def test_get_game_history_admin_filter_by_user(self, client, mock_game_manager):
+        """Test that admin can filter by specific user."""
+        _mock_gm, mock_db = mock_game_manager
+        mock_db.get_recent_games.return_value = []
+
+        response = client.get("/api/game/history?limit=10&user=alice")
+        assert response.status_code == 200
+        # Admin with user param should filter by that user
+        mock_db.get_recent_games.assert_called_once_with(limit=10, username="alice")
+
+    @pytest.mark.usefixtures("_mock_auth")
     def test_get_game_history_error(self, client, mock_game_manager):
         """Test game history endpoint when error occurs."""
         _mock_gm, mock_db = mock_game_manager

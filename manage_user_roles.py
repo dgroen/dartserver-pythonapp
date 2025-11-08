@@ -8,14 +8,15 @@ import argparse
 import sys
 
 import requests
+import urllib3
 
 # WSO2 IS Configuration
 WSO2_IS_URL = "https://letsplaydarts.eu/auth"
 WSO2_ADMIN_USER = "admin"
-WSO2_ADMIN_PASSWORD = "admin"
+WSO2_ADMIN_PASSWORD = "admin"  # pragma: allowlist secret
 
 # Disable SSL warnings for self-signed certificates
-requests.packages.urllib3.disable_warnings()
+urllib3.disable_warnings()
 
 
 class WSO2Manager:
@@ -32,7 +33,11 @@ class WSO2Manager:
         url = f"{self.base_url}/scim2/Users"
         params = {"filter": f'userName eq "{username}"'}
         response = requests.get(
-            url, auth=self.auth, headers=self.headers, params=params, verify=False
+            url,
+            auth=self.auth,
+            headers=self.headers,
+            params=params,
+            verify=False,
         )
 
         if response.status_code == 200:
@@ -46,7 +51,11 @@ class WSO2Manager:
         url = f"{self.base_url}/scim2/Groups"
         params = {"filter": f'displayName eq "{group_name}"'}
         response = requests.get(
-            url, auth=self.auth, headers=self.headers, params=params, verify=False
+            url,
+            auth=self.auth,
+            headers=self.headers,
+            params=params,
+            verify=False,
         )
 
         if response.status_code == 200:
@@ -63,7 +72,11 @@ class WSO2Manager:
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
         }
         response = requests.post(
-            url, auth=self.auth, headers=self.headers, json=payload, verify=False
+            url,
+            auth=self.auth,
+            headers=self.headers,
+            json=payload,
+            verify=False,
         )
 
         if response.status_code == 201:
@@ -84,7 +97,11 @@ class WSO2Manager:
             ],
         }
         response = requests.patch(
-            url, auth=self.auth, headers=self.headers, json=payload, verify=False
+            url,
+            auth=self.auth,
+            headers=self.headers,
+            json=payload,
+            verify=False,
         )
         return response.status_code in [200, 204]
 
@@ -101,7 +118,11 @@ class WSO2Manager:
             ],
         }
         response = requests.patch(
-            url, auth=self.auth, headers=self.headers, json=payload, verify=False
+            url,
+            auth=self.auth,
+            headers=self.headers,
+            json=payload,
+            verify=False,
         )
         return response.status_code in [200, 204]
 
@@ -215,13 +236,13 @@ def main():
 Examples:
   # Add gamemaster role to Dennis
   python3 manage_user_roles.py add Dennis gamemaster
-  
+
   # Remove admin role from Dennis
   python3 manage_user_roles.py remove Dennis admin
-  
+
   # List all roles for Dennis
   python3 manage_user_roles.py list Dennis
-  
+
 Available roles:
   - gamemaster: Access to control panel and game management
   - admin: Full system access
@@ -255,7 +276,7 @@ Available roles:
 ╔══════════════════════════════════════════════════════════════╗
 ║   WSO2 Identity Server - Role Management CLI                ║
 ╚══════════════════════════════════════════════════════════════╝
-    """
+    """,
     )
 
     # Initialize manager

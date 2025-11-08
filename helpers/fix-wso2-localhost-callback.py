@@ -44,7 +44,7 @@ def get_wso2_service_providers(verify_ssl: bool = False) -> dict | None:
         if response.status_code == 200:
             providers = response.json()
             logger.info(f"✓ Found {len(providers.get('applications', []))} service providers")
-            return providers
+            return providers  # type: ignore
         logger.error(f"Failed to get service providers: {response.status_code}")
         logger.error(f"Response: {response.text}")
         return None
@@ -69,7 +69,7 @@ def find_darts_app(providers: dict) -> dict | None:
         name = app.get("name", "").lower()
         if "dart" in name or "localhost" in name or "darts" in name.lower():
             logger.info(f"\n✓ Found Darts app: {app.get('name')}")
-            return app
+            return app  # type: ignore
 
     # If not found, ask user to select
     if apps:
@@ -81,7 +81,7 @@ def find_darts_app(providers: dict) -> dict | None:
         try:
             choice = int(input("\nSelect application number (or -1 to cancel): "))
             if choice >= 0 and choice < len(apps):
-                return apps[choice]
+                return apps[choice]  # type: ignore
         except ValueError:
             pass
 
@@ -177,7 +177,7 @@ def main():
     app_name = app.get("name")
 
     # Step 3: Update callback URLs
-    if update_callback_urls(app_id, LOCALHOST_CALLBACK, verify_ssl=False):
+    if update_callback_urls(app_id, LOCALHOST_CALLBACK, verify_ssl=False):  # type: ignore
         print("\n" + "=" * 60)
         print("✅ SUCCESS!")
         print("=" * 60)

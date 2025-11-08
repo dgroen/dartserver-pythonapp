@@ -7,9 +7,11 @@ Successfully implemented a complete multi-environment configuration system that 
 ## What Was Implemented
 
 ### 1. New Configuration Module
+
 **File**: `src/config.py` (34 lines, 97.5% test coverage)
 
 A centralized configuration class that:
+
 - Auto-generates URLs from two simple variables: `APP_DOMAIN` and `APP_SCHEME`
 - Detects environment (production/development/staging)
 - Auto-derives security settings based on URL scheme
@@ -17,6 +19,7 @@ A centralized configuration class that:
 - Works with both reverse proxies (nginx) and direct connections
 
 **Key Features**:
+
 ```python
 Config.ENVIRONMENT        # "production", "development", or "staging"
 Config.APP_DOMAIN        # "letsplaydarts.eu" or "dev.letsplaydarts.eu"
@@ -29,9 +32,11 @@ Config.get_app_url("/api/games")  # URL builder
 ```
 
 ### 2. Enhanced Authentication Module
+
 **File**: `auth.py` (modified)
 
 Changes:
+
 - Imports `Config` class for environment-aware defaults
 - Uses `Config.CALLBACK_URL` instead of hardcoded redirect URI
 - Improved `get_dynamic_redirect_uri()` function with:
@@ -43,9 +48,11 @@ Changes:
 **Result**: OAuth2 redirect URIs automatically adapt to the environment
 
 ### 3. Enhanced Flask App
+
 **File**: `app.py` (modified)
 
 Changes:
+
 - Imports `Config` class
 - Uses `Config.SESSION_COOKIE_SECURE` for security settings
 - Sets `SWAGGER_HOST` from Config
@@ -55,9 +62,11 @@ Changes:
 **Result**: Security settings automatically adjust based on environment
 
 ### 4. Environment Variables Configuration
+
 **Files**: `.env`, `.env.example` (modified)
 
 Added three simple configuration variables:
+
 ```env
 ENVIRONMENT=production              # environment name
 APP_DOMAIN=letsplaydarts.eu        # your domain (no scheme)
@@ -65,13 +74,16 @@ APP_SCHEME=https                    # http or https
 ```
 
 **Auto-Generated** from the above (no need to set manually):
+
 - `APP_URL`
 - `CALLBACK_URL`
 - `LOGOUT_REDIRECT_URL`
 - `SESSION_COOKIE_SECURE` (if not explicitly set)
 
 ### 5. Comprehensive Documentation
+
 **Files Created**:
+
 1. **`docs/MULTI_ENVIRONMENT_SETUP.md`** (400+ lines)
    - Complete configuration reference
    - All environment variables explained
@@ -102,9 +114,11 @@ APP_SCHEME=https                    # http or https
    - For developers on their machines
 
 ### 6. Unit Tests for Configuration
+
 **File**: `tests/unit/test_config.py` (26 tests, 97.5% coverage)
 
 Comprehensive test suite covering:
+
 - Environment detection methods
 - URL generation and consistency
 - Security settings
@@ -151,7 +165,7 @@ Development:
   APP_SCHEME=http
   SESSION_COOKIE_SECURE=false (auto)
   FLASK_DEBUG=true
-  
+
 Production:
   APP_SCHEME=https
   SESSION_COOKIE_SECURE=true (auto)
@@ -161,6 +175,7 @@ Production:
 ## Quick Start Examples
 
 ### Production Setup
+
 ```bash
 # Edit .env:
 ENVIRONMENT=production
@@ -175,6 +190,7 @@ python app.py
 ```
 
 ### Development Setup
+
 ```bash
 # Edit .env:
 ENVIRONMENT=development
@@ -188,6 +204,7 @@ python app.py
 ```
 
 ### Local Testing
+
 ```bash
 # Edit .env:
 ENVIRONMENT=development
@@ -203,6 +220,7 @@ python app.py
 ## Testing
 
 ### All Tests Pass ✅
+
 ```bash
 cd /data/dartserver-pythonapp
 python -m pytest tests/ -v
@@ -210,6 +228,7 @@ python -m pytest tests/ -v
 ```
 
 ### Config Module Tests (26 tests)
+
 ```bash
 python -m pytest tests/unit/test_config.py -v
 # Coverage: 97.5%
@@ -217,12 +236,14 @@ python -m pytest tests/unit/test_config.py -v
 ```
 
 ### Linting ✅
+
 ```bash
 python -m flake8 src/config.py auth.py
 # No issues found
 ```
 
 ### Security ✅
+
 ```bash
 python -m bandit src/config.py auth.py
 # No security issues found
@@ -231,6 +252,7 @@ python -m bandit src/config.py auth.py
 ## Files Modified/Created
 
 ### Created
+
 - `src/config.py` - Configuration module
 - `tests/unit/test_config.py` - Configuration tests
 - `docs/MULTI_ENVIRONMENT_SETUP.md` - Comprehensive guide
@@ -240,6 +262,7 @@ python -m bandit src/config.py auth.py
 - `.env.local.example` - Local testing template
 
 ### Modified
+
 - `auth.py` - Import Config, use for redirect URIs
 - `app.py` - Import Config, use for security settings
 - `.env` - Added new configuration variables
@@ -290,6 +313,7 @@ Your Application
 ## Migration Path
 
 For existing deployments:
+
 1. Update `.env` with new variables (3 lines)
 2. Remove hardcoded redirect URIs (optional, kept for compatibility)
 3. Restart application
@@ -317,10 +341,11 @@ For existing deployments:
 3. **Update** your `.env` file with appropriate values
 
 4. **Test** with different environments:
+
    ```bash
    # Production mode
    ENVIRONMENT=production python app.py
-   
+
    # Development mode
    ENVIRONMENT=development python app.py
    ```
@@ -331,6 +356,7 @@ For existing deployments:
 ## Support
 
 For issues or questions:
+
 1. Check the logs for configuration values
 2. Review `docs/MULTI_ENVIRONMENT_SETUP.md` troubleshooting section
 3. Verify `.env` file syntax

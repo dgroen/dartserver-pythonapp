@@ -1,0 +1,122 @@
+version: "3.8"
+
+# Test Environment Override
+# This file extends docker-compose-wso2.yml for test.letsplaydarts.eu
+# Usage: docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d
+
+services:
+  # Main Darts Application - Test Configuration
+  darts-app:
+    environment:
+      # Application Configuration
+      ENVIRONMENT: test
+      APP_DOMAIN: test.letsplaydarts.eu
+      APP_SCHEME: https
+      FLASK_DEBUG: "True"
+      FLASK_USE_SSL: "False" # Nginx terminates SSL, no need for Flask SSL
+      SECRET_KEY: test-app-secret-key-for-testing-only
+
+      # Dartboard Configuration for Test
+      DARTBOARD_SENDS_ACTUAL_SCORE: "True"
+
+      # Database - Use test database (Docker internal networking with service name)
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dartsdbtest # pragma: allowlist secret
+
+      # RabbitMQ - Use test exchange (internal Docker service naming)
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest # pragma: allowlist secret
+      RABBITMQ_VHOST: /
+      RABBITMQ_EXCHANGE: darts_exchange_test
+
+      # WSO2 - Test configuration
+      # WSO2_IS_URL: Public URL for browser redirects (authorize, logout)
+      WSO2_IS_URL: https://test.letsplaydarts.eu/auth
+      # WSO2_IS_INTERNAL_URL: Internal Docker network URL for backend API calls (introspection, token endpoint)
+      WSO2_IS_INTERNAL_URL: https://wso2is:9443
+      WSO2_CLIENT_ID: QG32mHju2Gs5JJTh4RO60982cxsa
+      WSO2_CLIENT_SECRET: DZfn3qolUxKeXQbJ_7bwhmfZNLWm8wdVwS5_1oR12YAa # pragma: allowlist secret
+      WSO2_REDIRECT_URI: https://test.letsplaydarts.eu/callback
+      WSO2_POST_LOGOUT_REDIRECT_URI: https://test.letsplaydarts.eu/
+      WSO2_IS_VERIFY_SSL: "False"
+
+      # TTS - Disabled for test
+      TTS_ENABLED: "false"
+      TTS_VOLUME: "0.0"
+
+      # Flask Configuration
+      FLASK_HOST: 0.0.0.0
+      FLASK_PORT: 5000
+
+      # Session Configuration
+      SESSION_COOKIE_SECURE: "False" # Nginx terminates SSL; safe inside Docker network
+      SESSION_COOKIE_SAMESITE: Lax
+      SESSION_COOKIE_HTTPONLY: "True"
+
+      # Authentication
+      AUTH_DISABLED: "False"
+
+      # Swagger
+      SWAGGER_HOST: test.letsplaydarts.eu
+
+      # Token Validation
+      JWT_VALIDATION_MODE: introspection
+      WSO2_IS_INTROSPECT_USER: admin
+      WSO2_IS_INTROSPECT_PASSWORD: admin # pragma: allowlist secret
+
+      # RabbitMQ Topic for test
+      RABBITMQ_TOPIC: darts.scores.#
+
+      # Test-specific TTS Engine settings (disabled but configured)
+      TTS_ENGINE: gtts
+      TTS_SPEED: "150"
+      TTS_VOICE: default
+
+  # API Gateway - Test Configuration
+  api-gateway:
+    environment:
+      # RabbitMQ - Use test exchange (internal Docker service naming)
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest # pragma: allowlist secret
+      RABBITMQ_VHOST: /
+      RABBITMQ_EXCHANGE: darts_exchange_test
+      RABBITMQ_TOPIC: darts.scores.#
+
+      # WSO2 Configuration
+      WSO2_IS_URL: https://wso2is:9443
+      WSO2_IS_CLIENT_ID: z9tDR_MVfS_rHKBlqZ_6Re_TaJga
+      WSO2_IS_CLIENT_SECRET: lQCbqtHliRy3j_POcCRxm9j7Cj7VqTx6ehRXnNaesUca # pragma: allowlist secret
+      WSO2_IS_INTROSPECT_USER: admin
+      WSO2_IS_INTROSPECT_PASSWORD: admin # pragma: allowlist secret
+
+      # Token Validation
+      JWT_VALIDATION_MODE: introspection
+
+      # Flask Configuration
+      FLASK_DEBUG: "True"
+      FLASK_ENV: test
+      SECRET_KEY: test-gateway-secret-key-for-testing-only
+      API_GATEWAY_HOST: 0.0.0.0
+      API_GATEWAY_PORT: 8080
+
+      # Swagger
+      SWAGGER_HOST: test.letsplaydarts.eu
+
+  # WSO2 Identity Server - Test Configuration (minimal overrides)
+  wso2is:
+    # Uses base configuration from docker-compose-wso2.yml
+    # Test environment uses same WSO2IS instance
+
+  # WSO2 API Manager - Test Configuration (minimal overrides)
+  wso2apim:
+    # Uses base configuration from docker-compose-wso2.yml
+    # Test environment uses same APIM instance
+
+  # Nginx Reverse Proxy - Test Configuration
+  nginx:
+    environment:
+      ENVIRONMENT: test
+      DOMAIN: test.letsplaydarts.eu

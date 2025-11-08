@@ -86,6 +86,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ## 🎨 Color Scheme
 
 ### Primary Colors
+
 ```
 ┌──────────────────────────────────────┐
 │ Header Gradient                      │
@@ -114,6 +115,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ```
 
 ### Background Effects
+
 ```
 ┌──────────────────────────────────────┐
 │ Card Background                      │
@@ -129,6 +131,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ### Buttons
 
 #### Primary Button (Active)
+
 ```
 ┌─────────────────────────────────────┐
 │         Start Game                  │  Blue gradient
@@ -137,6 +140,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ```
 
 #### Primary Button (Hover)
+
 ```
 ┌─────────────────────────────────────┐
 │         Start Game                  │  Lifted (translateY -5px)
@@ -145,6 +149,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ```
 
 #### Secondary Button
+
 ```
 ┌─────────────────────────────────────┐
 │         Refresh                     │  Transparent bg
@@ -153,6 +158,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ```
 
 #### Disabled Button
+
 ```
 ┌─────────────────────────────────────┐
 │         Next Player                 │  Gray
@@ -163,6 +169,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ### Form Inputs
 
 #### Text Input (Normal)
+
 ```
 ┌─────────────────────────────────────┐
 │ Player Name                         │  Glassmorphism bg
@@ -171,6 +178,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ```
 
 #### Text Input (Focus)
+
 ```
 ┌─────────────────────────────────────┐
 │ Player Name█                        │  Blue glow
@@ -179,6 +187,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ```
 
 #### Select Dropdown
+
 ```
 ┌─────────────────────────────────────┐
 │ 501                              ▼  │  Glassmorphism bg
@@ -188,6 +197,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ### Player Items
 
 #### Inactive Player
+
 ```
 ┌─────────────────────────────────────┐
 │   Player 2              Score: 501  │  Normal state
@@ -195,6 +205,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ```
 
 #### Active Player
+
 ```
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃ ▶ Player 1              Score: 501 ┃  Red border & glow
@@ -206,6 +217,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ## 🔔 Toast Notifications
 
 ### Success Toast
+
 ```
 ┌─────────────────────────────────────┐
 │ ✅ Game started successfully!       │  Green background
@@ -213,6 +225,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ```
 
 ### Error Toast
+
 ```
 ┌─────────────────────────────────────┐
 │ ❌ Failed to start game             │  Red background
@@ -220,6 +233,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ```
 
 ### Warning Toast
+
 ```
 ┌─────────────────────────────────────┐
 │ ⚠️ Please add at least 2 players    │  Orange background
@@ -227,6 +241,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ```
 
 ### Info Toast
+
 ```
 ┌─────────────────────────────────────┐
 │ ℹ️ Connecting to server...          │  Blue background
@@ -238,6 +253,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ## 📱 Responsive Breakpoints
 
 ### Mobile Portrait (< 768px)
+
 ```
 ┌─────────────┐
 │   Header    │  Full width
@@ -255,6 +271,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ```
 
 ### Tablet/Desktop (≥ 768px)
+
 ```
 ┌─────────────────────────────────┐
 │           Header                │  Full width
@@ -273,6 +290,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ## 🎭 Animation States
 
 ### Loading State
+
 ```
 ┌─────────────────────────────────────┐
 │         ⟳ Starting Game...          │  Spinning icon
@@ -281,6 +299,7 @@ This document provides a visual reference for the Mobile Game Master interface.
 ```
 
 ### Transition States
+
 ```
 Button Press:    scale(0.98)     ← Pressed down
 Button Hover:    translateY(-5px) ← Lifted up
@@ -293,21 +312,25 @@ Toast Exit:      opacity(1) → opacity(0)
 ## 🎨 Status Indicators
 
 ### Online Status
+
 ```
 ● Online    ← Green pulsing dot
 ```
 
 ### Offline Status
+
 ```
 ● Offline   ← Gray static dot
 ```
 
 ### Game Active
+
 ```
 🎮 Game: 501 | Current: Player 1
 ```
 
 ### No Game
+
 ```
 🎮 No active game
 ```
@@ -317,6 +340,7 @@ Toast Exit:      opacity(1) → opacity(0)
 ## 📐 Spacing & Sizing
 
 ### Touch Targets
+
 ```
 Minimum Size: 44x44px
 Recommended: 48x48px
@@ -324,6 +348,7 @@ Large Buttons: 100% width × 48px height
 ```
 
 ### Padding
+
 ```
 Section Padding:  1.5rem (24px)
 Card Padding:     1rem (16px)
@@ -332,6 +357,7 @@ Input Padding:    0.75rem (12px)
 ```
 
 ### Gaps
+
 ```
 Section Gap:      1rem (16px)
 Element Gap:      0.75rem (12px)
@@ -339,6 +365,7 @@ Form Gap:         0.5rem (8px)
 ```
 
 ### Border Radius
+
 ```
 Cards:            15px
 Buttons:          8px
@@ -351,6 +378,7 @@ Toast:            8px
 ## 🎬 User Flow Examples
 
 ### Starting a New Game
+
 ```
 1. User opens /mobile/gamemaster
    ↓
@@ -382,6 +410,7 @@ Toast:            8px
 ```
 
 ### Advancing to Next Player
+
 ```
 1. Game is active, Player 1 is current
    ↓
@@ -401,6 +430,7 @@ Toast:            8px
 ```
 
 ### Submitting Manual Score
+
 ```
 1. User scrolls to "Manual Score Entry"
    ↓
@@ -432,21 +462,25 @@ Toast:            8px
 ### Priority Levels
 
 #### Level 1: Critical Actions
+
 - **Start Game** button (largest, most prominent)
 - **Next Player** button (primary action during game)
 - **Active Player** indicator (red glow, impossible to miss)
 
 #### Level 2: Important Information
+
 - **Status Card** (always visible at top)
 - **Player List** (shows current game state)
 - **Game Controls** (pause, end game)
 
 #### Level 3: Secondary Actions
+
 - **Add Player** (available but not primary)
 - **Manual Score** (advanced feature)
 - **Refresh** button (utility)
 
 #### Level 4: Reference Information
+
 - **Game State JSON** (for debugging/advanced users)
 - **Helper text** (form hints)
 
@@ -464,6 +498,7 @@ Box Shadow: 0 8px 32px rgba(0, 0, 0, 0.1)
 ```
 
 This creates a frosted glass effect that:
+
 - ✅ Looks modern and premium
 - ✅ Maintains readability
 - ✅ Creates visual depth
@@ -474,16 +509,19 @@ This creates a frosted glass effect that:
 ## 📱 Mobile-Specific Features
 
 ### Touch Feedback
+
 - **Tap**: Button scales down (0.98)
 - **Hold**: No additional effect (prevents accidental actions)
 - **Swipe**: Smooth scrolling with momentum
 
 ### Keyboard Handling
+
 - **Input Focus**: Keyboard slides up
 - **Form Submit**: Keyboard dismisses
 - **Scroll**: Page adjusts to keep input visible
 
 ### Orientation Support
+
 - **Portrait**: Single column layout (default)
 - **Landscape**: May show two columns on larger screens
 - **Rotation**: Layout adjusts smoothly

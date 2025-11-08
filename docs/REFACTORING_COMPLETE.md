@@ -1,6 +1,7 @@
 # Darts App Modular Refactoring - COMPLETE ✅
 
 ## Summary
+
 Successfully refactored the Darts Game Web Application repository into a modular `/src` directory structure with clear separation of concerns. All 356 tests passing.
 
 ## New Directory Structure
@@ -37,6 +38,7 @@ Successfully refactored the Darts Game Web Application repository into a modular
 ## Key Changes
 
 ### 1. Module Reorganization
+
 - **Core utilities** moved to `/src/core/` - authentication, database, configuration
 - **Flask application** moved to `/src/app/` - main app, game manager, mobile service
 - **Game logic** moved to `/src/games/` - game implementations
@@ -44,7 +46,9 @@ Successfully refactored the Darts Game Web Application repository into a modular
 - **API structure** prepared in `/src/api/` - ready for future REST API expansion
 
 ### 2. Backward Compatibility
+
 Created compatibility wrapper files at root level and original locations:
+
 - `app.py` → re-exports from `src.app.app`
 - `auth.py` → re-exports from `src.core.auth`
 - `database_models.py` → re-exports from `src.core.database_models`
@@ -57,14 +61,18 @@ Created compatibility wrapper files at root level and original locations:
 This allows existing code to continue working without modification while using new modular structure.
 
 ### 3. New Entry Point
+
 **`run.py`** - New recommended entry point that imports from `src.app.app`
+
 ```bash
 python run.py    # New way (recommended)
 python app.py    # Old way (still works via compatibility wrapper)
 ```
 
 ### 4. Flask Configuration Updates
+
 Fixed Flask template and static folder paths in `/src/app/app.py`:
+
 - Template folder: `../../templates`
 - Static folder: `../../static`
 - This ensures templates/static are found regardless of import location
@@ -72,9 +80,11 @@ Fixed Flask template and static folder paths in `/src/app/app.py`:
 ## Test Results
 
 ### Before Refactoring
+
 - Starting point: Multiple scattered Python files at root level
 
 ### After Refactoring
+
 ```
 ✅ 356 TESTS PASSING (100%)
 - 344 Unit tests
@@ -83,6 +93,7 @@ Fixed Flask template and static folder paths in `/src/app/app.py`:
 ```
 
 ### Test Fixes Applied
+
 1. Updated all `@patch` decorators to use new module paths
    - `"auth."` → `"src.core.auth."`
    - `"app."` → `"src.app.app."`
@@ -101,6 +112,7 @@ Fixed Flask template and static folder paths in `/src/app/app.py`:
 ## Files Modified
 
 ### Test Files Updated (with new import paths)
+
 - `tests/conftest.py` - Updated imports, added AUTH_DISABLED=false
 - `tests/unit/test_app_database_endpoints.py` - Fixed patch paths
 - `tests/unit/test_auth.py` - Fixed 50+ patch decorators
@@ -109,11 +121,13 @@ Fixed Flask template and static folder paths in `/src/app/app.py`:
 - All other test files - Updated for new module locations
 
 ### Source Files Reorganized
+
 - Moved 10+ Python modules into `/src/` structure
 - Created `__init__.py` files in all subdirectories
 - Added compatibility wrapper files
 
 ### Configuration Files
+
 - `run.py` - New entry point created
 - `alembic/env.py` - Updated database model import
 - `db_manage.py` - Updated database model import
@@ -121,6 +135,7 @@ Fixed Flask template and static folder paths in `/src/app/app.py`:
 ## How to Use
 
 ### Running the Application
+
 ```bash
 # Recommended way
 python run.py
@@ -130,6 +145,7 @@ python app.py
 ```
 
 ### Running Tests
+
 ```bash
 # Run all tests
 pytest
@@ -145,6 +161,7 @@ pytest tests/unit/test_auth.py::TestValidateToken::test_validate_token_jwks_succ
 ```
 
 ### Running Linting/Formatting
+
 ```bash
 # Format code
 python -m black .

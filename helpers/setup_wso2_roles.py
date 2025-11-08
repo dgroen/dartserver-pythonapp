@@ -11,10 +11,10 @@ import requests
 # WSO2 IS Configuration
 WSO2_IS_URL = "https://letsplaydarts.eu/auth"
 WSO2_ADMIN_USER = "admin"
-WSO2_ADMIN_PASSWORD = "admin"
+WSO2_ADMIN_PASSWORD = "admin"  # pragma: allowlist secret
 
 # Disable SSL warnings for self-signed certificates
-requests.packages.urllib3.disable_warnings()
+requests.packages.urllib3.disable_warnings()  # type: ignore
 
 
 class WSO2RoleManager:
@@ -33,7 +33,11 @@ class WSO2RoleManager:
 
         print(f"🔍 Searching for user: {username}")
         response = requests.get(
-            url, auth=self.auth, headers=self.headers, params=params, verify=False
+            url,
+            auth=self.auth,
+            headers=self.headers,
+            params=params,
+            verify=False,
         )
 
         if response.status_code == 200:
@@ -55,7 +59,11 @@ class WSO2RoleManager:
 
         print(f"🔍 Searching for group: {group_name}")
         response = requests.get(
-            url, auth=self.auth, headers=self.headers, params=params, verify=False
+            url,
+            auth=self.auth,
+            headers=self.headers,
+            params=params,
+            verify=False,
         )
 
         if response.status_code == 200:
@@ -81,7 +89,11 @@ class WSO2RoleManager:
 
         print(f"➕ Creating group: {group_name}")
         response = requests.post(
-            url, auth=self.auth, headers=self.headers, json=payload, verify=False
+            url,
+            auth=self.auth,
+            headers=self.headers,
+            json=payload,
+            verify=False,
         )
 
         if response.status_code == 201:
@@ -114,7 +126,11 @@ class WSO2RoleManager:
 
         print(f"👤 Adding user '{user_name}' to group '{group_name}'")
         response = requests.patch(
-            url, auth=self.auth, headers=self.headers, json=payload, verify=False
+            url,
+            auth=self.auth,
+            headers=self.headers,
+            json=payload,
+            verify=False,
         )
 
         if response.status_code in [200, 204]:
@@ -197,7 +213,7 @@ def main():
 ╔══════════════════════════════════════════════════════════════╗
 ║   WSO2 Identity Server - Darts Game Role Configuration      ║
 ╚══════════════════════════════════════════════════════════════╝
-    """
+    """,
     )
 
     # Initialize manager

@@ -5,6 +5,7 @@ This guide explains how to view game results when developing locally without aut
 ## Overview
 
 The application now includes:
+
 - ✅ **Web Results Page** at `/history` - View your game history with statistics
 - ✅ **Mobile Results Page** at `/mobile/results` - Mobile-optimized game history and leaderboards
 - ✅ **REST API Endpoints** for fetching game data
@@ -22,6 +23,7 @@ python helpers/generate_sample_game_data.py
 ```
 
 Output:
+
 ```
 🎯 Darts Game - Sample Data Generator
 ==================================================
@@ -46,26 +48,28 @@ Output:
 ### 2. Access the Results Pages
 
 #### Web Interface
-- **Main Game Board**: http://localhost:5000/
+
+- **Main Game Board**: <http://localhost:5000/>
   - New navigation links to History and Control Panel
   - 📊 Game History button
   - ⚙️ Control Panel button
 
-- **Game History**: http://localhost:5000/history
+- **Game History**: <http://localhost:5000/history>
   - Statistics dashboard (total games, wins, win rate, average score)
   - Filter by game type (301, 401, 501, Cricket)
   - Game cards showing all players and results
 
-- **Control Panel**: http://localhost:5000/control
+- **Control Panel**: <http://localhost:5000/control>
   - New navigation links at the top
   - 🎮 Main Game and 📊 Game History buttons
 
 #### Mobile Interface
-- **Mobile App Main**: http://localhost:5000/mobile
+
+- **Mobile App Main**: <http://localhost:5000/mobile>
   - New Game Results action card
   - Link in navigation menu
 
-- **Mobile Results**: http://localhost:5000/mobile/results
+- **Mobile Results**: <http://localhost:5000/mobile/results>
   - 📜 Your History tab - Past game results
   - 🔥 Active Games tab - Real-time leaderboard
   - Filter by game type
@@ -76,6 +80,7 @@ Output:
 When `AUTH_DISABLED=true`, all endpoints are automatically available:
 
 #### Get Player History
+
 ```bash
 curl http://localhost:5000/api/player/history
 # Response:
@@ -95,6 +100,7 @@ curl http://localhost:5000/api/player/history
 ```
 
 #### Get Player Statistics
+
 ```bash
 curl http://localhost:5000/api/player/statistics
 # Response:
@@ -112,6 +118,7 @@ curl http://localhost:5000/api/player/statistics
 ```
 
 #### Get Active Games
+
 ```bash
 curl http://localhost:5000/api/active-games
 # Response:
@@ -124,6 +131,7 @@ curl http://localhost:5000/api/active-games
 ## Database Requirements
 
 The sample data generator requires:
+
 - ✅ Database URL configured in `.env` or environment
 - ✅ Database tables created (run migrations)
 - ✅ GameType records (301, 401, 501, Cricket)
@@ -149,6 +157,7 @@ AUTH_DISABLED=true
 ## Features
 
 ### Statistics Dashboard
+
 - Total games played
 - Total wins
 - Win rate percentage
@@ -156,11 +165,13 @@ AUTH_DISABLED=true
 - Per-game-type breakdown
 
 ### Game Filtering
+
 - Filter by game type (301, 401, 501, Cricket)
 - View specific game types or all games
 - Real-time leaderboard in mobile
 
 ### Game Information
+
 - Start and end times
 - All players involved
 - Final scores
@@ -168,6 +179,7 @@ AUTH_DISABLED=true
 - Double-out setting
 
 ### Mobile Features
+
 - Tab-based navigation
 - Touch-friendly interface
 - Real-time active games leaderboard
@@ -177,16 +189,19 @@ AUTH_DISABLED=true
 ## Troubleshooting
 
 ### No results appearing?
+
 1. Generate sample data: `python helpers/generate_sample_game_data.py`
 2. Verify database connection is working
 3. Check that games are in database: `SELECT COUNT(*) FROM gameresults;`
 
 ### Database errors?
+
 1. Ensure DATABASE_URL is set in `.env`
 2. Run migrations: `python db_manage.py init`
 3. Verify PostgreSQL is running
 
 ### Auth bypass not working?
+
 1. Set `AUTH_DISABLED=true` in environment
 2. Restart Flask app
 3. Check Flask logs for messages about auth being bypassed
