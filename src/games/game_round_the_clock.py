@@ -83,7 +83,6 @@ class GameRoundTheClock:
         Args:
             player_id: ID of the player
             base_score: Base score value (or 25 for bull)
-            multiplier: Multiplier value (1, 2, or 3)
             multiplier_type: Type of multiplier (SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL)
 
         Returns:
