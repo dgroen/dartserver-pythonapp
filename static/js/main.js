@@ -166,19 +166,34 @@ if (nextPlayerButton) {
 
 // Handle Next Player button click
 function handleNextPlayerClick() {
+    console.log('Button clicked!');
+    console.log('currentGame:', currentGame);
+    
     if (!socket || !currentGame) {
-        console.error('Cannot end turn: no active game or socket connection');
+        console.error('Cannot continue: no active game or socket connection');
         return;
     }
 
+    console.log('Game is_paused:', currentGame.is_paused);
+    
+    // If game is paused (waiting for continue), just emit next_player
+    if (currentGame.is_paused) {
+        console.log('Emitting next_player event');
+        socket.emit('next_player');
+        return;
+    }
+
+    // Game is active - end turn early (record remaining throws as misses)
     // For single-player games, skip confirmation
     const isSinglePlayer = currentGame.players && currentGame.players.length === 1;
+    
+    console.log('Game is active, ending turn early. Single player:', isSinglePlayer);
     
     if (isSinglePlayer) {
         socket.emit('end_turn_early');
     } else {
         // Confirm action for multi-player games
-        if (confirm('End your turn? Any remaining throws will be recorded as misses.')) {
+        if (confirm('End your turn early? Any remaining throws will be recorded as misses.')) {
             socket.emit('end_turn_early');
         }
     }
@@ -196,10 +211,11 @@ function updateNextPlayerButton(state) {
         return;
     }
 
-    // Show button if user is gamemaster
+    // Show button if user is gamemaster (always)
     const isGamemaster = currentUser.roles && currentUser.roles.includes('gamemaster');
     if (isGamemaster) {
         nextPlayerButtonContainer.style.display = 'block';
+        updateButtonText(state);
         return;
     }
 
@@ -211,12 +227,36 @@ function updateNextPlayerButton(state) {
         
         if (currentPlayerDbId && userPlayerId && currentPlayerDbId === userPlayerId) {
             nextPlayerButtonContainer.style.display = 'block';
+            updateButtonText(state);
             return;
         }
     }
 
     // Hide button otherwise
     nextPlayerButtonContainer.style.display = 'none';
+}
+
+// Update button text based on game state
+function updateButtonText(state) {
+    const buttonHint = document.getElementById('buttonHint');
+    
+    if (state.is_paused) {
+        // Game is paused - button continues to next player
+        if (nextPlayerButton) {
+            nextPlayerButton.textContent = '▶️ Continue Game';
+        }
+        if (buttonHint) {
+            buttonHint.textContent = 'Continue to next player';
+        }
+    } else {
+        // Game is active - button ends turn early
+        if (nextPlayerButton) {
+            nextPlayerButton.textContent = '⏭️ End Turn Early';
+        }
+        if (buttonHint) {
+            buttonHint.textContent = 'Skip remaining throws (records as misses)';
+        }
+    }
 }
 
 // Game state update

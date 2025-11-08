@@ -390,10 +390,8 @@ body {
 
 /* Next Player Button */
 .next-player-button-container {
-    background-color: var(--card-bg);
-    border-radius: 1rem;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
+    padding: 1rem 0;
+    margin: 1rem 0;
     text-align: center;
 }
 
