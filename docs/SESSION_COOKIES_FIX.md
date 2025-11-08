@@ -27,10 +27,12 @@ Added `credentials: 'include'` to all fetch/API requests in frontend templates a
 ### Files Modified
 
 #### 1. **Template Files** (with embedded apiRequest helpers)
+
 - `/data/dartserver-pythonapp/templates/history.html`
   - Updated `apiRequest()` function to include `credentials: 'include'`
 
 #### 2. **JavaScript Files** (static helper functions)
+
 - `/data/dartserver-pythonapp/static/js/mobile_gameplay.js`
   - Updated `apiRequest()` function
 
@@ -44,6 +46,7 @@ Added `credentials: 'include'` to all fetch/API requests in frontend templates a
   - Updated `apiRequest()` function
 
 #### 3. **JavaScript Files** (raw fetch calls)
+
 - `/data/dartserver-pythonapp/static/js/dashboard.js`
   - Added `credentials: 'include'` to 3 fetch calls:
     - `fetch('/api/players?source=database')`
@@ -58,31 +61,34 @@ Added `credentials: 'include'` to all fetch/API requests in frontend templates a
 ## Changes Summary
 
 ### Before (Broken)
+
 ```javascript
 const response = await fetch(url, {
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-    },
+  ...options,
+  headers: {
+    "Content-Type": "application/json",
+    ...options.headers,
+  },
 });
 ```
 
 ### After (Fixed)
+
 ```javascript
 const response = await fetch(url, {
-    ...options,
-    credentials: 'include',  // Include session cookies
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-    },
+  ...options,
+  credentials: "include", // Include session cookies
+  headers: {
+    "Content-Type": "application/json",
+    ...options.headers,
+  },
 });
 ```
 
 ## How It Works
 
 The `credentials: 'include'` option tells the browser to:
+
 1. **Include session cookies** from the same origin in the request
 2. **Accept cookies** in the response and update the session store
 3. **Maintain session state** across multiple API calls
@@ -91,7 +97,7 @@ The `credentials: 'include'` option tells the browser to:
 
 ### Manual Testing Steps
 
-1. **Log in to the test server**: https://test.letsplaydarts.eu
+1. **Log in to the test server**: <https://test.letsplaydarts.eu>
 2. **Verify authentication**: Check that username appears in header
 3. **Start a game**: Play a game and let it complete
 4. **Navigate to history**: Click "Game History" or go to `/history`
@@ -108,6 +114,7 @@ The `credentials: 'include'` option tells the browser to:
 ### API Response Verification
 
 **Before fix**:
+
 ```json
 {
   "success": true,
@@ -116,6 +123,7 @@ The `credentials: 'include'` option tells the browser to:
 ```
 
 **After fix** (expected):
+
 ```json
 {
   "success": true,
@@ -139,6 +147,7 @@ The `credentials: 'include'` option tells the browser to:
 ## Security Implications
 
 **No security concerns introduced**:
+
 - Cookies are only sent to the same origin (same-origin policy)
 - The fix follows browser security standards
 - Session validation on the server remains unchanged
@@ -147,21 +156,27 @@ The `credentials: 'include'` option tells the browser to:
 ## Deployment Notes
 
 ### For Local Development
+
 Ensure your `.env` has:
+
 ```
 SESSION_COOKIE_SECURE=False
 SESSION_COOKIE_SAMESITE=Lax
 ```
 
 ### For Docker (Test Server)
+
 The `docker-compose-test.yml` already has:
+
 ```yaml
 SESSION_COOKIE_SECURE: "True"
 SESSION_COOKIE_SAMESITE: Lax
 ```
 
 ### For Production
+
 Update with your domain:
+
 ```yaml
 SESSION_COOKIE_SECURE: "True"
 SESSION_COOKIE_SAMESITE: Lax

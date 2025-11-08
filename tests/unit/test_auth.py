@@ -1,6 +1,7 @@
 """Unit tests for authentication and authorization module."""
 
 import json
+from typing import Any
 from unittest.mock import Mock, patch
 
 import jwt
@@ -92,9 +93,9 @@ class TestValidateToken:
         mock_post.return_value = mock_response
 
         result = validate_token("test-token")
-        assert result["sub"] == "test-user"
-        assert result["username"] == "testuser"
-        assert result["groups"] == ["player"]
+        assert result["sub"] == "test-user"  # type: ignore
+        assert result["username"] == "testuser"  # type: ignore
+        assert result["groups"] == ["player"]  # type: ignore
 
     @patch("src.core.auth.JWT_VALIDATION_MODE", "introspection")
     @patch("src.core.auth.requests.post")
@@ -174,7 +175,7 @@ class TestGetUserRoles:
 
     def test_get_user_roles_empty_claims(self):
         """Test extracting roles from empty claims."""
-        claims = {}
+        claims: dict[str, Any] = {}
         roles = get_user_roles(claims)
         assert roles == []
 

@@ -129,7 +129,7 @@ class DartboardClient:
 
             result = response.json()
             print(f"Score submitted successfully: {result}")
-            return result
+            return result  # type: ignore
 
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 401:
@@ -140,7 +140,7 @@ class DartboardClient:
                 headers["Authorization"] = f"Bearer {token}"
                 response = requests.post(url, headers=headers, json=payload)
                 response.raise_for_status()
-                return response.json()
+                return response.json()  # type: ignore
             print(f"Failed to submit score: {e}")
             print(f"Response: {e.response.text}")
             raise
@@ -161,7 +161,7 @@ class DartboardClient:
             response.raise_for_status()
             health_data = response.json()
             print(f"API Gateway health: {health_data}")
-            return health_data.get("status") == "healthy"
+            return health_data.get("status") == "healthy"  # type: ignore
         except Exception as e:
             print(f"Health check failed: {e}")
             return False
@@ -204,8 +204,8 @@ def simulate_dartboard():
         print(f"\n--- Throw {i} ---")
         try:
             result = client.submit_score(
-                score=throw["score"],
-                multiplier=throw["multiplier"],
+                score=throw["score"],  # type: ignore
+                multiplier=throw["multiplier"],  # type: ignore
                 player_id="dartboard-001",
                 game_id="game-123",
             )

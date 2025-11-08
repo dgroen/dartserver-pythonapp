@@ -146,7 +146,7 @@
                     });
                 });
                 observer.observe(gameTypeSelect, { childList: true, subtree: false });
-                
+
                 await loadGameTypes(gameTypeSelect, false);
                 lastChildCount = gameTypeSelect.children.length;
             }

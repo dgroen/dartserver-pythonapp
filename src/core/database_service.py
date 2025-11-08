@@ -13,6 +13,22 @@ from src.core.database_models import DatabaseManager, GameResult, GameType, Play
 
 load_dotenv()
 
+# Global database service instance (initialized at app startup)
+_db_service_instance = None
+
+
+def set_database_service(db_service):
+    """Set the global database service instance"""
+    global _db_service_instance
+    _db_service_instance = db_service
+
+
+def get_session():
+    """Get a new database session from the global database service"""
+    if _db_service_instance is None:
+        raise RuntimeError("Database service not initialized")
+    return _db_service_instance.db_manager.get_session()
+
 
 class DatabaseService:
     """Service for handling all database operations"""

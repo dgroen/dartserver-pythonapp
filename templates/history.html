@@ -431,7 +431,7 @@
         // Event listeners
         document.addEventListener('DOMContentLoaded', () => {
             console.log('✅ Page loaded - Starting to fetch data...');
-            
+
             // Load game types into filter
             const gameTypeFilter = document.getElementById('gameTypeFilter');
             if (gameTypeFilter && typeof loadGameTypes === 'function') {
@@ -440,7 +440,7 @@
                     gameTypeFilter.value = 'all';
                 });
             }
-            
+
             loadStatistics();
             loadHistory();
 

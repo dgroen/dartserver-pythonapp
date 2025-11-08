@@ -36,11 +36,11 @@ The test server at **test.letsplaydarts.eu** has been successfully configured an
 
 ## Access Points
 
-- **Main Application**: https://test.letsplaydarts.eu/
-- **WSO2 Identity Server**: https://test.letsplaydarts.eu/auth/
-- **WSO2 Console**: https://test.letsplaydarts.eu/console/
-- **API Gateway**: https://test.letsplaydarts.eu/api/v1/
-- **RabbitMQ Management**: http://localhost:15672/ (guest/guest)
+- **Main Application**: <https://test.letsplaydarts.eu/>
+- **WSO2 Identity Server**: <https://test.letsplaydarts.eu/auth/>
+- **WSO2 Console**: <https://test.letsplaydarts.eu/console/>
+- **API Gateway**: <https://test.letsplaydarts.eu/api/v1/>
+- **RabbitMQ Management**: <http://localhost:15672/> (guest/guest)
 
 ## Managing the Test Server
 
@@ -64,10 +64,13 @@ docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml logs -f dar
 
 1. Edit `.env.test` with new values
 2. Restart services:
+
    ```bash
    docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml restart darts-app api-gateway
    ```
+
 3. If nginx needs to reload:
+
    ```bash
    docker exec darts-nginx nginx -s reload
    ```
@@ -146,10 +149,13 @@ FLASK_DEBUG=True
 
 1. Check PostgreSQL: `docker ps | grep postgres`
 2. Test connection:
+
    ```bash
    docker exec darts-postgres psql -U postgres -d dartsdbtest -c "SELECT 1;"
    ```
+
 3. Verify database exists:
+
    ```bash
    docker exec darts-postgres psql -U postgres -lqt | grep dartsdbtest
    ```
@@ -157,20 +163,25 @@ FLASK_DEBUG=True
 ### WSO2 Authentication Issues
 
 1. Check WSO2 IS health:
+
    ```bash
    curl -k https://localhost:9443/api/health-check/v1.0/health
    ```
+
 2. Verify client credentials in `.env.test`
 3. Check WSO2 logs: `docker logs darts-wso2is`
 
 ### SSL Certificate Issues
 
 1. Verify certificates:
+
    ```bash
    openssl x509 -in ssl/cert.pem -noout -text | grep -A 5 "Subject Alternative Name"
    ```
+
 2. Should show: `DNS:*.letsplaydarts.eu`
 3. Regenerate if needed:
+
    ```bash
    bash helpers/generate_ssl_certs.sh letsplaydarts.eu
    ```
@@ -207,16 +218,17 @@ docker exec darts-app env | grep ENVIRONMENT
 ## Next Steps
 
 1. **Configure WSO2 Client** (if not already done)
-   - Log in to WSO2 console: https://test.letsplaydarts.eu/console/
+   - Log in to WSO2 console: <https://test.letsplaydarts.eu/console/>
    - Verify OAuth application settings
    - Ensure callback URLs are correct
 
 2. **Test Authentication Flow**
-   - Navigate to https://test.letsplaydarts.eu/
+   - Navigate to <https://test.letsplaydarts.eu/>
    - Should redirect to WSO2 login
    - After login, should redirect back to app
 
 3. **Run Automated Tests**
+
    ```bash
    # Copy test environment
    cp .env.test .env
@@ -226,6 +238,7 @@ docker exec darts-app env | grep ENVIRONMENT
    ```
 
 4. **Monitor Logs**
+
    ```bash
    # Watch all logs
    docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml logs -f
@@ -234,6 +247,7 @@ docker exec darts-app env | grep ENVIRONMENT
 ## Documentation
 
 For more information, see:
+
 - [TEST_CONFIGURATION.md](TEST_CONFIGURATION.md) - Comprehensive test setup guide
 - [helpers/TEST_SETUP_README.md](../helpers/TEST_SETUP_README.md) - Quick reference
 - [TESTING.md](TESTING.md) - General testing documentation
@@ -245,4 +259,4 @@ The test server is fully configured and ready for use!
 **Created**: November 1, 2025  
 **Server**: test.letsplaydarts.eu  
 **Environment**: Test  
-**Database**: dartsdbtest  
+**Database**: dartsdbtest

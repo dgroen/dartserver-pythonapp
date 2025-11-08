@@ -5,6 +5,7 @@ This guide explains how to set up and use the test environment configuration for
 ## Overview
 
 The test environment is designed for:
+
 - Automated testing (unit, integration, and end-to-end tests)
 - Development testing without affecting production or development data
 - CI/CD pipeline execution
@@ -21,6 +22,7 @@ bash helpers/setup-test-environment.sh
 ```
 
 This script will:
+
 - ✓ Check PostgreSQL connectivity
 - ✓ Create `dartsdbtest` database
 - ✓ Run database migrations
@@ -30,16 +32,19 @@ This script will:
 ### 2. Use Test Configuration
 
 #### Option A: Copy to .env (for manual testing)
+
 ```bash
 cp .env.test .env
 ```
 
 #### Option B: Export environment variables (for current session)
+
 ```bash
 export $(cat .env.test | grep -v '^#' | xargs)
 ```
 
 #### Option C: Use in tests directly
+
 Most test frameworks (pytest, tox) will load `.env.test` automatically if configured.
 
 ### 3. Run Tests
@@ -67,6 +72,7 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dartsdbtest
 ```
 
 **Key Features:**
+
 - Separate test database (`dartsdbtest`) keeps test data isolated
 - Uses default PostgreSQL credentials for local development
 - Can be overridden for CI environments
@@ -74,6 +80,7 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dartsdbtest
 **Database Setup:**
 
 1. **Create the database:**
+
    ```bash
    # Manually create
    PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE dartsdbtest;"
@@ -83,11 +90,13 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dartsdbtest
    ```
 
 2. **Run migrations:**
+
    ```bash
    DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dartsdbtest alembic upgrade head
    ```
 
 3. **Reset test database (if needed):**
+
    ```bash
    # Drop and recreate
    PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -c "DROP DATABASE dartsdbtest;"
@@ -105,11 +114,13 @@ APP_SCHEME=https
 ```
 
 **Certificate Details:**
+
 - Location: `ssl/cert.pem` and `ssl/key.pem`
-- Valid for: localhost, *.localhost, 127.0.0.1, ::1, letsplaydarts.eu
+- Valid for: localhost, \*.localhost, 127.0.0.1, ::1, letsplaydarts.eu
 - Self-signed (development/test only)
 
 **Generate New Certificates:**
+
 ```bash
 bash helpers/generate_ssl_certs.sh localhost
 ```
@@ -130,17 +141,20 @@ WSO2_IS_VERIFY_SSL=False
 **Setup WSO2 for Testing:**
 
 1. **Start WSO2 Identity Server:**
+
    ```bash
    docker-compose -f docker-compose-wso2.yml up -d wso2is
    ```
 
 2. **Wait for startup (2-3 minutes):**
+
    ```bash
    # Check health
    curl -k https://localhost:9443/api/health-check/v1.0/health
    ```
 
 3. **Configure OAuth2 client:**
+
    ```bash
    bash helpers/configure-wso2.sh
    ```
@@ -171,60 +185,69 @@ RABBITMQ_EXCHANGE=darts_exchange_test
 ```
 
 **Start RabbitMQ for testing:**
+
 ```bash
 docker-compose -f docker-compose-wso2.yml up -d rabbitmq
 ```
 
 **Access RabbitMQ Management UI:**
-- URL: http://localhost:15672
+
+- URL: <http://localhost:15672>
 - Username: guest
 - Password: guest
 
 ## Environment Variables Reference
 
 ### Core Settings
-| Variable | Value | Description |
-|----------|-------|-------------|
-| `ENVIRONMENT` | `development` | Environment type (test uses development settings) |
-| `APP_DOMAIN` | `localhost:5000` | Application domain |
-| `APP_SCHEME` | `https` | URL scheme (https for SSL) |
-| `FLASK_DEBUG` | `True` | Enable debug mode for detailed error messages |
+
+| Variable      | Value            | Description                                       |
+| ------------- | ---------------- | ------------------------------------------------- |
+| `ENVIRONMENT` | `development`    | Environment type (test uses development settings) |
+| `APP_DOMAIN`  | `localhost:5000` | Application domain                                |
+| `APP_SCHEME`  | `https`          | URL scheme (https for SSL)                        |
+| `FLASK_DEBUG` | `True`           | Enable debug mode for detailed error messages     |
 
 ### Database
-| Variable | Value | Description |
-|----------|-------|-------------|
+
+| Variable       | Value                                                       | Description                     |
+| -------------- | ----------------------------------------------------------- | ------------------------------- |
 | `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/dartsdbtest` | Test database connection string |
 
 ### SSL/Security
-| Variable | Value | Description |
-|----------|-------|-------------|
-| `FLASK_USE_SSL` | `True` | Enable SSL |
-| `SESSION_COOKIE_SECURE` | `False` | Allow cookies over self-signed HTTPS |
-| `SECRET_KEY` | `test-secret-key-for-automated-testing` | Flask secret key (test only) |
+
+| Variable                | Value                                   | Description                          |
+| ----------------------- | --------------------------------------- | ------------------------------------ |
+| `FLASK_USE_SSL`         | `True`                                  | Enable SSL                           |
+| `SESSION_COOKIE_SECURE` | `False`                                 | Allow cookies over self-signed HTTPS |
+| `SECRET_KEY`            | `test-secret-key-for-automated-testing` | Flask secret key (test only)         |
 
 ### WSO2 Identity Server
-| Variable | Value | Description |
-|----------|-------|-------------|
-| `WSO2_IS_URL` | `https://localhost:9443` | WSO2 Identity Server URL |
-| `WSO2_CLIENT_ID` | `test_client_id` | OAuth2 client ID (update after WSO2 setup) |
-| `WSO2_CLIENT_SECRET` | `test_client_secret` | OAuth2 client secret (update after WSO2 setup) |
-| `WSO2_IS_VERIFY_SSL` | `False` | Disable SSL verification for self-signed certs |
-| `AUTH_DISABLED` | `False` | Keep auth enabled to test decorators |
+
+| Variable             | Value                    | Description                                    |
+| -------------------- | ------------------------ | ---------------------------------------------- |
+| `WSO2_IS_URL`        | `https://localhost:9443` | WSO2 Identity Server URL                       |
+| `WSO2_CLIENT_ID`     | `test_client_id`         | OAuth2 client ID (update after WSO2 setup)     |
+| `WSO2_CLIENT_SECRET` | `test_client_secret`     | OAuth2 client secret (update after WSO2 setup) |
+| `WSO2_IS_VERIFY_SSL` | `False`                  | Disable SSL verification for self-signed certs |
+| `AUTH_DISABLED`      | `False`                  | Keep auth enabled to test decorators           |
 
 ### RabbitMQ
-| Variable | Value | Description |
-|----------|-------|-------------|
-| `RABBITMQ_HOST` | `localhost` | RabbitMQ host |
+
+| Variable            | Value                 | Description             |
+| ------------------- | --------------------- | ----------------------- |
+| `RABBITMQ_HOST`     | `localhost`           | RabbitMQ host           |
 | `RABBITMQ_EXCHANGE` | `darts_exchange_test` | Dedicated test exchange |
 
 ### Text-to-Speech
-| Variable | Value | Description |
-|----------|-------|-------------|
+
+| Variable      | Value   | Description          |
+| ------------- | ------- | -------------------- |
 | `TTS_ENABLED` | `false` | Disable TTS in tests |
 
 ## Testing Workflows
 
 ### Unit Tests
+
 Unit tests use in-memory SQLite database (configured in `tests/conftest.py`):
 
 ```bash
@@ -232,6 +255,7 @@ pytest tests/unit/
 ```
 
 ### Integration Tests
+
 Integration tests can use the PostgreSQL test database:
 
 ```bash
@@ -243,6 +267,7 @@ pytest tests/integration/
 ```
 
 ### Full Test Suite with Tox
+
 ```bash
 # Run tests on all supported Python versions
 tox
@@ -261,6 +286,7 @@ tox -e security
 ```
 
 ### CI/CD Integration
+
 In CI environments, set environment variables or use `.env.test` directly:
 
 ```yaml
@@ -279,6 +305,7 @@ In CI environments, set environment variables or use `.env.test` directly:
 **Problem:** `psycopg2.OperationalError: could not connect to server`
 
 **Solution:**
+
 ```bash
 # Check if PostgreSQL is running
 pg_isready -h localhost -p 5432
@@ -301,6 +328,7 @@ sudo service postgresql start
 **Problem:** `Connection refused to https://localhost:9443`
 
 **Solution:**
+
 ```bash
 # Start WSO2 Identity Server
 docker-compose -f docker-compose-wso2.yml up -d wso2is
@@ -317,6 +345,7 @@ curl -k https://localhost:9443/api/health-check/v1.0/health
 **Problem:** `database "dartsdbtest" does not exist`
 
 **Solution:**
+
 ```bash
 # Create the database
 PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE dartsdbtest;"

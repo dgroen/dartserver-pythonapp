@@ -13,15 +13,17 @@ The test server is **fully functional**, but the history page and dashboard appe
 ### Test Database: `dartsdbtest`
 
 **Players in database:**
+
 ```
 ID | Name/Username              | Email
 ---+---------------------------+--------------------------------
 1  | ac13bbd5-9b05-4fb7...     | (none)
-2  | b3afe2ac-455f-4a5b...     | (none)  
+2  | b3afe2ac-455f-4a5b...     | (none)
 3  | testuser001               | test.user.001@letsplaydarts.eu
 ```
 
 **Games:**
+
 - 1 game exists
 - Created by: `testuser001`
 - Session ID: `318959e7-3023-4338-b263-d9d3646c4382`
@@ -33,7 +35,7 @@ ID | Name/Username              | Email
 
 Create a WSO2 user with username `testuser001`:
 
-1. Access WSO2 Console: https://test.letsplaydarts.eu/console/
+1. Access WSO2 Console: <https://test.letsplaydarts.eu/console/>
 2. Log in as admin/admin
 3. Go to User Management → Users → Add User
 4. Create user:
@@ -73,11 +75,13 @@ LIMIT 10;
 ## Dashboard Access
 
 The dashboard also requires authentication and shows:
+
 - Your recent games
 - Your statistics
 - Your game history
 
 **To access dashboard:**
+
 1. Log in with a WSO2 user
 2. Navigate to /dashboard
 3. You'll see your personal statistics
@@ -85,11 +89,13 @@ The dashboard also requires authentication and shows:
 ## Admin Access
 
 Users with the **admin** role can:
+
 - See all users' games (with `?user=username` parameter)
 - Access admin-only features
 - View system-wide statistics
 
 **To test as admin:**
+
 1. Log in to test.letsplaydarts.eu with `admin/admin`
 2. Your games will appear in history
 3. You can filter by user: `/api/game/history?user=testuser001`
@@ -126,6 +132,7 @@ db = DatabaseService()
 **Cause**: No games exist for your logged-in username
 
 **Solution**:
+
 1. Verify you're logged in (check top-right corner)
 2. Create a new game
 3. Or log in with a user that has existing games
@@ -135,6 +142,7 @@ db = DatabaseService()
 **Cause**: Same as history - no games for your user
 
 **Solution**:
+
 1. Play at least one game
 2. Dashboard will populate with your statistics
 
@@ -143,6 +151,7 @@ db = DatabaseService()
 **Cause**: The user filter is working correctly - you have no games
 
 **Test**:
+
 ```bash
 # Check if any games exist in database
 docker exec darts-postgres psql -U postgres -d dartsdbtest \
@@ -177,14 +186,17 @@ To populate the test server with meaningful data:
 ## Summary
 
 ✅ **The application is working correctly**
+
 - History API works and returns data
 - Dashboard functions properly
 - Data filtering by user is correct
 
 ❓ **What you see depends on**:
+
 - Your logged-in username
 - Which games exist for that user
 
 🎯 **To see data immediately**:
+
 - Create WSO2 user `testuser001` and log in
 - Or log in as `admin` and create new games

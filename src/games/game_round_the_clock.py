@@ -65,7 +65,7 @@ class GameRoundTheClock:
                 current_player_id = i
                 break
 
-        # Convert multiplier type to numeric value
+        # Infer multiplier from multiplier_type
         multiplier_map = {
             "SINGLE": 1,
             "DOUBLE": 2,
@@ -74,17 +74,15 @@ class GameRoundTheClock:
             "DBLBULL": 2,
         }
         multiplier = multiplier_map.get(multiplier_type, 1)
-
         return self.process_throw(current_player_id, base_score, multiplier, multiplier_type)
 
-    def process_throw(self, player_id, base_score, multiplier, multiplier_type):
+    def process_throw(self, player_id, base_score, multiplier_type):
         """
         Process a dart throw
 
         Args:
             player_id: ID of the player
             base_score: Base score value (or 25 for bull)
-            multiplier: Multiplier value (1, 2, or 3)
             multiplier_type: Type of multiplier (SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL)
 
         Returns:
@@ -114,7 +112,7 @@ class GameRoundTheClock:
                     result["winner"] = True
                     result["hit"] = True
                     return result
-                elif multiplier_type == "BULL":
+                if multiplier_type == "BULL":
                     # Single bull - need 5 total
                     player["bull_hits"] += 1
                     result["hit"] = True
@@ -128,7 +126,7 @@ class GameRoundTheClock:
         # Check if player hit their current target
         if base_score == current_target:
             result["hit"] = True
-            
+
             # Move to next target based on multiplier
             if multiplier_type == "TRIPLE":
                 # Triple - skip 2 numbers
@@ -141,9 +139,9 @@ class GameRoundTheClock:
             else:
                 # Single - just move to next
                 player["current_target"] = max(0, current_target - 1)
-            
+
             result["new_target"] = player["current_target"]
-            
+
             # Reset bull hits when advancing (only count at the end)
             player["bull_hits"] = 0
 

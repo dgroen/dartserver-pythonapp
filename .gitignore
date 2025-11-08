@@ -62,6 +62,8 @@ dartserver-pythonapp.code-workspace
 .env_bu
 .zencoder/rules/repo.md
 docker-backups
+wso2is-7-config/deployment.prod.example.toml
+wso2is-7-config/deployment.dev.example.toml
 node_modules/.cache
 docker-backups
 .env____

@@ -65,20 +65,31 @@ class GameRoundTheClockDouble:
                 current_player_id = i
                 break
 
-        return self.process_throw(current_player_id, base_score, multiplier_type)
+        # Infer multiplier from multiplier_type
+        multiplier_map = {
+            "SINGLE": 1,
+            "DOUBLE": 2,
+            "TRIPLE": 3,
+            "BULL": 1,
+            "DBLBULL": 2,
+        }
+        multiplier = multiplier_map.get(multiplier_type, 1)
+        return self.process_throw(current_player_id, base_score, multiplier, multiplier_type)
 
-    def process_throw(self, player_id, base_score, multiplier_type):
+    def process_throw(self, player_id, base_score, multiplier, multiplier_type):
         """
         Process a dart throw
 
         Args:
             player_id: ID of the player
             base_score: Base score value (or 25 for bull)
+            multiplier: Multiplier value (1, 2, or 3)
             multiplier_type: Type of multiplier (SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL)
 
         Returns:
             Dictionary with result information
         """
+        del multiplier
         if player_id < 0 or player_id >= len(self.players):
             return {"error": "Invalid player ID"}
 
