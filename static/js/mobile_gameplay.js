@@ -63,9 +63,16 @@ function handleNextPlayerClick() {
         return;
     }
 
-    // Confirm action
-    if (confirm('End your turn? Any remaining throws will be recorded as misses.')) {
+    // For single-player games, skip confirmation
+    const isSinglePlayer = currentGame.players && currentGame.players.length === 1;
+    
+    if (isSinglePlayer) {
         socket.emit('end_turn_early');
+    } else {
+        // Confirm action for multi-player games
+        if (confirm('End your turn? Any remaining throws will be recorded as misses.')) {
+            socket.emit('end_turn_early');
+        }
     }
 }
 

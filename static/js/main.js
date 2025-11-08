@@ -123,6 +123,12 @@ const videoContainer = document.getElementById('video-container');
 const effectVideo = document.getElementById('effect-video');
 const throwoutAdviceElement = document.getElementById('throwoutAdvice');
 const adviceDisplay = document.getElementById('adviceDisplay');
+const nextPlayerButtonContainer = document.getElementById('nextPlayerButtonContainer');
+const nextPlayerButton = document.getElementById('nextPlayerButton');
+
+// Game state tracking
+let currentGame = null;
+let currentUser = null;
 
 // Audio elements (optional - can be added later)
 const audioCache = {};
@@ -130,16 +136,95 @@ const audioCache = {};
 // Initialize
 socket.on('connect', () => {
     console.log('Connected to server');
+    loadCurrentUser();
 });
 
 socket.on('disconnect', () => {
     console.log('Disconnected from server');
 });
 
+// Load current user information
+async function loadCurrentUser() {
+    try {
+        const response = await fetch('/api/user/current', {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        if (data.success) {
+            currentUser = data;
+            console.log('Current user loaded:', currentUser);
+        }
+    } catch (error) {
+        console.error('Failed to load current user:', error);
+    }
+}
+
+// Initialize Next Player button if it exists
+if (nextPlayerButton) {
+    nextPlayerButton.addEventListener('click', handleNextPlayerClick);
+}
+
+// Handle Next Player button click
+function handleNextPlayerClick() {
+    if (!socket || !currentGame) {
+        console.error('Cannot end turn: no active game or socket connection');
+        return;
+    }
+
+    // For single-player games, skip confirmation
+    const isSinglePlayer = currentGame.players && currentGame.players.length === 1;
+    
+    if (isSinglePlayer) {
+        socket.emit('end_turn_early');
+    } else {
+        // Confirm action for multi-player games
+        if (confirm('End your turn? Any remaining throws will be recorded as misses.')) {
+            socket.emit('end_turn_early');
+        }
+    }
+}
+
+// Update visibility of Next Player button based on user role and current player
+function updateNextPlayerButton(state) {
+    if (!nextPlayerButtonContainer || !state) {
+        return;
+    }
+    
+    // Don't show button if no game or no user info
+    if (!currentUser || !state.is_started) {
+        nextPlayerButtonContainer.style.display = 'none';
+        return;
+    }
+
+    // Show button if user is gamemaster
+    const isGamemaster = currentUser.roles && currentUser.roles.includes('gamemaster');
+    if (isGamemaster) {
+        nextPlayerButtonContainer.style.display = 'block';
+        return;
+    }
+
+    // Show button if user is the current player
+    const currentPlayerIndex = state.current_player;
+    if (currentPlayerIndex !== undefined && state.players && state.players[currentPlayerIndex]) {
+        const currentPlayerDbId = state.players[currentPlayerIndex].db_id;
+        const userPlayerId = currentUser.player_id;
+        
+        if (currentPlayerDbId && userPlayerId && currentPlayerDbId === userPlayerId) {
+            nextPlayerButtonContainer.style.display = 'block';
+            return;
+        }
+    }
+
+    // Hide button otherwise
+    nextPlayerButtonContainer.style.display = 'none';
+}
+
 // Game state update
 socket.on('game_state', (state) => {
     console.log('Game state:', state);
+    currentGame = state;
     updateGameDisplay(state);
+    updateNextPlayerButton(state);
 });
 
 // Sound event
