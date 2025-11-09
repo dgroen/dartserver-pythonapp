@@ -836,7 +836,7 @@ def get_available_players():
         return jsonify({"success": True, "players": all_users})
     except Exception as e:
         logger.exception("Error getting available players")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": "Failed to retrieve available players"}), 500
 
 
 @app.route("/api/players", methods=["POST"])
