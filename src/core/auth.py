@@ -243,6 +243,17 @@ ROLES = {
         "description": "Can view games and submit scores",
         "permissions": ["game:view", "score:submit", "score:view"],
     },
+    "multiplayer": {
+        "name": "Multiplayer",
+        "description": "Can create and manage multiplayer games",
+        "permissions": [
+            "game:create",
+            "game:manage",
+            "player:invite",
+            "score:submit",
+            "score:view",
+        ],
+    },
 }
 
 
