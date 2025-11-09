@@ -248,6 +248,25 @@ def dashboard():
     return render_template("dashboard.html", user_roles=user_roles, user_claims=user_claims)
 
 
+@app.route("/multiplayer")
+@login_required
+@role_required("admin", "gamemaster", "multiplayer")
+def multiplayer():
+    """Multiplayer game setup page - requires admin, gamemaster, or multiplayer role
+    ---
+    tags:
+      - UI
+    summary: Multiplayer game setup page
+    description: Renders the multiplayer game setup interface for inviting players and starting games
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template("multiplayer.html", user_roles=user_roles, user_claims=user_claims)
+
+
 def _verify_callback_state():
     """Verify state parameter to prevent CSRF."""
     state = request.args.get("state")
@@ -735,6 +754,87 @@ def search_wso2_users_endpoint():
         return jsonify({"success": True, "users": users})
     except Exception as e:
         logger.exception("Error searching WSO2 users")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/multiplayer/available-players", methods=["GET"])
+@login_required
+@role_required("admin", "gamemaster", "multiplayer")
+def get_available_players():
+    """Get list of available players for multiplayer (not in active games)
+    ---
+    tags:
+      - Multiplayer
+    summary: Get available players
+    description: Returns list of online players who are not currently in an active game
+    responses:
+      200:
+        description: List of available players
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            players:
+              type: array
+              items:
+                type: object
+                properties:
+                  username:
+                    type: string
+                  name:
+                    type: string
+                  email:
+                    type: string
+                  inActiveGame:
+                    type: boolean
+    """
+    try:
+        from src.core.auth import search_wso2_users as wso2_search
+
+        # Get all users from WSO2
+        # Since we don't have an "all users" endpoint, we'll search with a wildcard or empty string
+        # For now, let's get users that match common patterns or provide all registered users
+        all_users = wso2_search("*")  # Try wildcard search
+        
+        # If wildcard doesn't work, try getting users from the Player table
+        if not all_users:
+            db_session = get_session()
+            try:
+                players = db_session.query(Player).filter(Player.username.isnot(None)).all()
+                all_users = [
+                    {
+                        "username": p.username,
+                        "name": p.name,
+                        "email": p.email,
+                    }
+                    for p in players
+                ]
+            finally:
+                db_session.close()
+        
+        # Determine which players are in active games
+        # A player is in an active game if they appear in the current game_manager state
+        game_state = game_manager.get_game_state()
+        active_player_names = set()
+        
+        if game_state and game_state.get("players"):
+            for player in game_state["players"]:
+                player_name = player.get("name", "")
+                active_player_names.add(player_name.lower())
+        
+        # Mark players as available or in-game
+        for user in all_users:
+            username = user.get("username", "")
+            name = user.get("name", username)
+            # Check if this user is in the active game by username or name
+            user["inActiveGame"] = (
+                username.lower() in active_player_names or name.lower() in active_player_names
+            )
+        
+        return jsonify({"success": True, "players": all_users})
+    except Exception as e:
+        logger.exception("Error getting available players")
         return jsonify({"success": False, "error": str(e)}), 500
 
 

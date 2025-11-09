@@ -72,6 +72,9 @@
             <a href="/history" class="nav-link">📊 Game History</a>
             <a href="/dashboard" class="nav-link">📊 View Dashboard</a>
             <a href="/control" class="nav-link">⚙️ Control Panel</a>
+            {% if 'admin' in user_roles or 'gamemaster' in user_roles or 'multiplayer' in user_roles %}
+            <a href="/multiplayer" class="nav-link">👥 Multiplayer</a>
+            {% endif %}
         </div>
     </div>
 

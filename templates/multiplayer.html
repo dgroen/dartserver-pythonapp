@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer Game - Darts</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/multiplayer.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Multiplayer Game</h1>
+            <div class="user-info">
+                {% if user_claims %}
+                <span class="username">👤 {{ user_claims.get('username', user_claims.get('sub', 'User')) }}</span>
+                {% if user_roles %}
+                <span class="user-roles">
+                    {% for role in user_roles %}
+                    <span class="role-badge role-{{ role }}">{{ role }}</span>
+                    {% endfor %}
+                </span>
+                {% endif %}
+                <a href="/logout" class="logout-btn">Logout</a>
+                {% endif %}
+            </div>
+            <div class="header-links">
+                <a href="/" class="header-link">🎮 Main Game</a>
+                <a href="/history" class="header-link">📊 Game History</a>
+                <a href="/control" class="header-link">⚙️ Control Panel</a>
+            </div>
+        </header>
+
+        <div class="multiplayer-content">
+            <!-- Game Setup Section -->
+            <section class="multiplayer-section">
+                <h2>🎮 Game Setup</h2>
+                <div class="form-group">
+                    <label for="game-type">Game Type:</label>
+                    <select id="game-type" class="form-control">
+                        <!-- Game types will be loaded dynamically -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="double-out">
+                        <input type="checkbox" id="double-out">
+                        Double Out (must finish with a double)
+                    </label>
+                </div>
+            </section>
+
+            <!-- Player Selection Section -->
+            <section class="multiplayer-section">
+                <h2>👥 Available Players</h2>
+                <div class="player-search-wrapper">
+                    <input type="text" id="player-search" class="form-control" 
+                           placeholder="Search for players...">
+                </div>
+                <div id="available-players-list" class="players-grid">
+                    <p class="empty-state">Loading players...</p>
+                </div>
+            </section>
+
+            <!-- Selected Players Section -->
+            <section class="multiplayer-section">
+                <h2>✅ Selected Players</h2>
+                <div id="selected-players-list" class="selected-players">
+                    <p class="empty-state">No players selected yet</p>
+                </div>
+            </section>
+
+            <!-- Start Game Button -->
+            <section class="multiplayer-section">
+                <button id="start-multiplayer-game" class="btn btn-primary btn-large" disabled>
+                    Start Multiplayer Game
+                </button>
+            </section>
+        </div>
+
+        <!-- Navigation Links -->
+        <div class="nav-links">
+            <a href="/" class="nav-link">🏠 Home</a>
+            <a href="/history" class="nav-link">📊 Game History</a>
+            <a href="/dashboard" class="nav-link">📊 View Dashboard</a>
+            <a href="/control" class="nav-link">⚙️ Control Panel</a>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/multiplayer.js') }}"></script>
+    <script>
+        // Load game types when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            const gameTypeSelect = document.getElementById('game-type');
+            if (gameTypeSelect && typeof loadGameTypes === 'function') {
+                await loadGameTypes(gameTypeSelect, false);
+            }
+        });
+    </script>
+</body>
+</html>
