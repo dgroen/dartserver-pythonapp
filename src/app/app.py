@@ -3183,7 +3183,10 @@ def start_training():
         )
     except Exception as e:
         app.logger.exception("Failed to start training session")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return (
+            jsonify({"success": False, "error": "Failed to start training session"}),
+            500,
+        )
 
 
 @app.route("/api/training/end", methods=["POST"])
@@ -3245,7 +3248,10 @@ def end_training():
         return jsonify({"success": True, "message": "Training session ended"})
     except Exception as e:
         app.logger.exception("Failed to end training session")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return (
+            jsonify({"success": False, "error": "Failed to end training session"}),
+            500,
+        )
 
 
 @app.route("/api/training/history", methods=["GET"])
@@ -3308,7 +3314,10 @@ def get_training_history():
         return jsonify({"success": True, "sessions": sessions_data})
     except Exception as e:
         app.logger.exception("Failed to get training history")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return (
+            jsonify({"success": False, "error": "Failed to retrieve training history"}),
+            500,
+        )
 
 
 @app.route("/api/training/statistics", methods=["GET"])
@@ -3387,7 +3396,10 @@ def get_training_statistics():
         return jsonify({"success": True, "statistics": statistics})
     except Exception as e:
         app.logger.exception("Failed to get training statistics")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return (
+            jsonify({"success": False, "error": "Failed to retrieve training statistics"}),
+            500,
+        )
 
 
 @socketio.on("connect", namespace="/")
