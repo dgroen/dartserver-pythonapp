@@ -3124,8 +3124,9 @@ def start_training():
             return jsonify({"success": False, "error": "Player ID not available"}), 401
 
         # Start training session using database service
-        from src.core.database_models import TrainingSession
         import uuid
+
+        from src.core.database_models import TrainingSession
 
         db_session = game_manager.db_service.db_manager.get_session()
 
@@ -3143,7 +3144,7 @@ def start_training():
         # Create training session
         session_id = str(uuid.uuid4())
         start_score_map = {"301": 301, "401": 401, "501": 501}
-        start_score = start_score_map.get(game_type, None)
+        start_score = start_score_map.get(game_type)
 
         training_session = TrainingSession(
             player_id=player_id,
@@ -3210,8 +3211,9 @@ def end_training():
         if not training_session_id:
             return jsonify({"success": False, "error": "No active training session"}), 400
 
-        from src.core.database_models import TrainingSession
         from datetime import datetime, timezone
+
+        from src.core.database_models import TrainingSession
 
         db_session = game_manager.db_service.db_manager.get_session()
         training_session = (
@@ -3334,8 +3336,9 @@ def get_training_statistics():
         if not player_id:
             return jsonify({"success": False, "error": "Player ID not available"}), 401
 
-        from src.core.database_models import TrainingScore, TrainingSession
         from sqlalchemy import func
+
+        from src.core.database_models import TrainingScore, TrainingSession
 
         db_session = game_manager.db_service.db_manager.get_session()
 
