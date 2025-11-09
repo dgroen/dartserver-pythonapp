@@ -257,7 +257,8 @@ def multiplayer():
     tags:
       - UI
     summary: Multiplayer game setup page
-    description: Renders the multiplayer game setup interface for inviting players and starting games
+    description: |
+      Renders the multiplayer game setup interface for inviting players and starting games
     responses:
       200:
         description: HTML page rendered successfully
@@ -796,7 +797,7 @@ def get_available_players():
         # Since we don't have an "all users" endpoint, we'll search with a wildcard or empty string
         # For now, let's get users that match common patterns or provide all registered users
         all_users = wso2_search("*")  # Try wildcard search
-        
+
         # If wildcard doesn't work, try getting users from the Player table
         if not all_users:
             db_session = get_session()
@@ -812,17 +813,17 @@ def get_available_players():
                 ]
             finally:
                 db_session.close()
-        
+
         # Determine which players are in active games
         # A player is in an active game if they appear in the current game_manager state
         game_state = game_manager.get_game_state()
         active_player_names = set()
-        
+
         if game_state and game_state.get("players"):
             for player in game_state["players"]:
                 player_name = player.get("name", "")
                 active_player_names.add(player_name.lower())
-        
+
         # Mark players as available or in-game
         for user in all_users:
             username = user.get("username", "")
@@ -831,7 +832,7 @@ def get_available_players():
             user["inActiveGame"] = (
                 username.lower() in active_player_names or name.lower() in active_player_names
             )
-        
+
         return jsonify({"success": True, "players": all_users})
     except Exception as e:
         logger.exception("Error getting available players")
