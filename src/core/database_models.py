@@ -266,6 +266,81 @@ class DartboardZoneMapping(Base):
         )
 
 
+class TrainingSession(Base):
+    """TrainingSession table - stores single-player training game sessions"""
+
+    __tablename__ = "training_session"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    player_id = Column(Integer, ForeignKey("player.id"), nullable=False)
+    game_type_id = Column(Integer, ForeignKey("gametype.id"), nullable=False)
+    session_id = Column(String(100), nullable=False, unique=True)  # UUID for session
+    start_score = Column(Integer)  # Starting score for 301/401/501 games
+    final_score = Column(Integer)  # Final score
+    double_out_enabled = Column(Boolean, default=False)  # For 301/401/501 games
+    completed = Column(Boolean, default=False)  # Whether training was completed
+    started_at = Column(DateTime, default=utc_now)
+    finished_at = Column(DateTime)
+
+    # Relationships
+    player = relationship("Player", backref="training_sessions")
+    game_type = relationship("GameType")
+    training_scores = relationship(
+        "TrainingScore",
+        back_populates="training_session",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self):
+        return (
+            f"<TrainingSession(id={self.id}, session_id={self.session_id}, "
+            f"player_id={self.player_id}, completed={self.completed})>"
+        )
+
+
+class TrainingScore(Base):
+    """
+    TrainingScore table - stores each throw in training mode for replay capability
+    """
+
+    __tablename__ = "training_score"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    training_session_id = Column(Integer, ForeignKey("training_session.id"), nullable=False)
+    player_id = Column(Integer, ForeignKey("player.id"), nullable=False)
+
+    # Throw details
+    throw_sequence = Column(Integer, nullable=False)  # Overall throw sequence in game
+    turn_number = Column(Integer, nullable=False)  # Which turn (1, 2, 3, ...)
+    throw_in_turn = Column(Integer, nullable=False)  # Position in turn (1, 2, or 3)
+
+    # Score details
+    base_score = Column(Integer, nullable=False)  # Base score (0-20 or 25 for bull)
+    multiplier = Column(String(20), nullable=False)  # SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL
+    multiplier_value = Column(Integer, nullable=False)  # 1, 2, or 3
+    actual_score = Column(Integer, nullable=False)  # base_score * multiplier_value
+    score_before = Column(Integer, nullable=False)  # Score before this throw
+    score_after = Column(Integer, nullable=False)  # Score after this throw
+
+    # Configuration and state
+    dartboard_sends_actual_score = Column(Boolean, nullable=False)  # Config at time of throw
+    is_bust = Column(Boolean, default=False)
+    is_finish = Column(Boolean, default=False)  # Winning throw
+
+    # Timestamp
+    thrown_at = Column(DateTime, default=utc_now)
+
+    # Relationships
+    training_session = relationship("TrainingSession", back_populates="training_scores")
+    player = relationship("Player")
+
+    def __repr__(self):
+        return (
+            f"<TrainingScore(id={self.id}, training_session_id={self.training_session_id}, "
+            f"throw_seq={self.throw_sequence}, score={self.actual_score})>"
+        )
+
+
 class DatabaseManager:
     """Manager class for database operations"""
 

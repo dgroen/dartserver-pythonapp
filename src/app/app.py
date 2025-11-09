@@ -248,6 +248,46 @@ def dashboard():
     return render_template("dashboard.html", user_roles=user_roles, user_claims=user_claims)
 
 
+@app.route("/training")
+@login_required
+def training():
+    """Training mode page for single-player practice
+    ---
+    tags:
+      - UI
+    summary: Training mode page
+    description: Renders the training mode interface for single-player practice
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template("training.html", user_roles=user_roles, user_claims=user_claims)
+
+
+@app.route("/training/dashboard")
+@login_required
+def training_dashboard():
+    """Training statistics dashboard
+    ---
+    tags:
+      - UI
+    summary: Training statistics dashboard
+    description: Renders the training statistics and history dashboard
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template(
+        "training_dashboard.html",
+        user_roles=user_roles,
+        user_claims=user_claims,
+    )
+
+
 def _verify_callback_state():
     """Verify state parameter to prevent CSRF."""
     state = request.args.get("state")
@@ -3033,6 +3073,333 @@ def debug_session():
             "auth_disabled": os.getenv("AUTH_DISABLED") == "true",
         },
     )
+
+
+@app.route("/api/training/start", methods=["POST"])
+@login_required
+def start_training():
+    """Start a new training session
+    ---
+    tags:
+      - Training
+    summary: Start training session
+    description: Initializes a new single-player training session
+    parameters:
+      - in: body
+        name: body
+        description: Training configuration
+        required: true
+        schema:
+          type: object
+          properties:
+            game_type:
+              type: string
+              description: Type of game to practice
+              enum: ['301', '401', '501', 'cricket', 'round_the_clock', 'round_the_clock_double']
+              default: '301'
+            double_out:
+              type: boolean
+              description: Whether to require double-out to finish
+              default: false
+    responses:
+      200:
+        description: Training session started successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+            session_id:
+              type: string
+    """
+    try:
+        data = request.json
+        game_type = data.get("game_type", "301")
+        double_out = data.get("double_out", False)
+
+        player_id = session.get("player_id")
+        if not player_id:
+            return jsonify({"success": False, "error": "Player ID not available"}), 401
+
+        # Start training session using database service
+        import uuid
+
+        from src.core.database_models import TrainingSession
+
+        db_session = game_manager.db_service.db_manager.get_session()
+
+        # Get or create game type
+        from src.core.database_models import GameType
+
+        game_type_obj = (
+            db_session.query(GameType).filter(GameType.name == game_type).first()
+        )
+        if not game_type_obj:
+            game_type_obj = GameType(name=game_type, description=f"{game_type} game")
+            db_session.add(game_type_obj)
+            db_session.commit()
+
+        # Create training session
+        session_id = str(uuid.uuid4())
+        start_score_map = {"301": 301, "401": 401, "501": 501}
+        start_score = start_score_map.get(game_type)
+
+        training_session = TrainingSession(
+            player_id=player_id,
+            game_type_id=game_type_obj.id,
+            session_id=session_id,
+            start_score=start_score,
+            double_out_enabled=double_out,
+            completed=False,
+        )
+        db_session.add(training_session)
+        db_session.commit()
+
+        # Store training session ID in session
+        session["training_session_id"] = training_session.id
+
+        # Start game in game manager with single player
+        game_manager.new_game(
+            game_type=game_type,
+            player_ids=[{"db_id": player_id, "name": session.get("username", "Player")}],
+            double_out=double_out,
+        )
+
+        # Set training mode flags in game manager
+        game_manager.is_training_mode = True
+        game_manager.training_session_id = training_session.id
+
+        db_session.close()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "Training session started",
+                "session_id": session_id,
+                "training_session_id": training_session.id,
+            },
+        )
+    except Exception as e:
+        app.logger.exception("Failed to start training session")
+        return (
+            jsonify({"success": False, "error": "Failed to start training session"}),
+            500,
+        )
+
+
+@app.route("/api/training/end", methods=["POST"])
+@login_required
+def end_training():
+    """End the current training session
+    ---
+    tags:
+      - Training
+    summary: End training session
+    description: Ends the current training session and saves results
+    responses:
+      200:
+        description: Training session ended successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+    """
+    try:
+        training_session_id = session.get("training_session_id")
+        if not training_session_id:
+            return jsonify({"success": False, "error": "No active training session"}), 400
+
+        from datetime import datetime, timezone
+
+        from src.core.database_models import TrainingSession
+
+        db_session = game_manager.db_service.db_manager.get_session()
+        training_session = (
+            db_session.query(TrainingSession)
+            .filter(TrainingSession.id == training_session_id)
+            .first()
+        )
+
+        if training_session:
+            training_session.completed = True
+            training_session.finished_at = datetime.now(tz=timezone.utc)
+            training_session.final_score = (
+                game_manager.game.get_score(0) if game_manager.game else 0
+            )
+            db_session.commit()
+
+        db_session.close()
+
+        # Clear training mode flags
+        game_manager.is_training_mode = False
+        game_manager.training_session_id = None
+
+        # Reset game manager
+        game_manager.reset_game()
+
+        # Clear training session from session
+        session.pop("training_session_id", None)
+
+        return jsonify({"success": True, "message": "Training session ended"})
+    except Exception as e:
+        app.logger.exception("Failed to end training session")
+        return (
+            jsonify({"success": False, "error": "Failed to end training session"}),
+            500,
+        )
+
+
+@app.route("/api/training/history", methods=["GET"])
+@login_required
+def get_training_history():
+    """Get training session history for current player
+    ---
+    tags:
+      - Training
+    summary: Get training history
+    description: Returns the training session history for the logged-in player
+    responses:
+      200:
+        description: Training history retrieved successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            sessions:
+              type: array
+              items:
+                type: object
+    """
+    try:
+        player_id = session.get("player_id")
+        if not player_id:
+            return jsonify({"success": False, "error": "Player ID not available"}), 401
+
+        from src.core.database_models import GameType, TrainingSession
+
+        db_session = game_manager.db_service.db_manager.get_session()
+        training_sessions = (
+            db_session.query(TrainingSession)
+            .join(GameType, TrainingSession.game_type_id == GameType.id)
+            .filter(TrainingSession.player_id == player_id)
+            .order_by(TrainingSession.started_at.desc())
+            .all()
+        )
+
+        sessions_data = []
+        for ts in training_sessions:
+            sessions_data.append(
+                {
+                    "id": ts.id,
+                    "session_id": ts.session_id,
+                    "game_type": ts.game_type.name,
+                    "start_score": ts.start_score,
+                    "final_score": ts.final_score,
+                    "double_out_enabled": ts.double_out_enabled,
+                    "completed": ts.completed,
+                    "started_at": ts.started_at.isoformat() if ts.started_at else None,
+                    "finished_at": ts.finished_at.isoformat() if ts.finished_at else None,
+                    "throws_count": len(ts.training_scores),
+                },
+            )
+
+        db_session.close()
+
+        return jsonify({"success": True, "sessions": sessions_data})
+    except Exception as e:
+        app.logger.exception("Failed to get training history")
+        return (
+            jsonify({"success": False, "error": "Failed to retrieve training history"}),
+            500,
+        )
+
+
+@app.route("/api/training/statistics", methods=["GET"])
+@login_required
+def get_training_statistics():
+    """Get training statistics for current player
+    ---
+    tags:
+      - Training
+    summary: Get training statistics
+    description: Returns aggregated training statistics for the logged-in player
+    responses:
+      200:
+        description: Training statistics retrieved successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            statistics:
+              type: object
+    """
+    try:
+        player_id = session.get("player_id")
+        if not player_id:
+            return jsonify({"success": False, "error": "Player ID not available"}), 401
+
+        from sqlalchemy import func
+
+        from src.core.database_models import TrainingScore, TrainingSession
+
+        db_session = game_manager.db_service.db_manager.get_session()
+
+        # Count total sessions
+        total_sessions = (
+            db_session.query(func.count(TrainingSession.id))
+            .filter(TrainingSession.player_id == player_id)
+            .scalar()
+        )
+
+        # Count completed sessions
+        completed_sessions = (
+            db_session.query(func.count(TrainingSession.id))
+            .filter(
+                TrainingSession.player_id == player_id,
+                TrainingSession.completed.is_(True),
+            )
+            .scalar()
+        )
+
+        # Calculate average score
+        avg_score = (
+            db_session.query(func.avg(TrainingScore.actual_score))
+            .join(TrainingSession, TrainingScore.training_session_id == TrainingSession.id)
+            .filter(TrainingSession.player_id == player_id)
+            .scalar()
+        )
+
+        # Count total throws
+        total_throws = (
+            db_session.query(func.count(TrainingScore.id))
+            .join(TrainingSession, TrainingScore.training_session_id == TrainingSession.id)
+            .filter(TrainingSession.player_id == player_id)
+            .scalar()
+        )
+
+        db_session.close()
+
+        statistics = {
+            "total_sessions": total_sessions or 0,
+            "completed_sessions": completed_sessions or 0,
+            "average_score_per_throw": round(avg_score, 2) if avg_score else 0,
+            "total_throws": total_throws or 0,
+        }
+
+        return jsonify({"success": True, "statistics": statistics})
+    except Exception as e:
+        app.logger.exception("Failed to get training statistics")
+        return (
+            jsonify({"success": False, "error": "Failed to retrieve training statistics"}),
+            500,
+        )
 
 
 @socketio.on("connect", namespace="/")
