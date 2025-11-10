@@ -50,6 +50,8 @@ services:
       - "9763:9763" # HTTP port
     environment:
       - JAVA_OPTS=-Xms512m -Xmx1024m
+      - CONSOLE_SERVER_ORIGIN=https://letsplaydarts.eu/auth
+      - SERVER_ORIGIN=https://letsplaydarts.eu/auth
     volumes:
       - wso2is_data:/home/wso2carbon/wso2is-7.1.0
       - ./wso2is-7-config/deployment.toml:/home/wso2carbon/wso2is-7.1.0/repository/conf/deployment.toml:ro
