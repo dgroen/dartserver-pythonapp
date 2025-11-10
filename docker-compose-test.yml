@@ -90,7 +90,7 @@ services:
       WSO2_IS_CLIENT_ID: z9tDR_MVfS_rHKBlqZ_6Re_TaJga
       WSO2_IS_CLIENT_SECRET: lQCbqtHliRy3j_POcCRxm9j7Cj7VqTx6ehRXnNaesUca # pragma: allowlist secret
       WSO2_IS_INTROSPECT_USER: admin
-      WSO2_IS_INTROSPECT_PASSWORD: admin # pragma: allowlist secret
+      WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin} # pragma: allowlist secret
 
       # Token Validation
       JWT_VALIDATION_MODE: introspection
