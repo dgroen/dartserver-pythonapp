@@ -1,0 +1,66 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: darts-app-config
+  namespace: darts-app
+  labels:
+    app: darts-game
+data:
+  # Flask Configuration
+  FLASK_HOST: "0.0.0.0"
+  FLASK_PORT: "5000"
+  FLASK_DEBUG: "False"
+  FLASK_USE_SSL: "False"
+  
+  # RabbitMQ Configuration
+  RABBITMQ_HOST: "rabbitmq-service"
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_VHOST: "/"
+  RABBITMQ_EXCHANGE: "darts_exchange"
+  RABBITMQ_TOPIC: "darts.scores.#"
+  
+  # Database Configuration
+  DATABASE_HOST: "postgres-service"
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "dartsdb"
+  
+  # WSO2 Configuration
+  WSO2_IS_URL: "https://wso2is-service:9443"
+  WSO2_IS_INTERNAL_URL: "https://wso2is-service:9443"
+  WSO2_IS_VERIFY_SSL: "False"
+  JWT_VALIDATION_MODE: "introspection"
+  SESSION_COOKIE_SECURE: "True"
+  
+  # Dartboard Configuration
+  DARTBOARD_SENDS_ACTUAL_SCORE: "True"
+  
+  # TTS Configuration
+  TTS_ENABLED: "true"
+  TTS_ENGINE: "gtts"
+  TTS_SPEED: "150"
+  TTS_VOLUME: "0.9"
+  TTS_VOICE: "default"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-gateway-config
+  namespace: darts-app
+  labels:
+    app: api-gateway
+data:
+  # API Gateway Configuration
+  API_GATEWAY_HOST: "0.0.0.0"
+  API_GATEWAY_PORT: "8080"
+  FLASK_DEBUG: "False"
+  
+  # RabbitMQ Configuration
+  RABBITMQ_HOST: "rabbitmq-service"
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_VHOST: "/"
+  RABBITMQ_EXCHANGE: "darts_exchange"
+  
+  # WSO2 Configuration
+  WSO2_IS_URL: "https://wso2is-service:9443"
+  JWT_VALIDATION_MODE: "introspection"

@@ -1,0 +1,52 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wso2is
+  namespace: darts-app
+  labels:
+    app: wso2is
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wso2is
+  template:
+    metadata:
+      labels:
+        app: wso2is
+    spec:
+      containers:
+      - name: wso2is
+        image: wso2/wso2is:7.1.0
+        ports:
+        - containerPort: 9443
+          name: https
+        - containerPort: 9763
+          name: http
+        env:
+        - name: JAVA_OPTS
+          value: "-Xms512m -Xmx1024m"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health-check/v1.0/health
+            port: 9443
+            scheme: HTTPS
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health-check/v1.0/health
+            port: 9443
+            scheme: HTTPS
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10

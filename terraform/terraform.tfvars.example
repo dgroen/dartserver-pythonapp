@@ -1,0 +1,28 @@
+# Example Terraform Variables
+# Copy this file to terraform.tfvars and customize for your environment
+
+# AWS Configuration
+aws_region = "us-east-1"
+
+# Environment
+environment = "production"
+
+# EKS Cluster Configuration
+cluster_name    = "darts-eks-cluster"
+cluster_version = "1.28"
+
+# VPC Configuration
+vpc_cidr = "10.0.0.0/16"
+
+# Node Group Configuration
+node_instance_types = ["t3.medium", "t3.large"]
+node_desired_size   = 3
+node_min_size       = 2
+node_max_size       = 10
+
+# Tags (optional)
+# tags = {
+#   Owner       = "DevOps Team"
+#   Project     = "Darts Game"
+#   CostCenter  = "Engineering"
+# }

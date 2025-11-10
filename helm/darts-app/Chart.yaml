@@ -1,0 +1,17 @@
+apiVersion: v2
+name: darts-app
+description: A Helm chart for Darts Game Application on Kubernetes
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - darts
+  - game
+  - flask
+  - socketio
+  - rabbitmq
+maintainers:
+  - name: Darts Team
+home: https://github.com/dgroen/dartserver-pythonapp
+sources:
+  - https://github.com/dgroen/dartserver-pythonapp

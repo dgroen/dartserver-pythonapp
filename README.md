@@ -30,6 +30,17 @@ A Python web application for managing darts games (301 and Cricket) with RabbitM
 - **🆕 WSO2 Integration**: Enterprise-grade identity and API management
 - **🆕 Developer Portal**: Self-service API access with documentation and analytics
 
+### ☸️ Kubernetes & Cloud-Native (NEW!)
+
+- **🆕 AWS EKS Support**: Production-ready Kubernetes deployment on AWS
+- **🆕 Auto-Scaling**: Horizontal Pod Autoscaling (HPA) and Cluster Autoscaling
+- **🆕 High Availability**: Multi-AZ deployment with pod anti-affinity
+- **🆕 Monitoring**: Prometheus + Grafana for metrics and visualization
+- **🆕 Logging**: Fluent Bit integration with CloudWatch Logs
+- **🆕 CI/CD**: Automated deployment pipelines with GitHub Actions
+- **🆕 Infrastructure as Code**: Terraform for EKS cluster provisioning
+- **🆕 Helm Charts**: Easy deployment and configuration management
+
 ## Quick Start with Authentication 🚀
 
 **The fastest way to get started with full authentication:**
@@ -51,6 +62,31 @@ A Python web application for managing darts games (301 and Cricket) with RabbitM
 ```
 
 **See [QUICK_START.md](QUICK_START.md) for detailed instructions.**
+
+---
+
+## ☸️ Kubernetes Deployment (AWS EKS)
+
+**Deploy to production with Kubernetes for high availability and auto-scaling:**
+
+```bash
+# Quick setup (automated)
+./scripts/setup-k8s-infrastructure.sh
+
+# Or manual setup
+cd terraform && terraform apply    # Create EKS cluster
+make -f Makefile.k8s deploy-full   # Deploy application
+```
+
+**Features:**
+- ✅ Auto-scaling (2-10 pods based on load)
+- ✅ Multi-AZ high availability
+- ✅ Prometheus + Grafana monitoring
+- ✅ CloudWatch Logs integration
+- ✅ CI/CD with GitHub Actions
+- ✅ Zero-downtime deployments
+
+**See [K8S_README.md](K8S_README.md) for quick reference and [docs/KUBERNETES_DEPLOYMENT.md](docs/KUBERNETES_DEPLOYMENT.md) for detailed guide.**
 
 ---
 
