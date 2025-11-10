@@ -361,6 +361,6 @@ output = "build/coverage/coverage.xml"
 output = "build/coverage/coverage.json"
 
 [tool.bandit]
-exclude_dirs = ["tests", "examples", ".tox", ".venv", "helpers"]
+exclude_dirs = ["tests", "examples", ".tox", ".venv", "venv", "helpers"]
 exclude = ["test_rabbitmq.py", "verify_installation.py"]
 skips = ["B101", "B104", "B311", "B601"]
