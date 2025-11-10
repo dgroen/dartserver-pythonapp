@@ -77,7 +77,10 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["games"]
+packages = {find = {}}
+
+[tool.setuptools.packages.find]
+exclude = ["tests", "tests.*", "examples", "examples.*"]
 
 [tool.black]
 line-length = 100
