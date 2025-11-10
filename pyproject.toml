@@ -76,10 +76,8 @@ dartserver = "app:main"
 requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = {find = {}}
-
 [tool.setuptools.packages.find]
+where = ["."]
 exclude = ["tests", "tests.*", "examples", "examples.*"]
 
 [tool.black]
