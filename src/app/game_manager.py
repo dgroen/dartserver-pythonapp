@@ -3,6 +3,8 @@
 import base64
 import os
 
+from sqlalchemy import func
+
 from src.core.database_service import DatabaseService
 from src.core.tts_service import TTSService
 from src.games.game_301 import Game301
@@ -33,6 +35,8 @@ class GameManager:
         self.start_score = 0
         self.is_winner = False
         self.double_out = False
+        self.is_training_mode = False  # Track if in training mode
+        self.training_session_id = None  # Training session ID for recording
 
         # Turn tracking for undo on bust
         self.turn_throws = []  # List of throws in current turn
@@ -974,19 +978,60 @@ class GameManager:
             # Get current turn number
             turn_num = self.turn_number.get(self.current_player, 1)
 
-            self.db_service.record_throw(
-                player_id=self.current_player,
-                base_score=base_score,
-                multiplier=multiplier,
-                multiplier_value=multiplier_value,
-                actual_score=actual_score,
-                score_before=score_before,
-                score_after=score_after,
-                turn_number=turn_num,
-                throw_in_turn=self.current_throw,
-                dartboard_sends_actual_score=dartboard_sends_actual_score,
-                is_bust=is_bust,
-                is_finish=is_finish,
-            )
+            # Check if we're in training mode
+            if self.is_training_mode and self.training_session_id:
+                # Record training throw
+                from src.core.database_models import TrainingScore
+
+                db_session = self.db_service.db_manager.get_session()
+                player_db_id = self.players[self.current_player].get("db_id")
+
+                if not player_db_id:
+                    db_session.close()
+                    return
+
+                # Calculate throw sequence
+                throw_seq = (
+                    db_session.query(func.count(TrainingScore.id))
+                    .filter(TrainingScore.training_session_id == self.training_session_id)
+                    .scalar()
+                    or 0
+                ) + 1
+
+                training_score = TrainingScore(
+                    training_session_id=self.training_session_id,
+                    player_id=player_db_id,
+                    throw_sequence=throw_seq,
+                    turn_number=turn_num,
+                    throw_in_turn=self.current_throw,
+                    base_score=base_score,
+                    multiplier=multiplier,
+                    multiplier_value=multiplier_value,
+                    actual_score=actual_score,
+                    score_before=score_before,
+                    score_after=score_after,
+                    dartboard_sends_actual_score=dartboard_sends_actual_score,
+                    is_bust=is_bust,
+                    is_finish=is_finish,
+                )
+                db_session.add(training_score)
+                db_session.commit()
+                db_session.close()
+            else:
+                # Regular game throw recording
+                self.db_service.record_throw(
+                    player_id=self.current_player,
+                    base_score=base_score,
+                    multiplier=multiplier,
+                    multiplier_value=multiplier_value,
+                    actual_score=actual_score,
+                    score_before=score_before,
+                    score_after=score_after,
+                    turn_number=turn_num,
+                    throw_in_turn=self.current_throw,
+                    dartboard_sends_actual_score=dartboard_sends_actual_score,
+                    is_bust=is_bust,
+                    is_finish=is_finish,
+                )
         except Exception as e:
             print(f"Warning: Could not record throw in database: {e}")
