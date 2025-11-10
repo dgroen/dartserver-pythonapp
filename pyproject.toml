@@ -224,7 +224,6 @@ py-version = "3.10"
 jobs = 0
 limit-inference-results = 100
 persistent = true
-suggestion-mode = true
 unsafe-load-any-extension = false
 
 [tool.pylint.messages_control]
@@ -237,16 +236,27 @@ disable = [
     "C0415",   # import-outside-toplevel
     "E0401",   # import-error (dependencies not in pre-commit env)
     "E1101",   # no-member (false positives from dynamic types)
-    "R0903",   # too-few-public-methods
+    "E1102",   # not-callable (false positives from SQLAlchemy)
+    "R0401",   # cyclic-import
+    "R0801",   # duplicate-code
     "R0902",   # too-many-instance-attributes
+    "R0903",   # too-few-public-methods
+    "R0911",   # too-many-return-statements
+    "R0912",   # too-many-branches
     "R0913",   # too-many-arguments
+    "R1702",   # too-many-nested-blocks
+    "W0101",   # unreachable (false positives)
     "W0212",   # protected-access
+    "W0401",   # wildcard-import
+    "W0404",   # reimported
     "W0511",   # fixme
+    "W0603",   # global-statement
+    "W0614",   # unused-wildcard-import
     "W0621",   # redefined-outer-name
+    "W0706",   # try-except-raise
     "W0718",   # broad-exception-caught
     "W1203",   # logging-fstring-interpolation
     "W1508",   # invalid-envvar-default
-    "W1706",   # try-except-raise
 ]
 
 [tool.pylint.format]
