@@ -84,7 +84,7 @@
             try {
                 const response = await fetch('/api/training/statistics');
                 const data = await response.json();
-                
+
                 if (data.success) {
                     const stats = data.statistics;
                     document.getElementById('total-sessions').textContent = stats.total_sessions;
@@ -103,67 +103,67 @@
             try {
                 const response = await fetch('/api/training/history');
                 const data = await response.json();
-                
+
                 if (data.success) {
                     displayHistory(data.sessions);
                 } else {
-                    document.getElementById('history-list').innerHTML = 
+                    document.getElementById('history-list').innerHTML =
                         '<p style="color: #ff6b6b;">Failed to load history: ' + (data.error || 'Unknown error') + '</p>';
                 }
             } catch (error) {
                 console.error('Error loading history:', error);
-                document.getElementById('history-list').innerHTML = 
+                document.getElementById('history-list').innerHTML =
                     '<p style="color: #ff6b6b;">Error loading training history</p>';
             }
         }
 
         function displayHistory(sessions) {
             const historyList = document.getElementById('history-list');
-            
+
             if (!sessions || sessions.length === 0) {
                 historyList.innerHTML = '<p>No training sessions found. Start training to see your history!</p>';
                 return;
             }
-            
+
             let html = '<div style="display: flex; flex-direction: column; gap: 1rem;">';
-            
+
             sessions.forEach(session => {
                 const startDate = new Date(session.started_at);
                 const finishDate = session.finished_at ? new Date(session.finished_at) : null;
                 const duration = finishDate ? Math.round((finishDate - startDate) / 1000 / 60) : null;
-                
+
                 html += '<div style="background: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);">';
                 html += '<div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">';
                 html += '<strong style="color: #00d4ff;">' + session.game_type.toUpperCase() + '</strong>';
-                html += '<span style="color: ' + (session.completed ? '#00ff00' : '#ffa500') + ';">' + 
+                html += '<span style="color: ' + (session.completed ? '#00ff00' : '#ffa500') + ';">' +
                         (session.completed ? '✓ Completed' : '⏸ Incomplete') + '</span>';
                 html += '</div>';
-                
+
                 html += '<div style="font-size: 0.875rem; color: #888; display: grid; gap: 0.25rem;">';
                 html += '<div>📅 Started: ' + startDate.toLocaleString() + '</div>';
-                
+
                 if (finishDate) {
                     html += '<div>🏁 Finished: ' + finishDate.toLocaleString() + '</div>';
                     html += '<div>⏱️ Duration: ' + duration + ' minutes</div>';
                 }
-                
+
                 if (session.start_score !== null) {
                     html += '<div>🎯 Start Score: ' + session.start_score + '</div>';
                     if (session.final_score !== null) {
                         html += '<div>🎯 Final Score: ' + session.final_score + '</div>';
                     }
                 }
-                
+
                 html += '<div>🎲 Throws: ' + session.throws_count + '</div>';
-                
+
                 if (session.double_out_enabled) {
                     html += '<div>🎯 Double Out: Enabled</div>';
                 }
-                
+
                 html += '</div>';
                 html += '</div>';
             });
-            
+
             html += '</div>';
             historyList.innerHTML = html;
         }

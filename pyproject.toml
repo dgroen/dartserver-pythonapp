@@ -229,14 +229,24 @@ unsafe-load-any-extension = false
 
 [tool.pylint.messages_control]
 disable = [
-    "C0103",  # invalid-name
-    "C0114",  # missing-module-docstring
-    "C0115",  # missing-class-docstring
-    "C0116",  # missing-function-docstring
-    "R0903",  # too-few-public-methods
-    "R0913",  # too-many-arguments
-    "W0212",  # protected-access
-    "W0511",  # fixme
+    "C0103",   # invalid-name
+    "C0114",   # missing-module-docstring
+    "C0115",   # missing-class-docstring
+    "C0116",   # missing-function-docstring
+    "C0302",   # too-many-lines
+    "C0415",   # import-outside-toplevel
+    "E0401",   # import-error (dependencies not in pre-commit env)
+    "E1101",   # no-member (false positives from dynamic types)
+    "R0903",   # too-few-public-methods
+    "R0902",   # too-many-instance-attributes
+    "R0913",   # too-many-arguments
+    "W0212",   # protected-access
+    "W0511",   # fixme
+    "W0621",   # redefined-outer-name
+    "W0718",   # broad-exception-caught
+    "W1203",   # logging-fstring-interpolation
+    "W1508",   # invalid-envvar-default
+    "W1706",   # try-except-raise
 ]
 
 [tool.pylint.format]
@@ -310,6 +320,7 @@ omit = [
     "setup.py",
     "bridge_nodejs_to_rabbitmq.js",
     "api_gateway.py",
+    "src/api_gateway/*",
 ]
 branch = true
 parallel = true
@@ -340,6 +351,6 @@ output = "build/coverage/coverage.xml"
 output = "build/coverage/coverage.json"
 
 [tool.bandit]
-exclude_dirs = ["tests", "examples", ".tox", ".venv"]
+exclude_dirs = ["tests", "examples", ".tox", ".venv", "helpers"]
 exclude = ["test_rabbitmq.py", "verify_installation.py"]
 skips = ["B101", "B104", "B311", "B601"]

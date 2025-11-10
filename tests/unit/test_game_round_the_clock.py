@@ -35,7 +35,7 @@ class TestGameRoundTheClock:
     def test_single_hit_advances_by_one(self, sample_players):
         """Test that hitting target with single advances by 1."""
         game = GameRoundTheClock(sample_players)
-        result = game.process_throw(0, 20, 1, "SINGLE")
+        result = game.process_throw(0, 20, "SINGLE")
         assert result["hit"] is True
         assert result["current_target"] == 20
         assert result["new_target"] == 19
@@ -45,7 +45,7 @@ class TestGameRoundTheClock:
     def test_double_hit_skips_one(self, sample_players):
         """Test that hitting target with double skips 1 number."""
         game = GameRoundTheClock(sample_players)
-        result = game.process_throw(0, 20, 2, "DOUBLE")
+        result = game.process_throw(0, 20, "DOUBLE")
         assert result["hit"] is True
         assert result["current_target"] == 20
         assert result["new_target"] == 18  # Skip 19
@@ -55,7 +55,7 @@ class TestGameRoundTheClock:
     def test_triple_hit_skips_two(self, sample_players):
         """Test that hitting target with triple skips 2 numbers."""
         game = GameRoundTheClock(sample_players)
-        result = game.process_throw(0, 20, 3, "TRIPLE")
+        result = game.process_throw(0, 20, "TRIPLE")
         assert result["hit"] is True
         assert result["current_target"] == 20
         assert result["new_target"] == 17  # Skip 19 and 18
@@ -65,7 +65,7 @@ class TestGameRoundTheClock:
     def test_miss_does_not_advance(self, sample_players):
         """Test that missing target does not advance."""
         game = GameRoundTheClock(sample_players)
-        result = game.process_throw(0, 19, 1, "SINGLE")  # Hit 19 instead of 20
+        result = game.process_throw(0, 19, "SINGLE")  # Hit 19 instead of 20
         assert result["hit"] is False
         assert result["current_target"] == 20
         assert result["new_target"] == 20
@@ -77,7 +77,7 @@ class TestGameRoundTheClock:
         # Hit 20, 19, 18, 17... down to 1
         for expected_target in range(20, 0, -1):
             assert game.players[0]["current_target"] == expected_target
-            result = game.process_throw(0, expected_target, 1, "SINGLE")
+            result = game.process_throw(0, expected_target, "SINGLE")
             assert result["hit"] is True
         # After hitting 1, should be at target 0 (ready for bull)
         assert game.players[0]["current_target"] == 0
@@ -87,9 +87,9 @@ class TestGameRoundTheClock:
         game = GameRoundTheClock(sample_players)
         # Complete the sequence
         for target in range(20, 0, -1):
-            game.process_throw(0, target, 1, "SINGLE")
+            game.process_throw(0, target, "SINGLE")
         # Hit double bull
-        result = game.process_throw(0, 25, 2, "DBLBULL")
+        result = game.process_throw(0, 25, "DBLBULL")
         assert result["hit"] is True
         assert result["winner"] is True
 
@@ -98,15 +98,15 @@ class TestGameRoundTheClock:
         game = GameRoundTheClock(sample_players)
         # Complete the sequence
         for target in range(20, 0, -1):
-            game.process_throw(0, target, 1, "SINGLE")
+            game.process_throw(0, target, "SINGLE")
         # Hit 4 single bulls - should not win yet
         for i in range(4):
-            result = game.process_throw(0, 25, 1, "BULL")
+            result = game.process_throw(0, 25, "BULL")
             assert result["hit"] is True
             assert result["winner"] is False
             assert result["bull_hits"] == i + 1
         # Hit 5th single bull - should win
-        result = game.process_throw(0, 25, 1, "BULL")
+        result = game.process_throw(0, 25, "BULL")
         assert result["hit"] is True
         assert result["winner"] is True
         assert result["bull_hits"] == 5
@@ -115,7 +115,7 @@ class TestGameRoundTheClock:
         """Test that hitting bull before completing sequence doesn't count."""
         game = GameRoundTheClock(sample_players)
         # Still at target 20
-        result = game.process_throw(0, 25, 1, "BULL")
+        result = game.process_throw(0, 25, "BULL")
         assert result["hit"] is False
         assert result["winner"] is False
         assert game.players[0]["current_target"] == 20
@@ -125,26 +125,26 @@ class TestGameRoundTheClock:
         game = GameRoundTheClock(sample_players)
         # Complete sequence
         for target in range(20, 0, -1):
-            game.process_throw(0, target, 1, "SINGLE")
+            game.process_throw(0, target, "SINGLE")
         # Hit 2 bulls
-        game.process_throw(0, 25, 1, "BULL")
-        game.process_throw(0, 25, 1, "BULL")
+        game.process_throw(0, 25, "BULL")
+        game.process_throw(0, 25, "BULL")
         assert game.players[0]["bull_hits"] == 2
         # This shouldn't happen in normal game, but test the reset logic
         # by manually setting target back
         game.players[0]["current_target"] = 1
-        game.process_throw(0, 1, 1, "SINGLE")
+        game.process_throw(0, 1, "SINGLE")
         assert game.players[0]["bull_hits"] == 0
 
     def test_multi_player_independent_progress(self, sample_players):
         """Test that multiple players have independent progress."""
         game = GameRoundTheClock(sample_players)
         # Player 0 hits 20
-        game.process_throw(0, 20, 1, "SINGLE")
+        game.process_throw(0, 20, "SINGLE")
         assert game.players[0]["current_target"] == 19
         assert game.players[1]["current_target"] == 20  # Still at 20
         # Player 1 hits 20 with double
-        game.process_throw(1, 20, 2, "DOUBLE")
+        game.process_throw(1, 20, "DOUBLE")
         assert game.players[0]["current_target"] == 19
         assert game.players[1]["current_target"] == 18  # Skipped 19
 
@@ -154,21 +154,21 @@ class TestGameRoundTheClock:
         # Manually set to target 2
         game.players[0]["current_target"] = 2
         # Hit with triple (would try to go to -1)
-        result = game.process_throw(0, 2, 3, "TRIPLE")
+        result = game.process_throw(0, 2, "TRIPLE")
         assert result["hit"] is True
         assert game.players[0]["current_target"] == 0  # Stops at 0, not negative
 
     def test_invalid_player_id(self, sample_players):
         """Test processing throw with invalid player ID."""
         game = GameRoundTheClock(sample_players)
-        result = game.process_throw(5, 20, 1, "SINGLE")
+        result = game.process_throw(5, 20, "SINGLE")
         assert "error" in result
 
     def test_get_player_score(self, sample_players):
         """Test getting player score (current target)."""
         game = GameRoundTheClock(sample_players)
         assert game.get_player_score(0) == 20
-        game.process_throw(0, 20, 1, "SINGLE")
+        game.process_throw(0, 20, "SINGLE")
         assert game.get_player_score(0) == 19
         assert game.get_player_score(5) == 20  # Invalid player returns 20
 
@@ -183,8 +183,8 @@ class TestGameRoundTheClock:
         """Test resetting the game."""
         game = GameRoundTheClock(sample_players)
         # Play some throws
-        game.process_throw(0, 20, 3, "TRIPLE")
-        game.process_throw(0, 17, 2, "DOUBLE")
+        game.process_throw(0, 20, "TRIPLE")
+        game.process_throw(0, 17, "DOUBLE")
         # Reset
         game.reset()
         assert game.players[0]["current_target"] == 20
@@ -211,18 +211,18 @@ class TestGameRoundTheClock:
         """Test a complete game scenario with winner."""
         game = GameRoundTheClock(sample_players)
         # Player 0 completes sequence with mix of singles, doubles, and triples
-        game.process_throw(0, 20, 3, "TRIPLE")  # 20 -> 17
+        game.process_throw(0, 20, "TRIPLE")  # 20 -> 17
         assert game.players[0]["current_target"] == 17
 
-        game.process_throw(0, 17, 2, "DOUBLE")  # 17 -> 15
+        game.process_throw(0, 17, "DOUBLE")  # 17 -> 15
         assert game.players[0]["current_target"] == 15
 
         # Continue with singles
         for target in range(15, 0, -1):
-            game.process_throw(0, target, 1, "SINGLE")
+            game.process_throw(0, target, "SINGLE")
 
         assert game.players[0]["current_target"] == 0
 
         # Win with double bull
-        result = game.process_throw(0, 25, 2, "DBLBULL")
+        result = game.process_throw(0, 25, "DBLBULL")
         assert result["winner"] is True

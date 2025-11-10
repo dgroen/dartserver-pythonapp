@@ -9,6 +9,13 @@ import pytest
 
 from src.app.app import app as flask_app
 
+os.environ["ENVIRONMENT"] = "test"
+os.environ["APP_DOMAIN"] = "test.letsplaydarts.eu"
+os.environ["APP_SCHEME"] = "https"
+os.environ["SECRET_KEY"] = "test-secret-key-for-automated-testing"
+os.environ["RABBITMQ_EXCHANGE"] = "darts_exchange_test"
+os.environ["WSO2_IS_URL"] = "https://test.letsplaydarts.eu/auth"
+
 # Disable TTS during tests to avoid timing issues
 os.environ["TTS_ENABLED"] = "false"
 # Use in-memory SQLite for tests
@@ -16,11 +23,12 @@ os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 # Enable authentication for tests to verify auth decorators work correctly
 os.environ["AUTH_DISABLED"] = "false"
 
+
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_socketio():
     """Mock SocketIO instance."""
     mock = MagicMock()
@@ -28,7 +36,7 @@ def mock_socketio():
     return mock
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_players():
     """Sample player data for testing."""
     return [
@@ -37,7 +45,7 @@ def sample_players():
     ]
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_players_four():
     """Sample player data with four players."""
     return [
@@ -48,7 +56,7 @@ def sample_players_four():
     ]
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_score_data():
     """Sample score data for testing."""
     return {
@@ -58,14 +66,14 @@ def sample_score_data():
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def app():
     """Flask app fixture for pytest-flask and tests."""
     flask_app.config["TESTING"] = True
     return flask_app
 
 
-@pytest.fixture()
+@pytest.fixture
 def app_client():
     """Flask test client."""
 
@@ -74,7 +82,7 @@ def app_client():
         yield client
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_rabbitmq_config():
     """Mock RabbitMQ configuration."""
     return {
@@ -88,7 +96,7 @@ def mock_rabbitmq_config():
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_database_service():
     """Mock DatabaseService for testing."""
     with patch("src.app.game_manager.DatabaseService") as mock_db:
@@ -104,7 +112,7 @@ def mock_database_service():
         yield mock_instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def in_memory_db():
     """Create an in-memory database for testing."""
     from src.core.database_service import DatabaseService
@@ -114,7 +122,7 @@ def in_memory_db():
     return db_service
 
 
-@pytest.fixture()
+@pytest.fixture
 def player_ids_with_db():
     """Helper to create player dicts with database IDs."""
 

@@ -168,14 +168,14 @@ if (nextPlayerButton) {
 function handleNextPlayerClick() {
     console.log('Button clicked!');
     console.log('currentGame:', currentGame);
-    
+
     if (!socket || !currentGame) {
         console.error('Cannot continue: no active game or socket connection');
         return;
     }
 
     console.log('Game is_paused:', currentGame.is_paused);
-    
+
     // If game is paused (waiting for continue), just emit next_player
     if (currentGame.is_paused) {
         console.log('Emitting next_player event');
@@ -186,9 +186,9 @@ function handleNextPlayerClick() {
     // Game is active - end turn early (record remaining throws as misses)
     // For single-player games, skip confirmation
     const isSinglePlayer = currentGame.players && currentGame.players.length === 1;
-    
+
     console.log('Game is active, ending turn early. Single player:', isSinglePlayer);
-    
+
     if (isSinglePlayer) {
         socket.emit('end_turn_early');
     } else {
@@ -204,7 +204,7 @@ function updateNextPlayerButton(state) {
     if (!nextPlayerButtonContainer || !state) {
         return;
     }
-    
+
     // Don't show button if no game or no user info
     if (!currentUser || !state.is_started) {
         nextPlayerButtonContainer.style.display = 'none';
@@ -224,7 +224,7 @@ function updateNextPlayerButton(state) {
     if (currentPlayerIndex !== undefined && state.players && state.players[currentPlayerIndex]) {
         const currentPlayerDbId = state.players[currentPlayerIndex].db_id;
         const userPlayerId = currentUser.player_id;
-        
+
         if (currentPlayerDbId && userPlayerId && currentPlayerDbId === userPlayerId) {
             nextPlayerButtonContainer.style.display = 'block';
             updateButtonText(state);
@@ -239,7 +239,7 @@ function updateNextPlayerButton(state) {
 // Update button text based on game state
 function updateButtonText(state) {
     const buttonHint = document.getElementById('buttonHint');
-    
+
     if (state.is_paused) {
         // Game is paused - button continues to next player
         if (nextPlayerButton) {

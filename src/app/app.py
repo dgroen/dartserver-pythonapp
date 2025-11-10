@@ -71,8 +71,6 @@ app.config["SESSION_COOKIE_SECURE"] = Config.SESSION_COOKIE_SECURE
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = 3600  # 1 hour
-_dsas = os.getenv("DARTBOARD_SENDS_ACTUAL_SCORE", "false")
-app.config["DARTBOARD_SENDS_ACTUAL_SCORE"] = _dsas.lower() == "true"
 # Enable CORS with credentials support - required for session cookies to work
 CORS(app, supports_credentials=True)
 
@@ -441,7 +439,6 @@ def callback():
     return redirect(next_url)
 
 
-@app.route
 @app.route("/logout")
 def logout():
     """Logout endpoint"""
@@ -929,90 +926,6 @@ def remove_player(player_id):
     return jsonify({"status": "success", "message": "Player removed"})
 
 
-@app.route("/api/Throw", methods=["POST"])
-# @login_required
-# @permission_required("score:submit")
-def submit_score():
-    """Submit a score via API (Legacy format - for backwards compatibility)
-    ---
-    tags:
-      - Score
-    summary: Submit a dart score (Legacy)
-    description: |
-        Submits a dart throw score for the current player.
-        This endpoint is for backwards compatibility with older dartboards.
-        New dartboards should use /api/Throw/zone endpoint instead.
-    parameters:
-      - in: body
-        name: body
-        description: Score information
-        required: true
-        schema:
-          type: object
-          required:
-            - score
-            - multiplier
-          properties:
-            score:
-              type: integer
-              description: Base score value (0-20 for regular segments, 25 for bull)
-              example: 20
-              minimum: 0
-              maximum: 25
-            multiplier:
-              type: string
-              description: Score multiplier type
-              enum: ['SINGLE', 'DOUBLE', 'TRIPLE', 'BULL', 'DBLBULL']
-              example: TRIPLE
-            user:
-              type: string
-              description: Optional player name (for future use)
-              example: Alice
-    responses:
-      200:
-        description: Score submitted successfully
-        schema:
-          type: object
-          properties:
-            status:
-              type: string
-              example: success
-            message:
-              type: string
-              example: Score submitted
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            status:
-              type: string
-              example: error
-            message:
-              type: string
-    """
-    try:
-        data = request.json
-        score = data.get("score", 0)
-        multiplier = data.get("multiplier", "SINGLE")
-
-        # Validate legacy format
-        if not isinstance(score, int) or not isinstance(multiplier, str):
-            return (
-                jsonify({"status": "error", "message": "Invalid score or multiplier format"}),
-                400,
-            )
-
-        # Process the score
-        game_manager.process_score({"score": score, "multiplier": multiplier})
-        # Game state is automatically emitted by game_manager.process_score()
-
-        return jsonify({"status": "success", "message": "Score submitted"})
-    except Exception as e:
-        logger.exception("Error submitting score")
-        return jsonify({"status": "error", "message": str(e)}), 400
-
-
 @app.route("/api/Throw/zone", methods=["POST"])
 # @login_required
 # @permission_required("score:submit")
@@ -1151,11 +1064,10 @@ def submit_score_zone():
                 )
 
             # Process the score using the zone information
-            # Use the calculated 'score' field since the zone mapping already computed it
-            # This ensures correct scoring regardless of DARTBOARD_SENDS_ACTUAL_SCORE setting
+            # Pass the base_value and multiplier_type - game logic handles the calculation
             game_manager.process_score(
                 {
-                    "score": zone_info["score"],  # Use calculated score, not base_value
+                    "score": zone_info["base_value"],
                     "multiplier": zone_info["multiplier_type"],
                 },
             )
@@ -3133,9 +3045,7 @@ def start_training():
         # Get or create game type
         from src.core.database_models import GameType
 
-        game_type_obj = (
-            db_session.query(GameType).filter(GameType.name == game_type).first()
-        )
+        game_type_obj = db_session.query(GameType).filter(GameType.name == game_type).first()
         if not game_type_obj:
             game_type_obj = GameType(name=game_type, description=f"{game_type} game")
             db_session.add(game_type_obj)
@@ -3181,7 +3091,7 @@ def start_training():
                 "training_session_id": training_session.id,
             },
         )
-    except Exception as e:
+    except Exception:
         app.logger.exception("Failed to start training session")
         return (
             jsonify({"success": False, "error": "Failed to start training session"}),
@@ -3246,7 +3156,7 @@ def end_training():
         session.pop("training_session_id", None)
 
         return jsonify({"success": True, "message": "Training session ended"})
-    except Exception as e:
+    except Exception:
         app.logger.exception("Failed to end training session")
         return (
             jsonify({"success": False, "error": "Failed to end training session"}),
@@ -3312,7 +3222,7 @@ def get_training_history():
         db_session.close()
 
         return jsonify({"success": True, "sessions": sessions_data})
-    except Exception as e:
+    except Exception:
         app.logger.exception("Failed to get training history")
         return (
             jsonify({"success": False, "error": "Failed to retrieve training history"}),
@@ -3394,7 +3304,7 @@ def get_training_statistics():
         }
 
         return jsonify({"success": True, "statistics": statistics})
-    except Exception as e:
+    except Exception:
         app.logger.exception("Failed to get training statistics")
         return (
             jsonify({"success": False, "error": "Failed to retrieve training statistics"}),
@@ -3407,7 +3317,12 @@ def handle_connect():
     """Handle client connection"""
     print("Client connected")
     # Use socketio.emit to ensure the message reaches the test client
-    socketio.emit("game_state", game_manager.get_game_state(), namespace="/", to=request.sid)  # type: ignore
+    socketio.emit(
+        "game_state",
+        game_manager.get_game_state(),
+        namespace="/",
+        to=request.sid,  # type: ignore[attr-defined]
+    )
 
 
 @socketio.on("disconnect", namespace="/")

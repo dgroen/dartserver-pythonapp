@@ -3,7 +3,7 @@ Dartboard service for mapping GPIO pin combinations to game zones
 Handles both generic pin-based input and legacy score/multiplier input
 """
 
-from typing import ClassVar
+from typing import Any, ClassVar, cast
 
 from sqlalchemy.orm import Session
 
@@ -261,21 +261,25 @@ class DartboardService:
         }
 
     @staticmethod
-    def list_dartboard_types(session: Session) -> list:
+    def list_dartboard_types(session: Session) -> list[Any]:
         """Get all active dartboard types"""
-        return session.query(DartboardType).filter_by(is_active=True).all()
+        return cast(list[Any], session.query(DartboardType).filter_by(is_active=True).all())
 
     @staticmethod
     def get_dartboard_type_mappings(
         session: Session,
         dartboard_type_name: str,
-    ) -> list:
+    ) -> list[Any] | None:
         """Get all zone mappings for a dartboard type"""
         dartboard_type = session.query(DartboardType).filter_by(name=dartboard_type_name).first()
         if not dartboard_type:
             return None
-        return (
-            session.query(DartboardZoneMapping).filter_by(dartboard_type_id=dartboard_type.id).all()
+
+        return cast(
+            list[Any],
+            session.query(DartboardZoneMapping)
+            .filter_by(dartboard_type_id=dartboard_type.id)
+            .all(),
         )
 
     @staticmethod
@@ -398,7 +402,7 @@ class DartboardService:
             existing.multiplier_type = multiplier_type
             existing.base_value = base_value
             session.commit()
-            return existing
+            return cast(DartboardZoneMapping, existing)
         # Create new mapping
         return DartboardService.add_zone_mapping(
             session,
