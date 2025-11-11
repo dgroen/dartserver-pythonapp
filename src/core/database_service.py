@@ -804,9 +804,11 @@ class DatabaseService:
             # Calculate averages per game type
             for _game_type_name, stats in by_game_type.items():
                 if stats["scores"]:
-                    score_sum = sum(stats["scores"])
-                    score_count = len(stats["scores"])
-                    stats["average_score"] = score_sum / score_count  # type: ignore[operator]
+                    scores_list = stats["scores"]
+                    if isinstance(scores_list, list):
+                        score_sum = sum(scores_list)
+                        score_count = len(scores_list)
+                        stats["average_score"] = score_sum / score_count
                 del stats["scores"]  # Remove scores list from final output
 
             return {
