@@ -6,7 +6,7 @@ from src.app.game_manager import GameManager
 from src.core.database_service import DatabaseService
 
 
-@pytest.fixture()
+@pytest.fixture
 def db_service():
     """Create in-memory database service for testing."""
     db = DatabaseService("sqlite:///:memory:")
@@ -45,9 +45,8 @@ class TestGame301Scenarios:
         manager.new_game("301", player_ids=player_ids)
 
         # Alice's turn - score 180 (3x triple 20)
-        # When DARTBOARD_SENDS_ACTUAL_SCORE=True, we send actual scores (60, not 20)
         for _ in range(3):
-            manager.process_score({"score": 60, "multiplier": "TRIPLE"})
+            manager.process_score({"score": 20, "multiplier": "TRIPLE"})
         assert manager.game.players[0]["score"] == 121  # 301 - 180
 
         # Move to Bob
@@ -55,9 +54,9 @@ class TestGame301Scenarios:
         assert manager.current_player == 1
 
         # Bob's turn - score 160 (60 + 60 + 40)
-        manager.process_score({"score": 60, "multiplier": "TRIPLE"})
-        manager.process_score({"score": 60, "multiplier": "TRIPLE"})
-        manager.process_score({"score": 40, "multiplier": "DOUBLE"})
+        manager.process_score({"score": 20, "multiplier": "TRIPLE"})
+        manager.process_score({"score": 20, "multiplier": "TRIPLE"})
+        manager.process_score({"score": 20, "multiplier": "DOUBLE"})
         assert manager.game.players[1]["score"] == 141  # 301 - 160
 
     def test_301_bust_scenario(self, mock_socketio, db_service):
@@ -69,20 +68,20 @@ class TestGame301Scenarios:
 
         # Score down to 50 properly (301 - 251 = 50)
         # First turn: score 180 (60 triple x 3)
-        manager.process_score({"score": 60, "multiplier": "TRIPLE"})  # 301 - 180 = 121
-        manager.process_score({"score": 60, "multiplier": "TRIPLE"})
-        manager.process_score({"score": 60, "multiplier": "TRIPLE"})
+        manager.process_score({"score": 20, "multiplier": "TRIPLE"})  # 301 - 180 = 121
+        manager.process_score({"score": 20, "multiplier": "TRIPLE"})
+        manager.process_score({"score": 20, "multiplier": "TRIPLE"})
         assert manager.game.players[0]["score"] == 121
 
         # Next turn: score 71 more (121 - 71 = 50)
         manager.next_player()  # Move to Bob
         manager.next_player()  # Back to Alice
-        manager.process_score({"score": 60, "multiplier": "TRIPLE"})  # 60
+        manager.process_score({"score": 20, "multiplier": "TRIPLE"})  # 60
         manager.process_score({"score": 11, "multiplier": "SINGLE"})  # 11
         assert manager.game.players[0]["score"] == 50
 
         # Third throw in same turn - try to score 60 (bust - would go negative)
-        manager.process_score({"score": 60, "multiplier": "TRIPLE"})  # This should bust
+        manager.process_score({"score": 20, "multiplier": "TRIPLE"})  # This should bust
 
         # Score should be restored to start of turn (121) because bust undoes entire turn
         assert manager.game.players[0]["score"] == 121
@@ -99,7 +98,7 @@ class TestGame301Scenarios:
         manager.game.players[0]["score"] = 40
 
         # Score exactly 40 to win
-        manager.process_score({"score": 40, "multiplier": "DOUBLE"})
+        manager.process_score({"score": 20, "multiplier": "DOUBLE"})
 
         # Should be winner
         assert manager.game.players[0]["score"] == 0
@@ -116,7 +115,7 @@ class TestGame301Scenarios:
         assert manager.game.players[0]["score"] == 501
 
         # Score some points
-        manager.process_score({"score": 60, "multiplier": "TRIPLE"})
+        manager.process_score({"score": 20, "multiplier": "TRIPLE"})
         assert manager.game.players[0]["score"] == 441
 
 
@@ -131,12 +130,12 @@ class TestCricketScenarios:
         manager.new_game("cricket", player_ids=player_ids)
 
         # Alice opens 20
-        manager.process_score({"score": 60, "multiplier": "TRIPLE"})
+        manager.process_score({"score": 20, "multiplier": "TRIPLE"})
         assert manager.game.players[0]["targets"][20]["hits"] == 3
         assert manager.game.players[0]["targets"][20]["status"] == 1
 
         # Alice scores on 20
-        manager.process_score({"score": 40, "multiplier": "DOUBLE"})
+        manager.process_score({"score": 20, "multiplier": "DOUBLE"})
         assert manager.game.players[0]["score"] == 40
 
     def test_cricket_closing_target(self, mock_socketio, db_service):
@@ -147,13 +146,13 @@ class TestCricketScenarios:
         manager.new_game("cricket", player_ids=player_ids)
 
         # Alice opens 20
-        manager.process_score({"score": 60, "multiplier": "TRIPLE"})
+        manager.process_score({"score": 20, "multiplier": "TRIPLE"})
 
         # Move to Bob
         manager.next_player()
 
         # Bob opens 20 (should close it)
-        manager.process_score({"score": 60, "multiplier": "TRIPLE"})
+        manager.process_score({"score": 20, "multiplier": "TRIPLE"})
 
         # Target should be closed for both
         assert manager.game.players[0]["targets"][20]["status"] == 2
@@ -173,9 +172,7 @@ class TestCricketScenarios:
             if i > 0 and i % 3 == 0:
                 manager.next_player()  # Move to Bob
                 manager.next_player()  # Move back to Alice
-            # Send actual score (triple value)
-            actual_score = target * 3
-            manager.process_score({"score": actual_score, "multiplier": "TRIPLE"})
+            manager.process_score({"score": target, "multiplier": "TRIPLE"})
 
         # Alice should be winner (all targets opened, Bob has none)
         assert manager.is_winner is True
@@ -193,7 +190,7 @@ class TestCricketScenarios:
         assert manager.game.players[0]["score"] == 0
 
         # Alice hits 20 twice more (opens)
-        manager.process_score({"score": 40, "multiplier": "DOUBLE"})
+        manager.process_score({"score": 20, "multiplier": "DOUBLE"})
         assert manager.game.players[0]["targets"][20]["hits"] == 3
         assert manager.game.players[0]["score"] == 0
 
@@ -234,7 +231,7 @@ class TestMultiPlayerScenarios:
         # Each player opens 20
         for i in range(4):
             assert manager.current_player == i
-            manager.process_score({"score": 60, "multiplier": "TRIPLE"})
+            manager.process_score({"score": 20, "multiplier": "TRIPLE"})
             manager.next_player()
 
         # Target should be closed for all

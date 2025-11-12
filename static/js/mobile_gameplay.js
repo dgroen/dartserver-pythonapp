@@ -60,14 +60,14 @@ async function loadCurrentUser() {
 function handleNextPlayerClick() {
     console.log('Button clicked!');
     console.log('currentGame:', currentGame);
-    
+
     if (!socket || !currentGame) {
         console.error('Cannot continue: no active game or socket connection');
         return;
     }
 
     console.log('Game is_paused:', currentGame.is_paused);
-    
+
     // If game is paused (waiting for continue), just emit next_player
     if (currentGame.is_paused) {
         console.log('Emitting next_player event');
@@ -78,9 +78,9 @@ function handleNextPlayerClick() {
     // Game is active - end turn early (record remaining throws as misses)
     // For single-player games, skip confirmation
     const isSinglePlayer = currentGame.players && currentGame.players.length === 1;
-    
+
     console.log('Game is active, ending turn early. Single player:', isSinglePlayer);
-    
+
     if (isSinglePlayer) {
         socket.emit('end_turn_early');
     } else {
@@ -251,7 +251,7 @@ function updateNextPlayerButton(game) {
     const buttonContainer = document.getElementById('nextPlayerButtonContainer');
     const nextPlayerBtn = document.getElementById('nextPlayerButton');
     const buttonHint = document.getElementById('buttonHint');
-    
+
     // Don't show button if no game or no user info
     if (!game || !currentUser || !game.is_started) {
         buttonContainer.style.display = 'none';
@@ -271,7 +271,7 @@ function updateNextPlayerButton(game) {
     if (currentPlayerIndex !== undefined && game.players && game.players[currentPlayerIndex]) {
         const currentPlayerDbId = game.players[currentPlayerIndex].db_id;
         const userPlayerId = currentUser.player_id;
-        
+
         if (currentPlayerDbId && userPlayerId && currentPlayerDbId === userPlayerId) {
             buttonContainer.style.display = 'block';
             updateButtonText(game, nextPlayerBtn, buttonHint);
@@ -286,7 +286,7 @@ function updateNextPlayerButton(game) {
 // Update button text based on game state
 function updateButtonText(game, buttonElement, hintElement) {
     if (!buttonElement) return;
-    
+
     if (game.is_paused) {
         // Game is paused - button continues to next player
         buttonElement.textContent = '▶️ Continue Game';
@@ -352,14 +352,14 @@ function updateCurrentPlayer(data) {
 function handleGameState(data) {
     // Update current game state
     currentGame = data;
-    
+
     // Handle game state updates which may include throwout advice
     if (data.throwout_advice) {
         displayThrowoutAdvice(data.throwout_advice);
     } else {
         hideThrowoutAdvice();
     }
-    
+
     // Update button visibility
     updateNextPlayerButton(data);
 }

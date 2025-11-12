@@ -12,8 +12,8 @@ import urllib3
 
 # WSO2 IS Configuration
 WSO2_IS_URL = "https://letsplaydarts.eu/auth"
-WSO2_ADMIN_USER = "admin"
-WSO2_ADMIN_PASSWORD = "admin"  # pragma: allowlist secret
+WSO2_ADMIN_USER = ""
+WSO2_ADMIN_PASSWORD = ""  # pragma: allowlist secret
 
 # Disable SSL warnings for self-signed certificates
 urllib3.disable_warnings()

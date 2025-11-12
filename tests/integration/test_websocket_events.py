@@ -10,7 +10,7 @@ from src.app.app import game_manager, socketio
 from src.core.database_service import DatabaseService
 
 
-@pytest.fixture()
+@pytest.fixture
 def db_service():
     """Create in-memory database service for testing."""
     db = DatabaseService("sqlite:///:memory:")
@@ -25,7 +25,7 @@ def db_service():
     return db
 
 
-@pytest.fixture()
+@pytest.fixture
 def app(db_service):
     """Create Flask app for testing."""
     with (
@@ -40,7 +40,7 @@ def app(db_service):
         yield flask_app
 
 
-@pytest.fixture()
+@pytest.fixture
 def socketio_client(app, db_service):
     """Create SocketIO test client."""
     # Make sure game_manager uses the test database
@@ -288,8 +288,7 @@ class TestWebSocketEvents:
         )
         wait_for_events(socketio_client)  # Wait for processing
 
-        # Submit a score (DARTBOARD_SENDS_ACTUAL_SCORE=True, so send actual score 60, not base 20)
-        socketio_client.emit("manual_score", {"score": 60, "multiplier": "TRIPLE"}, namespace="/")
+        socketio_client.emit("manual_score", {"score": 20, "multiplier": "TRIPLE"}, namespace="/")
         wait_for_events(socketio_client)
 
         # Verify game state directly from game_manager
@@ -309,11 +308,10 @@ class TestWebSocketEvents:
         )
         socketio_client.get_received(namespace="/")  # Clear messages
 
-        # Submit multiple scores (DARTBOARD_SENDS_ACTUAL_SCORE=True, so send actual scores)
         scores = [
-            {"score": 60, "multiplier": "TRIPLE"},  # Triple 20 = 60
-            {"score": 38, "multiplier": "DOUBLE"},  # Double 19 = 38
-            {"score": 18, "multiplier": "SINGLE"},  # Single 18 = 18
+            {"score": 20, "multiplier": "TRIPLE"},
+            {"score": 19, "multiplier": "DOUBLE"},
+            {"score": 18, "multiplier": "SINGLE"},
         ]
 
         for score in scores:
@@ -336,14 +334,13 @@ class TestWebSocketEvents:
         )
         wait_for_events(socketio_client)  # Wait for processing
 
-        # Play some throws (DARTBOARD_SENDS_ACTUAL_SCORE=True, so send actual scores)
-        socketio_client.emit("manual_score", {"score": 60, "multiplier": "TRIPLE"}, namespace="/")
+        socketio_client.emit("manual_score", {"score": 20, "multiplier": "TRIPLE"}, namespace="/")
         wait_for_events(socketio_client)
 
-        socketio_client.emit("manual_score", {"score": 60, "multiplier": "TRIPLE"}, namespace="/")
+        socketio_client.emit("manual_score", {"score": 20, "multiplier": "TRIPLE"}, namespace="/")
         wait_for_events(socketio_client)
 
-        socketio_client.emit("manual_score", {"score": 60, "multiplier": "TRIPLE"}, namespace="/")
+        socketio_client.emit("manual_score", {"score": 20, "multiplier": "TRIPLE"}, namespace="/")
         wait_for_events(socketio_client)
 
         # Verify game state directly from game_manager

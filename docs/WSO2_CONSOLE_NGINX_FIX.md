@@ -14,7 +14,7 @@ The WSO2 Identity Server console (accessible at `https://test.letsplaydarts.eu/t
 
 4. **Missing console-specific endpoints**: The console requires several API endpoints that weren't properly proxied:
    - `/api/identity/` - Identity management APIs
-   - `/api/users/` - User management APIs  
+   - `/api/users/` - User management APIs
    - `/o/` - Organization management APIs
    - Tenant-specific paths like `/t/{tenant}/api/`
 
@@ -45,14 +45,15 @@ location /console/ {
     proxy_set_header X-Forwarded-Proto https;
     proxy_set_header X-Forwarded-Host $host;
     proxy_ssl_verify off;
-    
+
     # Cache static resources
     proxy_cache_valid 200 1h;
     add_header X-Cache-Status $upstream_cache_status;
 }
 ```
 
-**Why this works:** 
+**Why this works:**
+
 - `location = /console` (exact match) handles the OAuth callback redirect
 - `location /console/` (prefix match) proxies all console static resources (startup-config.js, auth-spa-3.1.2.min.js, CSS, etc.) to WSO2 IS
 - Without the proxying, resources would get 302 redirects creating broken paths like `/t/carbon.super/console/console/startup-config.js`
@@ -72,7 +73,7 @@ location ~ ^/t/[^/]+/console {
     proxy_set_header X-Forwarded-Host $host;
     proxy_ssl_verify off;
     proxy_redirect off;
-    
+
     # Handle console static resources
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -92,6 +93,7 @@ location ~ ^/t/[^/]+/api/ {
 ```
 
 **Key points:**
+
 - Uses regex `^/t/[^/]+/console` to match any tenant's console path
 - Placed BEFORE the general `/t/` redirect location
 - `proxy_redirect off` prevents WSO2's internal redirects from breaking
@@ -161,8 +163,9 @@ Understanding Nginx's location matching priority is crucial:
 3. **Longest prefix match** (`/path/`)
 
 In our fix:
+
 - `location ~ ^/t/[^/]+/console` (regex) is evaluated BEFORE
-- `location /t/` (prefix) 
+- `location /t/` (prefix)
 
 This ensures console paths are proxied directly to WSO2 IS while other `/t/` paths are redirected to `/auth/t/`.
 
@@ -188,9 +191,10 @@ docker logs darts-wso2is -f
 Navigate to: `https://test.letsplaydarts.eu/t/carbon.super/console`
 
 **Expected Flow:**
+
 1. You'll be redirected to the login page at `/authenticationendpoint/login.do`
 2. Enter credentials (username: `admin`, password: `admin`)
-3. After authentication, you'll be redirected to `/console` 
+3. After authentication, you'll be redirected to `/console`
 4. Nginx will automatically redirect you to `/t/carbon.super/console`
 5. The console should now load successfully with all features working
 
@@ -204,11 +208,13 @@ Navigate to: `https://test.letsplaydarts.eu/t/carbon.super/console`
 ### 4. Debug if Issues Persist
 
 Check Nginx logs:
+
 ```bash
 docker logs darts-nginx -f
 ```
 
 Check WSO2 IS logs:
+
 ```bash
 docker logs darts-wso2is -f | grep -i console
 ```
@@ -245,6 +251,7 @@ If you add new WSO2 IS features that use tenant-specific paths (`/t/{tenant}/...
 ### Console Static Resources
 
 The console serves static assets (JS, CSS, images) from paths like:
+
 - `/console/libs/`
 - `/console/themes/`
 - `/t/{tenant}/console/resources/`
@@ -261,9 +268,10 @@ The current configuration handles these via the main console location block with
    - Apply security policies
 
 3. **Rate Limiting**: Consider adding rate limiting to console endpoints if public access is enabled:
+
    ```nginx
    limit_req_zone $binary_remote_addr zone=console_limit:10m rate=10r/m;
-   
+
    location ~ ^/t/[^/]+/console {
        limit_req zone=console_limit burst=5 nodelay;
        # ... rest of config ...
@@ -277,6 +285,7 @@ The current configuration handles these via the main console location block with
 **Symptom:** After login, you're redirected to `https://test.letsplaydarts.eu/console` and nothing happens.
 
 **Solution:** This was the main issue we fixed. Ensure:
+
 1. The Nginx `/console` location redirects to `/t/carbon.super/console`
 2. Both Nginx AND WSO2 IS have been restarted
 3. Clear your browser cache and cookies for the domain
@@ -303,6 +312,6 @@ The current configuration handles these via the main console location block with
 
 ## References
 
-- WSO2 IS 7.x Console Documentation: https://is.docs.wso2.com/en/latest/guides/console/
-- Nginx Proxy Module: http://nginx.org/en/docs/http/ngx_http_proxy_module.html
-- Nginx Location Directive: http://nginx.org/en/docs/http/ngx_http_core_module.html#location
+- WSO2 IS 7.x Console Documentation: <https://is.docs.wso2.com/en/latest/guides/console/>
+- Nginx Proxy Module: <http://nginx.org/en/docs/http/ngx_http_proxy_module.html>
+- Nginx Location Directive: <http://nginx.org/en/docs/http/ngx_http_core_module.html#location>

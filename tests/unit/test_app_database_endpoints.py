@@ -10,14 +10,14 @@ from src.app.app import app
 class TestDatabaseEndpoints:
     """Test database-related endpoints."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def client(self):
         """Create test client."""
         app.config["TESTING"] = True
         with app.test_client() as client:
             yield client
 
-    @pytest.fixture()
+    @pytest.fixture
     def mock_game_manager(self):
         """Mock game manager with database service."""
         with patch("src.app.app.game_manager") as mock_gm:
@@ -25,7 +25,7 @@ class TestDatabaseEndpoints:
             mock_gm.db_service = mock_db_service
             yield mock_gm, mock_db_service
 
-    @pytest.fixture()
+    @pytest.fixture
     def _mock_auth(self):
         """Mock authentication to bypass login_required."""
         with patch("src.core.auth.AUTH_DISABLED", True):
@@ -138,14 +138,14 @@ class TestDatabaseEndpoints:
 class TestTTSEndpoints:
     """Test TTS-related endpoints."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def client(self):
         """Create test client."""
         app.config["TESTING"] = True
         with app.test_client() as client:
             yield client
 
-    @pytest.fixture()
+    @pytest.fixture
     def mock_game_manager(self):
         """Mock game manager with TTS service."""
         with patch("src.app.app.game_manager") as mock_gm:

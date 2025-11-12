@@ -8,7 +8,7 @@ import pytest
 from src.core.rabbitmq_consumer import RabbitMQConsumer
 
 
-@pytest.fixture()
+@pytest.fixture
 def config():
     """Provide RabbitMQ configuration for testing."""
     return {
@@ -22,13 +22,13 @@ def config():
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def callback():
     """Mock callback function."""
     return Mock()
 
 
-@pytest.fixture()
+@pytest.fixture
 def consumer(config, callback):
     """Create RabbitMQ consumer instance."""
     return RabbitMQConsumer(config, callback)

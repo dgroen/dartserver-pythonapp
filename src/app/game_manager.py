@@ -307,18 +307,8 @@ class GameManager:
         }
         multiplier_value = multiplier_map.get(multiplier, 1)
 
-        # Handle dartboard configuration
-        from app import app  # Import here to avoid circular dependency
-
-        if app.config["DARTBOARD_SENDS_ACTUAL_SCORE"]:
-            # Dartboard sent the actual score (e.g., 60 for triple 20)
-            # Convert to base score for game logic
-            actual_score = base_score
-            base_score = int(base_score / multiplier_value)
-        else:
-            # Dartboard sent base score (e.g., 20 for triple 20)
-            # Calculate actual score for display
-            actual_score = base_score * multiplier_value
+        # Calculate actual score for display
+        actual_score = base_score * multiplier_value
 
         # Get score before throw
         score_before = self._get_player_current_score(self.current_player)

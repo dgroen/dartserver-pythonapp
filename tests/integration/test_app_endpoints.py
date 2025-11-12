@@ -10,7 +10,7 @@ from src.app.app import game_manager
 from src.core.database_service import DatabaseService
 
 
-@pytest.fixture()
+@pytest.fixture
 def db_service():
     """Create in-memory database service for testing."""
     db = DatabaseService("sqlite:///:memory:")
@@ -25,7 +25,7 @@ def db_service():
     return db
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_auth():
     """Mock authentication decorators."""
     # Mock validate_token to return valid claims
@@ -39,7 +39,7 @@ def mock_auth():
         yield mock_validate
 
 
-@pytest.fixture()
+@pytest.fixture
 def app(mock_auth, db_service):
     """Create Flask app for testing."""
     with (
@@ -54,7 +54,7 @@ def app(mock_auth, db_service):
         yield flask_app
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(app, db_service):
     """Create test client."""
     # Make sure game_manager uses the test database

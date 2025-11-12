@@ -3,7 +3,7 @@ Dartboard service for mapping GPIO pin combinations to game zones
 Handles both generic pin-based input and legacy score/multiplier input
 """
 
-from typing import ClassVar
+from typing import Any, ClassVar, cast
 
 from sqlalchemy.orm import Session
 
@@ -157,11 +157,13 @@ class DartboardService:
         if not mapping:
             return None
 
+        base_value: int = mapping.base_value
+        multiplier_type: str = mapping.multiplier_type
         return {
             "zone_number": mapping.zone_number,
-            "multiplier_type": mapping.multiplier_type,
-            "base_value": mapping.base_value,
-            "score": DartboardService.calculate_score(mapping.base_value, mapping.multiplier_type),
+            "multiplier_type": multiplier_type,
+            "base_value": base_value,
+            "score": DartboardService.calculate_score(base_value, multiplier_type),
         }
 
     @staticmethod
@@ -261,21 +263,25 @@ class DartboardService:
         }
 
     @staticmethod
-    def list_dartboard_types(session: Session) -> list:
+    def list_dartboard_types(session: Session) -> list[Any]:
         """Get all active dartboard types"""
-        return session.query(DartboardType).filter_by(is_active=True).all()
+        return cast(list[Any], session.query(DartboardType).filter_by(is_active=True).all())
 
     @staticmethod
     def get_dartboard_type_mappings(
         session: Session,
         dartboard_type_name: str,
-    ) -> list:
+    ) -> list[Any] | None:
         """Get all zone mappings for a dartboard type"""
         dartboard_type = session.query(DartboardType).filter_by(name=dartboard_type_name).first()
         if not dartboard_type:
             return None
-        return (
-            session.query(DartboardZoneMapping).filter_by(dartboard_type_id=dartboard_type.id).all()
+
+        return cast(
+            list[Any],
+            session.query(DartboardZoneMapping)
+            .filter_by(dartboard_type_id=dartboard_type.id)
+            .all(),
         )
 
     @staticmethod
@@ -381,11 +387,13 @@ class DartboardService:
         if not dartboard_type:
             raise DartboardMappingError(f"Dartboard type '{dartboard_type_name}' not found")
 
+        dartboard_type_id: int = dartboard_type.id
+
         # Check if mapping already exists
         existing = (
             session.query(DartboardZoneMapping)
             .filter_by(
-                dartboard_type_id=dartboard_type.id,
+                dartboard_type_id=dartboard_type_id,
                 master_pin=master_pin,
                 slave_pin=slave_pin,
             )
@@ -402,7 +410,7 @@ class DartboardService:
         # Create new mapping
         return DartboardService.add_zone_mapping(
             session,
-            dartboard_type.id,
+            dartboard_type_id,
             master_pin,
             slave_pin,
             zone_number,
