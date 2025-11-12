@@ -1557,6 +1557,7 @@ def get_tts_config():
             "speed": game_manager.tts.speed,
             "volume": game_manager.tts.volume,
             "voice": game_manager.tts.voice_type,
+            "language": game_manager.tts.language,
         },
     )
 
@@ -1623,6 +1624,9 @@ def update_tts_config():
     if "voice" in data:
         game_manager.tts.set_voice(data["voice"])
 
+    if "language" in data:
+        game_manager.tts.set_language(data["language"])
+
     return jsonify({"status": "success", "message": "TTS configuration updated"})
 
 
@@ -1659,6 +1663,34 @@ def get_tts_voices():
     """
     voices = game_manager.tts.get_available_voices()
     return jsonify(voices)
+
+
+@app.route("/api/tts/languages", methods=["GET"])
+def get_tts_languages():
+    """Get supported TTS languages
+    ---
+    tags:
+      - TTS
+    summary: Get supported TTS languages
+    description: Returns a list of all supported languages for TTS
+    responses:
+      200:
+        description: Dictionary of supported languages
+        schema:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            en: English
+            nl: Dutch
+            de: German
+            fr: French
+            es: Spanish
+    """
+    from src.core.tts_service import TTSService
+
+    languages = TTSService.get_supported_languages()
+    return jsonify(languages)
 
 
 @app.route("/api/tts/test", methods=["POST"])
@@ -1778,6 +1810,39 @@ def generate_tts_audio():
     if audio_data:
         return Response(audio_data, mimetype="audio/mpeg")
     return jsonify({"status": "error", "message": "Failed to generate audio"}), 500
+
+
+@app.route("/api/admin/tts/player", methods=["GET"])
+@role_required("admin")
+def tts_player():
+    """TTS player UI for testing
+    ---
+    tags:
+      - TTS
+    summary: TTS Audio Player
+    description: Interactive HTML page for testing TTS with built-in audio player (admin only)
+    parameters:
+      - in: query
+        name: text
+        type: string
+        description: Text to generate audio for
+        example: "Hello, this is a test"
+        required: false
+    responses:
+      200:
+        description: HTML page with audio player
+        content:
+          text/html:
+            schema:
+              type: string
+      403:
+        description: Forbidden - admin role required
+    """
+    text = request.args.get("text", "Hello, this is a test message")
+    return render_template(
+        "tts_player.html",
+        initial_text=text,
+    )
 
 
 # SocketIO Events
