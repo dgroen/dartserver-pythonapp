@@ -142,10 +142,9 @@ class GameRoundTheClock:
 
             # Reset bull hits when advancing (only count at the end)
             player["bull_hits"] = 0
-        else:
+        elif current_target > 0:  # Only track misses for targets 1-20
             # Missed the target - increment miss counter if not at bull stage
-            if current_target > 0:  # Only track misses for targets 1-20
-                player["turn_misses"] += 1
+            player["turn_misses"] += 1
 
         return result
 
@@ -171,12 +170,11 @@ class GameRoundTheClock:
         result = {"reset": False, "player_id": player_id}
 
         # Check if hard mode is enabled and player missed all 3 darts
-        if self.reset_on_miss and player["turn_misses"] >= 3:
+        if self.reset_on_miss and player["turn_misses"] >= 3 and player["current_target"] > 0:
             # Only reset if not at bull stage (target > 0)
-            if player["current_target"] > 0:
-                player["current_target"] = 20
-                result["reset"] = True
-                result["message"] = "Missed target! Reset to 20"
+            player["current_target"] = 20
+            result["reset"] = True
+            result["message"] = "Missed target! Reset to 20"
 
         # Reset miss counter for next turn
         player["turn_misses"] = 0
