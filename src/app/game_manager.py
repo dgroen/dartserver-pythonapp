@@ -83,7 +83,14 @@ class GameManager:
         if not tts_enabled:
             self.tts.disable()
 
-    def new_game(self, game_type="301", player_names=None, player_ids=None, double_out=False):
+    def new_game(
+        self,
+        game_type="301",
+        player_names=None,
+        player_ids=None,
+        double_out=False,
+        reset_on_miss=False,
+    ):
         """
         Start a new game
 
@@ -95,6 +102,8 @@ class GameManager:
                 with 'db_id' key
             double_out: Whether to require double-out to finish
                 (only for 170/301/401/501)
+            reset_on_miss: Whether to enable hard mode for round_the_clock
+                (resets to 20 after 3 consecutive misses)
         """
         self.game_type = game_type.lower()
         self.double_out = double_out
@@ -135,7 +144,7 @@ class GameManager:
             self.game = GameCricket(self.players)
             self.start_score = 0
         elif self.game_type == "round_the_clock":
-            self.game = GameRoundTheClock(self.players)
+            self.game = GameRoundTheClock(self.players, reset_on_miss=reset_on_miss)
             self.start_score = 0
         elif self.game_type == "round_the_clock_double":
             self.game = GameRoundTheClockDouble(self.players)
@@ -828,6 +837,15 @@ class GameManager:
 
     def _end_turn(self):
         """End the current turn"""
+        # Check for reset in Round the Clock hard mode
+        if self.game_type == "round_the_clock" and self.game and hasattr(self.game, "end_turn"):
+            reset_result = self.game.end_turn(self.current_player)
+            if reset_result.get("reset"):
+                # Emit message about reset
+                message = reset_result.get("message", "Reset to target 20")
+                self._emit_message(message)
+                self._emit_sound("Bust", message)  # Use bust sound for dramatic effect
+
         # Update player score in database after turn completes
         try:
             current_score = self._get_player_current_score(self.current_player)
