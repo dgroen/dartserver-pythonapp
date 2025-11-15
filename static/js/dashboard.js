@@ -153,6 +153,18 @@ function createGameCard(game) {
         duration = `${minutes}m ${seconds}s`;
     }
 
+    // Game options badges
+    const optionsBadges = [];
+    if (game.double_out_enabled) {
+        optionsBadges.push('<span class="option-badge">🎯 Double Out</span>');
+    }
+    if (game.reset_on_miss) {
+        optionsBadges.push('<span class="option-badge hard-mode">💀 Hard Mode</span>');
+    }
+    const optionsHtml = optionsBadges.length > 0 
+        ? `<div class="game-options">${optionsBadges.join('')}</div>`
+        : '';
+
     return `
         <div class="game-card" data-session-id="${game.game_session_id}">
             <div class="game-icon">🎯</div>
@@ -180,6 +192,7 @@ function createGameCard(game) {
                         </div>
                     ` : ''}
                 </div>
+                ${optionsHtml}
             </div>
             <button class="view-btn" data-session-id="${game.game_session_id}">View Details</button>
         </div>
