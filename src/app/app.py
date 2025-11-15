@@ -3204,7 +3204,7 @@ def end_training():
             training_session.completed = True
             training_session.finished_at = datetime.now(tz=timezone.utc)
             training_session.final_score = (
-                game_manager.game.get_score(0) if game_manager.game else 0
+                game_manager.game.get_player_score(0) if game_manager.game else 0
             )
             db_session.commit()
 
