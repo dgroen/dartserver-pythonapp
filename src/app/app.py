@@ -616,6 +616,11 @@ def new_game():
               description: Whether to require double-out to finish (only for 301/401/501)
               default: false
               example: false
+            reset_on_miss:
+              type: boolean
+              description: Enable hard mode for round_the_clock (reset to 20 after 3 misses)
+              default: false
+              example: false
     responses:
       200:
         description: Game started successfully
@@ -633,6 +638,7 @@ def new_game():
     game_type = data.get("game_type", "301")
     player_data = data.get("players", [])
     double_out = data.get("double_out", False)
+    reset_on_miss = data.get("reset_on_miss", False)
 
     # Convert player names to player objects with database IDs
     db_session = game_manager.db_service.db_manager.get_session()
@@ -662,7 +668,9 @@ def new_game():
     if not player_ids:
         player_ids = [session.get("player_id")]
 
-    game_manager.new_game(game_type, player_ids=player_ids, double_out=double_out)
+    game_manager.new_game(
+        game_type, player_ids=player_ids, double_out=double_out, reset_on_miss=reset_on_miss
+    )
     # Game state is automatically emitted by game_manager.new_game()
     return jsonify({"status": "success", "message": "New game started"})
 
@@ -2772,6 +2780,10 @@ def start_game():
               type: boolean
               description: Whether to require double-out to finish
               default: false
+            reset_on_miss:
+              type: boolean
+              description: Enable hard mode for round_the_clock (reset to 20 after 3 misses)
+              default: false
     responses:
       200:
         description: Game started successfully
@@ -2789,6 +2801,7 @@ def start_game():
     game_type = data.get("game_type", "301")
     player_data = data.get("players", [])
     double_out = data.get("double_out", False)
+    reset_on_miss = data.get("reset_on_miss", False)
 
     # Convert player names to player objects with database IDs
     db_session = game_manager.db_service.db_manager.get_session()
@@ -2818,7 +2831,9 @@ def start_game():
     if not player_ids:
         player_ids = [session.get("player_id")]
 
-    game_manager.new_game(game_type, player_ids=player_ids, double_out=double_out)
+    game_manager.new_game(
+        game_type, player_ids=player_ids, double_out=double_out, reset_on_miss=reset_on_miss
+    )
     game_state = game_manager.get_game_state()
 
     return jsonify(
@@ -3402,6 +3417,7 @@ def handle_new_game(data):
     game_type = data.get("game_type", "301")
     player_data = data.get("players", [])
     double_out = data.get("double_out", False)
+    reset_on_miss = data.get("reset_on_miss", False)
 
     # Convert player names to player objects with database IDs
     db_session = game_manager.db_service.db_manager.get_session()
@@ -3431,7 +3447,9 @@ def handle_new_game(data):
     if not player_ids:
         player_ids = [session.get("player_id")]
 
-    game_manager.new_game(game_type, player_ids=player_ids, double_out=double_out)
+    game_manager.new_game(
+        game_type, player_ids=player_ids, double_out=double_out, reset_on_miss=reset_on_miss
+    )
 
 
 @socketio.on("add_player", namespace="/")
