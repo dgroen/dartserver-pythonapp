@@ -11,6 +11,7 @@ from src.games.game_301 import Game301
 from src.games.game_cricket import GameCricket
 from src.games.game_round_the_clock import GameRoundTheClock
 from src.games.game_round_the_clock_double import GameRoundTheClockDouble
+from src.games.game_bull_practice import GameBullPractice
 
 
 class GameManager:
@@ -87,13 +88,13 @@ class GameManager:
         Start a new game
 
         Args:
-            game_type: Type of game ('301', '401', '501', 'cricket', 'round_the_clock',
-            'round_the_clock_double')
+            game_type: Type of game ('170', '301', '401', '501', 'cricket', 'round_the_clock',
+            'round_the_clock_double', 'bull_practice')
             player_names: List of player names (DEPRECATED - use player_ids instead)
             player_ids: List of player database IDs or list of player dicts
                 with 'db_id' key
             double_out: Whether to require double-out to finish
-                (only for 301/401/501)
+                (only for 170/301/401/501)
         """
         self.game_type = game_type.lower()
         self.double_out = double_out
@@ -139,10 +140,15 @@ class GameManager:
         elif self.game_type == "round_the_clock_double":
             self.game = GameRoundTheClockDouble(self.players)
             self.start_score = 0
+        elif self.game_type == "bull_practice":
+            self.game = GameBullPractice(self.players)
+            self.start_score = 0
         else:
-            # Default to 301, but support 401, 501
+            # Default to 301, but support 170, 401, 501
             start_score = 301
-            if self.game_type == "401":
+            if self.game_type == "170":
+                start_score = 170
+            elif self.game_type == "401":
                 start_score = 401
             elif self.game_type == "501":
                 start_score = 501
@@ -336,8 +342,11 @@ class GameManager:
             # Emit throw effects
             self._emit_throw_effects(multiplier, base_score, actual_score)
 
+            # Check for bull practice auto-restart
+            if result.get("auto_restart") and self.game_type == "bull_practice":
+                self._handle_bull_practice_restart(result)
             # Check for bust
-            if result.get("bust"):
+            elif result.get("bust"):
                 self._handle_bust(result)
             # Check for winner
             elif result.get("winner"):
@@ -789,6 +798,33 @@ class GameManager:
         self._emit_game_state()
 
         print(f"Winner: {winner_name}")
+
+    def _handle_bull_practice_restart(self, result):
+        """Handle Bull Practice auto-restart when no bulls hit in a turn"""
+        # Get final score before restart
+        player_id = result.get("player_id", self.current_player)
+        final_score = result.get("total_score", 0)
+        
+        # Show message about game ending and score
+        message = f"No bulls hit! Game ended. Final score: {final_score}"
+        self._emit_message(message)
+        self._emit_sound("gameOver", message)
+        
+        # Restart the game automatically
+        if self.game:
+            self.game.restart_game(player_id)
+        
+        # Reset turn counters
+        self.current_throw = 1
+        self.turn_throws = []
+        self._save_turn_start_state()
+        
+        # Show restart message
+        restart_message = "Starting new Bull Practice game..."
+        self._emit_message(restart_message)
+        self._emit_sound("intro", restart_message)
+        
+        print(f"Bull Practice auto-restart: Final score was {final_score}")
 
     def _end_turn(self):
         """End the current turn"""
