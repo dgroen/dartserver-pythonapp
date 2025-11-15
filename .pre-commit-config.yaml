@@ -4,7 +4,7 @@
 default_language_version:
   python: python3.10
 
-default_stages: [pre-commit]
+default_stages: [commit]
 
 fail_fast: false
 
@@ -45,7 +45,7 @@ repos:
       - id: ruff
         name: ruff-check-first-attempt
         args: [--exit-non-zero-on-fix]
-        stages: [pre-commit]
+        stages: [commit]
         verbose: true
 
   # Ruff - Auto-fix on second attempt
@@ -55,7 +55,7 @@ repos:
       - id: ruff
         name: ruff-fix-second-attempt
         args: [--fix, --exit-zero]
-        stages: [pre-commit]
+        stages: [commit]
         verbose: true
 
   # Black - Code formatter (first attempt - check only)
@@ -65,7 +65,7 @@ repos:
       - id: black
         name: black-check-first-attempt
         args: [--check, --diff]
-        stages: [pre-commit]
+        stages: [commit]
         verbose: true
 
   # Black - Auto-format on second attempt
@@ -74,7 +74,7 @@ repos:
     hooks:
       - id: black
         name: black-fix-second-attempt
-        stages: [pre-commit]
+        stages: [commit]
         verbose: true
 
   # isort - Import sorting (first attempt - check only)
@@ -84,7 +84,7 @@ repos:
       - id: isort
         name: isort-check-first-attempt
         args: [--check-only, --diff]
-        stages: [pre-commit]
+        stages: [commit]
         verbose: true
 
   # isort - Auto-fix on second attempt
@@ -93,7 +93,7 @@ repos:
     hooks:
       - id: isort
         name: isort-fix-second-attempt
-        stages: [pre-commit]
+        stages: [commit]
         verbose: true
 
   # Flake8 - Style guide enforcement

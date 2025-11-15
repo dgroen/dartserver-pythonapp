@@ -14,7 +14,7 @@ WSO2_ADMIN_USER = "admin"
 WSO2_ADMIN_PASSWORD = "admin"  # pragma: allowlist secret
 
 # Disable SSL warnings for self-signed certificates
-requests.packages.urllib3.disable_warnings()
+requests.packages.urllib3.disable_warnings()  # type: ignore
 
 
 class WSO2RoleManager:

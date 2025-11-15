@@ -479,7 +479,7 @@ def login_required(f):
             if "player_id" not in session:
                 try:
                     # Access game_manager from Flask app context
-                    game_manager = current_app.game_manager
+                    game_manager = current_app.game_manager  # type: ignore
                     player = game_manager.db_service.get_or_create_player(
                         username="bypass_user",
                         email="bypass@local.dev",
@@ -505,7 +505,7 @@ def login_required(f):
 
         # Validate token
         token = session.get("access_token")
-        claims = validate_token(token)
+        claims = validate_token(token)  # type: ignore
 
         if not claims:
             # Token is invalid or expired, clear session and redirect to login

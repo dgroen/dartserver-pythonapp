@@ -157,13 +157,11 @@ class DartboardService:
         if not mapping:
             return None
 
-        base_value: int = mapping.base_value
-        multiplier_type: str = mapping.multiplier_type
         return {
             "zone_number": mapping.zone_number,
-            "multiplier_type": multiplier_type,
-            "base_value": base_value,
-            "score": DartboardService.calculate_score(base_value, multiplier_type),
+            "multiplier_type": mapping.multiplier_type,
+            "base_value": mapping.base_value,
+            "score": DartboardService.calculate_score(mapping.base_value, mapping.multiplier_type),
         }
 
     @staticmethod
@@ -276,12 +274,8 @@ class DartboardService:
         dartboard_type = session.query(DartboardType).filter_by(name=dartboard_type_name).first()
         if not dartboard_type:
             return None
-
-        return cast(
-            list[Any],
-            session.query(DartboardZoneMapping)
-            .filter_by(dartboard_type_id=dartboard_type.id)
-            .all(),
+        return (
+            session.query(DartboardZoneMapping).filter_by(dartboard_type_id=dartboard_type.id).all()
         )
 
     @staticmethod
@@ -402,15 +396,15 @@ class DartboardService:
 
         if existing:
             # Update existing mapping
-            existing.zone_number = zone_number
-            existing.multiplier_type = multiplier_type
-            existing.base_value = base_value
+            existing.zone_number = zone_number  # type: ignore
+            existing.multiplier_type = multiplier_type  # type: ignore
+            existing.base_value = base_value  # type: ignore
             session.commit()
             return existing
         # Create new mapping
         return DartboardService.add_zone_mapping(
             session,
-            dartboard_type_id,
+            dartboard_type.id,
             master_pin,
             slave_pin,
             zone_number,

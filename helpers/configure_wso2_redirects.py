@@ -12,7 +12,7 @@ import requests
 from dotenv import load_dotenv
 
 # Disable SSL warnings for self-signed certificates
-requests.packages.urllib3.disable_warnings()
+requests.packages.urllib3.disable_warnings()  # type: ignore
 
 # Load environment variables
 load_dotenv()

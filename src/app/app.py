@@ -669,7 +669,10 @@ def new_game():
         player_ids = [session.get("player_id")]
 
     game_manager.new_game(
-        game_type, player_ids=player_ids, double_out=double_out, reset_on_miss=reset_on_miss
+        game_type,
+        player_ids=player_ids,
+        double_out=double_out,
+        reset_on_miss=reset_on_miss,
     )
     # Game state is automatically emitted by game_manager.new_game()
     return jsonify({"status": "success", "message": "New game started"})
@@ -2832,7 +2835,10 @@ def start_game():
         player_ids = [session.get("player_id")]
 
     game_manager.new_game(
-        game_type, player_ids=player_ids, double_out=double_out, reset_on_miss=reset_on_miss
+        game_type,
+        player_ids=player_ids,
+        double_out=double_out,
+        reset_on_miss=reset_on_miss,
     )
     game_state = game_manager.get_game_state()
 
@@ -3087,7 +3093,8 @@ def start_training():
             game_type:
               type: string
               description: Type of game to practice
-              enum: ['170', '301', '401', '501', 'cricket', 'round_the_clock', 'round_the_clock_double', 'bull_practice']
+              enum: ['170', '301', '401', '501', 'cricket', 'round_the_clock',
+                'round_the_clock_double', 'bull_practice']
               default: '301'
             double_out:
               type: boolean
@@ -3448,7 +3455,10 @@ def handle_new_game(data):
         player_ids = [session.get("player_id")]
 
     game_manager.new_game(
-        game_type, player_ids=player_ids, double_out=double_out, reset_on_miss=reset_on_miss
+        game_type,
+        player_ids=player_ids,
+        double_out=double_out,
+        reset_on_miss=reset_on_miss,
     )
 
 

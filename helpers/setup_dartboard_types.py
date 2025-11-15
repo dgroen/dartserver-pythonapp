@@ -148,7 +148,7 @@ def setup_carromco_board():
             try:
                 DartboardService.add_zone_mapping(
                     session,
-                    board_type.id,
+                    board_type.id,  # type: ignore
                     master_pin,
                     slave_pin,
                     zone,
@@ -219,7 +219,7 @@ def setup_test_board():
         for master_pin, slave_pin, zone, mult_type, base_val in test_mappings:
             DartboardService.add_zone_mapping(
                 session,
-                board_type.id,
+                board_type.id,  # type: ignore
                 master_pin,
                 slave_pin,
                 zone,
@@ -300,7 +300,7 @@ def setup_crivit_board():
             try:
                 DartboardService.add_zone_mapping(
                     session,
-                    board_type.id,
+                    board_type.id,  # type: ignore
                     master_pin,
                     slave_pin,
                     zone,

@@ -42,7 +42,7 @@ test_messages = [
 for i, message in enumerate(test_messages, 1):
     print(f"   {i}. Speaking: '{message}'")
     result = tts.speak(message)
-    print(f"      {'✓' if result else '✗'} Result: {result}")
+    print(f"      {'✓' if result else '✗'} Result: {result}")  # type: ignore
 
 # Test speed changes
 print("\n3. Testing Speed Configuration...")

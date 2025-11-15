@@ -93,7 +93,6 @@ class TestValidateToken:
         mock_post.return_value = mock_response
 
         result = validate_token("test-token")
-        assert result is not None
         assert result["sub"] == "test-user"
         assert result["username"] == "testuser"
         assert result["groups"] == ["player"]

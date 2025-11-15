@@ -74,7 +74,7 @@ class TestLoginRedirectFlow:
             assert session.get("oauth_state") is not None
             state = session.get("oauth_state")
             # State should be a URL-safe token
-            assert len(state) > 20
+            assert len(state) > 20  # type: ignore
 
     @patch("src.app.app.get_user_info")
     @patch("src.app.app.exchange_code_for_token")

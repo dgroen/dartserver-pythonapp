@@ -83,7 +83,7 @@ def test_tts_audio_generation():
             # Save test audio file
             print("\n6. Saving Test Audio File:")
             test_file = "./tests/data/test_tts_audio.mp3"
-            with Path.open(test_file, "wb") as f:
+            with Path.open(test_file, "wb") as f:  # type: ignore
                 f.write(audio_data)
             print(f"   ✅ Test audio saved to: {test_file}")
             print(f"   You can play it with: mpg123 {test_file}")
@@ -132,7 +132,7 @@ def test_speak_method():
     print("\n2. Testing speak() with generate_audio=False:")
     try:
         result = tts.speak(test_text, generate_audio=False)
-        print(f"   ✅ Returned: {result} (type: {type(result).__name__})")
+        print(f"   ✅ Returned: {result} (type: {type(result).__name__})")  # type: ignore
     except Exception as e:
         print(f"   ❌ Failed: {e}")
         return False
