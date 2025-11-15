@@ -1,6 +1,5 @@
 """Unit tests for 170 game type and Bull Practice game."""
 
-import pytest
 
 from src.games.game_301 import Game301
 from src.games.game_bull_practice import GameBullPractice
@@ -66,7 +65,7 @@ class TestGameBullPractice:
         """Test processing a bull hit."""
         players = [{"id": 0, "name": "Player 1"}]
         game = GameBullPractice(players)
-        
+
         # Hit a single bull (25 points)
         result = game.process_throw(0, 25, "BULL")
         assert result["bull_hit"] is True
@@ -79,7 +78,7 @@ class TestGameBullPractice:
         """Test processing a double bull hit."""
         players = [{"id": 0, "name": "Player 1"}]
         game = GameBullPractice(players)
-        
+
         # Hit a double bull (50 points)
         result = game.process_throw(0, 25, "DBLBULL")
         assert result["bull_hit"] is True
@@ -91,7 +90,7 @@ class TestGameBullPractice:
         """Test processing a non-bull hit."""
         players = [{"id": 0, "name": "Player 1"}]
         game = GameBullPractice(players)
-        
+
         # Hit 20 (not a bull)
         result = game.process_throw(0, 20, "SINGLE")
         assert result["bull_hit"] is False
@@ -103,17 +102,17 @@ class TestGameBullPractice:
         """Test a complete turn with bull hits."""
         players = [{"id": 0, "name": "Player 1"}]
         game = GameBullPractice(players)
-        
+
         # First throw: bull (25)
         result1 = game.process_throw(0, 25, "BULL")
         assert result1["current_turn_score"] == 25
         assert result1["game_ended"] is False
-        
+
         # Second throw: double bull (50)
         result2 = game.process_throw(0, 25, "DBLBULL")
         assert result2["current_turn_score"] == 75
         assert result2["game_ended"] is False
-        
+
         # Third throw: bull (25)
         result3 = game.process_throw(0, 25, "BULL")
         assert result3["current_turn_score"] == 100
@@ -126,20 +125,20 @@ class TestGameBullPractice:
         """Test that a turn without bulls ends the game."""
         players = [{"id": 0, "name": "Player 1"}]
         game = GameBullPractice(players)
-        
+
         # First turn with bulls
         game.process_throw(0, 25, "BULL")
         game.process_throw(0, 25, "BULL")
         game.process_throw(0, 25, "BULL")
         assert game.players[0]["score"] == 75
-        
+
         # Second turn without bulls
         result1 = game.process_throw(0, 20, "SINGLE")
         assert result1["game_ended"] is False
-        
+
         result2 = game.process_throw(0, 20, "DOUBLE")
         assert result2["game_ended"] is False
-        
+
         result3 = game.process_throw(0, 20, "TRIPLE")
         assert result3["game_ended"] is True
         assert result3["auto_restart"] is True
@@ -149,15 +148,15 @@ class TestGameBullPractice:
         """Test a turn with both bull hits and misses."""
         players = [{"id": 0, "name": "Player 1"}]
         game = GameBullPractice(players)
-        
+
         # First throw: bull (25)
         result1 = game.process_throw(0, 25, "BULL")
         assert result1["current_turn_score"] == 25
-        
+
         # Second throw: miss (20)
         result2 = game.process_throw(0, 20, "SINGLE")
         assert result2["current_turn_score"] == 25  # Still has first bull
-        
+
         # Third throw: double bull (50)
         result3 = game.process_throw(0, 25, "DBLBULL")
         assert result3["current_turn_score"] == 75
@@ -169,19 +168,19 @@ class TestGameBullPractice:
         """Test restarting the game."""
         players = [{"id": 0, "name": "Player 1"}]
         game = GameBullPractice(players)
-        
+
         # Play a turn
         game.process_throw(0, 25, "BULL")
         game.process_throw(0, 25, "BULL")
         game.process_throw(0, 25, "BULL")
         assert game.players[0]["score"] == 75
-        
+
         # End game
         game.process_throw(0, 20, "SINGLE")
         game.process_throw(0, 20, "SINGLE")
         game.process_throw(0, 20, "SINGLE")
         assert game.players[0]["game_ended"] is True
-        
+
         # Restart
         game.restart_game(0)
         assert game.players[0]["score"] == 0
@@ -194,21 +193,21 @@ class TestGameBullPractice:
         """Test getting player score."""
         players = [{"id": 0, "name": "Player 1"}]
         game = GameBullPractice(players)
-        
+
         assert game.get_player_score(0) == 0
-        
+
         # Add some score
         game.process_throw(0, 25, "BULL")
         game.process_throw(0, 25, "BULL")
         game.process_throw(0, 25, "BULL")
-        
+
         assert game.get_player_score(0) == 75
 
     def test_get_state(self):
         """Test getting game state."""
         players = [{"id": 0, "name": "Player 1"}]
         game = GameBullPractice(players)
-        
+
         state = game.get_state()
         assert state["type"] == "bull_practice"
         assert len(state["players"]) == 1
@@ -217,12 +216,12 @@ class TestGameBullPractice:
         """Test resetting the game."""
         players = [{"id": 0, "name": "Player 1"}]
         game = GameBullPractice(players)
-        
+
         # Play a turn
         game.process_throw(0, 25, "BULL")
         game.process_throw(0, 25, "BULL")
         game.process_throw(0, 25, "BULL")
-        
+
         # Reset
         game.reset()
         assert game.players[0]["score"] == 0
@@ -235,10 +234,10 @@ class TestGameBullPractice:
         """Test adding a player."""
         players = [{"id": 0, "name": "Player 1"}]
         game = GameBullPractice(players)
-        
+
         new_player = {"id": 1, "name": "Player 2"}
         game.add_player(new_player)
-        
+
         assert len(game.players) == 2
         assert game.players[1]["name"] == "Player 2"
         assert game.players[1]["score"] == 0
@@ -247,7 +246,7 @@ class TestGameBullPractice:
         """Test removing a player."""
         players = [{"id": 0, "name": "Player 1"}, {"id": 1, "name": "Player 2"}]
         game = GameBullPractice(players)
-        
+
         game.remove_player(1)
         assert len(game.players) == 1
         assert game.players[0]["name"] == "Player 1"

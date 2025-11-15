@@ -88,7 +88,7 @@ class GameBullPractice:
             return {"error": "Invalid player ID"}
 
         player = self.players[player_id]
-        
+
         # If game ended, don't process more throws
         if player["game_ended"]:
             return {
@@ -116,11 +116,11 @@ class GameBullPractice:
 
         # Check if bull was hit
         is_bull = base_score == 25 and multiplier_type in ["BULL", "DBLBULL"]
-        
+
         if is_bull:
             result["bull_hit"] = True
             player["current_turn_bull_hits"] += 1
-            
+
             # Calculate score (single bull = 25, double bull = 50)
             score_value = 25 if multiplier_type == "BULL" else 50
             player["current_turn_score"] += score_value
@@ -139,7 +139,7 @@ class GameBullPractice:
                 # Bulls were hit - add to total score and start new turn
                 player["score"] += player["current_turn_score"]
                 result["total_score"] = player["score"]
-                
+
                 # Reset turn counters
                 player["current_turn_bull_hits"] = 0
                 player["current_turn_score"] = 0
@@ -150,7 +150,7 @@ class GameBullPractice:
     def restart_game(self, player_id=None):
         """
         Restart the game for a player (or all players if player_id is None)
-        
+
         Args:
             player_id: ID of the player to restart (None for all players)
         """
