@@ -40,14 +40,42 @@
                 <div class="form-group">
                     <label for="training-game-type">Game Type:</label>
                     <select id="training-game-type">
+                        <option value="170">170</option>
                         <option value="301">301</option>
                         <option value="401">401</option>
                         <option value="501">501</option>
                         <option value="cricket">Cricket</option>
                         <option value="round_the_clock">Round the Clock</option>
                         <option value="round_the_clock_double">Round the Clock Double</option>
+                        <option value="bull_practice">Bull Practice (auto-restart)</option>
                     </select>
+                    <small id="game-type-description" style="display: block; margin-top: 0.5rem; color: #888;"></small>
                 </div>
+
+                <script>
+                    // Update game type description when selection changes
+                    const gameTypeSelect = document.getElementById('training-game-type');
+                    const gameTypeDescription = document.getElementById('game-type-description');
+                    
+                    const descriptions = {
+                        '170': 'Like 301 but starting from 170 points',
+                        '301': 'Classic 301 game - score down to exactly 0',
+                        '401': '401 game - score down to exactly 0',
+                        '501': '501 game - score down to exactly 0',
+                        'cricket': 'Hit numbers 15-20 and bulls to win',
+                        'round_the_clock': 'Hit numbers 20 down to 1, then bull',
+                        'round_the_clock_double': 'Hit doubles 20 down to 1, then bull',
+                        'bull_practice': 'Score bulls consecutively. Game ends when a turn has no bulls, then auto-restarts until you click "End Training"'
+                    };
+                    
+                    function updateGameTypeDescription() {
+                        const selectedType = gameTypeSelect.value;
+                        gameTypeDescription.textContent = descriptions[selectedType] || '';
+                    }
+                    
+                    gameTypeSelect.addEventListener('change', updateGameTypeDescription);
+                    updateGameTypeDescription(); // Set initial description
+                </script>
 
                 <div class="form-group">
                     <label for="training-double-out">
@@ -113,7 +141,19 @@
                     const player = gameState.players[0];
                     html += '<p><strong>Player:</strong> ' + player.name + '</p>';
                     html += '<p><strong>Score:</strong> ' + player.score + '</p>';
-                    html += '<p><strong>Throws:</strong> ' + player.throws + '</p>';
+                    
+                    // Special display for Bull Practice
+                    if (gameState.game_type === 'bull_practice') {
+                        if (player.current_turn_score !== undefined) {
+                            html += '<p><strong>Current Turn Score:</strong> ' + player.current_turn_score + '</p>';
+                        }
+                        if (player.current_turn_bull_hits !== undefined) {
+                            html += '<p><strong>Bulls This Turn:</strong> ' + player.current_turn_bull_hits + '</p>';
+                        }
+                        html += '<p style="color: #00d4ff;"><em>Hit bulls to score! Miss all bulls in a turn to end and auto-restart.</em></p>';
+                    } else if (player.throws !== undefined) {
+                        html += '<p><strong>Throws:</strong> ' + player.throws + '</p>';
+                    }
                 }
 
                 info.innerHTML = html;

@@ -3072,7 +3072,7 @@ def start_training():
             game_type:
               type: string
               description: Type of game to practice
-              enum: ['301', '401', '501', 'cricket', 'round_the_clock', 'round_the_clock_double']
+              enum: ['170', '301', '401', '501', 'cricket', 'round_the_clock', 'round_the_clock_double', 'bull_practice']
               default: '301'
             double_out:
               type: boolean
@@ -3118,7 +3118,7 @@ def start_training():
 
         # Create training session
         session_id = str(uuid.uuid4())
-        start_score_map = {"301": 301, "401": 401, "501": 501}
+        start_score_map = {"170": 170, "301": 301, "401": 401, "501": 501}
         start_score = start_score_map.get(game_type)
 
         training_session = TrainingSession(
@@ -3204,7 +3204,7 @@ def end_training():
             training_session.completed = True
             training_session.finished_at = datetime.now(tz=timezone.utc)
             training_session.final_score = (
-                game_manager.game.get_score(0) if game_manager.game else 0
+                game_manager.game.get_player_score(0) if game_manager.game else 0
             )
             db_session.commit()
 
