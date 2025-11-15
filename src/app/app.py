@@ -72,7 +72,13 @@ app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = 3600  # 1 hour
 # Enable CORS with credentials support - required for session cookies to work
-CORS(app, supports_credentials=True)
+CORS(
+    app,
+    origins=[Config.APP_URL],
+    supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+)
 
 # Log environment and configuration info
 logging.info(f"Application Configuration: {Config}")
