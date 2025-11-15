@@ -93,9 +93,9 @@ class TestValidateToken:
         mock_post.return_value = mock_response
 
         result = validate_token("test-token")
-        assert result["sub"] == "test-user"  # type: ignore
-        assert result["username"] == "testuser"  # type: ignore
-        assert result["groups"] == ["player"]  # type: ignore
+        assert result["sub"] == "test-user"
+        assert result["username"] == "testuser"
+        assert result["groups"] == ["player"]
 
     @patch("src.core.auth.JWT_VALIDATION_MODE", "introspection")
     @patch("src.core.auth.requests.post")

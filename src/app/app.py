@@ -71,8 +71,6 @@ app.config["SESSION_COOKIE_SECURE"] = Config.SESSION_COOKIE_SECURE
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = 3600  # 1 hour
-_dsas = os.getenv("DARTBOARD_SENDS_ACTUAL_SCORE", "false")
-app.config["DARTBOARD_SENDS_ACTUAL_SCORE"] = _dsas.lower() == "true"
 # Enable CORS with credentials support - required for session cookies to work
 CORS(app, supports_credentials=True)
 
@@ -441,7 +439,6 @@ def callback():
     return redirect(next_url)
 
 
-@app.route
 @app.route("/logout")
 def logout():
     """Logout endpoint"""
@@ -619,6 +616,11 @@ def new_game():
               description: Whether to require double-out to finish (only for 301/401/501)
               default: false
               example: false
+            reset_on_miss:
+              type: boolean
+              description: Enable hard mode for round_the_clock (reset to 20 after 3 misses)
+              default: false
+              example: false
     responses:
       200:
         description: Game started successfully
@@ -636,6 +638,7 @@ def new_game():
     game_type = data.get("game_type", "301")
     player_data = data.get("players", [])
     double_out = data.get("double_out", False)
+    reset_on_miss = data.get("reset_on_miss", False)
 
     # Convert player names to player objects with database IDs
     db_session = game_manager.db_service.db_manager.get_session()
@@ -665,7 +668,12 @@ def new_game():
     if not player_ids:
         player_ids = [session.get("player_id")]
 
-    game_manager.new_game(game_type, player_ids=player_ids, double_out=double_out)
+    game_manager.new_game(
+        game_type,
+        player_ids=player_ids,
+        double_out=double_out,
+        reset_on_miss=reset_on_miss,
+    )
     # Game state is automatically emitted by game_manager.new_game()
     return jsonify({"status": "success", "message": "New game started"})
 
@@ -929,90 +937,6 @@ def remove_player(player_id):
     return jsonify({"status": "success", "message": "Player removed"})
 
 
-@app.route("/api/Throw", methods=["POST"])
-# @login_required
-# @permission_required("score:submit")
-def submit_score():
-    """Submit a score via API (Legacy format - for backwards compatibility)
-    ---
-    tags:
-      - Score
-    summary: Submit a dart score (Legacy)
-    description: |
-        Submits a dart throw score for the current player.
-        This endpoint is for backwards compatibility with older dartboards.
-        New dartboards should use /api/Throw/zone endpoint instead.
-    parameters:
-      - in: body
-        name: body
-        description: Score information
-        required: true
-        schema:
-          type: object
-          required:
-            - score
-            - multiplier
-          properties:
-            score:
-              type: integer
-              description: Base score value (0-20 for regular segments, 25 for bull)
-              example: 20
-              minimum: 0
-              maximum: 25
-            multiplier:
-              type: string
-              description: Score multiplier type
-              enum: ['SINGLE', 'DOUBLE', 'TRIPLE', 'BULL', 'DBLBULL']
-              example: TRIPLE
-            user:
-              type: string
-              description: Optional player name (for future use)
-              example: Alice
-    responses:
-      200:
-        description: Score submitted successfully
-        schema:
-          type: object
-          properties:
-            status:
-              type: string
-              example: success
-            message:
-              type: string
-              example: Score submitted
-      400:
-        description: Invalid request
-        schema:
-          type: object
-          properties:
-            status:
-              type: string
-              example: error
-            message:
-              type: string
-    """
-    try:
-        data = request.json
-        score = data.get("score", 0)
-        multiplier = data.get("multiplier", "SINGLE")
-
-        # Validate legacy format
-        if not isinstance(score, int) or not isinstance(multiplier, str):
-            return (
-                jsonify({"status": "error", "message": "Invalid score or multiplier format"}),
-                400,
-            )
-
-        # Process the score
-        game_manager.process_score({"score": score, "multiplier": multiplier})
-        # Game state is automatically emitted by game_manager.process_score()
-
-        return jsonify({"status": "success", "message": "Score submitted"})
-    except Exception as e:
-        logger.exception("Error submitting score")
-        return jsonify({"status": "error", "message": str(e)}), 400
-
-
 @app.route("/api/Throw/zone", methods=["POST"])
 # @login_required
 # @permission_required("score:submit")
@@ -1151,11 +1075,10 @@ def submit_score_zone():
                 )
 
             # Process the score using the zone information
-            # Use the calculated 'score' field since the zone mapping already computed it
-            # This ensures correct scoring regardless of DARTBOARD_SENDS_ACTUAL_SCORE setting
+            # Pass the base_value and multiplier_type - game logic handles the calculation
             game_manager.process_score(
                 {
-                    "score": zone_info["score"],  # Use calculated score, not base_value
+                    "score": zone_info["base_value"],
                     "multiplier": zone_info["multiplier_type"],
                 },
             )
@@ -1645,6 +1568,7 @@ def get_tts_config():
             "speed": game_manager.tts.speed,
             "volume": game_manager.tts.volume,
             "voice": game_manager.tts.voice_type,
+            "language": game_manager.tts.language,
         },
     )
 
@@ -1711,6 +1635,9 @@ def update_tts_config():
     if "voice" in data:
         game_manager.tts.set_voice(data["voice"])
 
+    if "language" in data:
+        game_manager.tts.set_language(data["language"])
+
     return jsonify({"status": "success", "message": "TTS configuration updated"})
 
 
@@ -1747,6 +1674,34 @@ def get_tts_voices():
     """
     voices = game_manager.tts.get_available_voices()
     return jsonify(voices)
+
+
+@app.route("/api/tts/languages", methods=["GET"])
+def get_tts_languages():
+    """Get supported TTS languages
+    ---
+    tags:
+      - TTS
+    summary: Get supported TTS languages
+    description: Returns a list of all supported languages for TTS
+    responses:
+      200:
+        description: Dictionary of supported languages
+        schema:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            en: English
+            nl: Dutch
+            de: German
+            fr: French
+            es: Spanish
+    """
+    from src.core.tts_service import TTSService
+
+    languages = TTSService.get_supported_languages()
+    return jsonify(languages)
 
 
 @app.route("/api/tts/test", methods=["POST"])
@@ -1866,6 +1821,39 @@ def generate_tts_audio():
     if audio_data:
         return Response(audio_data, mimetype="audio/mpeg")
     return jsonify({"status": "error", "message": "Failed to generate audio"}), 500
+
+
+@app.route("/api/admin/tts/player", methods=["GET"])
+@role_required("admin")
+def tts_player():
+    """TTS player UI for testing
+    ---
+    tags:
+      - TTS
+    summary: TTS Audio Player
+    description: Interactive HTML page for testing TTS with built-in audio player (admin only)
+    parameters:
+      - in: query
+        name: text
+        type: string
+        description: Text to generate audio for
+        example: "Hello, this is a test"
+        required: false
+    responses:
+      200:
+        description: HTML page with audio player
+        content:
+          text/html:
+            schema:
+              type: string
+      403:
+        description: Forbidden - admin role required
+    """
+    text = request.args.get("text", "Hello, this is a test message")
+    return render_template(
+        "tts_player.html",
+        initial_text=text,
+    )
 
 
 # SocketIO Events
@@ -2795,6 +2783,10 @@ def start_game():
               type: boolean
               description: Whether to require double-out to finish
               default: false
+            reset_on_miss:
+              type: boolean
+              description: Enable hard mode for round_the_clock (reset to 20 after 3 misses)
+              default: false
     responses:
       200:
         description: Game started successfully
@@ -2812,6 +2804,7 @@ def start_game():
     game_type = data.get("game_type", "301")
     player_data = data.get("players", [])
     double_out = data.get("double_out", False)
+    reset_on_miss = data.get("reset_on_miss", False)
 
     # Convert player names to player objects with database IDs
     db_session = game_manager.db_service.db_manager.get_session()
@@ -2841,7 +2834,12 @@ def start_game():
     if not player_ids:
         player_ids = [session.get("player_id")]
 
-    game_manager.new_game(game_type, player_ids=player_ids, double_out=double_out)
+    game_manager.new_game(
+        game_type,
+        player_ids=player_ids,
+        double_out=double_out,
+        reset_on_miss=reset_on_miss,
+    )
     game_state = game_manager.get_game_state()
 
     return jsonify(
@@ -3095,7 +3093,8 @@ def start_training():
             game_type:
               type: string
               description: Type of game to practice
-              enum: ['301', '401', '501', 'cricket', 'round_the_clock', 'round_the_clock_double']
+              enum: ['170', '301', '401', '501', 'cricket', 'round_the_clock',
+                'round_the_clock_double', 'bull_practice']
               default: '301'
             double_out:
               type: boolean
@@ -3133,9 +3132,7 @@ def start_training():
         # Get or create game type
         from src.core.database_models import GameType
 
-        game_type_obj = (
-            db_session.query(GameType).filter(GameType.name == game_type).first()
-        )
+        game_type_obj = db_session.query(GameType).filter(GameType.name == game_type).first()
         if not game_type_obj:
             game_type_obj = GameType(name=game_type, description=f"{game_type} game")
             db_session.add(game_type_obj)
@@ -3143,7 +3140,7 @@ def start_training():
 
         # Create training session
         session_id = str(uuid.uuid4())
-        start_score_map = {"301": 301, "401": 401, "501": 501}
+        start_score_map = {"170": 170, "301": 301, "401": 401, "501": 501}
         start_score = start_score_map.get(game_type)
 
         training_session = TrainingSession(
@@ -3181,7 +3178,7 @@ def start_training():
                 "training_session_id": training_session.id,
             },
         )
-    except Exception as e:
+    except Exception:
         app.logger.exception("Failed to start training session")
         return (
             jsonify({"success": False, "error": "Failed to start training session"}),
@@ -3229,7 +3226,7 @@ def end_training():
             training_session.completed = True
             training_session.finished_at = datetime.now(tz=timezone.utc)
             training_session.final_score = (
-                game_manager.game.get_score(0) if game_manager.game else 0
+                game_manager.game.get_player_score(0) if game_manager.game else 0
             )
             db_session.commit()
 
@@ -3246,7 +3243,7 @@ def end_training():
         session.pop("training_session_id", None)
 
         return jsonify({"success": True, "message": "Training session ended"})
-    except Exception as e:
+    except Exception:
         app.logger.exception("Failed to end training session")
         return (
             jsonify({"success": False, "error": "Failed to end training session"}),
@@ -3312,7 +3309,7 @@ def get_training_history():
         db_session.close()
 
         return jsonify({"success": True, "sessions": sessions_data})
-    except Exception as e:
+    except Exception:
         app.logger.exception("Failed to get training history")
         return (
             jsonify({"success": False, "error": "Failed to retrieve training history"}),
@@ -3394,7 +3391,7 @@ def get_training_statistics():
         }
 
         return jsonify({"success": True, "statistics": statistics})
-    except Exception as e:
+    except Exception:
         app.logger.exception("Failed to get training statistics")
         return (
             jsonify({"success": False, "error": "Failed to retrieve training statistics"}),
@@ -3407,7 +3404,12 @@ def handle_connect():
     """Handle client connection"""
     print("Client connected")
     # Use socketio.emit to ensure the message reaches the test client
-    socketio.emit("game_state", game_manager.get_game_state(), namespace="/", to=request.sid)  # type: ignore
+    socketio.emit(
+        "game_state",
+        game_manager.get_game_state(),
+        namespace="/",
+        to=request.sid,  # type: ignore[attr-defined]
+    )
 
 
 @socketio.on("disconnect", namespace="/")
@@ -3422,6 +3424,7 @@ def handle_new_game(data):
     game_type = data.get("game_type", "301")
     player_data = data.get("players", [])
     double_out = data.get("double_out", False)
+    reset_on_miss = data.get("reset_on_miss", False)
 
     # Convert player names to player objects with database IDs
     db_session = game_manager.db_service.db_manager.get_session()
@@ -3451,7 +3454,12 @@ def handle_new_game(data):
     if not player_ids:
         player_ids = [session.get("player_id")]
 
-    game_manager.new_game(game_type, player_ids=player_ids, double_out=double_out)
+    game_manager.new_game(
+        game_type,
+        player_ids=player_ids,
+        double_out=double_out,
+        reset_on_miss=reset_on_miss,
+    )
 
 
 @socketio.on("add_player", namespace="/")

@@ -8,6 +8,7 @@ from sqlalchemy import func
 from src.core.database_service import DatabaseService
 from src.core.tts_service import TTSService
 from src.games.game_301 import Game301
+from src.games.game_bull_practice import GameBullPractice
 from src.games.game_cricket import GameCricket
 from src.games.game_round_the_clock import GameRoundTheClock
 from src.games.game_round_the_clock_double import GameRoundTheClockDouble
@@ -82,18 +83,27 @@ class GameManager:
         if not tts_enabled:
             self.tts.disable()
 
-    def new_game(self, game_type="301", player_names=None, player_ids=None, double_out=False):
+    def new_game(
+        self,
+        game_type="301",
+        player_names=None,
+        player_ids=None,
+        double_out=False,
+        reset_on_miss=False,
+    ):
         """
         Start a new game
 
         Args:
-            game_type: Type of game ('301', '401', '501', 'cricket', 'round_the_clock',
-            'round_the_clock_double')
+            game_type: Type of game ('170', '301', '401', '501', 'cricket', 'round_the_clock',
+            'round_the_clock_double', 'bull_practice')
             player_names: List of player names (DEPRECATED - use player_ids instead)
             player_ids: List of player database IDs or list of player dicts
                 with 'db_id' key
             double_out: Whether to require double-out to finish
-                (only for 301/401/501)
+                (only for 170/301/401/501)
+            reset_on_miss: Whether to enable hard mode for round_the_clock
+                (resets to 20 after 3 consecutive misses)
         """
         self.game_type = game_type.lower()
         self.double_out = double_out
@@ -134,15 +144,20 @@ class GameManager:
             self.game = GameCricket(self.players)
             self.start_score = 0
         elif self.game_type == "round_the_clock":
-            self.game = GameRoundTheClock(self.players)
+            self.game = GameRoundTheClock(self.players, reset_on_miss=reset_on_miss)
             self.start_score = 0
         elif self.game_type == "round_the_clock_double":
             self.game = GameRoundTheClockDouble(self.players)
             self.start_score = 0
+        elif self.game_type == "bull_practice":
+            self.game = GameBullPractice(self.players)
+            self.start_score = 0
         else:
-            # Default to 301, but support 401, 501
+            # Default to 301, but support 170, 401, 501
             start_score = 301
-            if self.game_type == "401":
+            if self.game_type == "170":
+                start_score = 170
+            elif self.game_type == "401":
                 start_score = 401
             elif self.game_type == "501":
                 start_score = 501
@@ -183,6 +198,7 @@ class GameManager:
                 player_ids=player_ids,
                 start_score=self.start_score if self.game_type != "cricket" else None,
                 double_out=double_out,
+                reset_on_miss=reset_on_miss,
             )
             print(f"Game started in database: session_id={self.db_service.current_game_session_id}")
         except Exception as e:
@@ -307,18 +323,8 @@ class GameManager:
         }
         multiplier_value = multiplier_map.get(multiplier, 1)
 
-        # Handle dartboard configuration
-        from app import app  # Import here to avoid circular dependency
-
-        if app.config["DARTBOARD_SENDS_ACTUAL_SCORE"]:
-            # Dartboard sent the actual score (e.g., 60 for triple 20)
-            # Convert to base score for game logic
-            actual_score = base_score
-            base_score = int(base_score / multiplier_value)
-        else:
-            # Dartboard sent base score (e.g., 20 for triple 20)
-            # Calculate actual score for display
-            actual_score = base_score * multiplier_value
+        # Calculate actual score for display
+        actual_score = base_score * multiplier_value
 
         # Get score before throw
         score_before = self._get_player_current_score(self.current_player)
@@ -346,8 +352,11 @@ class GameManager:
             # Emit throw effects
             self._emit_throw_effects(multiplier, base_score, actual_score)
 
+            # Check for bull practice auto-restart
+            if result.get("auto_restart") and self.game_type == "bull_practice":
+                self._handle_bull_practice_restart(result)
             # Check for bust
-            if result.get("bust"):
+            elif result.get("bust"):
                 self._handle_bust(result)
             # Check for winner
             elif result.get("winner"):
@@ -800,8 +809,44 @@ class GameManager:
 
         print(f"Winner: {winner_name}")
 
+    def _handle_bull_practice_restart(self, result):
+        """Handle Bull Practice auto-restart when no bulls hit in a turn"""
+        # Get final score before restart
+        player_id = result.get("player_id", self.current_player)
+        final_score = result.get("total_score", 0)
+
+        # Show message about game ending and score
+        message = f"No bulls hit! Game ended. Final score: {final_score}"
+        self._emit_message(message)
+        self._emit_sound("gameOver", message)
+
+        # Restart the game automatically
+        if self.game:
+            self.game.restart_game(player_id)
+
+        # Reset turn counters
+        self.current_throw = 1
+        self.turn_throws = []
+        self._save_turn_start_state()
+
+        # Show restart message
+        restart_message = "Starting new Bull Practice game..."
+        self._emit_message(restart_message)
+        self._emit_sound("intro", restart_message)
+
+        print(f"Bull Practice auto-restart: Final score was {final_score}")
+
     def _end_turn(self):
         """End the current turn"""
+        # Check for reset in Round the Clock hard mode
+        if self.game_type == "round_the_clock" and self.game and hasattr(self.game, "end_turn"):
+            reset_result = self.game.end_turn(self.current_player)
+            if reset_result.get("reset"):
+                # Emit message about reset
+                message = reset_result.get("message", "Reset to target 20")
+                self._emit_message(message)
+                self._emit_sound("Bust", message)  # Use bust sound for dramatic effect
+
         # Update player score in database after turn completes
         try:
             current_score = self._get_player_current_score(self.current_player)
