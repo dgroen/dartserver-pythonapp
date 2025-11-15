@@ -71,6 +71,7 @@ class GameResult(Base):
     final_score = Column(Integer)  # Final score
     is_winner = Column(Boolean, default=False)
     double_out_enabled = Column(Boolean, default=False)  # For 301/401/501 games
+    reset_on_miss = Column(Boolean, default=False)  # For round_the_clock hard mode
     started_at = Column(DateTime, default=utc_now)
     finished_at = Column(DateTime)
     game_session_id = Column(String(100), nullable=False)  # UUID to group players in same game

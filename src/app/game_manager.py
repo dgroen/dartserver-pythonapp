@@ -8,10 +8,10 @@ from sqlalchemy import func
 from src.core.database_service import DatabaseService
 from src.core.tts_service import TTSService
 from src.games.game_301 import Game301
+from src.games.game_bull_practice import GameBullPractice
 from src.games.game_cricket import GameCricket
 from src.games.game_round_the_clock import GameRoundTheClock
 from src.games.game_round_the_clock_double import GameRoundTheClockDouble
-from src.games.game_bull_practice import GameBullPractice
 
 
 class GameManager:
@@ -198,6 +198,7 @@ class GameManager:
                 player_ids=player_ids,
                 start_score=self.start_score if self.game_type != "cricket" else None,
                 double_out=double_out,
+                reset_on_miss=reset_on_miss,
             )
             print(f"Game started in database: session_id={self.db_service.current_game_session_id}")
         except Exception as e:
@@ -813,26 +814,26 @@ class GameManager:
         # Get final score before restart
         player_id = result.get("player_id", self.current_player)
         final_score = result.get("total_score", 0)
-        
+
         # Show message about game ending and score
         message = f"No bulls hit! Game ended. Final score: {final_score}"
         self._emit_message(message)
         self._emit_sound("gameOver", message)
-        
+
         # Restart the game automatically
         if self.game:
             self.game.restart_game(player_id)
-        
+
         # Reset turn counters
         self.current_throw = 1
         self.turn_throws = []
         self._save_turn_start_state()
-        
+
         # Show restart message
         restart_message = "Starting new Bull Practice game..."
         self._emit_message(restart_message)
         self._emit_sound("intro", restart_message)
-        
+
         print(f"Bull Practice auto-restart: Final score was {final_score}")
 
     def _end_turn(self):

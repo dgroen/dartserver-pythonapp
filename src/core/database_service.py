@@ -92,7 +92,14 @@ class DatabaseService:
         finally:
             session.close()
 
-    def start_new_game(self, game_type_name, player_ids, start_score=None, double_out=False):
+    def start_new_game(
+        self,
+        game_type_name,
+        player_ids,
+        start_score=None,
+        double_out=False,
+        reset_on_miss=False,
+    ):
         """
         Start a new game and create database records
 
@@ -102,6 +109,7 @@ class DatabaseService:
                 with 'db_id' key
             start_score: Starting score for 301/401/501 games
             double_out: Whether double-out is enabled
+            reset_on_miss: Whether hard mode is enabled for round_the_clock
 
         Returns:
             game_session_id: UUID for this game session
@@ -158,6 +166,7 @@ class DatabaseService:
                     start_score=start_score,
                     final_score=start_score if start_score else 0,
                     double_out_enabled=double_out,
+                    reset_on_miss=reset_on_miss,
                     game_session_id=self.current_game_session_id,
                     started_at=datetime.now(tz=timezone.utc),
                 )
@@ -451,6 +460,7 @@ class DatabaseService:
                 "game_session_id": game_session_id,
                 "game_type": game_type.name,
                 "double_out_enabled": game_results[0].double_out_enabled,
+                "reset_on_miss": game_results[0].reset_on_miss,
                 "started_at": game_results[0].started_at.isoformat(),
                 "finished_at": (
                     game_results[0].finished_at.isoformat() if game_results[0].finished_at else None
@@ -537,6 +547,8 @@ class DatabaseService:
                                 if game_results[0].finished_at
                                 else None
                             ),
+                            "double_out_enabled": game_results[0].double_out_enabled,
+                            "reset_on_miss": game_results[0].reset_on_miss,
                         },
                     )
 
@@ -735,6 +747,7 @@ class DatabaseService:
                         "player_count": len(players_in_game),
                         "players": players_in_game,
                         "double_out_enabled": gr.double_out_enabled,
+                        "reset_on_miss": gr.reset_on_miss,
                     },
                 )
 
