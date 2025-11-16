@@ -121,8 +121,8 @@ services:
 
       # WSO2 Identity Server Configuration
       WSO2_IS_URL: https://wso2is:9443
-      WSO2_IS_CLIENT_ID: ${WSO2_IS_CLIENT_ID:-L2rvop0o4DfJsqpqsh44cUgVn_ga}
-      WSO2_IS_CLIENT_SECRET: ${WSO2_IS_CLIENT_SECRET:-VhNFUK083Q2iUsu8GCWfcJTVCX8a}
+      WSO2_IS_CLIENT_ID: ${WSO2_IS_CLIENT_ID}
+      WSO2_IS_CLIENT_SECRET: ${WSO2_IS_CLIENT_SECRET}
 
       # Introspection credentials (required for token validation)
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
