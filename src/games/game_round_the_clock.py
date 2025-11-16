@@ -80,13 +80,15 @@ class GameRoundTheClock:
         multiplier = multiplier_map.get(multiplier_type, 1)
         return self.process_throw(current_player_id, base_score, multiplier, multiplier_type)
 
-    def process_throw(self, player_id, base_score, multiplier_type):
+    def process_throw(self, player_id, base_score, _multiplier, multiplier_type):
         """
         Process a dart throw
 
         Args:
             player_id: ID of the player
             base_score: Base score value (or 25 for bull)
+            _multiplier: Numeric multiplier value (1, 2, or 3) - unused,
+                multiplier_type is used instead
             multiplier_type: Type of multiplier (SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL)
 
         Returns:
