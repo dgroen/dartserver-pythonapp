@@ -24,10 +24,10 @@ def upgrade() -> None:
         """
         DO $$ BEGIN
             IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'gameresults' AND column_name = 'reset_on_miss'
             ) THEN
-                ALTER TABLE gameresults ADD COLUMN reset_on_miss BOOLEAN NOT 
+                ALTER TABLE gameresults ADD COLUMN reset_on_miss BOOLEAN NOT
                 NULL DEFAULT false;
             END IF;
         END $$;
@@ -40,7 +40,7 @@ def downgrade() -> None:
         """
         DO $$ BEGIN
             IF EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'gameresults' AND column_name = 'reset_on_miss'
             ) THEN
                 ALTER TABLE gameresults DROP COLUMN reset_on_miss;
