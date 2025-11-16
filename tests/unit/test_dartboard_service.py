@@ -36,7 +36,7 @@ def carromco_board(db_session):
     # Triple 20: pins 4, 13
     DartboardService.add_zone_mapping(
         db_session,
-        board_type.id,  # type: ignore
+        board_type.id,
         4,
         13,
         20,
@@ -46,7 +46,7 @@ def carromco_board(db_session):
     # Double 20: pins 4, 12
     DartboardService.add_zone_mapping(
         db_session,
-        board_type.id,  # type: ignore
+        board_type.id,
         4,
         12,
         20,
@@ -56,7 +56,7 @@ def carromco_board(db_session):
     # Single 20: pins 4, 14
     DartboardService.add_zone_mapping(
         db_session,
-        board_type.id,  # type: ignore
+        board_type.id,
         4,
         14,
         20,
@@ -66,7 +66,7 @@ def carromco_board(db_session):
     # Bull (center): pins 15, 2
     DartboardService.add_zone_mapping(
         db_session,
-        board_type.id,  # type: ignore
+        board_type.id,
         15,
         2,
         25,
@@ -76,7 +76,7 @@ def carromco_board(db_session):
     # Double Bull: pins 15, 4
     DartboardService.add_zone_mapping(
         db_session,
-        board_type.id,  # type: ignore
+        board_type.id,
         15,
         4,
         25,
@@ -86,7 +86,7 @@ def carromco_board(db_session):
     # Triple 4: pins 2, 4
     DartboardService.add_zone_mapping(
         db_session,
-        board_type.id,  # type: ignore
+        board_type.id,
         2,
         4,
         4,
@@ -96,7 +96,7 @@ def carromco_board(db_session):
     # Triple 13: pins 17, 5
     DartboardService.add_zone_mapping(
         db_session,
-        board_type.id,  # type: ignore
+        board_type.id,
         17,
         5,
         13,
@@ -148,7 +148,7 @@ class TestDartboardServiceBasics:
 
         mapping = DartboardService.add_zone_mapping(
             db_session,
-            board.id,  # type: ignore
+            board.id,
             1,
             2,
             20,
@@ -172,7 +172,7 @@ class TestDartboardServiceBasics:
 
         DartboardService.add_zone_mapping(
             db_session,
-            board.id,  # type: ignore
+            board.id,
             1,
             2,
             20,

@@ -77,6 +77,12 @@ class DatabaseService:
                     - hit numbers 1-20 in order \
                     - hit double bull to win",
                 },
+                {
+                    "name": "bull_practice",
+                    "description": "Bull Practice \
+                    - training game to practice hitting bulls \
+                    - auto-restarts after each round",
+                },
             ]
 
             for gt_data in game_types:
@@ -92,7 +98,14 @@ class DatabaseService:
         finally:
             session.close()
 
-    def start_new_game(self, game_type_name, player_ids, start_score=None, double_out=False):
+    def start_new_game(
+        self,
+        game_type_name,
+        player_ids,
+        start_score=None,
+        double_out=False,
+        reset_on_miss=False,
+    ):
         """
         Start a new game and create database records
 
@@ -102,6 +115,7 @@ class DatabaseService:
                 with 'db_id' key
             start_score: Starting score for 301/401/501 games
             double_out: Whether double-out is enabled
+            reset_on_miss: Whether hard mode is enabled for round_the_clock
 
         Returns:
             game_session_id: UUID for this game session
@@ -158,6 +172,7 @@ class DatabaseService:
                     start_score=start_score,
                     final_score=start_score if start_score else 0,
                     double_out_enabled=double_out,
+                    reset_on_miss=reset_on_miss,
                     game_session_id=self.current_game_session_id,
                     started_at=datetime.now(tz=timezone.utc),
                 )
@@ -451,6 +466,7 @@ class DatabaseService:
                 "game_session_id": game_session_id,
                 "game_type": game_type.name,
                 "double_out_enabled": game_results[0].double_out_enabled,
+                "reset_on_miss": game_results[0].reset_on_miss,
                 "started_at": game_results[0].started_at.isoformat(),
                 "finished_at": (
                     game_results[0].finished_at.isoformat() if game_results[0].finished_at else None
@@ -497,6 +513,8 @@ class DatabaseService:
                     Player.username == username,
                 )
 
+            print("Base query built, about to execute subquery")
+
             subquery = (
                 base_query.group_by(GameResult.game_session_id)
                 .order_by(max_timestamp_expr.desc())
@@ -509,6 +527,8 @@ class DatabaseService:
                 subquery.c.max_time,
             ).all()
 
+            print(f"Found {len(game_sessions)} game sessions from subquery")
+
             results = []
             for game_session_id, _ in game_sessions:
                 game_results = (
@@ -519,7 +539,7 @@ class DatabaseService:
                     game_type = (
                         session.query(GameType).filter_by(id=game_results[0].game_type_id).first()
                     )
-                    winner = next((gr for gr in game_results if gr.is_winner), None)
+                    winner = next((gr for gr in game_results if gr.is_winner is True), None)
                     winner_name = None
                     if winner:
                         winner_player = session.query(Player).filter_by(id=winner.player_id).first()
@@ -537,6 +557,8 @@ class DatabaseService:
                                 if game_results[0].finished_at
                                 else None
                             ),
+                            "double_out_enabled": game_results[0].double_out_enabled,
+                            "reset_on_miss": game_results[0].reset_on_miss,
                         },
                     )
 
@@ -544,6 +566,9 @@ class DatabaseService:
 
         except Exception as e:
             print(f"Error getting recent games: {e}")
+            import traceback
+
+            traceback.print_exc()
             return []
         finally:
             session.close()
@@ -735,6 +760,7 @@ class DatabaseService:
                         "player_count": len(players_in_game),
                         "players": players_in_game,
                         "double_out_enabled": gr.double_out_enabled,
+                        "reset_on_miss": gr.reset_on_miss,
                     },
                 )
 
@@ -777,7 +803,7 @@ class DatabaseService:
                 }
 
             total_games = len(all_game_results)
-            wins = sum(1 for gr in all_game_results if gr.is_winner)
+            wins = sum(1 for gr in all_game_results if gr.is_winner is True)
             losses = total_games - wins
             average_score = sum(gr.final_score or 0 for gr in all_game_results) / total_games
 
@@ -797,14 +823,18 @@ class DatabaseService:
                     }
 
                 by_game_type[game_type_name]["games"] += 1  # type: ignore
-                by_game_type[game_type_name]["wins"] += 1 if gr.is_winner else 0  # type: ignore
-                by_game_type[game_type_name]["losses"] += 0 if gr.is_winner else 1  # type: ignore
+                by_game_type[game_type_name]["wins"] += 1 if gr.is_winner is True else 0  # type: ignore
+                by_game_type[game_type_name]["losses"] += 0 if gr.is_winner is True else 1  # type: ignore
                 by_game_type[game_type_name]["scores"].append(gr.final_score or 0)  # type: ignore
 
             # Calculate averages per game type
             for _game_type_name, stats in by_game_type.items():
                 if stats["scores"]:
-                    stats["average_score"] = sum(stats["scores"]) / len(stats["scores"])  # type: ignore
+                    scores_list = stats["scores"]
+                    if isinstance(scores_list, list):
+                        score_sum = sum(scores_list)
+                        score_count = len(scores_list)
+                        stats["average_score"] = score_sum / score_count
                 del stats["scores"]  # Remove scores list from final output
 
             return {

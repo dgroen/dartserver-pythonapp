@@ -4,6 +4,8 @@
 // DOM Elements
 const gameTypeSelect = document.getElementById('game-type');
 const doubleOutCheckbox = document.getElementById('double-out');
+const resetOnMissCheckbox = document.getElementById('reset-on-miss');
+const hardModeContainer = document.getElementById('hard-mode-container');
 const newGameBtn = document.getElementById('new-game-btn');
 const playersList = document.getElementById('players-list');
 const playerNameInput = document.getElementById('player-name');
@@ -47,6 +49,7 @@ socket.on('play_tts', (data) => {
 newGameBtn.addEventListener('click', () => {
     const gameType = gameTypeSelect.value;
     const doubleOut = doubleOutCheckbox.checked;
+    const resetOnMiss = resetOnMissCheckbox.checked;
     const playerNames = [];
 
     // Get player names from current game state
@@ -64,9 +67,29 @@ newGameBtn.addEventListener('click', () => {
     socket.emit('new_game', {
         game_type: gameType,
         players: playerNames,
-        double_out: doubleOut
+        double_out: doubleOut,
+        reset_on_miss: resetOnMiss
     });
 });
+
+// Show/hide hard mode option based on game type
+function updateHardModeVisibility() {
+    const gameType = gameTypeSelect.value;
+    if (gameType === 'round_the_clock') {
+        hardModeContainer.style.display = 'block';
+    } else {
+        hardModeContainer.style.display = 'none';
+    }
+}
+
+gameTypeSelect.addEventListener('change', () => {
+    updateHardModeVisibility();
+});
+
+// Initialize hard mode visibility on page load
+if (gameTypeSelect) {
+    updateHardModeVisibility();
+}
 
 // WSO2 User search
 let searchTimeout;

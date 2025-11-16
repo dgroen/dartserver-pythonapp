@@ -161,6 +161,7 @@ class TestTTSEndpoints:
         mock_tts.speed = 150
         mock_tts.volume = 0.9
         mock_tts.voice_type = "default"
+        mock_tts.language = "en"
 
         response = client.get("/api/tts/config")
         assert response.status_code == 200

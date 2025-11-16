@@ -6,14 +6,16 @@ Round the Clock Game Implementation
 class GameRoundTheClock:
     """Round the Clock game logic"""
 
-    def __init__(self, players):
+    def __init__(self, players, reset_on_miss=False):
         """
         Initialize Round the Clock game
 
         Args:
             players: List of player dictionaries
+            reset_on_miss: Boolean to enable hard mode - reset to 20 after 3 consecutive misses
         """
         self.players = []
+        self.reset_on_miss = reset_on_miss
 
         for player in players:
             player_data = {
@@ -22,6 +24,7 @@ class GameRoundTheClock:
                 "current_target": 20,  # Start from 20
                 "is_turn": False,
                 "bull_hits": 0,  # Count single bull hits for win condition
+                "turn_misses": 0,  # Track consecutive misses in current turn
             }
             self.players.append(player_data)
 
@@ -36,6 +39,7 @@ class GameRoundTheClock:
             "current_target": 20,
             "is_turn": False,
             "bull_hits": 0,
+            "turn_misses": 0,
         }
         self.players.append(player_data)
 
@@ -74,9 +78,9 @@ class GameRoundTheClock:
             "DBLBULL": 2,
         }
         multiplier = multiplier_map.get(multiplier_type, 1)
-        return self.process_throw(current_player_id, base_score, multiplier, multiplier_type)
+        return self.process_throw(current_player_id, base_score, multiplier_type, multiplier)
 
-    def process_throw(self, player_id, base_score, multiplier_type):
+    def process_throw(self, player_id, base_score, multiplier_type, _multiplier=None):
         """
         Process a dart throw
 
@@ -84,6 +88,8 @@ class GameRoundTheClock:
             player_id: ID of the player
             base_score: Base score value (or 25 for bull)
             multiplier_type: Type of multiplier (SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL)
+            _multiplier: Numeric multiplier value (1, 2, or 3) - optional, unused,
+                multiplier_type is used instead
 
         Returns:
             Dictionary with result information
@@ -127,6 +133,9 @@ class GameRoundTheClock:
         if base_score == current_target:
             result["hit"] = True
 
+            # Reset miss counter on hit
+            player["turn_misses"] = 0
+
             # Move to next target based on multiplier
             if multiplier_type == "TRIPLE":
                 # Triple - skip 2 numbers
@@ -144,6 +153,9 @@ class GameRoundTheClock:
 
             # Reset bull hits when advancing (only count at the end)
             player["bull_hits"] = 0
+        elif current_target > 0:  # Only track misses for targets 1-20
+            # Missed the target - increment miss counter if not at bull stage
+            player["turn_misses"] += 1
 
         return result
 
@@ -151,6 +163,34 @@ class GameRoundTheClock:
         """Set the current player"""
         for i, player in enumerate(self.players):
             player["is_turn"] = i == player_id
+
+    def end_turn(self, player_id):
+        """
+        End turn for a player and check if reset is needed in hard mode
+
+        Args:
+            player_id: ID of the player whose turn is ending
+
+        Returns:
+            Dictionary with reset information if applicable
+        """
+        if player_id < 0 or player_id >= len(self.players):
+            return {"error": "Invalid player ID"}
+
+        player = self.players[player_id]
+        result = {"reset": False, "player_id": player_id}
+
+        # Check if hard mode is enabled and player missed all 3 darts
+        if self.reset_on_miss and player["turn_misses"] >= 3 and player["current_target"] > 0:
+            # Only reset if not at bull stage (target > 0)
+            player["current_target"] = 20
+            result["reset"] = True
+            result["message"] = "Missed target! Reset to 20"
+
+        # Reset miss counter for next turn
+        player["turn_misses"] = 0
+
+        return result
 
     def get_player_score(self, player_id):
         """
@@ -173,3 +213,4 @@ class GameRoundTheClock:
         for player in self.players:
             player["current_target"] = 20
             player["bull_hits"] = 0
+            player["turn_misses"] = 0

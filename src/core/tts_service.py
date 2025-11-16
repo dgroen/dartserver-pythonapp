@@ -24,6 +24,21 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+SUPPORTED_LANGUAGES = {
+    "en": "English",
+    "nl": "Dutch",
+    "de": "German",
+    "fr": "French",
+    "es": "Spanish",
+    "it": "Italian",
+    "pt": "Portuguese",
+    "ru": "Russian",
+    "ja": "Japanese",
+    "zh-cn": "Chinese (Simplified)",
+    "zh-tw": "Chinese (Traditional)",
+    "ko": "Korean",
+}
+
 
 class TTSService:
     """Text-to-Speech service with configurable voice and speed"""
@@ -34,6 +49,7 @@ class TTSService:
         voice_type: str = "default",
         speed: int = 150,
         volume: float = 1.0,
+        language: str = "en",
     ):
         """
         Initialize TTS service
@@ -43,11 +59,13 @@ class TTSService:
             voice_type: Voice type identifier (engine-specific)
             speed: Speech rate (words per minute for pyttsx3, 0.5-2.0 for gtts)
             volume: Volume level (0.0 to 1.0)
+            language: Language code (e.g., 'en', 'nl', 'de', 'fr', 'es')
         """
         self.engine_name = engine
         self.voice_type = voice_type
         self.speed = speed
         self.volume = volume
+        self.language = language
         self.engine: Any = None
         self.enabled = True
 
@@ -70,7 +88,6 @@ class TTSService:
             self.engine.setProperty("rate", self.speed)
             self.engine.setProperty("volume", self.volume)
 
-            # Set voice if specified
             if self.voice_type != "default":
                 voices = self.engine.getProperty("voices")
                 for voice in voices:
@@ -85,7 +102,6 @@ class TTSService:
 
     def _init_gtts(self):
         """Initialize gTTS (Google Text-to-Speech)"""
-        # gTTS doesn't need initialization, but we validate it's available
         if not GTTS_AVAILABLE:
             logger.error("gTTS is not available")
             self.enabled = False
@@ -109,17 +125,13 @@ class TTSService:
 
         try:
             if generate_audio:
-                # Generate audio data for client-side playback
-                return self.generate_audio_data(text)
+                return self.generate_audio_data(text, self.language)
 
-            # Server-side playback (legacy behavior)
             if self.engine_name == "pyttsx3" and self.engine:
                 self.engine.say(text)
                 self.engine.runAndWait()
                 return True
             if self.engine_name == "gtts" and GTTS_AVAILABLE:
-                # Note: gTTS generates audio files, not real-time speech
-                # This is a placeholder for server-side generation
                 logger.info(f"gTTS would generate audio for: {text}")
                 return True
         except Exception:
@@ -142,12 +154,13 @@ class TTSService:
         if not self.enabled or not text:
             return None
 
+        lang_to_use = lang if lang else self.language
+
         try:
             if self.engine_name == "gtts" and GTTS_AVAILABLE:
-                # Adjust speed for gTTS (slow parameter)
                 slow = self.speed < 100 if isinstance(self.speed, int) else self.speed < 1.0
 
-                tts = gTTS(text=text, lang=lang, slow=slow)
+                tts = gTTS(text=text, lang=lang_to_use, slow=slow)
                 audio_fp = io.BytesIO()
                 tts.write_to_fp(audio_fp)
                 audio_fp.seek(0)
@@ -204,6 +217,19 @@ class TTSService:
             except Exception:
                 logger.exception("Failed to set voice")
 
+    def set_language(self, language: str):
+        """
+        Set language
+
+        Args:
+            language: Language code (e.g., 'en', 'nl', 'de', 'fr', 'es')
+        """
+        if language in SUPPORTED_LANGUAGES:
+            self.language = language
+            logger.info(f"Language set to: {SUPPORTED_LANGUAGES[language]}")
+        else:
+            logger.warning(f"Language '{language}' not supported. Keeping current: {self.language}")
+
     def get_available_voices(self) -> list:
         """
         Get list of available voices
@@ -227,6 +253,16 @@ class TTSService:
                 logger.exception("Failed to get voices")
 
         return []
+
+    @staticmethod
+    def get_supported_languages() -> dict:
+        """
+        Get all supported languages
+
+        Returns:
+            Dictionary mapping language codes to language names
+        """
+        return SUPPORTED_LANGUAGES
 
     def enable(self):
         """Enable TTS"""

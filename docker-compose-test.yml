@@ -63,7 +63,7 @@ services:
       # Token Validation
       JWT_VALIDATION_MODE: introspection
       WSO2_IS_INTROSPECT_USER: admin
-      WSO2_IS_INTROSPECT_PASSWORD: admin # pragma: allowlist secret
+      WSO2_IS_INTROSPECT_PASSWORD: DwvTAis11k! # pragma: allowlist secret
 
       # RabbitMQ Topic for test
       RABBITMQ_TOPIC: darts.scores.#
@@ -87,10 +87,10 @@ services:
 
       # WSO2 Configuration
       WSO2_IS_URL: https://wso2is:9443
-      WSO2_IS_CLIENT_ID: z9tDR_MVfS_rHKBlqZ_6Re_TaJga
-      WSO2_IS_CLIENT_SECRET: lQCbqtHliRy3j_POcCRxm9j7Cj7VqTx6ehRXnNaesUca # pragma: allowlist secret
+      WSO2_IS_CLIENT_ID: ${WSO2_CLIENT_ID} # pragma: allowlist secret
+      WSO2_IS_CLIENT_SECRET: ${WSO2_CLIENT_SECRET} # pragma: allowlist secret
       WSO2_IS_INTROSPECT_USER: admin
-      WSO2_IS_INTROSPECT_PASSWORD: admin # pragma: allowlist secret
+      WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD} # pragma: allowlist secret
 
       # Token Validation
       JWT_VALIDATION_MODE: introspection
@@ -105,10 +105,12 @@ services:
       # Swagger
       SWAGGER_HOST: test.letsplaydarts.eu
 
-  # WSO2 Identity Server - Test Configuration (minimal overrides)
+  # WSO2 Identity Server - Test Configuration (minimal overrides
   wso2is:
-    # Uses base configuration from docker-compose-wso2.yml
-    # Test environment uses same WSO2IS instance
+    environment:
+      - JAVA_OPTS=-Xms512m -Xmx1024m
+      - CONSOLE_SERVER_ORIGIN=https://test.letsplaydarts.eu/auth
+      - SERVER_ORIGIN=https://test.letsplaydarts.eu/auth
 
   # WSO2 API Manager - Test Configuration (minimal overrides)
   wso2apim:
