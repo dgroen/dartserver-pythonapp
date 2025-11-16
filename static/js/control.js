@@ -73,14 +73,23 @@ newGameBtn.addEventListener('click', () => {
 });
 
 // Show/hide hard mode option based on game type
-gameTypeSelect.addEventListener('change', () => {
+function updateHardModeVisibility() {
     const gameType = gameTypeSelect.value;
     if (gameType === 'round_the_clock') {
         hardModeContainer.style.display = 'block';
     } else {
         hardModeContainer.style.display = 'none';
     }
+}
+
+gameTypeSelect.addEventListener('change', () => {
+    updateHardModeVisibility();
 });
+
+// Initialize hard mode visibility on page load
+if (gameTypeSelect) {
+    updateHardModeVisibility();
+}
 
 // WSO2 User search
 let searchTimeout;

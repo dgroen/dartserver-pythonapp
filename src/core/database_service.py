@@ -77,6 +77,12 @@ class DatabaseService:
                     - hit numbers 1-20 in order \
                     - hit double bull to win",
                 },
+                {
+                    "name": "bull_practice",
+                    "description": "Bull Practice \
+                    - training game to practice hitting bulls \
+                    - auto-restarts after each round",
+                },
             ]
 
             for gt_data in game_types:
