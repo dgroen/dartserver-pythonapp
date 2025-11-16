@@ -1925,6 +1925,14 @@ def get_game_history():
     # Get current user info
     user_roles = getattr(request, "user_roles", [])
     user_claims = getattr(request, "user_claims", {})
+
+    # Log all available claims for debugging
+    logger.info(f"get_game_history: Available claims: {list(user_claims.keys())}")
+    logger.info(
+        f"get_game_history: username={user_claims.get('username')}, \
+        preferred_username={user_claims.get('preferred_username')}, sub={user_claims.get('sub')}",
+    )
+
     current_username = (
         user_claims.get("username")
         or user_claims.get("preferred_username")
