@@ -1,0 +1,101 @@
+name: Deploy to Test Environment
+
+on:
+  push:
+    branches:
+      - test
+
+jobs:
+  deploy-test:
+    name: Deploy to Test Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.TEST_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.TEST_SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Test Server
+        env:
+          TEST_SERVER_HOST: ${{ secrets.TEST_SERVER_HOST }}
+          TEST_SERVER_USER: ${{ secrets.TEST_SERVER_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key ${TEST_SERVER_USER}@${TEST_SERVER_HOST} << 'ENDSSH'
+            set -e
+            echo "🚀 Starting deployment to test environment..."
+
+            # Navigate to application directory
+            cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp || \
+              { echo "❌ Application directory not found"; exit 1; }
+
+            # Pull latest changes
+            echo "📥 Pulling latest changes from test branch..."
+            git fetch origin
+            git checkout test
+            git pull origin test
+
+            # Stop existing containers
+            echo "🛑 Stopping existing containers..."
+            docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml down || true
+
+            # Rebuild containers
+            echo "🔨 Rebuilding containers..."
+            docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml build --no-cache
+
+            # Start containers
+            echo "▶️  Starting containers..."
+            docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d
+
+            # Wait for services to be healthy
+            echo "⏳ Waiting for services to be healthy..."
+            sleep 30
+
+            # Check container status
+            echo "✅ Checking container status..."
+            docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml ps
+
+            echo "🎉 Deployment to test environment completed successfully!"
+          ENDSSH
+
+      - name: Verify Deployment
+        env:
+          TEST_SERVER_HOST: ${{ secrets.TEST_SERVER_HOST }}
+          TEST_SERVER_USER: ${{ secrets.TEST_SERVER_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key ${TEST_SERVER_USER}@${TEST_SERVER_HOST} << 'ENDSSH'
+            cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
+
+            # Check if containers are running
+            RUNNING_CONTAINERS=$(docker-compose -f docker-compose-wso2.yml \
+              -f docker-compose-test.yml ps --services --filter "status=running" | wc -l)
+            echo "Running containers: $RUNNING_CONTAINERS"
+
+            if [ "$RUNNING_CONTAINERS" -lt 1 ]; then
+              echo "❌ Not all containers are running"
+              exit 1
+            fi
+
+            echo "✅ All containers are running"
+          ENDSSH
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key
+
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "✅ Test deployment completed successfully"
+
+      - name: Notify Failure
+        if: failure()
+        run: |
+          echo "❌ Test deployment failed"
+          exit 1
