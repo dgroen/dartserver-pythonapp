@@ -2988,11 +2988,11 @@ def delete_game(game_session_id):
 
         if success:
             return jsonify({"status": "success", "message": "Game deleted successfully"})
-        else:
-            return jsonify({"status": "error", "message": "Failed to delete game"}), 500
+
+        return jsonify({"status": "error", "message": "Failed to delete game"}), 500
 
     except Exception as e:
-        logger.error(f"Error deleting game {game_session_id}: {e}")
+        logger.exception(f"Error deleting game {game_session_id}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
@@ -3115,7 +3115,7 @@ def resume_game(game_session_id):
         )
 
     except Exception as e:
-        logger.error(f"Error resuming game {game_session_id}: {e}")
+        logger.exception(f"Error resuming game {game_session_id}")
         import traceback
 
         traceback.print_exc()
