@@ -394,3 +394,164 @@ class TestAppEndpoints:
         assert "redirect_url" in data
         assert data["redirect_url"] == "/"
 
+    def test_resume_game_with_throws_301(self, client, db_service):
+        """Test resuming a 301 game restores scores correctly."""
+        # Create players
+        alice = db_service.get_or_create_player("Alice", username="alice")
+        bob = db_service.get_or_create_player("Bob", username="bob")
+
+        # Start a 301 game
+        game_session_id = db_service.start_new_game(
+            game_type_name="301",
+            player_ids=[alice.id, bob.id],
+            start_score=301,
+            double_out=False,
+            reset_on_miss=False,
+        )
+
+        # Record some throws for Alice (player 0)
+        db_service.record_throw(
+            player_id=0,
+            base_score=20,
+            multiplier="TRIPLE",
+            multiplier_value=3,
+            actual_score=60,
+            score_before=301,
+            score_after=241,
+            turn_number=1,
+            throw_in_turn=1,
+            dartboard_sends_actual_score=True,
+            is_bust=False,
+            is_finish=False,
+        )
+
+        db_service.record_throw(
+            player_id=0,
+            base_score=19,
+            multiplier="TRIPLE",
+            multiplier_value=3,
+            actual_score=57,
+            score_before=241,
+            score_after=184,
+            turn_number=1,
+            throw_in_turn=2,
+            dartboard_sends_actual_score=True,
+            is_bust=False,
+            is_finish=False,
+        )
+
+        # Record throws for Bob (player 1)
+        db_service.record_throw(
+            player_id=1,
+            base_score=20,
+            multiplier="SINGLE",
+            multiplier_value=1,
+            actual_score=20,
+            score_before=301,
+            score_after=281,
+            turn_number=1,
+            throw_in_turn=1,
+            dartboard_sends_actual_score=True,
+            is_bust=False,
+            is_finish=False,
+        )
+
+        # Resume the game
+        response = client.post(f"/api/game/resume/{game_session_id}")
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["status"] == "success"
+
+        # Get game state
+        state = game_manager.get_game_state()
+
+        # Verify game was resumed correctly
+        assert state["is_started"] is True
+        assert state["game_type"] == "301"
+        assert len(state["players"]) == 2
+
+        # Verify scores were restored (in game_data.players)
+        game_players = state["game_data"]["players"]
+        assert game_players[0]["score"] == 184  # Alice: 301 - 60 - 57 = 184
+        assert game_players[1]["score"] == 281  # Bob: 301 - 20 = 281
+
+        # Current player should be Bob (player 1) since Alice threw 2 darts
+        assert state["current_player"] == 1
+        assert state["current_throw"] == 2
+
+    def test_resume_game_with_throws_cricket(self, client, db_service):
+        """Test resuming a Cricket game restores targets correctly."""
+        # Create players
+        alice = db_service.get_or_create_player("Alice", username="alice")
+        bob = db_service.get_or_create_player("Bob", username="bob")
+
+        # Start a Cricket game
+        game_session_id = db_service.start_new_game(
+            game_type_name="cricket",
+            player_ids=[alice.id, bob.id],
+            start_score=None,
+            double_out=False,
+            reset_on_miss=False,
+        )
+
+        # Record throws for Alice opening 20 (triple = 3 hits)
+        db_service.record_throw(
+            player_id=0,
+            base_score=20,
+            multiplier="TRIPLE",
+            multiplier_value=3,
+            actual_score=60,
+            score_before=0,
+            score_after=0,
+            turn_number=1,
+            throw_in_turn=1,
+            dartboard_sends_actual_score=True,
+            is_bust=False,
+            is_finish=False,
+        )
+
+        # Alice scores on 20 (already opened)
+        db_service.record_throw(
+            player_id=0,
+            base_score=20,
+            multiplier="SINGLE",
+            multiplier_value=1,
+            actual_score=20,
+            score_before=0,
+            score_after=20,
+            turn_number=1,
+            throw_in_turn=2,
+            dartboard_sends_actual_score=True,
+            is_bust=False,
+            is_finish=False,
+        )
+
+        # Resume the game
+        response = client.post(f"/api/game/resume/{game_session_id}")
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["status"] == "success"
+
+        # Get game state
+        state = game_manager.get_game_state()
+
+        # Verify game was resumed correctly
+        assert state["is_started"] is True
+        assert state["game_type"] == "cricket"
+        assert len(state["players"]) == 2
+
+        # Verify Cricket state was restored (in game_data.players)
+        game_players = state["game_data"]["players"]
+        alice_data = game_players[0]
+        assert alice_data["score"] == 20  # Scored 20 points
+        assert alice_data["targets"][20]["hits"] == 3  # Maxed out at 3 hits (opened)
+        assert alice_data["targets"][20]["status"] == 1  # Opened
+
+        # Bob should not have any hits yet
+        bob_data = game_players[1]
+        assert bob_data["score"] == 0
+        assert bob_data["targets"][20]["hits"] == 0
+
+        # Current player should be Alice (player 0) since she threw 2 darts
+        assert state["current_player"] == 0
+        assert state["current_throw"] == 3

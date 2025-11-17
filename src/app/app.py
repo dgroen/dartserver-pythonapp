@@ -3065,17 +3065,11 @@ def resume_game(game_session_id):
                 403,
             )
 
-        # Extract player information
-        player_ids = [p["player_id"] for p in game_data["players"]]
+        # Resume the game by replaying all throws to restore state
+        success = game_manager.resume_game_from_replay_data(game_data)
 
-        # Start a new game with the same settings
-        # This creates a new game session rather than continuing the old one
-        game_manager.new_game(
-            game_type=game_data["game_type"],
-            player_ids=player_ids,
-            double_out=game_data["double_out_enabled"],
-            reset_on_miss=game_data["reset_on_miss"],
-        )
+        if not success:
+            return jsonify({"status": "error", "message": "Failed to resume game"}), 500
 
         # Emit game state to all clients
         socketio.emit("game_state", game_manager.get_game_state(), namespace="/")
@@ -3083,7 +3077,7 @@ def resume_game(game_session_id):
         return jsonify(
             {
                 "status": "success",
-                "message": "Starting new game with same settings",
+                "message": f"Game resumed with {len(game_data['throws'])} throws replayed",
                 "redirect_url": "/",
             },
         )
