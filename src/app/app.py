@@ -2973,11 +2973,11 @@ def delete_game(game_session_id):
         if started_at_str.endswith("Z"):
             started_at_str = started_at_str.replace("Z", "+00:00")
         started_at = datetime.fromisoformat(started_at_str)
-        
+
         # Ensure both datetimes are timezone-aware for comparison
         if started_at.tzinfo is None:
             started_at = started_at.replace(tzinfo=timezone.utc)
-        
+
         now = datetime.now(timezone.utc)
         age = now - started_at
 

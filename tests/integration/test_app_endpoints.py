@@ -233,7 +233,7 @@ class TestAppEndpoints:
     def test_delete_completed_game(self, client, db_service):
         """Test that completed games cannot be deleted."""
         # Create a completed game in the database
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timezone
 
         # Get test players
         alice = db_service.get_or_create_player("Alice", username="alice")
