@@ -2909,6 +2909,219 @@ def end_game():
     )
 
 
+@app.route("/api/game/<game_session_id>", methods=["DELETE"])
+@login_required
+@permission_required("game:create")
+def delete_game(game_session_id):
+    """Delete a game - requires game:create permission
+    ---
+    tags:
+      - Game
+    summary: Delete a game
+    description: >
+      Deletes a game and all associated data (game results and scores).
+      Only incomplete games older than 1 day can be deleted.
+    parameters:
+      - in: path
+        name: game_session_id
+        type: string
+        required: true
+        description: The game session ID to delete
+    responses:
+      200:
+        description: Game deleted successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: Game deleted successfully
+      403:
+        description: Game cannot be deleted (too recent or already completed)
+      404:
+        description: Game not found
+      500:
+        description: Error deleting game
+    """
+    try:
+        # Get the game to check if it can be deleted
+        game_data = game_manager.db_service.get_game_replay_data(game_session_id)
+
+        if not game_data:
+            return jsonify({"status": "error", "message": "Game not found"}), 404
+
+        # Check if game is completed
+        if game_data["finished_at"]:
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": "Cannot delete completed games",
+                    },
+                ),
+                403,
+            )
+
+        # Check if game is older than 1 day
+        from datetime import datetime, timedelta, timezone
+
+        started_at = datetime.fromisoformat(game_data["started_at"].replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        age = now - started_at
+
+        if age < timedelta(days=1):
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": "Game must be at least 1 day old to be deleted",
+                    },
+                ),
+                403,
+            )
+
+        # Delete the game
+        success = game_manager.db_service.delete_game(game_session_id)
+
+        if success:
+            return jsonify({"status": "success", "message": "Game deleted successfully"})
+        else:
+            return jsonify({"status": "error", "message": "Failed to delete game"}), 500
+
+    except Exception as e:
+        logger.error(f"Error deleting game {game_session_id}: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/game/resume/<game_session_id>", methods=["POST"])
+@login_required
+@permission_required("game:create")
+def resume_game(game_session_id):
+    """Resume an incomplete game - requires game:create permission
+    ---
+    tags:
+      - Game
+    summary: Resume an incomplete game
+    description: >
+      Loads the state of an incomplete game so it can be continued.
+      Redirects to the game board after loading the game state.
+    parameters:
+      - in: path
+        name: game_session_id
+        type: string
+        required: true
+        description: The game session ID to resume
+    responses:
+      200:
+        description: Game resumed successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: Game resumed successfully
+            redirect_url:
+              type: string
+              example: /
+      403:
+        description: Game cannot be resumed (already completed)
+      404:
+        description: Game not found
+      500:
+        description: Error resuming game
+    """
+    try:
+        # Get the game data
+        game_data = game_manager.db_service.get_game_replay_data(game_session_id)
+
+        if not game_data:
+            return jsonify({"status": "error", "message": "Game not found"}), 404
+
+        # Check if game is already completed
+        if game_data["finished_at"]:
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": "Cannot resume a completed game",
+                    },
+                ),
+                403,
+            )
+
+        # Load the game state into the game manager
+        # Extract player information
+        player_names = [p["player_name"] for p in game_data["players"]]
+        player_ids = [p["player_id"] for p in game_data["players"]]
+
+        # Start a new game with the same settings
+        game_manager.new_game(
+            game_type=game_data["game_type"],
+            player_names=player_names,
+            player_ids=player_ids,
+            double_out=game_data["double_out_enabled"],
+            reset_on_miss=game_data["reset_on_miss"],
+        )
+
+        # Replay all throws to restore the game state
+        for throw in game_data["throws"]:
+            # Find which player this throw belongs to
+            player_order = throw["player_order"]
+
+            # Set current player to the one who made this throw
+            game_manager.current_player = player_order
+
+            # Process the throw
+            game_manager.receive_score(
+                base_score=throw["base_score"],
+                multiplier=throw["multiplier"],
+                player_index=player_order,
+            )
+
+        # Set the current player to the next player who should throw
+        # This is determined by looking at the last throw's player
+        if game_data["throws"]:
+            last_throw = game_data["throws"][-1]
+            last_player_order = last_throw["player_order"]
+            last_throw_in_turn = last_throw["throw_in_turn"]
+
+            # If the last throw was the 3rd throw in a turn, move to next player
+            if last_throw_in_turn == 3:
+                game_manager.current_player = (last_player_order + 1) % len(player_names)
+                game_manager.current_throw = 1
+            else:
+                game_manager.current_player = last_player_order
+                game_manager.current_throw = last_throw_in_turn + 1
+
+        # Unpause the game
+        game_manager.is_paused = False
+        game_manager.is_started = True
+
+        # Emit game state to all clients
+        socketio.emit("game_state", game_manager.get_game_state(), namespace="/")
+
+        return jsonify(
+            {
+                "status": "success",
+                "message": "Game resumed successfully",
+                "redirect_url": "/",
+            },
+        )
+
+    except Exception as e:
+        logger.error(f"Error resuming game {game_session_id}: {e}")
+        import traceback
+
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @app.route("/api/game/results", methods=["GET"])
 @login_required
 def get_game_results():

@@ -920,3 +920,45 @@ class DatabaseService:
             return []
         finally:
             session.close()
+
+    def delete_game(self, game_session_id):
+        """
+        Delete a game and all associated data (game results and scores)
+
+        Args:
+            game_session_id: The game session ID to delete
+
+        Returns:
+            True if successfully deleted, False otherwise
+        """
+        session = self.db_manager.get_session()
+        try:
+            # Get all game results for this session
+            game_results = (
+                session.query(GameResult).filter_by(game_session_id=game_session_id).all()
+            )
+
+            if not game_results:
+                print(f"No game found with session ID: {game_session_id}")
+                return False
+
+            # Delete all associated scores (cascade should handle this, but being explicit)
+            for game_result in game_results:
+                session.query(Score).filter_by(game_result_id=game_result.id).delete()
+
+            # Delete all game results for this session
+            session.query(GameResult).filter_by(game_session_id=game_session_id).delete()
+
+            session.commit()
+            print(f"Successfully deleted game session: {game_session_id}")
+            return True
+
+        except Exception as e:
+            session.rollback()
+            print(f"Error deleting game {game_session_id}: {e}")
+            import traceback
+
+            traceback.print_exc()
+            return False
+        finally:
+            session.close()
