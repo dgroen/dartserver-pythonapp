@@ -3006,8 +3006,9 @@ def resume_game(game_session_id):
       - Game
     summary: Resume an incomplete game
     description: >
-      Loads the state of an incomplete game so it can be continued.
-      Redirects to the game board after loading the game state.
+      Starts a new game with the same settings as the incomplete game.
+      The original incomplete game data is preserved in the database.
+      Redirects to the game board to continue playing.
     parameters:
       - in: path
         name: game_session_id
@@ -3016,7 +3017,7 @@ def resume_game(game_session_id):
         description: The game session ID to resume
     responses:
       200:
-        description: Game resumed successfully
+        description: Game setup for resumption
         schema:
           type: object
           properties:
@@ -3025,7 +3026,7 @@ def resume_game(game_session_id):
               example: success
             message:
               type: string
-              example: Game resumed successfully
+              example: Starting new game with same settings
             redirect_url:
               type: string
               example: /
@@ -3055,53 +3056,17 @@ def resume_game(game_session_id):
                 403,
             )
 
-        # Load the game state into the game manager
         # Extract player information
-        player_names = [p["player_name"] for p in game_data["players"]]
         player_ids = [p["player_id"] for p in game_data["players"]]
 
         # Start a new game with the same settings
+        # This creates a new game session rather than continuing the old one
         game_manager.new_game(
             game_type=game_data["game_type"],
-            player_names=player_names,
             player_ids=player_ids,
             double_out=game_data["double_out_enabled"],
             reset_on_miss=game_data["reset_on_miss"],
         )
-
-        # Replay all throws to restore the game state
-        for throw in game_data["throws"]:
-            # Find which player this throw belongs to
-            player_order = throw["player_order"]
-
-            # Set current player to the one who made this throw
-            game_manager.current_player = player_order
-
-            # Process the throw
-            game_manager.receive_score(
-                base_score=throw["base_score"],
-                multiplier=throw["multiplier"],
-                player_index=player_order,
-            )
-
-        # Set the current player to the next player who should throw
-        # This is determined by looking at the last throw's player
-        if game_data["throws"]:
-            last_throw = game_data["throws"][-1]
-            last_player_order = last_throw["player_order"]
-            last_throw_in_turn = last_throw["throw_in_turn"]
-
-            # If the last throw was the 3rd throw in a turn, move to next player
-            if last_throw_in_turn == 3:
-                game_manager.current_player = (last_player_order + 1) % len(player_names)
-                game_manager.current_throw = 1
-            else:
-                game_manager.current_player = last_player_order
-                game_manager.current_throw = last_throw_in_turn + 1
-
-        # Unpause the game
-        game_manager.is_paused = False
-        game_manager.is_started = True
 
         # Emit game state to all clients
         socketio.emit("game_state", game_manager.get_game_state(), namespace="/")
@@ -3109,16 +3074,13 @@ def resume_game(game_session_id):
         return jsonify(
             {
                 "status": "success",
-                "message": "Game resumed successfully",
+                "message": "Starting new game with same settings",
                 "redirect_url": "/",
             },
         )
 
     except Exception as e:
         logger.exception(f"Error resuming game {game_session_id}")
-        import traceback
-
-        traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
