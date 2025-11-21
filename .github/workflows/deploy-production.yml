@@ -1,0 +1,133 @@
+name: Deploy to Production Environment
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-production:
+    name: Deploy to Production Server
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://letsplaydarts.eu
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.PROD_SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Production Server
+        env:
+          PROD_SERVER_HOST: ${{ secrets.PROD_SERVER_HOST }}
+          PROD_SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_USER}@${PROD_SERVER_HOST} << 'ENDSSH'
+            set -e
+            echo "🚀 Starting deployment to production environment..."
+
+            # Navigate to application directory
+            cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp || \
+              { echo "❌ Application directory not found"; exit 1; }
+
+            # Create backup of current state
+            echo "💾 Creating backup of current state..."
+            BACKUP_DIR="backups/$(date +%Y%m%d_%H%M%S)"
+            mkdir -p $BACKUP_DIR
+            git show HEAD > $BACKUP_DIR/last_commit.txt || true
+
+            # Pull latest changes
+            echo "📥 Pulling latest changes from main branch..."
+            git fetch origin
+            git checkout main
+            git pull origin main
+
+            # Stop existing containers
+            echo "🛑 Stopping existing containers..."
+            docker-compose -f docker-compose-wso2.yml down || true
+
+            # Rebuild containers
+            echo "🔨 Rebuilding containers..."
+            docker-compose -f docker-compose-wso2.yml build --no-cache
+
+            # Start containers
+            echo "▶️  Starting containers..."
+            docker-compose -f docker-compose-wso2.yml up -d
+
+            # Wait for services to be healthy
+            echo "⏳ Waiting for services to be healthy..."
+            sleep 30
+
+            # Check container status
+            echo "✅ Checking container status..."
+            docker-compose -f docker-compose-wso2.yml ps
+
+            echo "🎉 Deployment to production environment completed successfully!"
+          ENDSSH
+
+      - name: Verify Deployment
+        env:
+          PROD_SERVER_HOST: ${{ secrets.PROD_SERVER_HOST }}
+          PROD_SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_USER}@${PROD_SERVER_HOST} << 'ENDSSH'
+            cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
+
+            # Check if containers are running
+            RUNNING_CONTAINERS=$(docker-compose -f docker-compose-wso2.yml ps \
+              --services --filter "status=running" | wc -l)
+            echo "Running containers: $RUNNING_CONTAINERS"
+
+            if [ "$RUNNING_CONTAINERS" -lt 1 ]; then
+              echo "❌ Not all containers are running"
+              exit 1
+            fi
+
+            echo "✅ All containers are running"
+          ENDSSH
+
+      - name: Run Health Checks
+        env:
+          PROD_SERVER_HOST: ${{ secrets.PROD_SERVER_HOST }}
+          PROD_SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_USER}@${PROD_SERVER_HOST} << 'ENDSSH'
+            cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
+
+            # Check application health endpoint
+            echo "🏥 Checking application health..."
+            HEALTH_CHECK=$(docker-compose -f docker-compose-wso2.yml exec -T darts-app \
+              curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/health || echo "000")
+
+            if [ "$HEALTH_CHECK" = "200" ]; then
+              echo "✅ Application health check passed"
+            else
+              echo "⚠️  Application health check returned: $HEALTH_CHECK"
+            fi
+          ENDSSH
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key
+
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "✅ Production deployment completed successfully"
+
+      - name: Notify Failure
+        if: failure()
+        run: |
+          echo "❌ Production deployment failed"
+          exit 1
