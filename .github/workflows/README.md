@@ -86,7 +86,7 @@ The following secrets must be configured in the GitHub repository:
 | Secret Name | Description | Example |
 |------------|-------------|---------|
 | `PROD_SERVER_HOST` | Hostname or IP of production server | `letsplaydarts.eu` or `192.168.1.101` |
-| `PROD_SERVER_PORT` | SSH port on production server | `22` or custom port |
+| `PROD_SERVER_PORT` | SSH port on production server | `22` or `4422` |
 | `PROD_SERVER_USER` | SSH username for production server | `deploy` or `ubuntu` |
 | `PROD_SERVER_SSH_KEY` | Private SSH key for production server authentication | Contents of `~/.ssh/id_rsa` |
 
