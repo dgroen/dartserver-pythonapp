@@ -127,9 +127,6 @@ tests/
 # Tox configuration
 tox.ini
 
-# Alembic (if migrations are handled outside)
-alembic/
-
 # Node.js (if any)
 node_modules/
 npm-debug.log*

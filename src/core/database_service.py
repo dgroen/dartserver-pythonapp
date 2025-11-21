@@ -77,6 +77,12 @@ class DatabaseService:
                     - hit numbers 1-20 in order \
                     - hit double bull to win",
                 },
+                {
+                    "name": "bull_practice",
+                    "description": "Bull Practice \
+                    - training game to practice hitting bulls \
+                    - auto-restarts after each round",
+                },
             ]
 
             for gt_data in game_types:
@@ -507,6 +513,8 @@ class DatabaseService:
                     Player.username == username,
                 )
 
+            print("Base query built, about to execute subquery")
+
             subquery = (
                 base_query.group_by(GameResult.game_session_id)
                 .order_by(max_timestamp_expr.desc())
@@ -519,6 +527,8 @@ class DatabaseService:
                 subquery.c.max_time,
             ).all()
 
+            print(f"Found {len(game_sessions)} game sessions from subquery")
+
             results = []
             for game_session_id, _ in game_sessions:
                 game_results = (
@@ -529,7 +539,7 @@ class DatabaseService:
                     game_type = (
                         session.query(GameType).filter_by(id=game_results[0].game_type_id).first()
                     )
-                    winner = next((gr for gr in game_results if gr.is_winner), None)
+                    winner = next((gr for gr in game_results if gr.is_winner is True), None)
                     winner_name = None
                     if winner:
                         winner_player = session.query(Player).filter_by(id=winner.player_id).first()
@@ -556,6 +566,9 @@ class DatabaseService:
 
         except Exception as e:
             print(f"Error getting recent games: {e}")
+            import traceback
+
+            traceback.print_exc()
             return []
         finally:
             session.close()
@@ -790,7 +803,7 @@ class DatabaseService:
                 }
 
             total_games = len(all_game_results)
-            wins = sum(1 for gr in all_game_results if gr.is_winner)
+            wins = sum(1 for gr in all_game_results if gr.is_winner is True)
             losses = total_games - wins
             average_score = sum(gr.final_score or 0 for gr in all_game_results) / total_games
 
@@ -810,8 +823,8 @@ class DatabaseService:
                     }
 
                 by_game_type[game_type_name]["games"] += 1  # type: ignore
-                by_game_type[game_type_name]["wins"] += 1 if gr.is_winner else 0  # type: ignore
-                by_game_type[game_type_name]["losses"] += 0 if gr.is_winner else 1  # type: ignore
+                by_game_type[game_type_name]["wins"] += 1 if gr.is_winner is True else 0  # type: ignore
+                by_game_type[game_type_name]["losses"] += 0 if gr.is_winner is True else 1  # type: ignore
                 by_game_type[game_type_name]["scores"].append(gr.final_score or 0)  # type: ignore
 
             # Calculate averages per game type
@@ -905,5 +918,47 @@ class DatabaseService:
         except Exception as e:
             print(f"Error getting active games: {e}")
             return []
+        finally:
+            session.close()
+
+    def delete_game(self, game_session_id):
+        """
+        Delete a game and all associated data (game results and scores)
+
+        Args:
+            game_session_id: The game session ID to delete
+
+        Returns:
+            True if successfully deleted, False otherwise
+        """
+        session = self.db_manager.get_session()
+        try:
+            # Get all game results for this session
+            game_results = (
+                session.query(GameResult).filter_by(game_session_id=game_session_id).all()
+            )
+
+            if not game_results:
+                print(f"No game found with session ID: {game_session_id}")
+                return False
+
+            # Delete all associated scores (cascade should handle this, but being explicit)
+            for game_result in game_results:
+                session.query(Score).filter_by(game_result_id=game_result.id).delete()
+
+            # Delete all game results for this session
+            session.query(GameResult).filter_by(game_session_id=game_session_id).delete()
+
+            session.commit()
+            print(f"Successfully deleted game session: {game_session_id}")
+            return True
+
+        except Exception as e:
+            session.rollback()
+            print(f"Error deleting game {game_session_id}: {e}")
+            import traceback
+
+            traceback.print_exc()
+            return False
         finally:
             session.close()

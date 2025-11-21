@@ -8,8 +8,6 @@ Create Date: 2025-11-09 11:11:07.781925
 
 from collections.abc import Sequence
 
-import sqlalchemy as sa
-
 from alembic import op
 
 revision: str = "ad03fe01b8c6"
@@ -19,50 +17,54 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # Create training_session table
-    op.create_table(
-        "training_session",
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("player_id", sa.Integer(), nullable=False),
-        sa.Column("game_type_id", sa.Integer(), nullable=False),
-        sa.Column("session_id", sa.String(length=100), nullable=False),
-        sa.Column("start_score", sa.Integer(), nullable=True),
-        sa.Column("final_score", sa.Integer(), nullable=True),
-        sa.Column("double_out_enabled", sa.Boolean(), nullable=True),
-        sa.Column("completed", sa.Boolean(), nullable=True),
-        sa.Column("started_at", sa.DateTime(), nullable=True),
-        sa.Column("finished_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(["game_type_id"], ["gametype.id"]),
-        sa.ForeignKeyConstraint(["player_id"], ["player.id"]),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("session_id"),
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS training_session (
+            id SERIAL NOT NULL,
+            player_id INTEGER NOT NULL,
+            game_type_id INTEGER NOT NULL,
+            session_id VARCHAR(100) NOT NULL,
+            start_score INTEGER,
+            final_score INTEGER,
+            double_out_enabled BOOLEAN,
+            completed BOOLEAN,
+            started_at TIMESTAMP WITHOUT TIME ZONE,
+            finished_at TIMESTAMP WITHOUT TIME ZONE,
+            PRIMARY KEY (id),
+            FOREIGN KEY(game_type_id) REFERENCES gametype (id),
+            FOREIGN KEY(player_id) REFERENCES player (id),
+            UNIQUE (session_id)
+        )
+    """,
     )
 
-    # Create training_score table
-    op.create_table(
-        "training_score",
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("training_session_id", sa.Integer(), nullable=False),
-        sa.Column("player_id", sa.Integer(), nullable=False),
-        sa.Column("throw_sequence", sa.Integer(), nullable=False),
-        sa.Column("turn_number", sa.Integer(), nullable=False),
-        sa.Column("throw_in_turn", sa.Integer(), nullable=False),
-        sa.Column("base_score", sa.Integer(), nullable=False),
-        sa.Column("multiplier", sa.String(length=20), nullable=False),
-        sa.Column("multiplier_value", sa.Integer(), nullable=False),
-        sa.Column("actual_score", sa.Integer(), nullable=False),
-        sa.Column("score_before", sa.Integer(), nullable=False),
-        sa.Column("score_after", sa.Integer(), nullable=False),
-        sa.Column("dartboard_sends_actual_score", sa.Boolean(), nullable=False),
-        sa.Column("is_bust", sa.Boolean(), nullable=True),
-        sa.Column("is_finish", sa.Boolean(), nullable=True),
-        sa.Column("thrown_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(["player_id"], ["player.id"]),
-        sa.ForeignKeyConstraint(["training_session_id"], ["training_session.id"]),
-        sa.PrimaryKeyConstraint("id"),
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS training_score (
+            id SERIAL NOT NULL,
+            training_session_id INTEGER NOT NULL,
+            player_id INTEGER NOT NULL,
+            throw_sequence INTEGER NOT NULL,
+            turn_number INTEGER NOT NULL,
+            throw_in_turn INTEGER NOT NULL,
+            base_score INTEGER NOT NULL,
+            multiplier VARCHAR(20) NOT NULL,
+            multiplier_value INTEGER NOT NULL,
+            actual_score INTEGER NOT NULL,
+            score_before INTEGER NOT NULL,
+            score_after INTEGER NOT NULL,
+            dartboard_sends_actual_score BOOLEAN NOT NULL,
+            is_bust BOOLEAN,
+            is_finish BOOLEAN,
+            thrown_at TIMESTAMP WITHOUT TIME ZONE,
+            PRIMARY KEY (id),
+            FOREIGN KEY(player_id) REFERENCES player (id),
+            FOREIGN KEY(training_session_id) REFERENCES training_session (id)
+        )
+    """,
     )
 
 
 def downgrade() -> None:
-    op.drop_table("training_score")
-    op.drop_table("training_session")
+    op.execute("DROP TABLE IF EXISTS training_score")
+    op.execute("DROP TABLE IF EXISTS training_session")

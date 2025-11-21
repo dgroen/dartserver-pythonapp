@@ -128,6 +128,24 @@ function displayGames(games) {
         });
     });
 
+    // Add click event listeners to resume buttons
+    document.querySelectorAll('.resume-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const gameSessionId = btn.getAttribute('data-session-id');
+            resumeGame(gameSessionId);
+        });
+    });
+
+    // Add click event listeners to remove buttons
+    document.querySelectorAll('.remove-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const gameSessionId = btn.getAttribute('data-session-id');
+            removeGame(gameSessionId);
+        });
+    });
+
     // Add click event listeners to game cards
     document.querySelectorAll('.game-card').forEach((card) => {
         card.addEventListener('click', () => {
@@ -153,6 +171,11 @@ function createGameCard(game) {
         duration = `${minutes}m ${seconds}s`;
     }
 
+    // Calculate game age in days for incomplete games
+    const now = new Date();
+    const ageInDays = (now - gameDate) / (1000 * 60 * 60 * 24);
+    const isOlderThanOneDay = ageInDays >= 1;
+
     // Game options badges
     const optionsBadges = [];
     if (game.double_out_enabled) {
@@ -164,6 +187,30 @@ function createGameCard(game) {
     const optionsHtml = optionsBadges.length > 0 
         ? `<div class="game-options">${optionsBadges.join('')}</div>`
         : '';
+
+    // Action buttons for incomplete games
+    let actionButtons = '';
+    if (!isCompleted) {
+        actionButtons = '<div class="game-actions">';
+        
+        // Resume button - always visible for incomplete games
+        actionButtons += `
+            <button class="action-btn resume-btn" data-session-id="${game.game_session_id}" title="Resume game">
+                ▶️ Resume
+            </button>
+        `;
+        
+        // Remove button - only visible for games older than 1 day
+        if (isOlderThanOneDay) {
+            actionButtons += `
+                <button class="action-btn remove-btn" data-session-id="${game.game_session_id}" title="Remove game">
+                    🗑️ Remove
+                </button>
+            `;
+        }
+        
+        actionButtons += '</div>';
+    }
 
     return `
         <div class="game-card" data-session-id="${game.game_session_id}">
@@ -193,6 +240,7 @@ function createGameCard(game) {
                     ` : ''}
                 </div>
                 ${optionsHtml}
+                ${actionButtons}
             </div>
             <button class="view-btn" data-session-id="${game.game_session_id}">View Details</button>
         </div>
@@ -404,4 +452,70 @@ function showError(message) {
     const errorMessage = document.getElementById('error-message');
     errorMessage.textContent = message;
     errorMessage.style.display = 'block';
+}
+
+function resumeGame(gameSessionId) {
+    if (!confirm('Resume this game? This will load the game state and you can continue playing.')) {
+        return;
+    }
+
+    // Show loading indicator
+    const btn = document.querySelector(`.resume-btn[data-session-id="${gameSessionId}"]`);
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳ Loading...';
+    btn.disabled = true;
+
+    fetch(`/api/game/resume/${gameSessionId}`, {
+        method: 'POST',
+        credentials: 'include'
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Redirect to the game board
+                window.location.href = data.redirect_url || '/';
+            } else {
+                alert('Failed to resume game: ' + (data.message || 'Unknown error'));
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            alert('Error resuming game: ' + error.message);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+}
+
+function removeGame(gameSessionId) {
+    if (!confirm('Are you sure you want to remove this game? This action cannot be undone.')) {
+        return;
+    }
+
+    // Show loading indicator
+    const btn = document.querySelector(`.remove-btn[data-session-id="${gameSessionId}"]`);
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳ Removing...';
+    btn.disabled = true;
+
+    fetch(`/api/game/${gameSessionId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Reload the games list
+                loadGames();
+            } else {
+                alert('Failed to remove game: ' + (data.message || 'Unknown error'));
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            alert('Error removing game: ' + error.message);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
 }
