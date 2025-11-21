@@ -64,21 +64,31 @@ Both test and production servers must have:
 
 The following secrets must be configured in the GitHub repository:
 
+#### Jumphost Secrets (for servers behind a jumphost/bastion)
+
+| Secret Name | Description | Example |
+|------------|-------------|---------|
+| `JUMPHOST_HOST` | Hostname or IP of jumphost/bastion server | `strato.vdi.prd` |
+| `JUMPHOST_USER` | SSH username for jumphost | `vagrant` or `ubuntu` |
+| `JUMPHOST_SSH_KEY` | Private SSH key for jumphost authentication | Contents of `~/.ssh/id_rsa` |
+
 #### Test Environment Secrets
 
 | Secret Name | Description | Example |
 |------------|-------------|---------|
-| `TEST_SERVER_HOST` | Hostname or IP of test server | `test.letsplaydarts.eu` or `192.168.1.100` |
-| `TEST_SERVER_USER` | SSH username for test server | `deploy` or `ubuntu` |
-| `TEST_SERVER_SSH_KEY` | Private SSH key for authentication | Contents of `~/.ssh/id_rsa` |
+| `TEST_SERVER_HOST` | Hostname or IP of test server (behind jumphost if configured) | `127.0.0.1` or `test.letsplaydarts.eu` |
+| `TEST_SERVER_PORT` | SSH port on test server | `22` or `4423` |
+| `TEST_SERVER_USER` | SSH username for test server | `deploy` or `vagrant` |
+| `TEST_SERVER_SSH_KEY` | Private SSH key for test server authentication | Contents of `~/.ssh/id_rsa` |
 
 #### Production Environment Secrets
 
 | Secret Name | Description | Example |
 |------------|-------------|---------|
 | `PROD_SERVER_HOST` | Hostname or IP of production server | `letsplaydarts.eu` or `192.168.1.101` |
+| `PROD_SERVER_PORT` | SSH port on production server | `22` or custom port |
 | `PROD_SERVER_USER` | SSH username for production server | `deploy` or `ubuntu` |
-| `PROD_SERVER_SSH_KEY` | Private SSH key for authentication | Contents of `~/.ssh/id_rsa` |
+| `PROD_SERVER_SSH_KEY` | Private SSH key for production server authentication | Contents of `~/.ssh/id_rsa` |
 
 ### Setting Up GitHub Secrets
 
@@ -159,6 +169,21 @@ docker-compose -f docker-compose-wso2.yml ps
 ```
 
 ## Troubleshooting
+
+### Jumphost SSH Configuration
+
+If your deployment server is behind a jumphost/bastion server, ensure:
+
+1. Both jumphost and target server SSH keys are configured as separate secrets
+2. The SSH config in the workflow file uses `ProxyJump` to tunnel through the jumphost
+3. Verify connectivity from your local machine first:
+   ```bash
+   # Test jumphost connection
+   ssh -i ~/.ssh/jumphost_key jumphost_user@jumphost_host
+   
+   # Test target server through jumphost
+   ssh -i ~/.ssh/target_key -J jumphost_user@jumphost_host target_user@target_host:target_port
+   ```
 
 ### Deployment Fails with SSH Connection Error
 

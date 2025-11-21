@@ -21,15 +21,42 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.TEST_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.TEST_SERVER_HOST }} >> ~/.ssh/known_hosts
+          echo "${{ secrets.JUMPHOST_SSH_KEY }}" > ~/.ssh/jumphost_key
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/jumphost_key
+          
+          # Configure SSH config for jumphost setup
+          cat > ~/.ssh/config << 'SSHCONFIG'
+          Host jumphost
+            HostName ${{ secrets.JUMPHOST_HOST }}
+            User ${{ secrets.JUMPHOST_USER }}
+            IdentityFile ~/.ssh/jumphost_key
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PubkeyAcceptedKeyTypes +ssh-rsa
+            HostKeyAlgorithms +ssh-rsa
+            LogLevel FATAL
+            PasswordAuthentication no
+          
+          Host test-server
+            HostName ${{ secrets.TEST_SERVER_HOST }}
+            Port ${{ secrets.TEST_SERVER_PORT }}
+            User ${{ secrets.TEST_SERVER_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            ProxyJump jumphost
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PasswordAuthentication no
+            LogLevel FATAL
+          SSHCONFIG
+          
+          chmod 600 ~/.ssh/config
 
       - name: Deploy to Test Server
         env:
-          TEST_SERVER_HOST: ${{ secrets.TEST_SERVER_HOST }}
+          TEST_SERVER_HOST: test-server
           TEST_SERVER_USER: ${{ secrets.TEST_SERVER_USER }}
         run: |
-          ssh -i ~/.ssh/deploy_key ${TEST_SERVER_USER}@${TEST_SERVER_HOST} << 'ENDSSH'
+          ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} << 'ENDSSH'
             set -e
             echo "🚀 Starting deployment to test environment..."
 
@@ -68,10 +95,9 @@ jobs:
 
       - name: Verify Deployment
         env:
-          TEST_SERVER_HOST: ${{ secrets.TEST_SERVER_HOST }}
-          TEST_SERVER_USER: ${{ secrets.TEST_SERVER_USER }}
+          TEST_SERVER_HOST: test-server
         run: |
-          ssh -i ~/.ssh/deploy_key ${TEST_SERVER_USER}@${TEST_SERVER_HOST} << 'ENDSSH'
+          ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} << 'ENDSSH'
             cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
 
             # Check if containers are running
