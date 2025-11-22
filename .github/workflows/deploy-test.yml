@@ -66,9 +66,13 @@ jobs:
           cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp || \
             { echo "❌ Application directory not found"; exit 1; }
 
+          # Stop existing containers first (to release file locks)
+          echo "🛑 Stopping existing containers..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml down || true
+
           # Create deployment.toml from secret
           echo "📝 Creating deployment.toml from secret..."
-          rm -rf wso2is-7-config
+          sudo rm -rf wso2is-7-config
           mkdir -p wso2is-7-config
           cat > wso2is-7-config/deployment.toml << 'DEPLOYMENT_TOML'
           $WSO2IS_DEPLOYMENT_TOML
@@ -85,10 +89,6 @@ jobs:
           git fetch origin
           git checkout test
           git pull origin test
-
-          # Stop existing containers
-          echo "🛑 Stopping existing containers..."
-          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml down || true
 
           # Rebuild containers
           echo "🔨 Rebuilding containers..."
