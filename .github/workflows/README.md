@@ -80,6 +80,8 @@ The following secrets must be configured in the GitHub repository:
 | `TEST_SERVER_PORT` | SSH port on test server | `22` or `4423` |
 | `TEST_SERVER_USER` | SSH username for test server | `deploy` or `vagrant` |
 | `TEST_SERVER_SSH_KEY` | Private SSH key for test server authentication | Contents of `~/.ssh/id_rsa` |
+| `TEST_WSO2IS_DEPLOYMENT_TOML` | Complete deployment.toml configuration for WSO2 IS test instance | File contents of `wso2is-7-config/deployment.toml` |
+| `TEST_ENV` | Environment variables for test deployment (e.g., database URL, API keys) | Contents of `.env` file for test environment |
 
 #### Production Environment Secrets
 
@@ -115,6 +117,40 @@ ssh -i ~/.ssh/github_deploy_key user@server-host
 cat ~/.ssh/github_deploy_key
 # Copy the entire output including BEGIN and END lines
 ```
+
+#### Preparing Configuration File Secrets
+
+The deployment workflow creates configuration files from GitHub secrets. You need to prepare these secrets:
+
+**1. Preparing TEST_WSO2IS_DEPLOYMENT_TOML**
+
+This secret should contain the complete contents of the WSO2 IS `deployment.toml` configuration file:
+
+```bash
+# If you have the file locally
+cat wso2is-7-config/deployment.toml
+
+# Copy the entire output and paste into GitHub secret TEST_WSO2IS_DEPLOYMENT_TOML
+```
+
+**2. Preparing TEST_ENV**
+
+This secret should contain the environment variables for your test deployment:
+
+```bash
+# Create or edit your test .env file with necessary variables:
+# Example content:
+# WSO2_CLIENT_ID=your_client_id
+# WSO2_CLIENT_SECRET=your_secret
+# DATABASE_URL=postgresql://user:pass@host:5432/db
+# RABBITMQ_PASSWORD=guest
+# WSO2_IS_INTROSPECT_PASSWORD=admin_password
+# etc.
+
+# Copy the entire contents and paste into GitHub secret TEST_ENV
+```
+
+**Important:** Store sensitive values in these secrets, not in your repository files.
 
 ## Usage
 
