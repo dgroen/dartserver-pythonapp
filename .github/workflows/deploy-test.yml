@@ -55,42 +55,57 @@ jobs:
         env:
           TEST_SERVER_HOST: test-server
           TEST_SERVER_USER: ${{ secrets.TEST_SERVER_USER }}
+          WSO2IS_DEPLOYMENT_TOML: ${{ secrets.TEST_WSO2IS_DEPLOYMENT_TOML }}
+          ENV_FILE: ${{ secrets.TEST_ENV }}
         run: |
           ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} << 'ENDSSH'
-            set -e
-            echo "🚀 Starting deployment to test environment..."
+          set -e
+          echo "🚀 Starting deployment to test environment..."
 
-            # Navigate to application directory
-            cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp || \
-              { echo "❌ Application directory not found"; exit 1; }
+          # Navigate to application directory
+          cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp || \
+            { echo "❌ Application directory not found"; exit 1; }
 
-            # Pull latest changes
-            echo "📥 Pulling latest changes from test branch..."
-            git fetch origin
-            git checkout test
-            git pull origin test
+          # Create deployment.toml from secret
+          echo "📝 Creating deployment.toml from secret..."
+          mkdir -p wso2is-7-config
+          cat > wso2is-7-config/deployment.toml << 'DEPLOYMENT_TOML'
+          $WSO2IS_DEPLOYMENT_TOML
+          DEPLOYMENT_TOML
 
-            # Stop existing containers
-            echo "🛑 Stopping existing containers..."
-            docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml down || true
+          # Create .env file from secret
+          echo "📝 Creating .env file from secret..."
+          cat > .env << 'ENVFILE'
+          $ENV_FILE
+          ENVFILE
 
-            # Rebuild containers
-            echo "🔨 Rebuilding containers..."
-            docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml build --no-cache
+          # Pull latest changes
+          echo "📥 Pulling latest changes from test branch..."
+          git fetch origin
+          git checkout test
+          git pull origin test
 
-            # Start containers
-            echo "▶️  Starting containers..."
-            docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d
+          # Stop existing containers
+          echo "🛑 Stopping existing containers..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml down || true
 
-            # Wait for services to be healthy
-            echo "⏳ Waiting for services to be healthy..."
-            sleep 30
+          # Rebuild containers
+          echo "🔨 Rebuilding containers..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml build --no-cache
 
-            # Check container status
-            echo "✅ Checking container status..."
-            docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml ps
+          # Start containers
+          echo "▶️  Starting containers..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d
 
-            echo "🎉 Deployment to test environment completed successfully!"
+          # Wait for services to be healthy
+          echo "⏳ Waiting for services to be healthy..."
+          sleep 30
+
+          # Check container status
+          echo "✅ Checking container status..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml ps
+
+          echo "🎉 Deployment to test environment completed successfully!"
           ENDSSH
 
       - name: Verify Deployment
