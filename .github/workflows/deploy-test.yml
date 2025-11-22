@@ -68,6 +68,7 @@ jobs:
 
           # Create deployment.toml from secret
           echo "📝 Creating deployment.toml from secret..."
+          rm -rf wso2is-7-config
           mkdir -p wso2is-7-config
           cat > wso2is-7-config/deployment.toml << 'DEPLOYMENT_TOML'
           $WSO2IS_DEPLOYMENT_TOML
