@@ -230,6 +230,115 @@ class GameManager:
         self.turn_start_state = None
         self.turn_number = {}
 
+    def resume_game_from_replay_data(self, game_data):
+        """
+        Resume a game by replaying all throws from saved game data
+
+        Args:
+            game_data: Dictionary containing game replay data from database
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Extract player information
+            player_ids = []
+            for p in sorted(game_data["players"], key=lambda x: x["player_order"]):
+                player_ids.append(
+                    {
+                        "db_id": p["player_id"],
+                        "name": p["player_name"],
+                    },
+                )
+
+            # Start a new game with the same settings
+            self.new_game(
+                game_type=game_data["game_type"],
+                player_ids=player_ids,
+                double_out=game_data["double_out_enabled"],
+                reset_on_miss=game_data["reset_on_miss"],
+            )
+
+            # Replay all throws to restore game state
+            throws_by_player = {}
+            for throw in game_data["throws"]:
+                player_order = throw["player_order"]
+                if player_order not in throws_by_player:
+                    throws_by_player[player_order] = []
+                throws_by_player[player_order].append(throw)
+
+            # Sort all throws by timestamp to replay in correct order
+            all_throws = sorted(game_data["throws"], key=lambda x: x["thrown_at"])
+
+            # Replay throws without emitting events or recording to database
+            # We need to track which player's turn it is
+            last_player_order = 0
+            last_throw_in_turn = 0
+
+            for throw in all_throws:
+                player_order = throw["player_order"]
+                throw_in_turn = throw["throw_in_turn"]
+
+                # Update current player if we're starting a new turn
+                if player_order != last_player_order or throw_in_turn == 1:
+                    self.current_player = player_order
+                    if throw_in_turn == 1:
+                        self.current_throw = 1
+
+                # Process the throw in the game logic
+                if self.game:
+                    self.game.process_throw(
+                        player_order,
+                        throw["base_score"],
+                        throw["multiplier_value"],
+                        throw["multiplier"],  # positional arg for multiplier_type
+                    )
+
+                # Update throw counter
+                self.current_throw = throw_in_turn + 1
+                last_player_order = player_order
+                last_throw_in_turn = throw_in_turn
+
+            # Determine the current player based on last throw
+            # If last throw completed a turn (throw 3), move to next player
+            if last_throw_in_turn >= 3:
+                self.current_player = (last_player_order + 1) % len(self.players)
+                self.current_throw = 1
+            else:
+                self.current_player = last_player_order
+                self.current_throw = last_throw_in_turn + 1
+
+            # Update turn numbers
+            for i in range(len(self.players)):
+                player_throws = [t for t in all_throws if t["player_order"] == i]
+                if player_throws:
+                    max_turn = max(t["turn_number"] for t in player_throws)
+                    self.turn_number[i] = max_turn + (1 if i < self.current_player else 0)
+                else:
+                    self.turn_number[i] = 1
+
+            # Save turn start state for undo functionality
+            self._save_turn_start_state()
+
+            # Clear the throws list since we're starting fresh from this point
+            self.turn_throws = []
+
+            # Mark game as resumed (not paused)
+            self.is_paused = False
+
+            print(
+                f"Game resumed: {len(all_throws)} throws replayed, \
+                    current player: {self.current_player}",
+            )
+            return True
+
+        except Exception as e:
+            print(f"Error resuming game: {e}")
+            import traceback
+
+            traceback.print_exc()
+            return False
+
     def add_player(self, name=None):
         """Add a new player"""
         if not name:
