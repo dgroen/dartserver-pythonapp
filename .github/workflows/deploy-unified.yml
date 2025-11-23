@@ -279,7 +279,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           git checkout main
-          git merge --ff-only origin/test || git merge origin/test
+          git merge --ff-only origin/test || git merge --allow-unrelated-histories origin/test
           git push origin main
 
       - name: Deploy to Production Server
@@ -429,27 +429,65 @@ jobs:
         env:
           PROD_SERVER_HOST: prod-server
         run: |
-          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} << 'ENDSSH'
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} bash -s << 'ENDSSH'
           set -e
           cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
           
           echo "🔄 Production deployment failed, restoring from backup..."
           
           # Get the backup path we created earlier
-          BACKUP_PATH=$(cat /tmp/latest_backup_path.txt | tr -d '\n')
+          BACKUP_PATH=$(cat /tmp/latest_backup_path.txt 2>/dev/null | tr -d '\n')
           
           if [ -z "$BACKUP_PATH" ] || [ ! -d "$BACKUP_PATH" ]; then
-            echo "❌ Backup path not found, attempting to use latest backup..."
-            BACKUP_PATH=$(ls -dt docker-backups/*/ | head -1)
+            echo "⚠️  Backup path not found in /tmp, attempting to use latest backup..."
+            BACKUP_PATH=$(ls -dt docker-backups/*/ 2>/dev/null | head -1)
+          fi
+          
+          if [ -z "$BACKUP_PATH" ]; then
+            echo "❌ No backups found in docker-backups/ directory"
+            exit 1
           fi
           
           echo "Restoring from: $BACKUP_PATH"
           
-          # Make restore script executable
-          chmod +x helpers/restore_docker_volumes.sh
+          # Stop containers first
+          echo "🛑 Stopping containers..."
+          docker-compose -f docker-compose-wso2.yml down || true
           
-          # Run restore with auto-confirm
-          ./helpers/restore_docker_volumes.sh -b "$BACKUP_PATH" -y
+          # Restore volumes directly (script may not exist yet)
+          echo "📦 Restoring Docker volumes..."
+          
+          # Restore postgres_data
+          if [ -f "${BACKUP_PATH}/postgres_data.tar.gz" ]; then
+            echo "Restoring postgres_data..."
+            docker volume rm dartserver-pythonapp_postgres_data 2>/dev/null || true
+            docker volume create dartserver-pythonapp_postgres_data
+            docker run --rm -v dartserver-pythonapp_postgres_data:/data -v "$(pwd)/${BACKUP_PATH}":/backup:ro alpine tar xzf /backup/postgres_data.tar.gz -C /data
+          fi
+          
+          # Restore rabbitmq_data
+          if [ -f "${BACKUP_PATH}/rabbitmq_data.tar.gz" ]; then
+            echo "Restoring rabbitmq_data..."
+            docker volume rm dartserver-pythonapp_rabbitmq_data 2>/dev/null || true
+            docker volume create dartserver-pythonapp_rabbitmq_data
+            docker run --rm -v dartserver-pythonapp_rabbitmq_data:/data -v "$(pwd)/${BACKUP_PATH}":/backup:ro alpine tar xzf /backup/rabbitmq_data.tar.gz -C /data
+          fi
+          
+          # Restore wso2is_data
+          if [ -f "${BACKUP_PATH}/wso2is_data.tar.gz" ]; then
+            echo "Restoring wso2is_data..."
+            docker volume rm dartserver-pythonapp_wso2is_data 2>/dev/null || true
+            docker volume create dartserver-pythonapp_wso2is_data
+            docker run --rm -v dartserver-pythonapp_wso2is_data:/data -v "$(pwd)/${BACKUP_PATH}":/backup:ro alpine tar xzf /backup/wso2is_data.tar.gz -C /data
+          fi
+          
+          # Restore wso2apim_data
+          if [ -f "${BACKUP_PATH}/wso2apim_data.tar.gz" ]; then
+            echo "Restoring wso2apim_data..."
+            docker volume rm dartserver-pythonapp_wso2apim_data 2>/dev/null || true
+            docker volume create dartserver-pythonapp_wso2apim_data
+            docker run --rm -v dartserver-pythonapp_wso2apim_data:/data -v "$(pwd)/${BACKUP_PATH}":/backup:ro alpine tar xzf /backup/wso2apim_data.tar.gz -C /data
+          fi
           
           # Start containers after restore
           echo "▶️  Starting containers after restore..."
@@ -558,23 +596,64 @@ jobs:
         env:
           PROD_SERVER_HOST: prod-server
         run: |
-          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} << 'ENDSSH'
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} bash -s << 'ENDSSH'
           set -e
           cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
           
           echo "🔄 Rolling back production to previous state..."
           
-          BACKUP_PATH=$(cat /tmp/latest_backup_path.txt | tr -d '\n')
+          BACKUP_PATH=$(cat /tmp/latest_backup_path.txt 2>/dev/null | tr -d '\n')
           
           if [ -z "$BACKUP_PATH" ] || [ ! -d "$BACKUP_PATH" ]; then
-            echo "❌ Backup path not found, using latest backup..."
-            BACKUP_PATH=$(ls -dt docker-backups/*/ | head -1)
+            echo "⚠️  Backup path not found, using latest backup..."
+            BACKUP_PATH=$(ls -dt docker-backups/*/ 2>/dev/null | head -1)
+          fi
+          
+          if [ -z "$BACKUP_PATH" ]; then
+            echo "❌ No backups found in docker-backups/ directory"
+            exit 1
           fi
           
           echo "Rolling back to: $BACKUP_PATH"
           
-          chmod +x helpers/restore_docker_volumes.sh
-          ./helpers/restore_docker_volumes.sh -b "$BACKUP_PATH" -y
+          # Stop containers first
+          echo "🛑 Stopping containers..."
+          docker-compose -f docker-compose-wso2.yml down || true
+          
+          # Restore volumes directly
+          echo "📦 Restoring Docker volumes..."
+          
+          # Restore postgres_data
+          if [ -f "${BACKUP_PATH}/postgres_data.tar.gz" ]; then
+            echo "Restoring postgres_data..."
+            docker volume rm dartserver-pythonapp_postgres_data 2>/dev/null || true
+            docker volume create dartserver-pythonapp_postgres_data
+            docker run --rm -v dartserver-pythonapp_postgres_data:/data -v "$(pwd)/${BACKUP_PATH}":/backup:ro alpine tar xzf /backup/postgres_data.tar.gz -C /data
+          fi
+          
+          # Restore rabbitmq_data
+          if [ -f "${BACKUP_PATH}/rabbitmq_data.tar.gz" ]; then
+            echo "Restoring rabbitmq_data..."
+            docker volume rm dartserver-pythonapp_rabbitmq_data 2>/dev/null || true
+            docker volume create dartserver-pythonapp_rabbitmq_data
+            docker run --rm -v dartserver-pythonapp_rabbitmq_data:/data -v "$(pwd)/${BACKUP_PATH}":/backup:ro alpine tar xzf /backup/rabbitmq_data.tar.gz -C /data
+          fi
+          
+          # Restore wso2is_data
+          if [ -f "${BACKUP_PATH}/wso2is_data.tar.gz" ]; then
+            echo "Restoring wso2is_data..."
+            docker volume rm dartserver-pythonapp_wso2is_data 2>/dev/null || true
+            docker volume create dartserver-pythonapp_wso2is_data
+            docker run --rm -v dartserver-pythonapp_wso2is_data:/data -v "$(pwd)/${BACKUP_PATH}":/backup:ro alpine tar xzf /backup/wso2is_data.tar.gz -C /data
+          fi
+          
+          # Restore wso2apim_data
+          if [ -f "${BACKUP_PATH}/wso2apim_data.tar.gz" ]; then
+            echo "Restoring wso2apim_data..."
+            docker volume rm dartserver-pythonapp_wso2apim_data 2>/dev/null || true
+            docker volume create dartserver-pythonapp_wso2apim_data
+            docker run --rm -v dartserver-pythonapp_wso2apim_data:/data -v "$(pwd)/${BACKUP_PATH}":/backup:ro alpine tar xzf /backup/wso2apim_data.tar.gz -C /data
+          fi
           
           echo "▶️  Starting containers after rollback..."
           docker-compose -f docker-compose-wso2.yml up -d
