@@ -1,0 +1,19 @@
+# Disable some rules for documentation files
+
+# MD013: Line length - disabled for docs
+MD013: false
+
+# MD024: Multiple headings with same content - intentional in comparison docs
+MD024: false
+
+# MD033: Inline HTML - used in some documentation
+MD033: false
+
+# MD040: Fenced code language - warning only
+MD040: false
+
+# MD036: Emphasis as heading - disabled
+MD036: false
+
+# MD029: Ordered list prefix - disabled
+MD029: false

@@ -6,15 +6,15 @@ Successfully increased test coverage from **79.90%** to **97.08%**, exceeding th
 
 ## Coverage by Module
 
-| Module | Statements | Missing | Branches | Partial | Coverage |
-|--------|-----------|---------|----------|---------|----------|
-| app.py | 89 | 0 | 4 | 0 | **100.00%** ✅ |
-| game_manager.py | 178 | 1 | 54 | 4 | **97.84%** ✅ |
-| games/__init__.py | 0 | 0 | 0 | 0 | **100.00%** ✅ |
-| games/game_301.py | 41 | 0 | 18 | 2 | **96.61%** ✅ |
-| games/game_cricket.py | 80 | 2 | 50 | 5 | **94.62%** ✅ |
-| rabbitmq_consumer.py | 60 | 0 | 6 | 1 | **98.48%** ✅ |
-| **TOTAL** | **450** | **5** | **132** | **12** | **97.08%** ✅ |
+| Module                | Statements | Missing | Branches | Partial | Coverage       |
+| --------------------- | ---------- | ------- | -------- | ------- | -------------- |
+| app.py                | 89         | 0       | 4        | 0       | **100.00%** ✅ |
+| game_manager.py       | 178        | 1       | 54       | 4       | **97.84%** ✅  |
+| games/**init**.py     | 0          | 0       | 0        | 0       | **100.00%** ✅ |
+| games/game_301.py     | 41         | 0       | 18       | 2       | **96.61%** ✅  |
+| games/game_cricket.py | 80         | 2       | 50       | 5       | **94.62%** ✅  |
+| rabbitmq_consumer.py  | 60         | 0       | 6        | 1       | **98.48%** ✅  |
+| **TOTAL**             | **450**    | **5**   | **132**  | **12**  | **97.08%** ✅  |
 
 ## Test Suite Statistics
 
@@ -26,9 +26,11 @@ Successfully increased test coverage from **79.90%** to **97.08%**, exceeding th
 ## New Test Files Created
 
 ### 1. `tests/integration/test_websocket_events.py`
+
 **Purpose**: Test WebSocket event handlers in app.py
 
 **Coverage Added**:
+
 - Client connection/disconnection events
 - `new_game` event with various game types
 - `add_player` and `remove_player` events
@@ -40,9 +42,11 @@ Successfully increased test coverage from **79.90%** to **97.08%**, exceeding th
 **Tests**: 18 new tests
 
 ### 2. `tests/unit/test_rabbitmq_consumer.py`
+
 **Purpose**: Test RabbitMQ consumer functionality
 
 **Coverage Added**:
+
 - Consumer initialization
 - Connection establishment
 - Message processing (success, JSON errors, callback exceptions)
@@ -55,9 +59,11 @@ Successfully increased test coverage from **79.90%** to **97.08%**, exceeding th
 **Tests**: 14 new tests
 
 ### 3. `tests/unit/test_app.py`
+
 **Purpose**: Test app.py module functions
 
 **Coverage Added**:
+
 - `on_score_received` callback function
 - `start_rabbitmq_consumer` function
 - RabbitMQ consumer initialization with default config
@@ -67,9 +73,11 @@ Successfully increased test coverage from **79.90%** to **97.08%**, exceeding th
 **Tests**: 5 new tests
 
 ### 4. `tests/unit/test_game_manager_edge_cases.py`
+
 **Purpose**: Test edge cases and uncovered paths in GameManager
 
 **Coverage Added**:
+
 - Operations when game not started
 - Invalid player IDs (negative, out of range)
 - Game state without active game
@@ -79,7 +87,7 @@ Successfully increased test coverage from **79.90%** to **97.08%**, exceeding th
 - Bust handling
 - Winner handling
 - Turn completion
-- All emit methods (_emit_sound, _emit_video, _emit_message, etc.)
+- All emit methods (\_emit_sound, \_emit_video, \_emit_message, etc.)
 - Various game types (301, 401, 501, cricket)
 - Player management edge cases
 
@@ -88,34 +96,43 @@ Successfully increased test coverage from **79.90%** to **97.08%**, exceeding th
 ## Coverage Improvements by Module
 
 ### app.py: 66.67% → 100.00% (+33.33%)
+
 **What was missing**:
+
 - WebSocket event handlers (connect, disconnect, new_game, add_player, etc.)
 - `on_score_received` callback
 - `start_rabbitmq_consumer` function
 
 **How we fixed it**:
+
 - Created comprehensive WebSocket event tests
 - Added unit tests for callback and consumer startup
 - Tested both success and error scenarios
 
 ### rabbitmq_consumer.py: 13.64% → 98.48% (+84.84%)
+
 **What was missing**:
+
 - Almost all functionality (connection, message processing, error handling)
 
 **How we fixed it**:
+
 - Created complete unit test suite with mocked pika library
 - Tested all message processing scenarios
 - Tested connection lifecycle and error recovery
 - Tested stop/cleanup functionality
 
 ### game_manager.py: 92.24% → 97.84% (+5.60%)
+
 **What was missing**:
+
 - Some edge cases in player management
 - Certain multiplier types
 - Emit methods
 - Angle calculation edge cases
 
 **How we fixed it**:
+
 - Added edge case tests for all uncovered branches
 - Tested all multiplier types
 - Tested all emit methods
@@ -124,7 +141,9 @@ Successfully increased test coverage from **79.90%** to **97.08%**, exceeding th
 ## Configuration Updates
 
 ### pyproject.toml
+
 Updated coverage threshold from 80% to 90%:
+
 ```toml
 "--cov-fail-under=90"
 ```
@@ -152,23 +171,27 @@ tests/
 
 ## Running Tests
 
-### Run all tests with coverage:
+### Run all tests with coverage
+
 ```bash
 pytest
 ```
 
-### Run specific test file:
+### Run specific test file
+
 ```bash
 pytest tests/unit/test_rabbitmq_consumer.py -v
 ```
 
-### Run with detailed coverage report:
+### Run with detailed coverage report
+
 ```bash
 pytest --cov=. --cov-report=html
 # Open htmlcov/index.html in browser
 ```
 
-### Run via tox:
+### Run via tox
+
 ```bash
 tox -e py310
 ```
@@ -200,6 +223,7 @@ tox -e py310
 ## Remaining Uncovered Code
 
 The small amount of uncovered code (2.92%) consists of:
+
 - Some unreachable branch combinations in game logic
 - setup.py (not part of application code)
 - Exit conditions in loops that are hard to test without integration
@@ -209,6 +233,7 @@ These are acceptable and don't impact the application's reliability.
 ## Continuous Integration
 
 The test suite is configured to:
+
 - ✅ Fail if coverage drops below 90%
 - ✅ Generate HTML, XML, and terminal coverage reports
 - ✅ Run on multiple Python versions (3.10, 3.11, 3.12)

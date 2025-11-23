@@ -44,6 +44,7 @@ make dev-setup
 ```
 
 This will:
+
 1. Install all development dependencies with UV
 2. Install pre-commit hooks
 3. Setup custom git hooks
@@ -70,6 +71,7 @@ make test
 ### Why UV?
 
 UV is a fast Python package installer and resolver:
+
 - **10-100x faster** than pip
 - **Reliable** dependency resolution
 - **Compatible** with pip and requirements.txt
@@ -154,17 +156,17 @@ make tox-security
 
 ### Tox Environments
 
-| Environment | Description |
-|------------|-------------|
-| `py310` | Tests with Python 3.10 |
-| `py311` | Tests with Python 3.11 |
-| `py312` | Tests with Python 3.12 |
-| `lint` | Linting checks (ruff, black, isort, flake8) |
-| `lint-fix` | Auto-fix linting issues |
-| `type` | Type checking with mypy |
-| `security` | Security checks (bandit, safety) |
-| `pylint` | Pylint code analysis |
-| `coverage-report` | Combined coverage report |
+| Environment       | Description                                 |
+| ----------------- | ------------------------------------------- |
+| `py310`           | Tests with Python 3.10                      |
+| `py311`           | Tests with Python 3.11                      |
+| `py312`           | Tests with Python 3.12                      |
+| `lint`            | Linting checks (ruff, black, isort, flake8) |
+| `lint-fix`        | Auto-fix linting issues                     |
+| `type`            | Type checking with mypy                     |
+| `security`        | Security checks (bandit, safety)            |
+| `pylint`          | Pylint code analysis                        |
+| `coverage-report` | Combined coverage report                    |
 
 ### Tox Configuration
 

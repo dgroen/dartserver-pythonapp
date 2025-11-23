@@ -40,6 +40,7 @@ dartserver-pythonapp/
 ### 1. Configuration Files Updated
 
 #### `pyproject.toml`
+
 - Updated `[tool.coverage.html]` directory to `build/coverage/html`
 - Updated `[tool.coverage.xml]` output to `build/coverage/coverage.xml`
 - Added `[tool.coverage.json]` output to `build/coverage/coverage.json`
@@ -49,6 +50,7 @@ dartserver-pythonapp/
 - Updated pytest addopts to use new paths for coverage and junit reports
 
 #### `tox.ini`
+
 - Updated `COVERAGE_FILE` environment variable to `build/coverage/.coverage.{envname}`
 - Updated all coverage report paths to `build/coverage/`
 - Updated junit-xml paths to `build/reports/junit-{envname}.xml`
@@ -57,12 +59,14 @@ dartserver-pythonapp/
 - Updated `[testenv:clean]` to clean new directory structure
 
 #### `Makefile`
+
 - Updated `test-cov` target to use new coverage and report paths
 - Updated `coverage` target to generate reports in `build/coverage/`
 - Updated `clean` target to clean new directory structure
 - Added `docs` target to build documentation
 
 #### `.gitignore`
+
 - Updated to ignore `build/coverage/*` and `build/reports/*` contents
 - Added `.gitkeep` exceptions to preserve directory structure
 - Added `docs/build/` and `docs/source/*` to ignore list
@@ -80,25 +84,25 @@ dartserver-pythonapp/
 
 ### Old Locations → New Locations
 
-| Old Location | New Location |
-|-------------|--------------|
-| `htmlcov/` | `build/coverage/html/` |
-| `htmlcov-py310/` | `build/coverage/html-py310/` |
-| `htmlcov-py311/` | `build/coverage/html-py311/` |
-| `htmlcov-py312/` | `build/coverage/html-py312/` |
-| `coverage.xml` | `build/coverage/coverage.xml` |
-| `coverage.json` | `build/coverage/coverage.json` |
-| `coverage-py310.xml` | `build/coverage/coverage-py310.xml` |
-| `coverage-py311.xml` | `build/coverage/coverage-py311.xml` |
-| `coverage-py312.xml` | `build/coverage/coverage-py312.xml` |
-| `.coverage` | `build/coverage/.coverage` |
-| `.coverage.py310` | `build/coverage/.coverage.py310` |
-| `.coverage.py311` | `build/coverage/.coverage.py311` |
-| `.coverage.py312` | `build/coverage/.coverage.py312` |
-| `junit-py310.xml` | `build/reports/junit-py310.xml` |
-| `junit-py311.xml` | `build/reports/junit-py311.xml` |
-| `junit-py312.xml` | `build/reports/junit-py312.xml` |
-| Documentation files (scattered) | `docs/` |
+| Old Location                    | New Location                        |
+| ------------------------------- | ----------------------------------- |
+| `htmlcov/`                      | `build/coverage/html/`              |
+| `htmlcov-py310/`                | `build/coverage/html-py310/`        |
+| `htmlcov-py311/`                | `build/coverage/html-py311/`        |
+| `htmlcov-py312/`                | `build/coverage/html-py312/`        |
+| `coverage.xml`                  | `build/coverage/coverage.xml`       |
+| `coverage.json`                 | `build/coverage/coverage.json`      |
+| `coverage-py310.xml`            | `build/coverage/coverage-py310.xml` |
+| `coverage-py311.xml`            | `build/coverage/coverage-py311.xml` |
+| `coverage-py312.xml`            | `build/coverage/coverage-py312.xml` |
+| `.coverage`                     | `build/coverage/.coverage`          |
+| `.coverage.py310`               | `build/coverage/.coverage.py310`    |
+| `.coverage.py311`               | `build/coverage/.coverage.py311`    |
+| `.coverage.py312`               | `build/coverage/.coverage.py312`    |
+| `junit-py310.xml`               | `build/reports/junit-py310.xml`     |
+| `junit-py311.xml`               | `build/reports/junit-py311.xml`     |
+| `junit-py312.xml`               | `build/reports/junit-py312.xml`     |
+| Documentation files (scattered) | `docs/`                             |
 
 ## Usage
 

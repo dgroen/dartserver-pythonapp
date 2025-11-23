@@ -104,10 +104,10 @@ if echo "$RESPONSE" | grep -q "client_id"; then
     echo "Client Credentials:"
     echo "$RESPONSE" | python3 -m json.tool 2>/dev/null || echo "$RESPONSE"
     echo ""
-    
+
     CLIENT_ID=$(echo "$RESPONSE" | grep -o '"client_id":"[^"]*"' | cut -d'"' -f4)
     CLIENT_SECRET=$(echo "$RESPONSE" | grep -o '"client_secret":"[^"]*"' | cut -d'"' -f4)
-    
+
     if [ -n "$CLIENT_ID" ] && [ -n "$CLIENT_SECRET" ]; then
         echo ""
         echo "=== Configuration Complete ==="

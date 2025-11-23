@@ -2,387 +2,569 @@ openapi: 3.0.3
 info:
   title: Darts Game API
   description: |
-    REST API for the Darts Game System. This API allows electronic dartboards, 
-    mobile apps, and other clients to submit scores, manage games, and interact 
-    with the darts game system.
-    
+    REST API for the Darts Game System with comprehensive dartboard, game management, and mobile support.
+
     ## Authentication
-    All endpoints (except /health) require OAuth2 authentication via WSO2 Identity Server.
-    Include the access token in the Authorization header:
-    ```
-    Authorization: Bearer <access_token>
-    ```
-    
-    ## Rate Limiting
-    - Score submission: 100 requests/minute
-    - Game management: 10 requests/minute
-    - Player management: 20 requests/minute
-    
-  version: 1.0.0
+    OAuth2 via WSO2 Identity Server. Include access token: `Authorization: Bearer <token>`
+
+    ## Features
+    - Game Management (301, 501, Cricket, Round the Clock)
+    - Dual Score Formats (legacy + GPIO pin mapping)
+    - Player Management with WSO2
+    - Dartboard Zone Configuration
+    - TTS Integration
+    - Mobile API
+    - History & Statistics
+
+  version: 2.0.0
   contact:
-    name: Darts Game System
-    email: support@dartsgame.example.com
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
+    url: https://test.letsplaydarts.eu
 
 servers:
-  - url: https://api.dartsgame.example.com/api/v1
-    description: Production server
-  - url: http://localhost:8080/api/v1
-    description: Development server
+  - url: https://test.letsplaydarts.eu
+    description: Test server
+  - url: http://localhost:5000
+    description: Local development
 
 tags:
   - name: Health
-    description: Health check endpoints
+  - name: Game Management
   - name: Scores
-    description: Score submission and management
-  - name: Games
-    description: Game creation and management
   - name: Players
-    description: Player management
+  - name: Dartboard
+  - name: Admin
+  - name: TTS
+  - name: Mobile
+  - name: History
 
 paths:
   /health:
     get:
-      tags:
-        - Health
+      tags: [Health]
       summary: Health check
-      description: Check if the API Gateway is healthy and operational
-      operationId: healthCheck
       security: []
       responses:
-        '200':
-          description: Service is healthy
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: healthy
-                  service:
-                    type: string
-                    example: darts-api-gateway
-                  timestamp:
-                    type: string
-                    format: date-time
-                    example: '2024-01-01T12:00:00.000000'
+        "200":
+          description: Service healthy
 
-  /scores:
+  /api/game/state:
+    get:
+      tags: [Game Management]
+      summary: Get current game state
+      responses:
+        "200":
+          description: Current game state
+
+  /api/game/new:
     post:
-      tags:
-        - Scores
-      summary: Submit a score
-      description: |
-        Submit a dart score to the game system. The score will be published to 
-        RabbitMQ and processed by the game logic.
-      operationId: submitScore
-      security:
-        - oauth2:
-            - score:write
+      tags: [Game Management]
+      summary: Create new game
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ScoreSubmission'
+              type: object
+              required: [game_type, players]
+              properties:
+                game_type:
+                  type: string
+                  enum: ["301", "401", "501", "cricket", "round_the_clock"]
+                players:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      username:
+                        type: string
+                      name:
+                        type: string
+                double_out:
+                  type: boolean
+      responses:
+        "200":
+          description: Game created
+
+  /api/game/start:
+    post:
+      tags: [Game Management, Mobile]
+      summary: Start game (mobile)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                game_type:
+                  type: string
+                players:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: Game started
+
+  /api/game/end:
+    post:
+      tags: [Game Management, Mobile]
+      summary: End current game
+      responses:
+        "200":
+          description: Game ended
+
+  /api/game/current:
+    get:
+      tags: [Game Management, Mobile]
+      summary: Get current game
+      responses:
+        "200":
+          description: Current game info
+
+  /api/game/types:
+    get:
+      tags: [Game Management, Mobile]
+      summary: List game types
+      responses:
+        "200":
+          description: Available game types
+
+  /api/game/results:
+    get:
+      tags: [Game Management, Mobile]
+      summary: Get game results
+      responses:
+        "200":
+          description: Game results
+
+  /api/game/current/session_id:
+    get:
+      tags: [Game Management]
+      summary: Get session ID
+      responses:
+        "200":
+          description: Current session ID
+
+  /api/Throw:
+    post:
+      tags: [Scores]
+      summary: Submit score (legacy)
+      description: Legacy format for backward compatibility
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [score, multiplier]
+              properties:
+                score:
+                  type: integer
+                  minimum: 0
+                  maximum: 25
+                multiplier:
+                  type: string
+                  enum: [SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL]
             examples:
               triple20:
-                summary: Triple 20
                 value:
                   score: 20
                   multiplier: TRIPLE
-                  player_id: player-123
-                  game_id: game-456
-              single15:
-                summary: Single 15
-                value:
-                  score: 15
-                  multiplier: SINGLE
-                  player_id: player-123
-                  game_id: game-456
-              miss:
-                summary: Miss
-                value:
-                  score: 0
-                  multiplier: SINGLE
-                  player_id: player-123
-                  game_id: game-456
       responses:
-        '201':
-          description: Score submitted successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Unauthorized - Invalid or missing token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden - Insufficient permissions
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Score submitted
 
-  /games:
+  /api/Throw/zone:
     post:
-      tags:
-        - Games
-      summary: Create a new game
-      description: |
-        Create a new darts game. Supported game types are 301, 401, 501, and cricket.
-      operationId: createGame
-      security:
-        - oauth2:
-            - game:write
+      tags: [Scores]
+      summary: Submit score (GPIO mapping)
+      description: Modern format using GPIO pins and board type
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GameCreation'
+              type: object
+              required: [masterPin, slavePin, boardType]
+              properties:
+                masterPin:
+                  type: integer
+                slavePin:
+                  type: integer
+                boardType:
+                  type: string
+                  enum: [carromco, crivit, winmau]
             examples:
-              game301:
-                summary: 301 Game
+              carromco:
                 value:
-                  game_type: '301'
-                  players:
-                    - Player 1
-                    - Player 2
-                  double_out: false
-              cricket:
-                summary: Cricket Game
-                value:
-                  game_type: cricket
-                  players:
-                    - Alice
-                    - Bob
-                    - Charlie
-                  double_out: false
+                  masterPin: 4
+                  slavePin: 13
+                  boardType: carromco
       responses:
-        '201':
-          description: Game created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Score submitted with zone info
 
-  /players:
+  /api/players:
+    get:
+      tags: [Players]
+      summary: List players
+      responses:
+        "200":
+          description: Player list
     post:
-      tags:
-        - Players
-      summary: Add a player
-      description: Add a new player to the current game
-      operationId: addPlayer
-      security:
-        - oauth2:
-            - player:write
+      tags: [Players]
+      summary: Add player
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PlayerAddition'
-            examples:
-              newPlayer:
-                summary: Add new player
-                value:
-                  name: Player 3
+              type: object
+              required: [username]
+              properties:
+                username:
+                  type: string
+                name:
+                  type: string
       responses:
-        '201':
-          description: Player added successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+        "200":
+          description: Player added
+
+  /api/players/{player_id}:
+    delete:
+      tags: [Players]
+      summary: Remove player
+      parameters:
+        - name: player_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Player removed
+
+  /api/wso2/users/search:
+    get:
+      tags: [Players]
+      summary: Search WSO2 users
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search results
+
+  /api/player/history:
+    get:
+      tags: [Players, History]
+      summary: Player history
+      responses:
+        "200":
+          description: Player game history
+
+  /api/player/statistics:
+    get:
+      tags: [Players, History]
+      summary: Player statistics
+      responses:
+        "200":
+          description: Player stats
+
+  /api/dartboard/types:
+    get:
+      tags: [Dartboard]
+      summary: List dartboard types
+      responses:
+        "200":
+          description: Dartboard types
+
+  /api/dartboard/types/{board_type}/mappings:
+    get:
+      tags: [Dartboard]
+      summary: Get zone mappings
+      parameters:
+        - name: board_type
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Zone mappings
+
+  /api/dartboard/connect:
+    post:
+      tags: [Dartboard, Mobile]
+      summary: Connect dartboard
+      responses:
+        "200":
+          description: Dartboard connected
+
+  /api/dartboard/score:
+    post:
+      tags: [Dartboard, Mobile]
+      summary: Submit dartboard score
+      responses:
+        "200":
+          description: Score submitted
+
+  /api/admin/dartboard/matrix/{board_type}:
+    get:
+      tags: [Admin]
+      summary: Get GPIO matrix
+      parameters:
+        - name: board_type
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: GPIO matrix data
+
+  /api/admin/dartboard/mapping:
+    post:
+      tags: [Admin]
+      summary: Create zone mapping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                [
+                  board_type,
+                  master_pin,
+                  slave_pin,
+                  zone_number,
+                  multiplier_type,
+                ]
+              properties:
+                board_type:
+                  type: string
+                master_pin:
+                  type: integer
+                slave_pin:
+                  type: integer
+                zone_number:
+                  type: integer
+                multiplier_type:
+                  type: string
+      responses:
+        "200":
+          description: Mapping created
+
+  /api/admin/dartboard/import:
+    post:
+      tags: [Admin]
+      summary: Bulk import mappings
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Import successful
+
+  /api/tts/config:
+    get:
+      tags: [TTS]
+      summary: Get TTS config
+      responses:
+        "200":
+          description: TTS configuration
+    post:
+      tags: [TTS]
+      summary: Update TTS config
+      responses:
+        "200":
+          description: Config updated
+
+  /api/tts/voices:
+    get:
+      tags: [TTS]
+      summary: List TTS voices
+      responses:
+        "200":
+          description: Available voices
+
+  /api/tts/test:
+    post:
+      tags: [TTS]
+      summary: Test TTS
+      responses:
+        "200":
+          description: Test completed
+
+  /api/tts/generate:
+    post:
+      tags: [TTS]
+      summary: Generate TTS audio
+      responses:
+        "200":
+          description: Audio generated
+
+  /api/mobile/apikeys:
+    get:
+      tags: [Mobile]
+      summary: List API keys
+      responses:
+        "200":
+          description: API keys
+    post:
+      tags: [Mobile]
+      summary: Create API key
+      responses:
+        "200":
+          description: API key created
+
+  /api/mobile/apikeys/{key_id}:
+    delete:
+      tags: [Mobile]
+      summary: Delete API key
+      parameters:
+        - name: key_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: API key deleted
+
+  /api/mobile/dartboards:
+    get:
+      tags: [Mobile]
+      summary: List dartboards
+      responses:
+        "200":
+          description: Dartboards
+    post:
+      tags: [Mobile]
+      summary: Register dartboard
+      responses:
+        "200":
+          description: Dartboard registered
+
+  /api/mobile/dartboards/{dartboard_id}:
+    delete:
+      tags: [Mobile]
+      summary: Delete dartboard
+      parameters:
+        - name: dartboard_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Dartboard deleted
+
+  /api/mobile/hotspot:
+    get:
+      tags: [Mobile]
+      summary: Get hotspot config
+      responses:
+        "200":
+          description: Hotspot configuration
+    post:
+      tags: [Mobile]
+      summary: Update hotspot config
+      responses:
+        "200":
+          description: Config updated
+
+  /api/mobile/hotspot/{config_id}/toggle:
+    post:
+      tags: [Mobile]
+      summary: Toggle hotspot
+      parameters:
+        - name: config_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Hotspot toggled
+
+  /api/game/history:
+    get:
+      tags: [History]
+      summary: Game history
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Game history
+
+  /api/game/replay/{game_session_id}:
+    get:
+      tags: [History]
+      summary: Replay game
+      parameters:
+        - name: game_session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Game replay data
+
+  /api/active-games:
+    get:
+      tags: [Game Management]
+      summary: List active games
+      responses:
+        "200":
+          description: Active games
+
+  /api/debug/session:
+    get:
+      tags: [Debug]
+      summary: Debug session
+      security: []
+      responses:
+        "200":
+          description: Session info
 
 components:
   securitySchemes:
     oauth2:
       type: oauth2
-      description: OAuth2 authentication via WSO2 Identity Server
       flows:
-        clientCredentials:
-          tokenUrl: https://wso2is:9443/oauth2/token
+        authorizationCode:
+          authorizationUrl: https://localhost:9443/oauth2/authorize
+          tokenUrl: https://localhost:9443/oauth2/token
           scopes:
-            score:write: Submit scores
-            score:read: Read score information
-            game:write: Create and manage games
-            game:read: Read game information
-            player:write: Add and manage players
-            player:read: Read player information
-        password:
-          tokenUrl: https://wso2is:9443/oauth2/token
-          scopes:
-            score:write: Submit scores
-            score:read: Read score information
-            game:write: Create and manage games
-            game:read: Read game information
-            player:write: Add and manage players
-            player:read: Read player information
-
-  schemas:
-    ScoreSubmission:
-      type: object
-      required:
-        - score
-        - multiplier
-      properties:
-        score:
-          type: integer
-          minimum: 0
-          maximum: 60
-          description: The score value (0-60)
-          example: 20
-        multiplier:
-          type: string
-          enum:
-            - SINGLE
-            - DOUBLE
-            - TRIPLE
-          description: The multiplier type
-          example: TRIPLE
-        player_id:
-          type: string
-          description: Optional player identifier
-          example: player-123
-        game_id:
-          type: string
-          description: Optional game identifier
-          example: game-456
-
-    GameCreation:
-      type: object
-      required:
-        - game_type
-        - players
-      properties:
-        game_type:
-          type: string
-          enum:
-            - '301'
-            - '401'
-            - '501'
-            - cricket
-          description: The type of game to create
-          example: '301'
-        players:
-          type: array
-          minItems: 1
-          items:
-            type: string
-          description: List of player names
-          example:
-            - Player 1
-            - Player 2
-        double_out:
-          type: boolean
-          description: Whether double-out rule is enabled
-          default: false
-          example: false
-
-    PlayerAddition:
-      type: object
-      required:
-        - name
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 50
-          description: The player's name
-          example: Player 3
-
-    SuccessResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: success
-        message:
-          type: string
-          example: Operation completed successfully
-        data:
-          type: object
-          description: Response data (varies by endpoint)
-
-    ErrorResponse:
-      type: object
-      properties:
-        error:
-          type: string
-          description: Error type
-          example: Invalid request
-        message:
-          type: string
-          description: Detailed error message
-          example: Score must be an integer between 0 and 60
+            openid: OpenID Connect
+            profile: User profile
+            game:create: Create games
+            game:manage: Manage games
+            player:manage: Manage players
+            admin: Admin access
 
 security:
   - oauth2: []

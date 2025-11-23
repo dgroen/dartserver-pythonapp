@@ -40,6 +40,20 @@
             <div class="message-container">
                 <div id="big-message" class="big-message"></div>
                 <div id="alert-message" class="alert-message"></div>
+
+                <!-- Continue Game Button -->
+                <div class="next-player-button-container" id="nextPlayerButtonContainer" style="display: none;">
+                    <button class="btn-primary btn-next-player" id="nextPlayerButton">
+                        ▶️ Continue Game
+                    </button>
+                    <p class="button-hint" id="buttonHint">End turn early or continue to next player</p>
+                </div>
+            </div>
+
+            <!-- Throwout Advice Display -->
+            <div class="throwout-advice" id="throwoutAdvice" style="display: none;">
+                <div class="card-header">💡 Finishing Tip</div>
+                <div class="advice-display" id="adviceDisplay">-</div>
             </div>
 
             <!-- Current Throw Info -->
@@ -53,9 +67,12 @@
             <video id="effect-video" autoplay></video>
         </div>
 
-        <!-- Control Panel Link -->
-        <div class="control-link">
-            <a href="/control" target="_blank">Open Control Panel</a>
+        <!-- Navigation Links -->
+        <div class="nav-links">
+            <a href="/training" class="nav-link">🎯 Training Mode</a>
+            <a href="/history" class="nav-link">📊 Game History</a>
+            <a href="/dashboard" class="nav-link">📊 View Dashboard</a>
+            <a href="/control" class="nav-link">⚙️ Control Panel</a>
         </div>
     </div>
 
