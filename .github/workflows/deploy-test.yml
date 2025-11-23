@@ -78,15 +78,15 @@ jobs:
           git checkout test
           git pull origin test
 
-          # Create deployment.toml from secret AFTER checkout and write using sudo
-          echo "📝 Creating deployment.toml from secret (using sudo)..."
+          # Create deployment.toml from secret AFTER checkout and write 
+          echo "📝 Creating deployment.toml from secret 
           rm -rf wso2is-7-config
           mkdir -p wso2is-7-config
           # Use printf + tee to safely write even if directory is owned by root
           printf "%s" "$WSO2IS_DEPLOYMENT_TOML" | tee wso2is-7-config/deployment.toml > /dev/null
 
           # Create .env file from secret (write with then chown to deploy user)
-          echo "📝 Creating .env file from secret (using sudo)..."
+          echo "📝 Creating .env file from secret 
           printf "%s" "$ENV_FILE" | tee .env > /dev/null
           # Ensure deploy user can read/write the files (fallback to current user)
           chown $(whoami):$(whoami) wso2is-7-config/deployment.toml .env || true
