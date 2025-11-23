@@ -197,31 +197,47 @@ jobs:
         env:
           PROD_SERVER_HOST: prod-server
         run: |
+          BACKUP_DATE=$(date +%Y-%m-%d)
           BACKUP_TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
-          echo "backup_path=docker-backups/${BACKUP_TIMESTAMP}" >> $GITHUB_OUTPUT
           
-          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} << ENDSSH
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} bash -s << ENDSSH
           set -e
           cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
           
-          echo "💾 Creating full backup before production deployment..."
-          echo "Backup timestamp: ${BACKUP_TIMESTAMP}"
+          # Check if backup already exists for today
+          EXISTING_BACKUP=\$(find docker-backups -maxdepth 1 -type d -name "${BACKUP_DATE}*" 2>/dev/null | head -1)
           
-          # Make backup script executable
-          chmod +x helpers/backup_docker_volumes.sh
-          
-          # Run backup with auto-confirm
-          ./helpers/backup_docker_volumes.sh -y
-          
-          # Get the latest backup directory
-          LATEST_BACKUP=\$(ls -dt docker-backups/*/ | head -1)
-          echo "✅ Backup created: \${LATEST_BACKUP}"
-          
-          # Store backup path in a file for later retrieval
-          echo "\${LATEST_BACKUP}" > /tmp/latest_backup_path.txt
+          if [ -n "\${EXISTING_BACKUP}" ]; then
+            echo "ℹ️  Backup already exists for today: \${EXISTING_BACKUP}"
+            echo "⏭️  Skipping backup creation"
+            echo "\${EXISTING_BACKUP}" > /tmp/latest_backup_path.txt
+          else
+            echo "💾 Creating full backup before production deployment..."
+            echo "Backup timestamp: ${BACKUP_TIMESTAMP}"
+            
+            # Make backup script executable
+            chmod +x helpers/backup_docker_volumes.sh
+            
+            # Run backup with auto-confirm
+            ./helpers/backup_docker_volumes.sh -y
+            
+            # Get the latest backup directory
+            LATEST_BACKUP=\$(ls -dt docker-backups/*/ | head -1)
+            echo "✅ Backup created: \${LATEST_BACKUP}"
+            
+            # Store backup path in a file for later retrieval
+            echo "\${LATEST_BACKUP}" > /tmp/latest_backup_path.txt
+            
+            # Keep only the last 5 backups, remove older ones
+            echo "🧹 Cleaning up old backups (keeping last 5)..."
+            ls -dt docker-backups/*/ | tail -n +6 | while read OLD_BACKUP; do
+              echo "   Removing: \${OLD_BACKUP}"
+              rm -rf "\${OLD_BACKUP}"
+            done
+          fi
           ENDSSH
           
-          echo "✅ Production backup completed"
+          echo "✅ Production backup check completed"
 
       - name: Cleanup SSH Keys
         if: always()
@@ -286,8 +302,9 @@ jobs:
           git fetch origin main
           git fetch origin test
           
-          # Checkout main
+          # Checkout main and reset to origin/main to avoid divergence
           git checkout main
+          git reset --hard origin/main
           
           # Try fast-forward merge first, fall back to regular merge with unrelated histories
           if ! git merge --ff-only origin/test; then
