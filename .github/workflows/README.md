@@ -10,7 +10,7 @@ This directory contains GitHub Actions workflows for automated deployment of the
 
 **Trigger:** Automatic when code is pushed to the `test` branch
 
-**Purpose:** Orchestrated deployment from test to production with manual approval gate
+**Purpose:** Orchestrated deployment from test to production with manual approval gates and comprehensive backup/restore capabilities
 
 **Process:**
 1. **Deploy to Test:**
@@ -25,18 +25,49 @@ This directory contains GitHub Actions workflows for automated deployment of the
    - Waits for manual approval via GitHub Environments
    - Only proceeds after authorized reviewer approves
 
-3. **Deploy to Production:**
+3. **Backup Production:**
+   - Creates full backup of all Docker volumes before deployment
+   - Backs up: postgres_data, rabbitmq_data, wso2is_data, wso2apim_data
+   - Creates PostgreSQL database dump (pg_dump)
+   - Stores backup path for potential restore operations
+   - Uses `helpers/backup_docker_volumes.sh` script
+
+4. **Deploy to Production:**
    - Merges `test` branch to `prod` branch
    - Connects to production server via SSH (through jumphost)
-   - Creates timestamped backup
    - Deploys using same process as test
    - Runs health checks
+
+5. **Automatic Restore on Failure:**
+   - **Triggers only if deployment fails**
+   - Automatically restores from backup created in step 3
+   - Uses `helpers/restore_docker_volumes.sh` script
+   - Restores all volumes and database
+   - Verifies restored deployment
+   - No manual intervention required
+
+6. **Post-Deployment Verification:**
+   - **Requires manual verification** after successful deployment
+   - Uses `production-verification` environment
+   - Options:
+     - ✅ **Approve:** Deployment is working properly → Pipeline completes
+     - ❌ **Reject:** Needs rollback → Proceeds to manual rollback step
+
+7. **Manual Rollback (if verification fails):**
+   - Triggers if verification is rejected or cancelled
+   - Requires confirmation via `production-rollback` environment
+   - Restores production to backup created in step 3
+   - Verifies rollback success
 
 **Benefits:**
 - Single workflow ensures test and production deploy the same code
 - Manual approval gate prevents accidental production deployments
+- **Automatic backup before every production deployment**
+- **Automatic restore if deployment fails**
+- **Post-deployment verification with manual rollback option**
+- Comprehensive backup includes all volumes and database dumps
+- Built-in restore scripts for easy recovery
 - Automatic merge from test to prod after approval
-- Built-in rollback information in backups
 
 ---
 
@@ -162,30 +193,67 @@ The following secrets must be configured in the GitHub repository:
 
 ### Setting Up GitHub Environments for Approval
 
-The unified pipeline requires GitHub Environments to be configured for the approval gate:
+The unified pipeline requires GitHub Environments to be configured for approval gates:
 
 1. Go to your GitHub repository
 2. Navigate to **Settings** → **Environments**
+
+#### Environment 1: `production-approval` (Pre-Deployment Approval)
+
 3. Click **New environment**
 4. Create an environment named `production-approval`
 5. Configure **Required reviewers**:
    - Check "Required reviewers"
    - Add yourself and/or team members who can approve production deployments
-   - Recommended: Add at least 2 reviewers for critical production changes
+   - Recommended: Add at least 1-2 reviewers for critical production changes
 6. Optionally set **Wait timer** (e.g., 5 minutes minimum before approval can be given)
 7. Click **Save protection rules**
-8. Create another environment named `production` (for the final deployment step):
-   - This can have the same or different reviewers
-   - Or leave it without protection if approval gate is sufficient
 
-**How the approval works:**
-1. Test deployment completes successfully
-2. Workflow pauses at the approval gate
-3. Designated reviewers receive a notification
-4. Reviewers can inspect the test environment
-5. Reviewer approves or rejects the deployment
-6. If approved, production deployment proceeds automatically
-7. If rejected, workflow stops
+#### Environment 2: `production` (Deployment Target)
+
+8. Create another environment named `production`
+9. Configure environment URL: `https://letsplaydarts.eu`
+10. Optionally add reviewers or leave without protection (pre-deployment approval is primary gate)
+
+#### Environment 3: `production-verification` (Post-Deployment Verification)
+
+11. Create environment named `production-verification`
+12. Configure **Required reviewers**:
+   - Add reviewers who will verify deployment success
+   - These can be same or different from pre-deployment reviewers
+13. Click **Save protection rules**
+
+#### Environment 4: `production-rollback` (Manual Rollback Confirmation)
+
+14. Create environment named `production-rollback`
+15. Configure **Required reviewers**:
+   - Add reviewers authorized to approve rollbacks
+   - Recommended: Use senior team members for rollback decisions
+16. Click **Save protection rules**
+
+**How the approval gates work:**
+1. **Pre-Deployment:** Test deployment completes → workflow pauses at `production-approval`
+   - Reviewers inspect test environment
+   - Approve or reject production deployment
+   - If approved → backup is created → production deployment proceeds
+
+2. **Automatic Restore:** If deployment **fails**
+   - No approval needed
+   - Automatically restores from backup
+   - Verifies restoration
+
+3. **Post-Deployment Verification:** If deployment **succeeds**
+   - Workflow pauses at `production-verification`
+   - Reviewers verify production is working correctly
+   - Options:
+     - ✅ Approve → Pipeline completes successfully
+     - ❌ Reject → Proceeds to rollback step
+
+4. **Manual Rollback:** If verification is rejected
+   - Workflow pauses at `production-rollback`
+   - Requires final confirmation to rollback
+   - If approved → restores from backup
+   - Verifies rollback success
 
 #### Generating SSH Keys
 
@@ -369,29 +437,44 @@ If your deployment server is behind a jumphost/bastion server, ensure:
 
 ## Rollback Procedure
 
-### Test Environment
+### Automatic Rollback (Deployment Failure)
 
-If a test deployment fails or introduces issues:
+If a production deployment **fails** (containers don't start, health check fails, etc.):
 
-```bash
-# SSH into test server
-ssh user@test-server
+- ✅ **Automatic restore is triggered immediately**
+- No manual intervention required
+- The workflow automatically:
+  1. Retrieves the backup path created before deployment
+  2. Runs `helpers/restore_docker_volumes.sh` with the backup
+  3. Restores all volumes and database
+  4. Starts containers
+  5. Verifies restoration success
 
-# Navigate to app directory
-cd /opt/dartserver-pythonapp
+**You will receive a notification that automatic restore completed.**
 
-# Checkout previous commit
-git log --oneline  # Find the previous working commit
-git checkout <previous-commit-hash>
+### Manual Rollback (Post-Deployment Issues)
 
-# Rebuild and restart
-docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml down
-docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d --build
-```
+If a production deployment **succeeds technically** but has issues discovered during verification:
 
-### Production Environment
+1. **During the verification step** in GitHub Actions:
+   - Go to the running workflow in the **Actions** tab
+   - Click **Review deployments** at the `production-verification` step
+   - Click **Reject** to trigger manual rollback
 
-Production deployments create automatic backups:
+2. **The workflow will pause** at `production-rollback` environment:
+   - Click **Review deployments** again
+   - Review the rollback confirmation message
+   - Click **Approve** to confirm rollback
+
+3. **Rollback will execute** automatically:
+   - Restores from the backup created before deployment
+   - Uses `helpers/restore_docker_volumes.sh`
+   - Starts containers with previous state
+   - Verifies rollback success
+
+### Manual Rollback (Outside GitHub Actions)
+
+If you need to rollback **outside the automated workflow**:
 
 ```bash
 # SSH into production server
@@ -401,14 +484,50 @@ ssh user@production-server
 cd /opt/dartserver-pythonapp
 
 # View available backups
-ls -la backups/
+ls -lt docker-backups/
 
-# Restore from backup
-git checkout <commit-from-backup>
+# The backup format is: docker-backups/YYYY-MM-DD_HH-MM-SS/
+# Find the backup from before the problematic deployment
 
-# Rebuild and restart
-docker-compose -f docker-compose-wso2.yml down
-docker-compose -f docker-compose-wso2.yml up -d --build
+# Run restore script
+chmod +x helpers/restore_docker_volumes.sh
+./helpers/restore_docker_volumes.sh -b docker-backups/2024-01-15_14-30-00/
+
+# The script will:
+# - Stop containers
+# - Restore all volumes
+# - Restore PostgreSQL database
+# - Start containers
+# - Show status
+
+# Verify restoration
+docker-compose -f docker-compose-wso2.yml ps
+```
+
+### Backup Management
+
+**Backup locations:**
+- All backups are stored in: `/opt/dartserver-pythonapp/docker-backups/`
+- Format: `YYYY-MM-DD_HH-MM-SS/`
+- Each backup contains:
+  - `postgres_data.tar.gz` - PostgreSQL volume
+  - `postgres_dump.sql.gz` - Database SQL dump
+  - `rabbitmq_data.tar.gz` - RabbitMQ volume
+  - `wso2is_data.tar.gz` - WSO2 Identity Server volume
+  - `wso2apim_data.tar.gz` - WSO2 API Manager volume
+  - `manifest.txt` - Backup metadata and restore instructions
+  - `config/` - Configuration files at backup time
+
+**Backup retention:**
+```bash
+# List all backups with sizes
+du -sh docker-backups/*/
+
+# Remove old backups (keep last 7 days)
+find docker-backups/ -maxdepth 1 -type d -mtime +7 -exec rm -rf {} \;
+
+# Or manually remove specific backup
+rm -rf docker-backups/2024-01-01_10-00-00/
 ```
 
 ## Security Considerations
