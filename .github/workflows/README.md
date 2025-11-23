@@ -21,20 +21,21 @@ This directory contains GitHub Actions workflows for automated deployment of the
 
 ### 2. Deploy to Production Environment (`deploy-production.yml`)
 
-**Trigger:** Automatic deployment when code is merged to the `main` branch
+**Trigger:** Automatic deployment when code is merged to the `prod` branch
 
 **Purpose:** Deploys the application to the production server at `letsplaydarts.eu`
 
 **Process:**
 1. Checks out the code
-2. Connects to production server via SSH
-3. Creates a backup of the current state
-4. Pulls latest changes from `main` branch
-5. Stops existing containers
-6. Rebuilds all containers with no cache
-7. Starts containers using `docker-compose-wso2.yml` configuration
-8. Verifies containers are running
-9. Runs health checks on the application
+2. Connects to production server via SSH (through jumphost if configured)
+3. Creates a backup of the current state (commit hash, deployment.toml, .env)
+4. Stops existing containers
+5. Pulls latest changes from `prod` branch
+6. Creates `deployment.toml` and `.env` files from GitHub secrets (base64-encoded)
+7. Rebuilds all containers with no cache
+8. Starts containers using `docker-compose-wso2.yml` configuration
+9. Verifies containers are running
+10. Runs health checks on the application
 
 ## Prerequisites
 
@@ -87,10 +88,12 @@ The following secrets must be configured in the GitHub repository:
 
 | Secret Name | Description | Example |
 |------------|-------------|---------|
-| `PROD_SERVER_HOST` | Hostname or IP of production server | `letsplaydarts.eu` or `192.168.1.101` |
+| `PROD_SERVER_HOST` | Hostname or IP of production server (behind jumphost if configured) | `letsplaydarts.eu` or `192.168.1.101` |
 | `PROD_SERVER_PORT` | SSH port on production server | `22` or `4422` |
 | `PROD_SERVER_USER` | SSH username for production server | `deploy` or `ubuntu` |
 | `PROD_SERVER_SSH_KEY` | Private SSH key for production server authentication | Contents of `~/.ssh/id_rsa` |
+| `PROD_WSO2IS_DEPLOYMENT_TOML` | Complete deployment.toml configuration for WSO2 IS production instance | File contents of `wso2is-7-config/deployment.toml` |
+| `PROD_ENV` | Environment variables for production deployment (e.g., database URL, API keys) | Contents of `.env` file for production environment |
 
 ### Setting Up GitHub Secrets
 
@@ -169,11 +172,11 @@ This secret should contain the environment variables for your test deployment:
 
 ### Deploying to Production
 
-1. Merge your changes to the `main` branch:
+1. Merge your changes to the `prod` branch:
    ```bash
-   git checkout main
+   git checkout prod
    git merge test  # Merge from test after verification
-   git push origin main
+   git push origin prod
    ```
 
 2. The workflow will automatically trigger and deploy to the production server
