@@ -72,25 +72,24 @@ jobs:
           echo "🛑 Stopping existing containers..."
           docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml down || true
 
-          # Create deployment.toml from secret
-          echo "📝 Creating deployment.toml from secret..."
-          rm -rf wso2is-7-config
-          mkdir -p wso2is-7-config
-          cat > wso2is-7-config/deployment.toml << 'DEPLOYMENT_TOML'
-          $(echo "$WSO2IS_DEPLOYMENT_TOML")
-          DEPLOYMENT_TOML
-
-          # Create .env file from secret
-          echo "📝 Creating .env file from secret..."
-          cat > .env << 'ENVFILE'
-          $(echo "$ENV_FILE")
-          ENVFILE
-
-          # Pull latest changes
+          # Pull latest changes first so we don't have the files clobbered by git
           echo "📥 Pulling latest changes from test branch..."
           git fetch origin
           git checkout test
           git pull origin test
+
+          # Create deployment.toml from secret AFTER checkout and write using sudo
+          echo "📝 Creating deployment.toml from secret (using sudo)..."
+          sudo rm -rf wso2is-7-config
+          sudo mkdir -p wso2is-7-config
+          # Use printf + sudo tee to safely write even if directory is owned by root
+          printf "%s" "$WSO2IS_DEPLOYMENT_TOML" | sudo tee wso2is-7-config/deployment.toml > /dev/null
+
+          # Create .env file from secret (write with sudo then chown to deploy user)
+          echo "📝 Creating .env file from secret (using sudo)..."
+          printf "%s" "$ENV_FILE" | sudo tee .env > /dev/null
+          # Ensure deploy user can read/write the files (fallback to current user)
+          sudo chown $(whoami):$(whoami) wso2is-7-config/deployment.toml .env || true
 
           # Rebuild containers
           echo "🔨 Rebuilding containers..."
