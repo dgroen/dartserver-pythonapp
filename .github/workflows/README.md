@@ -4,7 +4,9 @@ This directory contains GitHub Actions workflows for automated deployment of the
 
 ## Workflows
 
-### 1. Unified Deployment Pipeline (`deploy-unified.yml`) - **RECOMMENDED**
+### Active Workflow
+
+#### Unified Deployment Pipeline (`deploy-unified.yml`) - **ACTIVE**
 
 **Trigger:** Automatic when code is pushed to the `test` branch
 
@@ -36,55 +38,62 @@ This directory contains GitHub Actions workflows for automated deployment of the
 - Automatic merge from test to prod after approval
 - Built-in rollback information in backups
 
-### 2. Deploy to Test Environment (`deploy-test.yml`)
+---
 
-**Trigger:** Automatic deployment when code is merged to the `test` branch
+### Disabled Workflows (Available for Reference)
+
+The following workflows are **disabled** (renamed with `.disabled` extension) but kept for reference or emergency use:
+
+#### Deploy to Test Environment (`deploy-test.yml.disabled`)
+
+**Status:** DISABLED
+
+**Original Trigger:** Automatic deployment when code is merged to the `test` branch
 
 **Purpose:** Deploys the application to the test server at `test.letsplaydarts.eu`
 
-**Process:**
-1. Checks out the code
-2. Connects to test server via SSH
-3. Pulls latest changes from `test` branch
-4. Stops existing containers
-5. Rebuilds all containers with no cache
-6. Starts containers using `docker-compose-test.yml` configuration
-7. Verifies containers are running
+**Note:** This workflow is disabled. Use the unified pipeline instead. To re-enable for emergency use, rename to `deploy-test.yml`.
 
-**Note:** This workflow is standalone. Use the unified pipeline for test→prod deployments.
+#### Deploy to Production Environment (`deploy-production.yml.disabled`)
 
-### 3. Deploy to Production Environment (`deploy-production.yml`)
+**Status:** DISABLED
 
-**Trigger:** Automatic deployment when code is merged to the `prod` branch
+**Original Trigger:** Automatic deployment when code is pushed to the `prod` branch
 
 **Purpose:** Deploys the application to the production server at `letsplaydarts.eu`
 
-**Process:**
-1. Checks out the code
-2. Connects to production server via SSH (through jumphost if configured)
-3. Creates a backup of the current state (commit hash, deployment.toml, .env)
-4. Stops existing containers
-5. Pulls latest changes from `prod` branch
-6. Creates `deployment.toml` and `.env` files from GitHub secrets (base64-encoded)
-7. Rebuilds all containers with no cache
-8. Starts containers using `docker-compose-wso2.yml` configuration
-9. Verifies containers are running
-10. Runs health checks on the application
+**Note:** This workflow is disabled. Use the unified pipeline instead. To re-enable for emergency hotfix, rename to `deploy-production.yml`.
 
-**Note:** This workflow is standalone. Use the unified pipeline for automated test→prod deployments.
+**How to re-enable disabled workflows (emergency only):**
+```bash
+# Re-enable test workflow
+cd .github/workflows
+mv deploy-test.yml.disabled deploy-test.yml
+
+# Re-enable production workflow  
+mv deploy-production.yml.disabled deploy-production.yml
+
+# Push changes
+git add .
+git commit -m "Re-enable emergency workflow"
+git push
+```
+
+---
 
 ## Recommended Deployment Strategy
 
-**Use the Unified Pipeline (`deploy-unified.yml`)** for most deployments:
+**Use the Unified Pipeline (`deploy-unified.yml`)** for all deployments:
 
 1. Push to `test` branch → automatic test deployment
 2. Review test environment
 3. Approve in GitHub Actions → automatic production deployment
 4. Production branch (`prod`) is automatically updated
 
-**Use standalone workflows** only for:
-- Emergency production hotfixes (deploy-production.yml)
-- Testing deployment pipeline changes (deploy-test.yml)
+**Only re-enable standalone workflows for:**
+- Emergency production hotfixes that must bypass test
+- Debugging workflow issues
+- Recovering from failed unified pipeline runs
 
 ## Prerequisites
 
@@ -233,7 +242,7 @@ This secret should contain the environment variables for your test deployment:
 
 ## Usage
 
-### Using the Unified Pipeline (Recommended)
+### Using the Unified Pipeline (Standard Process)
 
 1. **Deploy to Test and trigger approval workflow:**
    ```bash
@@ -255,37 +264,14 @@ This secret should contain the environment variables for your test deployment:
 
 5. **Monitor production deployment** - it will proceed automatically after approval
 
-### Deploying to Test Only
+### Emergency: Using Standalone Workflows
 
-**If using standalone workflow:**
+**Only use this if the unified pipeline is broken or for critical hotfixes.**
 
-1. Merge your changes to the `test` branch:
-   ```bash
-   git checkout test
-   git merge your-feature-branch
-   git push origin test
-   ```
-
-2. The workflow will automatically trigger and deploy to the test server
-
-3. Monitor the deployment in the **Actions** tab of your GitHub repository
-
-**Note:** When using the unified pipeline, test deployments happen automatically as part of the approval workflow.
-
-### Deploying to Production Only (Emergency Hotfix)
-
-**Only use this for emergency hotfixes that bypass test:**
-
-1. Merge your changes directly to the `prod` branch:
-   ```bash
-   git checkout prod
-   git merge test  # Merge from test after verification
-   git push origin prod
-   ```
-
-2. The workflow will automatically trigger and deploy to the production server
-
-3. Monitor the deployment in the **Actions** tab
+1. Re-enable the needed workflow (see instructions above)
+2. Push to the appropriate branch (`test` or `prod`)
+3. Monitor in Actions tab
+4. **Remember to disable again after use**
 
 ## Monitoring Deployments
 
