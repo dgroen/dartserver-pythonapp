@@ -240,6 +240,53 @@
     transform: scale(0.98);
 }
 
+/* Game Actions */
+.game-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.action-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: all 0.3s;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.resume-btn {
+    background: #4CAF50;
+    color: white;
+}
+
+.resume-btn:hover:not(:disabled) {
+    background: #45a049;
+    transform: scale(1.05);
+}
+
+.remove-btn {
+    background: #f44336;
+    color: white;
+}
+
+.remove-btn:hover:not(:disabled) {
+    background: #da190b;
+    transform: scale(1.05);
+}
+
+.action-btn:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
 /* Modal */
 .modal {
     display: none;

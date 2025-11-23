@@ -1,0 +1,144 @@
+name: Deploy to Test Environment
+
+on:
+  push:
+    branches:
+      - test
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-test:
+    name: Deploy to Test Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.TEST_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.JUMPHOST_SSH_KEY }}" > ~/.ssh/jumphost_key
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/jumphost_key
+          
+          # Configure SSH config for jumphost setup
+          cat > ~/.ssh/config << 'SSHCONFIG'
+          Host jumphost
+            HostName ${{ secrets.JUMPHOST_HOST }}
+            User ${{ secrets.JUMPHOST_USER }}
+            IdentityFile ~/.ssh/jumphost_key
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PubkeyAcceptedKeyTypes +ssh-rsa
+            HostKeyAlgorithms +ssh-rsa
+            LogLevel FATAL
+            PasswordAuthentication no
+          
+          Host test-server
+            HostName ${{ secrets.TEST_SERVER_HOST }}
+            Port ${{ secrets.TEST_SERVER_PORT }}
+            User ${{ secrets.TEST_SERVER_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            ProxyJump jumphost
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PasswordAuthentication no
+            LogLevel FATAL
+          SSHCONFIG
+          
+          chmod 600 ~/.ssh/config
+
+      - name: Deploy to Test Server
+        env:
+          TEST_SERVER_HOST: test-server
+          TEST_SERVER_USER: ${{ secrets.TEST_SERVER_USER }}
+        run: |
+          # Encode secrets to base64 to avoid any shell expansion issues during heredoc
+          export WSO2IS_DEPLOYMENT_TOML_B64="$(printf '%s' '${{ secrets.TEST_WSO2IS_DEPLOYMENT_TOML }}' | base64 -w 0)"
+          export ENV_FILE_B64="$(printf '%s' '${{ secrets.TEST_ENV }}' | base64 -w 0)"
+          
+          ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} << ENDSSH
+          set -e
+          echo "🚀 Starting deployment to test environment..."
+
+          # Navigate to application directory
+          cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp || \
+            { echo "❌ Application directory not found"; exit 1; }
+
+          # Stop existing containers first (to release file locks)
+          echo "🛑 Stopping existing containers..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml down || true
+
+          # Pull latest changes first so we don't have the files clobbered by git
+          echo "📥 Pulling latest changes from test branch..."
+          git fetch origin
+          git checkout test
+          git pull origin test
+
+          # Create deployment.toml from secret AFTER checkout using base64 decode (no sudo)
+          echo "📝 Creating deployment.toml from secret (base64 decode)..."
+          rm -rf wso2is-7-config
+          mkdir -p wso2is-7-config
+          echo "$WSO2IS_DEPLOYMENT_TOML_B64" | base64 -d > wso2is-7-config/deployment.toml
+
+          # Create .env file from secret (base64 decode)
+          echo "📝 Creating .env file from secret (base64 decode)..."
+          echo "$ENV_FILE_B64" | base64 -d > .env
+
+          # Rebuild containers
+          echo "🔨 Rebuilding containers..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml build --no-cache
+
+          # Start containers
+          echo "▶️  Starting containers..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d
+
+          # Wait for services to be healthy
+          echo "⏳ Waiting for services to be healthy..."
+          sleep 30
+
+          # Check container status
+          echo "✅ Checking container status..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml ps
+
+          echo "🎉 Deployment to test environment completed successfully!"
+          ENDSSH
+
+      - name: Verify Deployment
+        env:
+          TEST_SERVER_HOST: test-server
+        run: |
+          ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} << 'ENDSSH'
+            cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
+
+            # Check if containers are running
+            RUNNING_CONTAINERS=$(docker-compose -f docker-compose-wso2.yml \
+              -f docker-compose-test.yml ps --services --filter "status=running" | wc -l)
+            echo "Running containers: $RUNNING_CONTAINERS"
+
+            if [ "$RUNNING_CONTAINERS" -lt 1 ]; then
+              echo "❌ Not all containers are running"
+              exit 1
+            fi
+
+            echo "✅ All containers are running"
+          ENDSSH
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key
+
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "✅ Test deployment completed successfully"
+
+      - name: Notify Failure
+        if: failure()
+        run: |
+          echo "❌ Test deployment failed"
+          exit 1

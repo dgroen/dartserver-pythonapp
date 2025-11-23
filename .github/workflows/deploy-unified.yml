@@ -1,0 +1,700 @@
+name: Unified Deployment Pipeline
+
+on:
+  push:
+    branches:
+      - test
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-test:
+    name: Deploy to Test Environment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.TEST_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.JUMPHOST_SSH_KEY }}" > ~/.ssh/jumphost_key
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/jumphost_key
+          
+          # Configure SSH config for jumphost setup
+          cat > ~/.ssh/config << 'SSHCONFIG'
+          Host jumphost
+            HostName ${{ secrets.JUMPHOST_HOST }}
+            User ${{ secrets.JUMPHOST_USER }}
+            IdentityFile ~/.ssh/jumphost_key
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PubkeyAcceptedKeyTypes +ssh-rsa
+            HostKeyAlgorithms +ssh-rsa
+            LogLevel FATAL
+            PasswordAuthentication no
+          
+          Host test-server
+            HostName ${{ secrets.TEST_SERVER_HOST }}
+            Port ${{ secrets.TEST_SERVER_PORT }}
+            User ${{ secrets.TEST_SERVER_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            ProxyJump jumphost
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PasswordAuthentication no
+            LogLevel FATAL
+          SSHCONFIG
+          
+          chmod 600 ~/.ssh/config
+
+      - name: Deploy to Test Server
+        env:
+          TEST_SERVER_HOST: test-server
+          TEST_SERVER_USER: ${{ secrets.TEST_SERVER_USER }}
+        run: |
+          # Encode secrets to base64 to avoid any shell expansion issues during heredoc
+          WSO2IS_DEPLOYMENT_TOML_B64="$(printf '%s' '${{ secrets.TEST_WSO2IS_DEPLOYMENT_TOML }}' | base64 -w 0)"
+          ENV_FILE_B64="$(printf '%s' '${{ secrets.TEST_ENV }}' | base64 -w 0)"
+          
+          ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} bash -s << ENDSSH
+          set -e
+          echo "🚀 Starting deployment to test environment..."
+
+          # Navigate to application directory
+          cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp || \
+            { echo "❌ Application directory not found"; exit 1; }
+
+          # Stop existing containers first (to release file locks)
+          echo "🛑 Stopping existing containers..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml down || true
+
+          # Pull latest changes first so we don't have the files clobbered by git
+          echo "📥 Pulling latest changes from test branch..."
+          git fetch origin
+          git checkout test
+          git pull origin test
+
+          # Create deployment.toml from secret using base64 decode (no sudo)
+          echo "📝 Creating deployment.toml from secret (base64 decode)..."
+          rm -rf wso2is-7-config
+          mkdir -p wso2is-7-config
+          echo "${WSO2IS_DEPLOYMENT_TOML_B64}" | base64 -d > wso2is-7-config/deployment.toml
+
+          # Create .env file from secret (base64 decode)
+          echo "📝 Creating .env file from secret (base64 decode)..."
+          echo "${ENV_FILE_B64}" | base64 -d > .env
+
+          # Rebuild containers
+          echo "🔨 Rebuilding containers..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml build --no-cache
+
+          # Start containers
+          echo "▶️  Starting containers..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d
+
+          # Wait for services to be healthy
+          echo "⏳ Waiting for services to be healthy..."
+          sleep 30
+
+          # Check container status
+          echo "✅ Checking container status..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml ps
+
+          echo "🎉 Deployment to test environment completed successfully!"
+          ENDSSH
+
+      - name: Verify Test Deployment
+        env:
+          TEST_SERVER_HOST: test-server
+        run: |
+          ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} << 'ENDSSH'
+            cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
+
+            # Check if containers are running
+            RUNNING_CONTAINERS=$(docker-compose -f docker-compose-wso2.yml \
+              -f docker-compose-test.yml ps --services --filter "status=running" | wc -l)
+            echo "Running containers: $RUNNING_CONTAINERS"
+
+            if [ "$RUNNING_CONTAINERS" -lt 1 ]; then
+              echo "❌ Not all containers are running"
+              exit 1
+            fi
+
+            echo "✅ All containers are running"
+          ENDSSH
+
+      - name: Cleanup SSH Keys
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key ~/.ssh/jumphost_key
+
+  approval-gate:
+    name: Approval Gate for Production
+    runs-on: ubuntu-latest
+    needs: deploy-test
+    environment:
+      name: production-approval
+      # NOTE: This environment MUST be configured in GitHub Settings -> Environments
+      # with Required Reviewers enabled, or the workflow will not wait for approval
+    steps:
+      - name: Wait for Approval
+        run: |
+          echo "✅ Test deployment successful"
+          echo "⏸️  Waiting for manual approval to deploy to production..."
+          echo "⚠️  If this step doesn't pause, check GitHub Settings -> Environments"
+          echo "Review the test environment before approving this deployment"
+
+  backup-production:
+    name: Backup Production Before Deployment
+    runs-on: ubuntu-latest
+    needs: approval-gate
+    outputs:
+      backup_path: ${{ steps.backup.outputs.backup_path }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.JUMPHOST_SSH_KEY }}" > ~/.ssh/jumphost_key
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/jumphost_key
+          
+          cat > ~/.ssh/config << 'SSHCONFIG'
+          Host jumphost
+            HostName ${{ secrets.JUMPHOST_HOST }}
+            User ${{ secrets.JUMPHOST_USER }}
+            IdentityFile ~/.ssh/jumphost_key
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PubkeyAcceptedKeyTypes +ssh-rsa
+            HostKeyAlgorithms +ssh-rsa
+            LogLevel FATAL
+            PasswordAuthentication no
+          
+          Host prod-server
+            HostName ${{ secrets.PROD_SERVER_HOST }}
+            Port ${{ secrets.PROD_SERVER_PORT }}
+            User ${{ secrets.PROD_SERVER_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            ProxyJump jumphost
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PasswordAuthentication no
+            LogLevel FATAL
+          SSHCONFIG
+          
+          chmod 600 ~/.ssh/config
+
+      - name: Create Full Backup
+        id: backup
+        env:
+          PROD_SERVER_HOST: prod-server
+        run: |
+          BACKUP_TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
+          echo "backup_path=docker-backups/${BACKUP_TIMESTAMP}" >> $GITHUB_OUTPUT
+          
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} << ENDSSH
+          set -e
+          cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
+          
+          echo "💾 Creating full backup before production deployment..."
+          echo "Backup timestamp: ${BACKUP_TIMESTAMP}"
+          
+          # Make backup script executable
+          chmod +x helpers/backup_docker_volumes.sh
+          
+          # Run backup with auto-confirm
+          ./helpers/backup_docker_volumes.sh -y
+          
+          # Get the latest backup directory
+          LATEST_BACKUP=\$(ls -dt docker-backups/*/ | head -1)
+          echo "✅ Backup created: \${LATEST_BACKUP}"
+          
+          # Store backup path in a file for later retrieval
+          echo "\${LATEST_BACKUP}" > /tmp/latest_backup_path.txt
+          ENDSSH
+          
+          echo "✅ Production backup completed"
+
+      - name: Cleanup SSH Keys
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key ~/.ssh/jumphost_key
+
+  deploy-production:
+    name: Deploy to Production Environment
+    runs-on: ubuntu-latest
+    needs: backup-production
+    environment:
+      name: production
+      url: https://letsplaydarts.eu
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.JUMPHOST_SSH_KEY }}" > ~/.ssh/jumphost_key
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/jumphost_key
+          
+          cat > ~/.ssh/config << 'SSHCONFIG'
+          Host jumphost
+            HostName ${{ secrets.JUMPHOST_HOST }}
+            User ${{ secrets.JUMPHOST_USER }}
+            IdentityFile ~/.ssh/jumphost_key
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PubkeyAcceptedKeyTypes +ssh-rsa
+            HostKeyAlgorithms +ssh-rsa
+            LogLevel FATAL
+            PasswordAuthentication no
+          
+          Host prod-server
+            HostName ${{ secrets.PROD_SERVER_HOST }}
+            Port ${{ secrets.PROD_SERVER_PORT }}
+            User ${{ secrets.PROD_SERVER_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            ProxyJump jumphost
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PasswordAuthentication no
+            LogLevel FATAL
+          SSHCONFIG
+          
+          chmod 600 ~/.ssh/config
+
+      - name: Merge to Production Branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          git merge --ff-only origin/test || git merge --allow-unrelated-histories origin/test
+          git push origin main
+
+      - name: Deploy to Production Server
+        env:
+          PROD_SERVER_HOST: prod-server
+          PROD_SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
+        run: |
+          WSO2IS_DEPLOYMENT_TOML_B64="$(printf '%s' '${{ secrets.PROD_WSO2IS_DEPLOYMENT_TOML }}' | base64 -w 0)"
+          ENV_FILE_B64="$(printf '%s' '${{ secrets.PROD_ENV }}' | base64 -w 0)"
+          
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} bash -s << ENDSSH
+          set -e
+          echo "🚀 Starting deployment to production environment..."
+
+          cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp || \
+            { echo "❌ Application directory not found"; exit 1; }
+
+          # Stop existing containers
+          echo "🛑 Stopping existing containers..."
+          docker-compose -f docker-compose-wso2.yml down || true
+
+          # Pull latest changes from main branch
+          echo "📥 Pulling latest changes from main branch..."
+          git fetch origin
+          git checkout main
+          git pull origin main
+
+          # Create deployment.toml from secret
+          echo "📝 Creating deployment.toml from secret..."
+          rm -rf wso2is-7-config
+          mkdir -p wso2is-7-config
+          echo "${WSO2IS_DEPLOYMENT_TOML_B64}" | base64 -d > wso2is-7-config/deployment.toml
+
+          # Create .env file from secret
+          echo "📝 Creating .env file from secret..."
+          echo "${ENV_FILE_B64}" | base64 -d > .env
+
+          # Rebuild containers
+          echo "🔨 Rebuilding containers..."
+          docker-compose -f docker-compose-wso2.yml build --no-cache
+
+          # Start containers
+          echo "▶️  Starting containers..."
+          docker-compose -f docker-compose-wso2.yml up -d
+
+          # Wait for services to be healthy
+          echo "⏳ Waiting for services to be healthy..."
+          sleep 45
+
+          # Check container status
+          echo "✅ Checking container status..."
+          docker-compose -f docker-compose-wso2.yml ps
+
+          echo "🎉 Deployment to production environment completed!"
+          ENDSSH
+
+      - name: Verify Production Deployment
+        env:
+          PROD_SERVER_HOST: prod-server
+        run: |
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} << 'ENDSSH'
+            cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
+
+            RUNNING_CONTAINERS=$(docker-compose -f docker-compose-wso2.yml \
+              ps --services --filter "status=running" | wc -l)
+            echo "Running containers: $RUNNING_CONTAINERS"
+
+            if [ "$RUNNING_CONTAINERS" -lt 1 ]; then
+              echo "❌ Not all containers are running"
+              exit 1
+            fi
+
+            echo "✅ All containers are running"
+          ENDSSH
+
+      - name: Health Check
+        env:
+          PROD_SERVER_HOST: prod-server
+        run: |
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} << 'ENDSSH'
+            cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
+
+            sleep 15
+
+            echo "🏥 Checking application health..."
+            HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/health || echo "000")
+            
+            if [ "$HEALTH_STATUS" = "200" ]; then
+              echo "✅ Application health check passed (HTTP $HEALTH_STATUS)"
+            else
+              echo "⚠️  Application health check returned HTTP $HEALTH_STATUS"
+              echo "Checking logs..."
+              docker-compose -f docker-compose-wso2.yml logs --tail=50 darts-app
+              exit 1
+            fi
+          ENDSSH
+
+      - name: Cleanup SSH Keys
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key ~/.ssh/jumphost_key
+
+  restore-on-failure:
+    name: Restore Production on Deployment Failure
+    runs-on: ubuntu-latest
+    needs: [backup-production, deploy-production]
+    if: failure()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.JUMPHOST_SSH_KEY }}" > ~/.ssh/jumphost_key
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/jumphost_key
+          
+          cat > ~/.ssh/config << 'SSHCONFIG'
+          Host jumphost
+            HostName ${{ secrets.JUMPHOST_HOST }}
+            User ${{ secrets.JUMPHOST_USER }}
+            IdentityFile ~/.ssh/jumphost_key
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PubkeyAcceptedKeyTypes +ssh-rsa
+            HostKeyAlgorithms +ssh-rsa
+            LogLevel FATAL
+            PasswordAuthentication no
+          
+          Host prod-server
+            HostName ${{ secrets.PROD_SERVER_HOST }}
+            Port ${{ secrets.PROD_SERVER_PORT }}
+            User ${{ secrets.PROD_SERVER_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            ProxyJump jumphost
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PasswordAuthentication no
+            LogLevel FATAL
+          SSHCONFIG
+          
+          chmod 600 ~/.ssh/config
+
+      - name: Restore from Backup
+        env:
+          PROD_SERVER_HOST: prod-server
+        run: |
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} bash -s << 'ENDSSH'
+          set -e
+          cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
+          
+          echo "🔄 Production deployment failed, restoring from backup..."
+          
+          # Get the backup path we created earlier
+          BACKUP_PATH=$(cat /tmp/latest_backup_path.txt 2>/dev/null | tr -d '\n')
+          
+          if [ -z "$BACKUP_PATH" ] || [ ! -d "$BACKUP_PATH" ]; then
+            echo "⚠️  Backup path not found in /tmp, attempting to use latest backup..."
+            BACKUP_PATH=$(ls -dt docker-backups/*/ 2>/dev/null | head -1)
+          fi
+          
+          if [ -z "$BACKUP_PATH" ]; then
+            echo "❌ No backups found in docker-backups/ directory"
+            exit 1
+          fi
+          
+          echo "Restoring from: $BACKUP_PATH"
+          
+          # Stop containers first
+          echo "🛑 Stopping containers..."
+          docker-compose -f docker-compose-wso2.yml down || true
+          
+          # Restore volumes directly (script may not exist yet)
+          echo "📦 Restoring Docker volumes..."
+          
+          # Restore postgres_data
+          if [ -f "${BACKUP_PATH}/postgres_data.tar.gz" ]; then
+            echo "Restoring postgres_data..."
+            docker volume rm dartserver-pythonapp_postgres_data 2>/dev/null || true
+            docker volume create dartserver-pythonapp_postgres_data
+            docker run --rm -v dartserver-pythonapp_postgres_data:/data -v "$(pwd)/${BACKUP_PATH}":/backup:ro alpine tar xzf /backup/postgres_data.tar.gz -C /data
+          fi
+          
+          # Restore rabbitmq_data
+          if [ -f "${BACKUP_PATH}/rabbitmq_data.tar.gz" ]; then
+            echo "Restoring rabbitmq_data..."
+            docker volume rm dartserver-pythonapp_rabbitmq_data 2>/dev/null || true
+            docker volume create dartserver-pythonapp_rabbitmq_data
+            docker run --rm -v dartserver-pythonapp_rabbitmq_data:/data -v "$(pwd)/${BACKUP_PATH}":/backup:ro alpine tar xzf /backup/rabbitmq_data.tar.gz -C /data
+          fi
+          
+          # Restore wso2is_data
+          if [ -f "${BACKUP_PATH}/wso2is_data.tar.gz" ]; then
+            echo "Restoring wso2is_data..."
+            docker volume rm dartserver-pythonapp_wso2is_data 2>/dev/null || true
+            docker volume create dartserver-pythonapp_wso2is_data
+            docker run --rm -v dartserver-pythonapp_wso2is_data:/data -v "$(pwd)/${BACKUP_PATH}":/backup:ro alpine tar xzf /backup/wso2is_data.tar.gz -C /data
+          fi
+          
+          # Restore wso2apim_data
+          if [ -f "${BACKUP_PATH}/wso2apim_data.tar.gz" ]; then
+            echo "Restoring wso2apim_data..."
+            docker volume rm dartserver-pythonapp_wso2apim_data 2>/dev/null || true
+            docker volume create dartserver-pythonapp_wso2apim_data
+            docker run --rm -v dartserver-pythonapp_wso2apim_data:/data -v "$(pwd)/${BACKUP_PATH}":/backup:ro alpine tar xzf /backup/wso2apim_data.tar.gz -C /data
+          fi
+          
+          # Start containers after restore
+          echo "▶️  Starting containers after restore..."
+          docker-compose -f docker-compose-wso2.yml up -d
+          
+          sleep 30
+          
+          echo "✅ Production restored from backup"
+          ENDSSH
+
+      - name: Verify Restored Deployment
+        env:
+          PROD_SERVER_HOST: prod-server
+        run: |
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} << 'ENDSSH'
+            cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
+
+            RUNNING_CONTAINERS=$(docker-compose -f docker-compose-wso2.yml \
+              ps --services --filter "status=running" | wc -l)
+
+            if [ "$RUNNING_CONTAINERS" -lt 1 ]; then
+              echo "❌ Restore failed - containers not running"
+              exit 1
+            fi
+
+            echo "✅ Restore successful - all containers running"
+          ENDSSH
+
+      - name: Cleanup SSH Keys
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key ~/.ssh/jumphost_key
+
+  verify-production:
+    name: Verify Production Deployment
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: success()
+    environment:
+      name: production-verification
+    
+    steps:
+      - name: Wait for Verification
+        run: |
+          echo "✅ Production deployment completed"
+          echo "🔍 Please verify the production environment is working correctly"
+          echo ""
+          echo "Options:"
+          echo "  1. ✅ Approve - Deployment is successful and working properly"
+          echo "  2. ❌ Reject - Deployment needs rollback (proceed to rollback step)"
+          echo ""
+          echo "After verification, choose the appropriate action..."
+
+  rollback-production:
+    name: Rollback Production if Needed
+    runs-on: ubuntu-latest
+    needs: [backup-production, verify-production]
+    if: failure() || cancelled()
+    environment:
+      name: production-rollback
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.JUMPHOST_SSH_KEY }}" > ~/.ssh/jumphost_key
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/jumphost_key
+          
+          cat > ~/.ssh/config << 'SSHCONFIG'
+          Host jumphost
+            HostName ${{ secrets.JUMPHOST_HOST }}
+            User ${{ secrets.JUMPHOST_USER }}
+            IdentityFile ~/.ssh/jumphost_key
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PubkeyAcceptedKeyTypes +ssh-rsa
+            HostKeyAlgorithms +ssh-rsa
+            LogLevel FATAL
+            PasswordAuthentication no
+          
+          Host prod-server
+            HostName ${{ secrets.PROD_SERVER_HOST }}
+            Port ${{ secrets.PROD_SERVER_PORT }}
+            User ${{ secrets.PROD_SERVER_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            ProxyJump jumphost
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PasswordAuthentication no
+            LogLevel FATAL
+          SSHCONFIG
+          
+          chmod 600 ~/.ssh/config
+
+      - name: Confirm Rollback Decision
+        run: |
+          echo "⚠️  ROLLBACK REQUESTED"
+          echo "This will restore production to the previous backup"
+          echo "Waiting for final confirmation..."
+
+      - name: Perform Rollback
+        env:
+          PROD_SERVER_HOST: prod-server
+        run: |
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} bash -s << 'ENDSSH'
+          set -e
+          cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
+          
+          echo "🔄 Rolling back production to previous state..."
+          
+          BACKUP_PATH=$(cat /tmp/latest_backup_path.txt 2>/dev/null | tr -d '\n')
+          
+          if [ -z "$BACKUP_PATH" ] || [ ! -d "$BACKUP_PATH" ]; then
+            echo "⚠️  Backup path not found, using latest backup..."
+            BACKUP_PATH=$(ls -dt docker-backups/*/ 2>/dev/null | head -1)
+          fi
+          
+          if [ -z "$BACKUP_PATH" ]; then
+            echo "❌ No backups found in docker-backups/ directory"
+            exit 1
+          fi
+          
+          echo "Rolling back to: $BACKUP_PATH"
+          
+          # Stop containers first
+          echo "🛑 Stopping containers..."
+          docker-compose -f docker-compose-wso2.yml down || true
+          
+          # Restore volumes directly
+          echo "📦 Restoring Docker volumes..."
+          
+          # Restore postgres_data
+          if [ -f "${BACKUP_PATH}/postgres_data.tar.gz" ]; then
+            echo "Restoring postgres_data..."
+            docker volume rm dartserver-pythonapp_postgres_data 2>/dev/null || true
+            docker volume create dartserver-pythonapp_postgres_data
+            docker run --rm -v dartserver-pythonapp_postgres_data:/data -v "$(pwd)/${BACKUP_PATH}":/backup:ro alpine tar xzf /backup/postgres_data.tar.gz -C /data
+          fi
+          
+          # Restore rabbitmq_data
+          if [ -f "${BACKUP_PATH}/rabbitmq_data.tar.gz" ]; then
+            echo "Restoring rabbitmq_data..."
+            docker volume rm dartserver-pythonapp_rabbitmq_data 2>/dev/null || true
+            docker volume create dartserver-pythonapp_rabbitmq_data
+            docker run --rm -v dartserver-pythonapp_rabbitmq_data:/data -v "$(pwd)/${BACKUP_PATH}":/backup:ro alpine tar xzf /backup/rabbitmq_data.tar.gz -C /data
+          fi
+          
+          # Restore wso2is_data
+          if [ -f "${BACKUP_PATH}/wso2is_data.tar.gz" ]; then
+            echo "Restoring wso2is_data..."
+            docker volume rm dartserver-pythonapp_wso2is_data 2>/dev/null || true
+            docker volume create dartserver-pythonapp_wso2is_data
+            docker run --rm -v dartserver-pythonapp_wso2is_data:/data -v "$(pwd)/${BACKUP_PATH}":/backup:ro alpine tar xzf /backup/wso2is_data.tar.gz -C /data
+          fi
+          
+          # Restore wso2apim_data
+          if [ -f "${BACKUP_PATH}/wso2apim_data.tar.gz" ]; then
+            echo "Restoring wso2apim_data..."
+            docker volume rm dartserver-pythonapp_wso2apim_data 2>/dev/null || true
+            docker volume create dartserver-pythonapp_wso2apim_data
+            docker run --rm -v dartserver-pythonapp_wso2apim_data:/data -v "$(pwd)/${BACKUP_PATH}":/backup:ro alpine tar xzf /backup/wso2apim_data.tar.gz -C /data
+          fi
+          
+          echo "▶️  Starting containers after rollback..."
+          docker-compose -f docker-compose-wso2.yml up -d
+          
+          sleep 30
+          
+          echo "✅ Production rolled back successfully"
+          ENDSSH
+
+      - name: Verify Rollback
+        env:
+          PROD_SERVER_HOST: prod-server
+        run: |
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} << 'ENDSSH'
+            cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
+
+            RUNNING_CONTAINERS=$(docker-compose -f docker-compose-wso2.yml \
+              ps --services --filter "status=running" | wc -l)
+
+            if [ "$RUNNING_CONTAINERS" -lt 1 ]; then
+              echo "❌ Rollback verification failed"
+              exit 1
+            fi
+
+            echo "✅ Rollback verified - all containers running"
+          ENDSSH
+
+      - name: Cleanup SSH Keys
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key ~/.ssh/jumphost_key
+
+  cleanup-success:
+    name: Deployment Complete
+    runs-on: ubuntu-latest
+    needs: verify-production
+    if: success()
+    
+    steps:
+      - name: Success Notification
+        run: |
+          echo "🎉 Production deployment completed and verified successfully!"
+          echo "✅ No rollback needed"
+          echo "📊 Deployment pipeline finished"
