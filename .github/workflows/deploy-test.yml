@@ -56,9 +56,9 @@ jobs:
           TEST_SERVER_HOST: test-server
           TEST_SERVER_USER: ${{ secrets.TEST_SERVER_USER }}
         run: |
-          # Export secrets to environment variables for use in ssh
-          export WSO2IS_DEPLOYMENT_TOML='${{ secrets.TEST_WSO2IS_DEPLOYMENT_TOML }}'
-          export ENV_FILE='${{ secrets.TEST_ENV }}'
+          # Encode secrets to base64 to avoid any shell expansion issues during heredoc
+          export WSO2IS_DEPLOYMENT_TOML_B64="$(printf '%s' '${{ secrets.TEST_WSO2IS_DEPLOYMENT_TOML }}' | base64 -w 0)"
+          export ENV_FILE_B64="$(printf '%s' '${{ secrets.TEST_ENV }}' | base64 -w 0)"
           
           ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} << ENDSSH
           set -e
@@ -78,18 +78,15 @@ jobs:
           git checkout test
           git pull origin test
 
-          # Create deployment.toml from secret AFTER checkout and write 
-          echo "📝 Creating deployment.toml from secret 
+          # Create deployment.toml from secret AFTER checkout using base64 decode (no sudo)
+          echo "📝 Creating deployment.toml from secret (base64 decode)..."
           rm -rf wso2is-7-config
           mkdir -p wso2is-7-config
-          # Use printf + tee to safely write even if directory is owned by root
-          printf "%s" "$WSO2IS_DEPLOYMENT_TOML" | tee wso2is-7-config/deployment.toml > /dev/null
+          echo "$WSO2IS_DEPLOYMENT_TOML_B64" | base64 -d > wso2is-7-config/deployment.toml
 
-          # Create .env file from secret (write with then chown to deploy user)
-          echo "📝 Creating .env file from secret 
-          printf "%s" "$ENV_FILE" | tee .env > /dev/null
-          # Ensure deploy user can read/write the files (fallback to current user)
-          chown $(whoami):$(whoami) wso2is-7-config/deployment.toml .env || true
+          # Create .env file from secret (base64 decode)
+          echo "📝 Creating .env file from secret (base64 decode)..."
+          echo "$ENV_FILE_B64" | base64 -d > .env
 
           # Rebuild containers
           echo "🔨 Rebuilding containers..."
