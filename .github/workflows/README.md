@@ -4,7 +4,39 @@ This directory contains GitHub Actions workflows for automated deployment of the
 
 ## Workflows
 
-### 1. Deploy to Test Environment (`deploy-test.yml`)
+### 1. Unified Deployment Pipeline (`deploy-unified.yml`) - **RECOMMENDED**
+
+**Trigger:** Automatic when code is pushed to the `test` branch
+
+**Purpose:** Orchestrated deployment from test to production with manual approval gate
+
+**Process:**
+1. **Deploy to Test:**
+   - Checks out the code
+   - Connects to test server via SSH (through jumphost)
+   - Stops containers, pulls latest changes from `test` branch
+   - Creates config files from secrets (base64-encoded)
+   - Rebuilds and starts containers
+   - Verifies deployment
+
+2. **Approval Gate:**
+   - Waits for manual approval via GitHub Environments
+   - Only proceeds after authorized reviewer approves
+
+3. **Deploy to Production:**
+   - Merges `test` branch to `prod` branch
+   - Connects to production server via SSH (through jumphost)
+   - Creates timestamped backup
+   - Deploys using same process as test
+   - Runs health checks
+
+**Benefits:**
+- Single workflow ensures test and production deploy the same code
+- Manual approval gate prevents accidental production deployments
+- Automatic merge from test to prod after approval
+- Built-in rollback information in backups
+
+### 2. Deploy to Test Environment (`deploy-test.yml`)
 
 **Trigger:** Automatic deployment when code is merged to the `test` branch
 
@@ -19,22 +51,40 @@ This directory contains GitHub Actions workflows for automated deployment of the
 6. Starts containers using `docker-compose-test.yml` configuration
 7. Verifies containers are running
 
-### 2. Deploy to Production Environment (`deploy-production.yml`)
+**Note:** This workflow is standalone. Use the unified pipeline for test→prod deployments.
 
-**Trigger:** Automatic deployment when code is merged to the `main` branch
+### 3. Deploy to Production Environment (`deploy-production.yml`)
+
+**Trigger:** Automatic deployment when code is merged to the `prod` branch
 
 **Purpose:** Deploys the application to the production server at `letsplaydarts.eu`
 
 **Process:**
 1. Checks out the code
-2. Connects to production server via SSH
-3. Creates a backup of the current state
-4. Pulls latest changes from `main` branch
-5. Stops existing containers
-6. Rebuilds all containers with no cache
-7. Starts containers using `docker-compose-wso2.yml` configuration
-8. Verifies containers are running
-9. Runs health checks on the application
+2. Connects to production server via SSH (through jumphost if configured)
+3. Creates a backup of the current state (commit hash, deployment.toml, .env)
+4. Stops existing containers
+5. Pulls latest changes from `prod` branch
+6. Creates `deployment.toml` and `.env` files from GitHub secrets (base64-encoded)
+7. Rebuilds all containers with no cache
+8. Starts containers using `docker-compose-wso2.yml` configuration
+9. Verifies containers are running
+10. Runs health checks on the application
+
+**Note:** This workflow is standalone. Use the unified pipeline for automated test→prod deployments.
+
+## Recommended Deployment Strategy
+
+**Use the Unified Pipeline (`deploy-unified.yml`)** for most deployments:
+
+1. Push to `test` branch → automatic test deployment
+2. Review test environment
+3. Approve in GitHub Actions → automatic production deployment
+4. Production branch (`prod`) is automatically updated
+
+**Use standalone workflows** only for:
+- Emergency production hotfixes (deploy-production.yml)
+- Testing deployment pipeline changes (deploy-test.yml)
 
 ## Prerequisites
 
@@ -87,10 +137,12 @@ The following secrets must be configured in the GitHub repository:
 
 | Secret Name | Description | Example |
 |------------|-------------|---------|
-| `PROD_SERVER_HOST` | Hostname or IP of production server | `letsplaydarts.eu` or `192.168.1.101` |
+| `PROD_SERVER_HOST` | Hostname or IP of production server (behind jumphost if configured) | `letsplaydarts.eu` or `192.168.1.101` |
 | `PROD_SERVER_PORT` | SSH port on production server | `22` or `4422` |
 | `PROD_SERVER_USER` | SSH username for production server | `deploy` or `ubuntu` |
 | `PROD_SERVER_SSH_KEY` | Private SSH key for production server authentication | Contents of `~/.ssh/id_rsa` |
+| `PROD_WSO2IS_DEPLOYMENT_TOML` | Complete deployment.toml configuration for WSO2 IS production instance | File contents of `wso2is-7-config/deployment.toml` |
+| `PROD_ENV` | Environment variables for production deployment (e.g., database URL, API keys) | Contents of `.env` file for production environment |
 
 ### Setting Up GitHub Secrets
 
@@ -98,6 +150,33 @@ The following secrets must be configured in the GitHub repository:
 2. Navigate to **Settings** → **Secrets and variables** → **Actions**
 3. Click **New repository secret**
 4. Add each secret with its name and value
+
+### Setting Up GitHub Environments for Approval
+
+The unified pipeline requires GitHub Environments to be configured for the approval gate:
+
+1. Go to your GitHub repository
+2. Navigate to **Settings** → **Environments**
+3. Click **New environment**
+4. Create an environment named `production-approval`
+5. Configure **Required reviewers**:
+   - Check "Required reviewers"
+   - Add yourself and/or team members who can approve production deployments
+   - Recommended: Add at least 2 reviewers for critical production changes
+6. Optionally set **Wait timer** (e.g., 5 minutes minimum before approval can be given)
+7. Click **Save protection rules**
+8. Create another environment named `production` (for the final deployment step):
+   - This can have the same or different reviewers
+   - Or leave it without protection if approval gate is sufficient
+
+**How the approval works:**
+1. Test deployment completes successfully
+2. Workflow pauses at the approval gate
+3. Designated reviewers receive a notification
+4. Reviewers can inspect the test environment
+5. Reviewer approves or rejects the deployment
+6. If approved, production deployment proceeds automatically
+7. If rejected, workflow stops
 
 #### Generating SSH Keys
 
@@ -154,7 +233,31 @@ This secret should contain the environment variables for your test deployment:
 
 ## Usage
 
-### Deploying to Test
+### Using the Unified Pipeline (Recommended)
+
+1. **Deploy to Test and trigger approval workflow:**
+   ```bash
+   git checkout test
+   git merge your-feature-branch
+   git push origin test
+   ```
+
+2. **Monitor test deployment** in the **Actions** tab
+
+3. **Review the test environment** at `test.letsplaydarts.eu`
+
+4. **Approve production deployment:**
+   - Go to the **Actions** tab
+   - Click on the running workflow
+   - Click **Review deployments**
+   - Select `production-approval` environment
+   - Click **Approve and deploy**
+
+5. **Monitor production deployment** - it will proceed automatically after approval
+
+### Deploying to Test Only
+
+**If using standalone workflow:**
 
 1. Merge your changes to the `test` branch:
    ```bash
@@ -167,13 +270,17 @@ This secret should contain the environment variables for your test deployment:
 
 3. Monitor the deployment in the **Actions** tab of your GitHub repository
 
-### Deploying to Production
+**Note:** When using the unified pipeline, test deployments happen automatically as part of the approval workflow.
 
-1. Merge your changes to the `main` branch:
+### Deploying to Production Only (Emergency Hotfix)
+
+**Only use this for emergency hotfixes that bypass test:**
+
+1. Merge your changes directly to the `prod` branch:
    ```bash
-   git checkout main
+   git checkout prod
    git merge test  # Merge from test after verification
-   git push origin main
+   git push origin prod
    ```
 
 2. The workflow will automatically trigger and deploy to the production server
