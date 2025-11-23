@@ -17,6 +17,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install git-crypt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-crypt
+
       - name: Checkout config repository
         uses: actions/checkout@v4
         with:
@@ -265,11 +270,6 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.PAT_TOKEN }}
           persist-credentials: true
-
-      - name: Install git-crypt
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git-crypt
 
       - name: Install git-crypt
         run: |
