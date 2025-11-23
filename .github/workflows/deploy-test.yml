@@ -80,16 +80,16 @@ jobs:
 
           # Create deployment.toml from secret AFTER checkout and write using sudo
           echo "📝 Creating deployment.toml from secret (using sudo)..."
-          sudo rm -rf wso2is-7-config
-          sudo mkdir -p wso2is-7-config
-          # Use printf + sudo tee to safely write even if directory is owned by root
-          printf "%s" "$WSO2IS_DEPLOYMENT_TOML" | sudo tee wso2is-7-config/deployment.toml > /dev/null
+          rm -rf wso2is-7-config
+          mkdir -p wso2is-7-config
+          # Use printf + tee to safely write even if directory is owned by root
+          printf "%s" "$WSO2IS_DEPLOYMENT_TOML" | tee wso2is-7-config/deployment.toml > /dev/null
 
-          # Create .env file from secret (write with sudo then chown to deploy user)
+          # Create .env file from secret (write with then chown to deploy user)
           echo "📝 Creating .env file from secret (using sudo)..."
-          printf "%s" "$ENV_FILE" | sudo tee .env > /dev/null
+          printf "%s" "$ENV_FILE" | tee .env > /dev/null
           # Ensure deploy user can read/write the files (fallback to current user)
-          sudo chown $(whoami):$(whoami) wso2is-7-config/deployment.toml .env || true
+          chown $(whoami):$(whoami) wso2is-7-config/deployment.toml .env || true
 
           # Rebuild containers
           echo "🔨 Rebuilding containers..."
