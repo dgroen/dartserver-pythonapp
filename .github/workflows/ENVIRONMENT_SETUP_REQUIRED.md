@@ -34,10 +34,11 @@ If the `approval-gate` job in the unified deployment pipeline **does not pause**
 
 You need to create and configure these environments:
 
-1. ✅ **`production-approval`** - Pre-deployment approval (add reviewers)
+1. ✅ **`production-approval`** - Pre-deployment approval (add reviewers) - REQUIRED
 2. ⚙️ **`production`** - Production deployment target (optional reviewers)
-3. ✅ **`production-verification`** - Post-deployment verification (add reviewers)
-4. ✅ **`production-rollback`** - Manual rollback confirmation (add reviewers)
+3. ✅ **`production-restore-approval`** - Approve/skip restore after deployment failure (add reviewers) - REQUIRED
+4. ✅ **`production-verification`** - Post-deployment verification, can approve or skip (add reviewers) - REQUIRED
+5. ✅ **`production-rollback`** - Manual rollback confirmation (add reviewers) - REQUIRED
 
 ## Verification
 

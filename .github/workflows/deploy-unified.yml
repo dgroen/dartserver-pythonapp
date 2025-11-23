@@ -387,8 +387,22 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backup-production, deploy-production]
     if: failure()
+    environment:
+      name: production-restore-approval
+      # NOTE: Configure with Required Reviewers to approve/skip restore
 
     steps:
+      - name: Wait for Restore Approval
+        run: |
+          echo "❌ Production deployment failed"
+          echo "🔄 Restore from backup is recommended"
+          echo ""
+          echo "Options:"
+          echo "  ✅ Approve - Restore from backup"
+          echo "  ⏭️  Reject/Cancel - Skip restore (manual fix needed)"
+          echo ""
+          echo "Waiting for approval..."
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -536,16 +550,20 @@ jobs:
           echo "🔍 Please verify the production environment is working correctly"
           echo ""
           echo "Options:"
-          echo "  1. ✅ Approve - Deployment is successful and working properly"
-          echo "  2. ❌ Reject - Deployment needs rollback (proceed to rollback step)"
+          echo "  ✅ Approve - Deployment is successful and working properly → Pipeline completes"
+          echo "  ⏭️  Reject/Cancel - Skip verification → Pipeline completes (no rollback)"
+          echo ""
+          echo "Note: If you need rollback, use the rollback-production job manually"
           echo ""
           echo "After verification, choose the appropriate action..."
 
   rollback-production:
-    name: Rollback Production if Needed
+    name: Manual Rollback Production
     runs-on: ubuntu-latest
     needs: [backup-production, verify-production]
-    if: failure() || cancelled()
+    # This job only runs if manually triggered via workflow_dispatch or if verify-production is explicitly rejected
+    # Skipping verify-production will NOT trigger rollback
+    if: failure() && needs.verify-production.result == 'failure'
     environment:
       name: production-rollback
 
@@ -689,12 +707,19 @@ jobs:
   cleanup-success:
     name: Deployment Complete
     runs-on: ubuntu-latest
-    needs: verify-production
-    if: success()
+    needs: [deploy-production, verify-production]
+    # Success if deployment worked, regardless of verification being approved or skipped
+    if: |
+      always() && 
+      needs.deploy-production.result == 'success' &&
+      (needs.verify-production.result == 'success' || needs.verify-production.result == 'cancelled' || needs.verify-production.result == 'skipped')
     
     steps:
       - name: Success Notification
         run: |
-          echo "🎉 Production deployment completed and verified successfully!"
-          echo "✅ No rollback needed"
+          if [ "${{ needs.verify-production.result }}" == "success" ]; then
+            echo "🎉 Production deployment completed and verified successfully!"
+          else
+            echo "✅ Production deployment completed (verification skipped)"
+          fi
           echo "📊 Deployment pipeline finished"
