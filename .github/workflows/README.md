@@ -33,7 +33,7 @@ This directory contains GitHub Actions workflows for automated deployment of the
    - Uses `helpers/backup_docker_volumes.sh` script
 
 4. **Deploy to Production:**
-   - Merges `test` branch to `prod` branch
+   - Merges `test` branch to `main` branch
    - Connects to production server via SSH (through jumphost)
    - Deploys using same process as test
    - Runs health checks
@@ -67,7 +67,9 @@ This directory contains GitHub Actions workflows for automated deployment of the
 - **Post-deployment verification with manual rollback option**
 - Comprehensive backup includes all volumes and database dumps
 - Built-in restore scripts for easy recovery
-- Automatic merge from test to prod after approval
+- Automatic merge from test to main after approval
+
+**⚠️ IMPORTANT:** This workflow uses `main` as the production branch (not `prod`)
 
 ---
 
@@ -118,8 +120,14 @@ git push
 
 1. Push to `test` branch → automatic test deployment
 2. Review test environment
-3. Approve in GitHub Actions → automatic production deployment
-4. Production branch (`prod`) is automatically updated
+3. **Approve in GitHub Actions** → automatic production deployment
+4. Production branch (`main`) is automatically updated
+
+**⚠️ CRITICAL: Approval gates will NOT work unless GitHub Environments are configured!**
+
+If the approval gate doesn't pause:
+- See **`.github/workflows/ENVIRONMENT_SETUP_REQUIRED.md`** for quick fix
+- The `production-approval` environment MUST have "Required reviewers" enabled
 
 **Only re-enable standalone workflows for:**
 - Emergency production hotfixes that must bypass test

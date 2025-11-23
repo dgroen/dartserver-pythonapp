@@ -138,11 +138,14 @@ jobs:
     needs: deploy-test
     environment:
       name: production-approval
+      # NOTE: This environment MUST be configured in GitHub Settings -> Environments
+      # with Required Reviewers enabled, or the workflow will not wait for approval
     steps:
       - name: Wait for Approval
         run: |
           echo "✅ Test deployment successful"
           echo "⏸️  Waiting for manual approval to deploy to production..."
+          echo "⚠️  If this step doesn't pause, check GitHub Settings -> Environments"
           echo "Review the test environment before approving this deployment"
 
   backup-production:
@@ -274,10 +277,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin prod
-          git checkout prod
+          git fetch origin main
+          git checkout main
           git merge --ff-only origin/test || git merge origin/test
-          git push origin prod
+          git push origin main
 
       - name: Deploy to Production Server
         env:
@@ -298,11 +301,11 @@ jobs:
           echo "🛑 Stopping existing containers..."
           docker-compose -f docker-compose-wso2.yml down || true
 
-          # Pull latest changes from prod branch
-          echo "📥 Pulling latest changes from prod branch..."
+          # Pull latest changes from main branch
+          echo "📥 Pulling latest changes from main branch..."
           git fetch origin
-          git checkout prod
-          git pull origin prod
+          git checkout main
+          git pull origin main
 
           # Create deployment.toml from secret
           echo "📝 Creating deployment.toml from secret..."
