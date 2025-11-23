@@ -17,6 +17,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Checkout config repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/dartserver-config
+          path: dartserver-config
+          token: ${{ secrets.CONFIG_REPO_TOKEN }}
+
+      - name: Decrypt config repository
+        run: |
+          cd dartserver-config
+          chmod +x scripts/decrypt-configs.sh
+          ./scripts/decrypt-configs.sh
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -56,10 +69,6 @@ jobs:
           TEST_SERVER_HOST: test-server
           TEST_SERVER_USER: ${{ secrets.TEST_SERVER_USER }}
         run: |
-          # Encode secrets to base64 to avoid any shell expansion issues during heredoc
-          WSO2IS_DEPLOYMENT_TOML_B64="$(printf '%s' '${{ secrets.TEST_WSO2IS_DEPLOYMENT_TOML }}' | base64 -w 0)"
-          ENV_FILE_B64="$(printf '%s' '${{ secrets.TEST_ENV }}' | base64 -w 0)"
-          
           ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} bash -s << ENDSSH
           set -e
           echo "🚀 Starting deployment to test environment..."
@@ -78,15 +87,12 @@ jobs:
           git checkout test
           git pull origin test
 
-          # Create deployment.toml from secret using base64 decode (no sudo)
-          echo "📝 Creating deployment.toml from secret (base64 decode)..."
-          rm -rf wso2is-7-config
-          mkdir -p wso2is-7-config
-          echo "${WSO2IS_DEPLOYMENT_TOML_B64}" | base64 -d > wso2is-7-config/deployment.toml
-
-          # Create .env file from secret (base64 decode)
-          echo "📝 Creating .env file from secret (base64 decode)..."
-          echo "${ENV_FILE_B64}" | base64 -d > .env
+          # Copy configuration files from config repository
+          echo "📝 Copying configuration files from config repository..."
+          cp dartserver-config/environments/test/.env ./.env
+          cp -r dartserver-config/environments/test/wso2is-config ./wso2is-7-config
+          cp -r dartserver-config/environments/test/ssl ./ssl
+          cp -r dartserver-config/environments/test/nginx ./nginx
 
           # Rebuild containers
           echo "🔨 Rebuilding containers..."
@@ -260,6 +266,19 @@ jobs:
           token: ${{ secrets.PAT_TOKEN }}
           persist-credentials: true
 
+      - name: Checkout config repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/dartserver-config
+          path: dartserver-config
+          token: ${{ secrets.CONFIG_REPO_TOKEN }}
+
+      - name: Decrypt config repository
+        run: |
+          cd dartserver-config
+          chmod +x scripts/decrypt-configs.sh
+          ./scripts/decrypt-configs.sh
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -319,9 +338,6 @@ jobs:
           PROD_SERVER_HOST: prod-server
           PROD_SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
         run: |
-          WSO2IS_DEPLOYMENT_TOML_B64="$(printf '%s' '${{ secrets.PROD_WSO2IS_DEPLOYMENT_TOML }}' | base64 -w 0)"
-          ENV_FILE_B64="$(printf '%s' '${{ secrets.PROD_ENV }}' | base64 -w 0)"
-          
           ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} bash -s << ENDSSH
           set -e
           echo "🚀 Starting deployment to production environment..."
@@ -339,15 +355,12 @@ jobs:
           git checkout main
           git pull origin main
 
-          # Create deployment.toml from secret
-          echo "📝 Creating deployment.toml from secret..."
-          rm -rf wso2is-7-config
-          mkdir -p wso2is-7-config
-          echo "${WSO2IS_DEPLOYMENT_TOML_B64}" | base64 -d > wso2is-7-config/deployment.toml
-
-          # Create .env file from secret
-          echo "📝 Creating .env file from secret..."
-          echo "${ENV_FILE_B64}" | base64 -d > .env
+          # Copy configuration files from config repository
+          echo "📝 Copying configuration files from config repository..."
+          cp dartserver-config/environments/production/.env ./.env
+          cp -r dartserver-config/environments/production/wso2is-config ./wso2is-7-config
+          cp -r dartserver-config/environments/production/ssl ./ssl
+          cp -r dartserver-config/environments/production/nginx ./nginx
 
           # Rebuild containers
           echo "🔨 Rebuilding containers..."
