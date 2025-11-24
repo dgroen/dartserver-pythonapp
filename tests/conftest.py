@@ -57,6 +57,15 @@ def sample_players_four():
 
 
 @pytest.fixture
+def mock_player_data():
+    """Mock player data with database IDs for testing."""
+    return [
+        {"db_id": 1},
+        {"db_id": 2},
+    ]
+
+
+@pytest.fixture
 def sample_score_data():
     """Sample score data for testing."""
     return {
