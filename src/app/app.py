@@ -17,7 +17,6 @@ from flask_cors import CORS
 from flask_socketio import SocketIO
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from src.app.game_manager import GameManager
 from src.app.game_session_manager import GameSessionManager
 from src.app.mobile_service import MobileService
 from src.core.auth import (
@@ -147,7 +146,7 @@ def _get_default_game_manager():
         game_manager = game_session_manager.get_session(default_session_id)
         app.game_manager = game_manager  # Attach to app for access in decorators
         # Set database service for dartboard endpoints
-        set_database_service(gm.db_service)
+        set_database_service(game_manager.db_service)
     return game_manager
 
 
@@ -848,8 +847,7 @@ def delete_game_session(session_id):
     """
     if game_session_manager.delete_session(session_id):
         return jsonify({"status": "success", "message": "Session deleted"})
-    else:
-        return jsonify({"error": "Session not found"}), 404
+    return jsonify({"error": "Session not found"}), 404
 
 
 @app.route("/api/sessions/<session_id>/new_game", methods=["POST"])
@@ -907,7 +905,6 @@ def new_game_in_session(session_id):
 
     game_mgr.new_game(game_type, player_names, double_out)
     return jsonify({"status": "success", "message": "New game started"})
-
 
 
 @app.route("/api/players", methods=["GET"])
@@ -3695,9 +3692,7 @@ def end_training():
         if training_session:
             training_session.completed = True
             training_session.finished_at = datetime.now(tz=timezone.utc)
-            training_session.final_score = (
-                gm.game.get_player_score(0) if gm.game else 0
-            )
+            training_session.final_score = gm.game.get_player_score(0) if gm.game else 0
             db_session.commit()
 
         db_session.close()
