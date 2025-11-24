@@ -8,11 +8,10 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>📊 Training Dashboard</h1>
+        <div class="user-info-header">
             <div class="user-info">
                 {% if user_claims %}
-                <span class="username">👤 {{ user_claims.get('username', user_claims.get('sub', 'User')) }}</span>
+                <span class="username">👤 {{ user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + ' ' + user_claims.get('family_name', '')).strip() or user_claims.get('username', user_claims.get('sub', 'User')) }}</span>
                 {% if user_roles %}
                 <span class="user-roles">
                     {% for role in user_roles %}
@@ -23,6 +22,9 @@
                 <a href="/logout" class="logout-btn">Logout</a>
                 {% endif %}
             </div>
+        </div>        
+        <header>
+            <h1>📊 Training Dashboard</h1>
             <div class="header-links">
                 <a href="/" class="header-link">🎮 Main Game</a>
                 <a href="/training" class="header-link">🎯 Training Mode</a>

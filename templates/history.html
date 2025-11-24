@@ -206,14 +206,10 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>📊 Game History</h1>
-            <div class="game-info">
-                <a href="/" class="back-link">← Back to Game</a>
-            </div>
+                <div class="user-info-header">
             <div class="user-info">
                 {% if user_claims %}
-                <span class="username">👤 {{ user_claims.get('username', user_claims.get('sub', 'User')) }}</span>
+                <span class="username">👤 {{ user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + ' ' + user_claims.get('family_name', '')).strip() or user_claims.get('username', user_claims.get('sub', 'User')) }}</span>
                 {% if user_roles %}
                 <span class="user-roles">
                     {% for role in user_roles %}
@@ -223,6 +219,12 @@
                 {% endif %}
                 <a href="/logout" class="logout-btn">Logout</a>
                 {% endif %}
+            </div>
+        </div>
+        <header>
+            <h1>📊 Game History</h1>
+            <div class="game-info">
+                <a href="/" class="back-link">← Back to Game</a>
             </div>
         </header>
 
