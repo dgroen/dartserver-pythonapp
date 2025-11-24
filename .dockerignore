@@ -1,3 +1,10 @@
+docker-backups
+docs
+.tox
+.vscode
+.venv
+helpers
+examples
 # Version control
 .git
 .gitignore
@@ -119,9 +126,6 @@ tests/
 
 # Tox configuration
 tox.ini
-
-# Alembic (if migrations are handled outside)
-alembic/
 
 # Node.js (if any)
 node_modules/

@@ -50,6 +50,8 @@ services:
       - "9763:9763" # HTTP port
     environment:
       - JAVA_OPTS=-Xms512m -Xmx1024m
+      - CONSOLE_SERVER_ORIGIN=https://letsplaydarts.eu/auth
+      - SERVER_ORIGIN=https://letsplaydarts.eu/auth
     volumes:
       - wso2is_data:/home/wso2carbon/wso2is-7.1.0
       - ./wso2is-7-config/deployment.toml:/home/wso2carbon/wso2is-7.1.0/repository/conf/deployment.toml:ro
@@ -119,8 +121,8 @@ services:
 
       # WSO2 Identity Server Configuration
       WSO2_IS_URL: https://wso2is:9443
-      WSO2_IS_CLIENT_ID: ${WSO2_IS_CLIENT_ID:-L2rvop0o4DfJsqpqsh44cUgVn_ga}
-      WSO2_IS_CLIENT_SECRET: ${WSO2_IS_CLIENT_SECRET:-VhNFUK083Q2iUsu8GCWfcJTVCX8a}
+      WSO2_IS_CLIENT_ID: ${WSO2_IS_CLIENT_ID}
+      WSO2_IS_CLIENT_SECRET: ${WSO2_IS_CLIENT_SECRET}
 
       # Introspection credentials (required for token validation)
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
@@ -183,8 +185,8 @@ services:
       # WSO2 Authentication Configuration
       # WSO2_IS_URL: Public URL for browser redirects (authorize, logout)
       WSO2_IS_URL: https://letsplaydarts.eu/auth
-      # WSO2_IS_INTERNAL_URL: Internal Docker network URL for backend API calls
-      #      WSO2_IS_INTERNAL_URL: https://wso2is:9443
+      # WSO2_IS_INTERNAL_URL: Internal Docker network URL for backend API calls (introspection, token endpoint)
+      WSO2_IS_INTERNAL_URL: https://wso2is:9443
       WSO2_CLIENT_ID: ${WSO2_CLIENT_ID:-your_client_id_here}
       WSO2_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-your_client_secret_here}
       # Use dynamic redirect URIs - these are fallbacks only, app will use X-Forwarded headers
@@ -194,7 +196,13 @@ services:
       JWT_VALIDATION_MODE: introspection
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
       WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin} # pragma: allowlist secret
-      SESSION_COOKIE_SECURE: "True" # Enable secure cookies for HTTPS
+      SESSION_COOKIE_SECURE: "False" # Nginx terminates SSL; safe inside Docker network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
@@ -218,9 +226,13 @@ services:
       - ./nginx/nginx.crt:/etc/nginx/nginx.crt:ro
       - ./nginx/nginx.key:/etc/nginx/nginx.key:ro
     depends_on:
-      - api-gateway
-      - darts-app
-      - wso2apim
+      api-gateway:
+        condition: service_started
+      darts-app:
+        condition: service_healthy
+      wso2apim:
+        condition: service_started
+    restart: unless-stopped
     networks:
       - darts-network
 

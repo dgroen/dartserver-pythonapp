@@ -82,6 +82,7 @@ async function syncOfflineData() {
         try {
             await fetch(request.url, {
                 method: request.method,
+                credentials: 'include',  // Include session cookies
                 headers: request.headers,
                 body: request.body
             });
@@ -122,6 +123,7 @@ async function apiRequest(url, options = {}) {
     try {
         const response = await fetch(url, {
             ...options,
+            credentials: 'include',  // Include session cookies
             headers: {
                 'Content-Type': 'application/json',
                 ...options.headers

@@ -479,7 +479,7 @@ def login_required(f):
             if "player_id" not in session:
                 try:
                     # Access game_manager from Flask app context
-                    game_manager = current_app.game_manager
+                    game_manager = current_app.game_manager  # type: ignore
                     player = game_manager.db_service.get_or_create_player(
                         username="bypass_user",
                         email="bypass@local.dev",
@@ -505,7 +505,7 @@ def login_required(f):
 
         # Validate token
         token = session.get("access_token")
-        claims = validate_token(token)
+        claims = validate_token(token)  # type: ignore
 
         if not claims:
             # Token is invalid or expired, clear session and redirect to login
@@ -875,9 +875,14 @@ def get_wso2_user_info(username: str, access_token: str | None = None) -> dict |
                     and isinstance(user["emails"], list)
                     and len(user["emails"]) > 0
                 ):
-                    user_info["email"] = user["emails"][0].get("value")
+                    email_item = user["emails"][0]
+                    # Handle both string format and object format
+                    if isinstance(email_item, str):
+                        user_info["email"] = email_item
+                    elif isinstance(email_item, dict):
+                        user_info["email"] = email_item.get("value")
 
-                if "name" in user:
+                if "name" in user and isinstance(user["name"], dict):
                     name_parts = []
                     if user["name"].get("givenName"):
                         name_parts.append(user["name"]["givenName"])

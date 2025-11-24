@@ -3,6 +3,10 @@ let currentGames = [];
 
 // Initialize dashboard when page loads
 document.addEventListener('DOMContentLoaded', function() {
+    // Load users list for admin filter if user is admin
+    if (window.userIsAdmin) {
+        loadUsersList();
+    }
     loadGames();
     setupEventListeners();
 });
@@ -10,13 +14,21 @@ document.addEventListener('DOMContentLoaded', function() {
 function setupEventListeners() {
     // Refresh button
     document.getElementById('refresh-btn').addEventListener('click', loadGames);
-    
+
     // Limit select
     document.getElementById('limit-select').addEventListener('change', loadGames);
-    
+
+    // User select (if admin)
+    if (window.userIsAdmin) {
+        const userSelect = document.getElementById('user-select');
+        if (userSelect) {
+            userSelect.addEventListener('change', loadGames);
+        }
+    }
+
     // Modal close button
     document.querySelector('.close-btn').addEventListener('click', closeModal);
-    
+
     // Close modal when clicking outside
     window.addEventListener('click', function(event) {
         const modal = document.getElementById('game-detail-modal');
@@ -26,23 +38,63 @@ function setupEventListeners() {
     });
 }
 
+function loadUsersList() {
+    // Fetch list of users who have played games
+    fetch('/api/players?source=database', {
+        credentials: 'include'  // Include session cookies
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const userSelect = document.getElementById('user-select');
+                if (userSelect) {
+                    // Add users to dropdown
+                    data.players.forEach(player => {
+                        if (player.username) {
+                            const option = document.createElement('option');
+                            option.value = player.username;
+                            option.textContent = player.name + ' (' + player.username + ')';
+                            userSelect.appendChild(option);
+                        }
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading users list:', error);
+        });
+}
+
 function loadGames() {
     const limit = document.getElementById('limit-select').value;
     const loadingMessage = document.getElementById('loading-message');
     const errorMessage = document.getElementById('error-message');
     const gamesList = document.getElementById('games-list');
-    
+
     // Show loading
     loadingMessage.style.display = 'block';
     errorMessage.style.display = 'none';
     gamesList.innerHTML = '';
-    
+
+    // Build URL with parameters
+    let url = `/api/game/history?limit=${limit}`;
+
+    // Add user filter for admin
+    if (window.userIsAdmin) {
+        const userSelect = document.getElementById('user-select');
+        if (userSelect && userSelect.value) {
+            url += `&user=${encodeURIComponent(userSelect.value)}`;
+        }
+    }
+
     // Fetch games from API
-    fetch(`/api/game/history?limit=${limit}`)
+    fetch(url, {
+        credentials: 'include'  // Include session cookies
+    })
         .then(response => response.json())
         .then(data => {
             loadingMessage.style.display = 'none';
-            
+
             if (data.status === 'success') {
                 currentGames = data.games;
                 displayGames(currentGames);
@@ -59,14 +111,14 @@ function loadGames() {
 
 function displayGames(games) {
     const gamesList = document.getElementById('games-list');
-    
+
     if (games.length === 0) {
         gamesList.innerHTML = '<p style="text-align: center; padding: 40px; color: #a0c4ff;">No games found</p>';
         return;
     }
-    
+
     gamesList.innerHTML = games.map(game => createGameCard(game)).join('');
-    
+
     // Add click event listeners to view buttons
     document.querySelectorAll('.view-btn').forEach((btn) => {
         btn.addEventListener('click', (e) => {
@@ -75,7 +127,25 @@ function displayGames(games) {
             viewGameDetails(gameSessionId);
         });
     });
-    
+
+    // Add click event listeners to resume buttons
+    document.querySelectorAll('.resume-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const gameSessionId = btn.getAttribute('data-session-id');
+            resumeGame(gameSessionId);
+        });
+    });
+
+    // Add click event listeners to remove buttons
+    document.querySelectorAll('.remove-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const gameSessionId = btn.getAttribute('data-session-id');
+            removeGame(gameSessionId);
+        });
+    });
+
     // Add click event listeners to game cards
     document.querySelectorAll('.game-card').forEach((card) => {
         card.addEventListener('click', () => {
@@ -91,7 +161,7 @@ function createGameCard(game) {
     const isCompleted = game.finished_at !== null;
     const statusClass = isCompleted ? 'status-completed' : 'status-incomplete';
     const statusText = isCompleted ? 'Completed' : 'Incomplete';
-    
+
     // Calculate duration if finished
     let duration = '';
     if (finishedDate) {
@@ -100,7 +170,48 @@ function createGameCard(game) {
         const seconds = Math.floor((durationMs % 60000) / 1000);
         duration = `${minutes}m ${seconds}s`;
     }
-    
+
+    // Calculate game age in days for incomplete games
+    const now = new Date();
+    const ageInDays = (now - gameDate) / (1000 * 60 * 60 * 24);
+    const isOlderThanOneDay = ageInDays >= 1;
+
+    // Game options badges
+    const optionsBadges = [];
+    if (game.double_out_enabled) {
+        optionsBadges.push('<span class="option-badge">🎯 Double Out</span>');
+    }
+    if (game.reset_on_miss) {
+        optionsBadges.push('<span class="option-badge hard-mode">💀 Hard Mode</span>');
+    }
+    const optionsHtml = optionsBadges.length > 0 
+        ? `<div class="game-options">${optionsBadges.join('')}</div>`
+        : '';
+
+    // Action buttons for incomplete games
+    let actionButtons = '';
+    if (!isCompleted) {
+        actionButtons = '<div class="game-actions">';
+        
+        // Resume button - always visible for incomplete games
+        actionButtons += `
+            <button class="action-btn resume-btn" data-session-id="${game.game_session_id}" title="Resume game">
+                ▶️ Resume
+            </button>
+        `;
+        
+        // Remove button - only visible for games older than 1 day
+        if (isOlderThanOneDay) {
+            actionButtons += `
+                <button class="action-btn remove-btn" data-session-id="${game.game_session_id}" title="Remove game">
+                    🗑️ Remove
+                </button>
+            `;
+        }
+        
+        actionButtons += '</div>';
+    }
+
     return `
         <div class="game-card" data-session-id="${game.game_session_id}">
             <div class="game-icon">🎯</div>
@@ -128,6 +239,8 @@ function createGameCard(game) {
                         </div>
                     ` : ''}
                 </div>
+                ${optionsHtml}
+                ${actionButtons}
             </div>
             <button class="view-btn" data-session-id="${game.game_session_id}">View Details</button>
         </div>
@@ -135,12 +248,12 @@ function createGameCard(game) {
 }
 
 function formatDate(date) {
-    const options = { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit' 
+    const options = {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
     };
     return date.toLocaleDateString('en-US', options);
 }
@@ -148,17 +261,17 @@ function formatDate(date) {
 function updateSummaryStats(games) {
     // Total games
     document.getElementById('total-games').textContent = games.length;
-    
+
     // Completed games
     const completedGames = games.filter(g => g.finished_at !== null).length;
     document.getElementById('completed-games').textContent = completedGames;
-    
+
     // Most popular game type
     const gameTypeCounts = {};
     games.forEach(g => {
         gameTypeCounts[g.game_type] = (gameTypeCounts[g.game_type] || 0) + 1;
     });
-    
+
     let mostPopular = '-';
     let maxCount = 0;
     Object.entries(gameTypeCounts).forEach(([type, count]) => {
@@ -168,7 +281,7 @@ function updateSummaryStats(games) {
         }
     });
     document.getElementById('popular-game').textContent = mostPopular;
-    
+
     // Total unique players (based on winners only, or placeholder if no winners)
     const uniquePlayers = new Set();
     games.forEach(g => {
@@ -181,13 +294,15 @@ function updateSummaryStats(games) {
 function viewGameDetails(gameSessionId) {
     const modal = document.getElementById('game-detail-modal');
     const detailContent = document.getElementById('game-detail-content');
-    
+
     // Show modal with loading message
     modal.style.display = 'block';
     detailContent.innerHTML = '<p class="loading">Loading game details...</p>';
-    
+
     // Fetch game replay data
-    fetch(`/api/game/replay/${gameSessionId}`)
+    fetch(`/api/game/replay/${gameSessionId}`, {
+        credentials: 'include'  // Include session cookies
+    })
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
@@ -203,22 +318,22 @@ function viewGameDetails(gameSessionId) {
 
 function displayGameDetails(gameData) {
     const detailContent = document.getElementById('game-detail-content');
-    
+
     const startDate = new Date(gameData.started_at);
     const finishDate = gameData.finished_at ? new Date(gameData.finished_at) : null;
-    
+
     // Calculate statistics for each player
     const playerStats = gameData.players.map(player => {
         const playerThrows = gameData.throws.filter(t => t.player_order === player.player_order);
-        
+
         const totalScore = playerThrows.reduce((sum, t) => sum + t.actual_score, 0);
         const throwCount = playerThrows.length;
         const avgScore = throwCount > 0 ? (totalScore / throwCount).toFixed(2) : '0.00';
-        
+
         const doubles = playerThrows.filter(t => t.multiplier === 'DOUBLE').length;
         const triples = playerThrows.filter(t => t.multiplier === 'TRIPLE').length;
         const busts = playerThrows.filter(t => t.is_bust).length;
-        
+
         return {
             ...player,
             throws: playerThrows,
@@ -230,7 +345,7 @@ function displayGameDetails(gameData) {
             busts
         };
     });
-    
+
     let html = `
         <div class="detail-section">
             <h3>Game Information</h3>
@@ -241,7 +356,7 @@ function displayGameDetails(gameData) {
                 <div class="detail-item"><strong>Double Out:</strong> ${gameData.double_out_enabled ? 'Yes' : 'No'}</div>
             </div>
         </div>
-        
+
         <div class="detail-section">
             <h3>Players & Statistics</h3>
             <div class="players-grid">
@@ -284,7 +399,7 @@ function displayGameDetails(gameData) {
                 `).join('')}
             </div>
         </div>
-        
+
         <div class="detail-section">
             <h3>Throw History</h3>
             <table class="throws-table">
@@ -306,7 +421,7 @@ function displayGameDetails(gameData) {
                         let notes = [];
                         if (t.is_finish) notes.push('<span class="throw-finish">FINISH</span>');
                         if (t.is_bust) notes.push('<span class="throw-bust">BUST</span>');
-                        
+
                         return `
                             <tr>
                                 <td>${t.turn_number}</td>
@@ -325,7 +440,7 @@ function displayGameDetails(gameData) {
             </table>
         </div>
     `;
-    
+
     detailContent.innerHTML = html;
 }
 
@@ -337,4 +452,70 @@ function showError(message) {
     const errorMessage = document.getElementById('error-message');
     errorMessage.textContent = message;
     errorMessage.style.display = 'block';
+}
+
+function resumeGame(gameSessionId) {
+    if (!confirm('Resume this game? This will load the game state and you can continue playing.')) {
+        return;
+    }
+
+    // Show loading indicator
+    const btn = document.querySelector(`.resume-btn[data-session-id="${gameSessionId}"]`);
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳ Loading...';
+    btn.disabled = true;
+
+    fetch(`/api/game/resume/${gameSessionId}`, {
+        method: 'POST',
+        credentials: 'include'
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Redirect to the game board
+                window.location.href = data.redirect_url || '/';
+            } else {
+                alert('Failed to resume game: ' + (data.message || 'Unknown error'));
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            alert('Error resuming game: ' + error.message);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+}
+
+function removeGame(gameSessionId) {
+    if (!confirm('Are you sure you want to remove this game? This action cannot be undone.')) {
+        return;
+    }
+
+    // Show loading indicator
+    const btn = document.querySelector(`.remove-btn[data-session-id="${gameSessionId}"]`);
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳ Removing...';
+    btn.disabled = true;
+
+    fetch(`/api/game/${gameSessionId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Reload the games list
+                loadGames();
+            } else {
+                alert('Failed to remove game: ' + (data.message || 'Unknown error'));
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            alert('Error removing game: ' + error.message);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
 }

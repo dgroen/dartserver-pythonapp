@@ -1,6 +1,7 @@
 """Unit tests for authentication and authorization module."""
 
 import json
+from typing import Any
 from unittest.mock import Mock, patch
 
 import jwt
@@ -174,7 +175,7 @@ class TestGetUserRoles:
 
     def test_get_user_roles_empty_claims(self):
         """Test extracting roles from empty claims."""
-        claims = {}
+        claims: dict[str, Any] = {}
         roles = get_user_roles(claims)
         assert roles == []
 
@@ -616,3 +617,150 @@ class TestDynamicRedirectUri:
         with app.test_request_context("http://127.0.0.1:5000/login"):
             uri = get_dynamic_redirect_uri()
             assert uri == "http://127.0.0.1:5000/callback"
+
+
+class TestSearchWSO2Users:
+    """Test WSO2 user search functionality."""
+
+    @patch("src.core.auth.requests.get")
+    def test_search_users_success(self, mock_get):
+        """Test successful user search."""
+        from src.core.auth import search_wso2_users
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "Resources": [
+                {
+                    "id": "user-123",
+                    "userName": "john_doe",
+                    "emails": [{"value": "john@example.com"}],
+                    "name": {"givenName": "John", "familyName": "Doe"},
+                },
+                {
+                    "id": "user-456",
+                    "userName": "jane_doe",
+                    "emails": [{"value": "jane@example.com"}],
+                    "name": {"givenName": "Jane", "familyName": "Doe"},
+                },
+            ],
+        }
+        mock_get.return_value = mock_response
+
+        users = search_wso2_users("john")
+        assert len(users) == 2
+        assert users[0]["username"] == "john_doe"
+        assert users[0]["email"] == "john@example.com"
+        assert users[0]["name"] == "John Doe"
+        assert users[1]["username"] == "jane_doe"
+
+    @patch("src.core.auth.requests.get")
+    def test_search_users_no_results(self, mock_get):
+        """Test search with no results."""
+        from src.core.auth import search_wso2_users
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"Resources": []}
+        mock_get.return_value = mock_response
+
+        users = search_wso2_users("nonexistent")
+        assert len(users) == 0
+
+    @patch("src.core.auth.requests.get")
+    def test_search_users_http_error(self, mock_get):
+        """Test search with HTTP error."""
+        from src.core.auth import search_wso2_users
+
+        mock_response = Mock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        mock_get.return_value = mock_response
+
+        users = search_wso2_users("john")
+        assert len(users) == 0
+
+    @patch("src.core.auth.requests.get")
+    def test_search_users_network_error(self, mock_get):
+        """Test search with network error."""
+        from src.core.auth import search_wso2_users
+
+        mock_get.side_effect = Exception("Connection error")
+
+        users = search_wso2_users("john")
+        assert len(users) == 0
+
+    @patch("src.core.auth.requests.get")
+    def test_search_users_missing_email(self, mock_get):
+        """Test search with user missing email."""
+        from src.core.auth import search_wso2_users
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "Resources": [
+                {
+                    "id": "user-123",
+                    "userName": "john_doe",
+                    "name": {"givenName": "John", "familyName": "Doe"},
+                },
+            ],
+        }
+        mock_get.return_value = mock_response
+
+        users = search_wso2_users("john")
+        assert len(users) == 1
+        assert users[0]["username"] == "john_doe"
+        assert users[0]["email"] is None
+        assert users[0]["name"] == "John Doe"
+
+    @patch("src.core.auth.requests.get")
+    def test_search_users_missing_name(self, mock_get):
+        """Test search with user missing name."""
+        from src.core.auth import search_wso2_users
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "Resources": [
+                {
+                    "id": "user-123",
+                    "userName": "john_doe",
+                    "emails": [{"value": "john@example.com"}],
+                },
+            ],
+        }
+        mock_get.return_value = mock_response
+
+        users = search_wso2_users("john")
+        assert len(users) == 1
+        assert users[0]["username"] == "john_doe"
+        assert users[0]["email"] == "john@example.com"
+        assert users[0]["name"] is None
+
+    @patch("src.core.auth.requests.get")
+    def test_search_users_with_access_token(self, mock_get):
+        """Test search using access token instead of admin credentials."""
+        from src.core.auth import search_wso2_users
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "Resources": [
+                {
+                    "id": "user-123",
+                    "userName": "john_doe",
+                    "emails": [{"value": "john@example.com"}],
+                    "name": {"givenName": "John", "familyName": "Doe"},
+                },
+            ],
+        }
+        mock_get.return_value = mock_response
+
+        users = search_wso2_users("john", access_token="test-token")
+        assert len(users) == 1
+        assert users[0]["username"] == "john_doe"
+
+        # Verify that the request was made with Bearer token
+        call_args = mock_get.call_args
+        assert call_args[1]["headers"]["Authorization"] == "Bearer test-token"

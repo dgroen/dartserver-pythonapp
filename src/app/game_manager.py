@@ -3,10 +3,15 @@
 import base64
 import os
 
+from sqlalchemy import func
+
 from src.core.database_service import DatabaseService
 from src.core.tts_service import TTSService
 from src.games.game_301 import Game301
+from src.games.game_bull_practice import GameBullPractice
 from src.games.game_cricket import GameCricket
+from src.games.game_round_the_clock import GameRoundTheClock
+from src.games.game_round_the_clock_double import GameRoundTheClockDouble
 
 
 class GameManager:
@@ -31,6 +36,8 @@ class GameManager:
         self.start_score = 0
         self.is_winner = False
         self.double_out = False
+        self.is_training_mode = False  # Track if in training mode
+        self.training_session_id = None  # Training session ID for recording
 
         # Turn tracking for undo on bust
         self.turn_throws = []  # List of throws in current turn
@@ -76,17 +83,27 @@ class GameManager:
         if not tts_enabled:
             self.tts.disable()
 
-    def new_game(self, game_type="301", player_names=None, player_ids=None, double_out=False):
+    def new_game(
+        self,
+        game_type="301",
+        player_names=None,
+        player_ids=None,
+        double_out=False,
+        reset_on_miss=False,
+    ):
         """
         Start a new game
 
         Args:
-            game_type: Type of game ('301', '401', '501', 'cricket')
+            game_type: Type of game ('170', '301', '401', '501', 'cricket', 'round_the_clock',
+            'round_the_clock_double', 'bull_practice')
             player_names: List of player names (DEPRECATED - use player_ids instead)
             player_ids: List of player database IDs or list of player dicts
                 with 'db_id' key
             double_out: Whether to require double-out to finish
-                (only for 301/401/501)
+                (only for 170/301/401/501)
+            reset_on_miss: Whether to enable hard mode for round_the_clock
+                (resets to 20 after 3 consecutive misses)
         """
         self.game_type = game_type.lower()
         self.double_out = double_out
@@ -96,29 +113,51 @@ class GameManager:
             # Use player IDs (WSO2 authenticated users)
             self.players = [
                 {
-                    "name": f"Player {i+1}",
+                    "name": (
+                        pid.get("name", f"Player {i+1}")
+                        if isinstance(pid, dict)
+                        else f"Player {i+1}"
+                    ),
                     "id": i,
-                    "db_id": pid if isinstance(pid, int) else pid.get("db_id"),
+                    "db_id": pid if isinstance(pid, int) else (pid.get("db_id") if pid else None),
                 }
                 for i, pid in enumerate(player_ids)
+                if pid is not None
             ]
-        elif player_names:
-            # Fallback to player names (DEPRECATED - for backwards compatibility)
-            self.players = [{"name": name, "id": i} for i, name in enumerate(player_names)]
-        elif not self.players:
-            self.players = [
-                {"name": "Player 1", "id": 0},
-                {"name": "Player 2", "id": 1},
-            ]
+            # If all player_ids were None, fall through to create defaults
+            if not self.players:
+                player_ids = None
+
+        if not self.players:
+            if player_names:
+                # Fallback to player names (DEPRECATED - for backwards compatibility)
+                self.players = [{"name": name, "id": i} for i, name in enumerate(player_names)]
+            else:
+                # Default players
+                self.players = [
+                    {"name": "Player 1", "id": 0},
+                    {"name": "Player 2", "id": 1},
+                ]
 
         # Create appropriate game instance
         if self.game_type == "cricket":
             self.game = GameCricket(self.players)
             self.start_score = 0
+        elif self.game_type == "round_the_clock":
+            self.game = GameRoundTheClock(self.players, reset_on_miss=reset_on_miss)
+            self.start_score = 0
+        elif self.game_type == "round_the_clock_double":
+            self.game = GameRoundTheClockDouble(self.players)
+            self.start_score = 0
+        elif self.game_type == "bull_practice":
+            self.game = GameBullPractice(self.players)
+            self.start_score = 0
         else:
-            # Default to 301, but support 401, 501
+            # Default to 301, but support 170, 401, 501
             start_score = 301
-            if self.game_type == "401":
+            if self.game_type == "170":
+                start_score = 170
+            elif self.game_type == "401":
                 start_score = 401
             elif self.game_type == "501":
                 start_score = 501
@@ -154,12 +193,12 @@ class GameManager:
             raise ValueError(msg)
 
         try:
-
             self.db_service.start_new_game(
                 game_type_name=self.game_type,
                 player_ids=player_ids,
                 start_score=self.start_score if self.game_type != "cricket" else None,
                 double_out=double_out,
+                reset_on_miss=reset_on_miss,
             )
             print(f"Game started in database: session_id={self.db_service.current_game_session_id}")
         except Exception as e:
@@ -190,6 +229,115 @@ class GameManager:
         self.turn_throws = []
         self.turn_start_state = None
         self.turn_number = {}
+
+    def resume_game_from_replay_data(self, game_data):
+        """
+        Resume a game by replaying all throws from saved game data
+
+        Args:
+            game_data: Dictionary containing game replay data from database
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Extract player information
+            player_ids = []
+            for p in sorted(game_data["players"], key=lambda x: x["player_order"]):
+                player_ids.append(
+                    {
+                        "db_id": p["player_id"],
+                        "name": p["player_name"],
+                    },
+                )
+
+            # Start a new game with the same settings
+            self.new_game(
+                game_type=game_data["game_type"],
+                player_ids=player_ids,
+                double_out=game_data["double_out_enabled"],
+                reset_on_miss=game_data["reset_on_miss"],
+            )
+
+            # Replay all throws to restore game state
+            throws_by_player = {}
+            for throw in game_data["throws"]:
+                player_order = throw["player_order"]
+                if player_order not in throws_by_player:
+                    throws_by_player[player_order] = []
+                throws_by_player[player_order].append(throw)
+
+            # Sort all throws by timestamp to replay in correct order
+            all_throws = sorted(game_data["throws"], key=lambda x: x["thrown_at"])
+
+            # Replay throws without emitting events or recording to database
+            # We need to track which player's turn it is
+            last_player_order = 0
+            last_throw_in_turn = 0
+
+            for throw in all_throws:
+                player_order = throw["player_order"]
+                throw_in_turn = throw["throw_in_turn"]
+
+                # Update current player if we're starting a new turn
+                if player_order != last_player_order or throw_in_turn == 1:
+                    self.current_player = player_order
+                    if throw_in_turn == 1:
+                        self.current_throw = 1
+
+                # Process the throw in the game logic
+                if self.game:
+                    self.game.process_throw(
+                        player_order,
+                        throw["base_score"],
+                        throw["multiplier_value"],
+                        throw["multiplier"],  # positional arg for multiplier_type
+                    )
+
+                # Update throw counter
+                self.current_throw = throw_in_turn + 1
+                last_player_order = player_order
+                last_throw_in_turn = throw_in_turn
+
+            # Determine the current player based on last throw
+            # If last throw completed a turn (throw 3), move to next player
+            if last_throw_in_turn >= 3:
+                self.current_player = (last_player_order + 1) % len(self.players)
+                self.current_throw = 1
+            else:
+                self.current_player = last_player_order
+                self.current_throw = last_throw_in_turn + 1
+
+            # Update turn numbers
+            for i in range(len(self.players)):
+                player_throws = [t for t in all_throws if t["player_order"] == i]
+                if player_throws:
+                    max_turn = max(t["turn_number"] for t in player_throws)
+                    self.turn_number[i] = max_turn + (1 if i < self.current_player else 0)
+                else:
+                    self.turn_number[i] = 1
+
+            # Save turn start state for undo functionality
+            self._save_turn_start_state()
+
+            # Clear the throws list since we're starting fresh from this point
+            self.turn_throws = []
+
+            # Mark game as resumed (not paused)
+            self.is_paused = False
+
+            print(
+                f"Game resumed: {len(all_throws)} throws replayed, \
+                    current player: {self.current_player}",
+            )
+            return True
+
+        except Exception as e:
+            print(f"Error resuming game: {e}")
+            import traceback
+
+            traceback.print_exc()
+            return False
 
     def add_player(self, name=None):
         """Add a new player"""
@@ -284,18 +432,8 @@ class GameManager:
         }
         multiplier_value = multiplier_map.get(multiplier, 1)
 
-        # Handle dartboard configuration
-        from app import app  # Import here to avoid circular dependency
-
-        if app.config["DARTBOARD_SENDS_ACTUAL_SCORE"]:
-            # Dartboard sent the actual score (e.g., 60 for triple 20)
-            # Convert to base score for game logic
-            actual_score = base_score
-            base_score = int(base_score / multiplier_value)
-        else:
-            # Dartboard sent base score (e.g., 20 for triple 20)
-            # Calculate actual score for display
-            actual_score = base_score * multiplier_value
+        # Calculate actual score for display
+        actual_score = base_score * multiplier_value
 
         # Get score before throw
         score_before = self._get_player_current_score(self.current_player)
@@ -323,8 +461,11 @@ class GameManager:
             # Emit throw effects
             self._emit_throw_effects(multiplier, base_score, actual_score)
 
+            # Check for bull practice auto-restart
+            if result.get("auto_restart") and self.game_type == "bull_practice":
+                self._handle_bull_practice_restart(result)
             # Check for bust
-            if result.get("bust"):
+            elif result.get("bust"):
                 self._handle_bust(result)
             # Check for winner
             elif result.get("winner"):
@@ -424,6 +565,53 @@ class GameManager:
         message = f"{self.players[self.current_player]['name']}, Throw Darts"
         self._emit_sound(f"Player{self.current_player + 1}", message)
         self._emit_message(message)
+
+    def end_turn_early(self):
+        """
+        End the current player's turn early.
+        Records any remaining throws (up to 3 total) as misses with score 0.
+        """
+        if not self.is_started or self.is_paused:
+            print("Game not active or already paused, cannot end turn early")
+            return
+
+        # Get score before recording missing throws
+        score_before = self._get_player_current_score(self.current_player)
+
+        # Record missing throws as 0 score
+        throws_to_record = self.throws_per_turn - self.current_throw + 1
+        for _i in range(throws_to_record):
+            # Record throw in database as a miss (0 score)
+            self._record_throw_in_db(
+                base_score=0,
+                multiplier="SINGLE",
+                multiplier_value=1,
+                actual_score=0,
+                score_before=score_before,
+                score_after=score_before,  # Score doesn't change
+                is_bust=False,
+                is_finish=False,
+            )
+
+            # Track this throw
+            throw_data = {
+                "base_score": 0,
+                "multiplier": "SINGLE",
+                "multiplier_value": 1,
+                "actual_score": 0,
+                "throw_number": self.current_throw,
+                "score_before": score_before,
+            }
+            self.turn_throws.append(throw_data)
+
+            # Increment throw counter
+            self.current_throw += 1
+
+        # End the turn
+        self._end_turn()
+        self._emit_game_state()
+
+        print(f"Turn ended early for {self.players[self.current_player]['name']}")
 
     def get_game_state(self):
         """Get current game state"""
@@ -730,8 +918,44 @@ class GameManager:
 
         print(f"Winner: {winner_name}")
 
+    def _handle_bull_practice_restart(self, result):
+        """Handle Bull Practice auto-restart when no bulls hit in a turn"""
+        # Get final score before restart
+        player_id = result.get("player_id", self.current_player)
+        final_score = result.get("total_score", 0)
+
+        # Show message about game ending and score
+        message = f"No bulls hit! Game ended. Final score: {final_score}"
+        self._emit_message(message)
+        self._emit_sound("gameOver", message)
+
+        # Restart the game automatically
+        if self.game:
+            self.game.restart_game(player_id)
+
+        # Reset turn counters
+        self.current_throw = 1
+        self.turn_throws = []
+        self._save_turn_start_state()
+
+        # Show restart message
+        restart_message = "Starting new Bull Practice game..."
+        self._emit_message(restart_message)
+        self._emit_sound("intro", restart_message)
+
+        print(f"Bull Practice auto-restart: Final score was {final_score}")
+
     def _end_turn(self):
         """End the current turn"""
+        # Check for reset in Round the Clock hard mode
+        if self.game_type == "round_the_clock" and self.game and hasattr(self.game, "end_turn"):
+            reset_result = self.game.end_turn(self.current_player)
+            if reset_result.get("reset"):
+                # Emit message about reset
+                message = reset_result.get("message", "Reset to target 20")
+                self._emit_message(message)
+                self._emit_sound("Bust", message)  # Use bust sound for dramatic effect
+
         # Update player score in database after turn completes
         try:
             current_score = self._get_player_current_score(self.current_player)
@@ -908,19 +1132,60 @@ class GameManager:
             # Get current turn number
             turn_num = self.turn_number.get(self.current_player, 1)
 
-            self.db_service.record_throw(
-                player_id=self.current_player,
-                base_score=base_score,
-                multiplier=multiplier,
-                multiplier_value=multiplier_value,
-                actual_score=actual_score,
-                score_before=score_before,
-                score_after=score_after,
-                turn_number=turn_num,
-                throw_in_turn=self.current_throw,
-                dartboard_sends_actual_score=dartboard_sends_actual_score,
-                is_bust=is_bust,
-                is_finish=is_finish,
-            )
+            # Check if we're in training mode
+            if self.is_training_mode and self.training_session_id:
+                # Record training throw
+                from src.core.database_models import TrainingScore
+
+                db_session = self.db_service.db_manager.get_session()
+                player_db_id = self.players[self.current_player].get("db_id")
+
+                if not player_db_id:
+                    db_session.close()
+                    return
+
+                # Calculate throw sequence
+                throw_seq = (
+                    db_session.query(func.count(TrainingScore.id))
+                    .filter(TrainingScore.training_session_id == self.training_session_id)
+                    .scalar()
+                    or 0
+                ) + 1
+
+                training_score = TrainingScore(
+                    training_session_id=self.training_session_id,
+                    player_id=player_db_id,
+                    throw_sequence=throw_seq,
+                    turn_number=turn_num,
+                    throw_in_turn=self.current_throw,
+                    base_score=base_score,
+                    multiplier=multiplier,
+                    multiplier_value=multiplier_value,
+                    actual_score=actual_score,
+                    score_before=score_before,
+                    score_after=score_after,
+                    dartboard_sends_actual_score=dartboard_sends_actual_score,
+                    is_bust=is_bust,
+                    is_finish=is_finish,
+                )
+                db_session.add(training_score)
+                db_session.commit()
+                db_session.close()
+            else:
+                # Regular game throw recording
+                self.db_service.record_throw(
+                    player_id=self.current_player,
+                    base_score=base_score,
+                    multiplier=multiplier,
+                    multiplier_value=multiplier_value,
+                    actual_score=actual_score,
+                    score_before=score_before,
+                    score_after=score_after,
+                    turn_number=turn_num,
+                    throw_in_turn=self.current_throw,
+                    dartboard_sends_actual_score=dartboard_sends_actual_score,
+                    is_bust=is_bust,
+                    is_finish=is_finish,
+                )
         except Exception as e:
             print(f"Warning: Could not record throw in database: {e}")

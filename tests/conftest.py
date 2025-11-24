@@ -7,6 +7,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.app.app import app as flask_app
+
+os.environ["ENVIRONMENT"] = "test"
+os.environ["APP_DOMAIN"] = "test.letsplaydarts.eu"
+os.environ["APP_SCHEME"] = "https"
+os.environ["SECRET_KEY"] = "test-secret-key-for-automated-testing"
+os.environ["RABBITMQ_EXCHANGE"] = "darts_exchange_test"
+os.environ["WSO2_IS_URL"] = "https://test.letsplaydarts.eu/auth"
+
 # Disable TTS during tests to avoid timing issues
 os.environ["TTS_ENABLED"] = "false"
 # Use in-memory SQLite for tests
@@ -14,10 +23,9 @@ os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 # Enable authentication for tests to verify auth decorators work correctly
 os.environ["AUTH_DISABLED"] = "false"
 
+
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from src.app.app import app
 
 
 @pytest.fixture
@@ -68,11 +76,18 @@ def sample_score_data():
 
 
 @pytest.fixture
+def app():
+    """Flask app fixture for pytest-flask and tests."""
+    flask_app.config["TESTING"] = True
+    return flask_app
+
+
+@pytest.fixture
 def app_client():
     """Flask test client."""
 
-    app.config["TESTING"] = True
-    with app.test_client() as client:
+    flask_app.config["TESTING"] = True
+    with flask_app.test_client() as client:
         yield client
 
 
@@ -114,3 +129,14 @@ def in_memory_db():
     db_service = DatabaseService("sqlite:///:memory:")
     db_service.initialize_database()
     return db_service
+
+
+@pytest.fixture
+def player_ids_with_db():
+    """Helper to create player dicts with database IDs."""
+
+    def _create_players(names):
+        """Create player objects with db_ids for testing."""
+        return [{"db_id": i + 1, "name": name} for i, name in enumerate(names)]
+
+    return _create_players

@@ -240,6 +240,53 @@
     transform: scale(0.98);
 }
 
+/* Game Actions */
+.game-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.action-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: all 0.3s;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.resume-btn {
+    background: #4CAF50;
+    color: white;
+}
+
+.resume-btn:hover:not(:disabled) {
+    background: #45a049;
+    transform: scale(1.05);
+}
+
+.remove-btn {
+    background: #f44336;
+    color: white;
+}
+
+.remove-btn:hover:not(:disabled) {
+    background: #da190b;
+    transform: scale(1.05);
+}
+
+.action-btn:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
 /* Modal */
 .modal {
     display: none;
@@ -364,49 +411,73 @@
     .summary-cards {
         grid-template-columns: 1fr;
     }
-    
+
     .game-card {
         grid-template-columns: 1fr;
         text-align: center;
         gap: 15px;
     }
-    
+
     .game-icon {
         display: none;
     }
-    
+
     .game-details {
         flex-direction: column;
         gap: 10px;
     }
-    
+
     .view-btn {
         width: 100%;
         padding: 12px 20px;
         font-size: 1em;
     }
-    
+
     .modal-content {
         width: 95%;
         margin: 10% auto;
         padding: 20px;
     }
-    
+
     .players-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .filters {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .filters label {
         flex-direction: column;
     }
-    
+
     .filters select,
     .btn-primary {
         width: 100%;
     }
+}
+
+/* Game Options Badges */
+.game-options {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.option-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    background: rgba(160, 196, 255, 0.2);
+    color: #a0c4ff;
+    border: 1px solid rgba(160, 196, 255, 0.4);
+}
+
+.option-badge.hard-mode {
+    background: rgba(255, 71, 87, 0.2);
+    color: #ff4757;
+    border-color: rgba(255, 71, 87, 0.4);
 }

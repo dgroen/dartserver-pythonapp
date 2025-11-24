@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Dartboard Testing & Calibration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+        }
+
+        .header .status {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border-radius: 6px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+
+        .status-dot.active {
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .section h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section h2::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 2px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #555;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-success {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #45a049;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #da190b;
+        }
+
+        /* Matrix Grid */
+        .matrix-container {
+            background: white;
+            border-radius: 6px;
+            padding: 15px;
+            overflow-x: auto;
+        }
+
+        .matrix {
+            display: inline-block;
+            background: white;
+        }
+
+        .matrix-header {
+            display: flex;
+            margin-left: 50px;
+            margin-bottom: 0;
+            gap: 0;
+        }
+
+        .matrix-col-header {
+            width: 60px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: #667eea;
+            font-size: 12px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .matrix-row {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
+        .matrix-row-header {
+            width: 50px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: #667eea;
+            font-size: 12px;
+            border-right: 2px solid #e0e0e0;
+        }
+
+        .matrix-cell {
+            width: 60px;
+            height: 60px;
+            border: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+            font-size: 11px;
+            text-align: center;
+            padding: 2px;
+        }
+
+        .matrix-cell:hover {
+            background: #f5f5f5;
+            border-color: #667eea;
+        }
+
+        .matrix-cell.mapped {
+            background: #e3f2fd;
+            border-color: #667eea;
+            font-weight: 600;
+        }
+
+        .matrix-cell.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .cell-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .cell-zone {
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .cell-mult {
+            font-size: 9px;
+            opacity: 0.7;
+        }
+
+        /* Message Log */
+        .message-log {
+            background: #1e1e1e;
+            color: #00ff00;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 250px;
+            overflow-y: auto;
+            border: 1px solid #333;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 8px;
+            background: rgba(0, 255, 0, 0.05);
+            border-left: 3px solid #00ff00;
+            border-radius: 2px;
+        }
+
+        .log-timestamp {
+            color: #888;
+            margin-right: 10px;
+        }
+
+        .log-raw {
+            color: #00ff00;
+        }
+
+        .log-mapping {
+            color: #ffff00;
+            margin-top: 4px;
+            padding-top: 4px;
+            border-top: 1px solid #444;
+        }
+
+        /* Mapping Form */
+        .mapping-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .mapping-form .form-group {
+            margin-bottom: 0;
+        }
+
+        .mapping-form.full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* CSV Import */
+        .csv-upload {
+            border: 2px dashed #667eea;
+            border-radius: 6px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .csv-upload:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: #5568d3;
+        }
+
+        .csv-upload input[type="file"] {
+            display: none;
+        }
+
+        .csv-upload .upload-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .csv-upload .upload-text {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .csv-upload .upload-subtext {
+            color: #999;
+            font-size: 12px;
+        }
+
+        /* Alert */
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .alert.success {
+            background: #e8f5e9;
+            border-color: #4CAF50;
+            color: #2e7d32;
+        }
+
+        .alert.error {
+            background: #ffebee;
+            border-color: #f44336;
+            color: #c62828;
+        }
+
+        .alert.info {
+            background: #e3f2fd;
+            border-color: #2196F3;
+            color: #1565c0;
+        }
+
+        .alert button {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0;
+            width: auto;
+        }
+
+        /* Full Width Section */
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .mapping-form {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .info-text {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 12px;
+            border-radius: 4px;
+            color: #1565c0;
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+
+        .cell-highlight-animation {
+            animation: cellFlash 0.6s ease-out;
+        }
+
+        @keyframes cellFlash {
+            0% {
+                background: #ffeb3b;
+                transform: scale(1.05);
+            }
+            100% {
+                background: inherit;
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1>🎯 Dartboard Testing & Calibration</h1>
+                <p style="color: #999; margin-top: 5px; font-size: 14px;">Map physical dartboard presses to GPIO pin combinations</p>
+            </div>
+            <div class="status">
+                <div class="status-dot active"></div>
+                <span>Ready for Testing</span>
+            </div>
+        </div>
+
+        <!-- Alerts Container -->
+        <div id="alerts-container"></div>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Left Side: Configuration & Form -->
+            <div>
+                <!-- Dartboard Selection -->
+                <div class="section">
+                    <h2>Dartboard Configuration</h2>
+                    <div class="form-group">
+                        <label for="boardType">Select Dartboard Type:</label>
+                        <select id="boardType">
+                            <option value="">-- Choose a dartboard --</option>
+                        </select>
+                    </div>
+                    <div id="boardInfo" style="background: white; padding: 12px; border-radius: 4px; margin-top: 10px; display: none;">
+                        <p style="margin: 5px 0; font-size: 13px;"><strong>Brand:</strong> <span id="infoString">-</span></p>
+                        <p style="margin: 5px 0; font-size: 13px;"><strong>Total Mappings:</strong> <span id="infoCount">0</span></p>
+                    </div>
+                </div>
+
+                <!-- Manual Mapping Form -->
+                <div class="section" style="margin-top: 20px;">
+                    <h2>Manual Mapping</h2>
+                    <div class="info-text">
+                        💡 Click on a matrix cell or enter pin values manually to create/update a mapping
+                    </div>
+                    <form id="mappingForm" onsubmit="saveSingleMapping(event)">
+                        <div class="mapping-form">
+                            <div class="form-group">
+                                <label for="masterPin">Master Pin (Row):</label>
+                                <input type="number" id="masterPin" placeholder="e.g., 4" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="slavePin">Slave Pin (Column):</label>
+                                <input type="number" id="slavePin" placeholder="e.g., 13" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="zoneNumber">Zone Number:</label>
+                                <input type="number" id="zoneNumber" min="1" max="25" placeholder="1-20 or 25" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="multiplierType">Multiplier Type:</label>
+                                <select id="multiplierType" required>
+                                    <option value="">-- Select --</option>
+                                    <option value="SINGLE">SINGLE</option>
+                                    <option value="DOUBLE">DOUBLE</option>
+                                    <option value="TRIPLE">TRIPLE</option>
+                                    <option value="BULL">BULL</option>
+                                    <option value="DBLBULL">DBLBULL</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="baseValue">Base Value:</label>
+                                <input type="number" id="baseValue" min="1" max="25" placeholder="1-20 or 25" required>
+                            </div>
+                        </div>
+                        <div class="button-group" style="margin-top: 20px;">
+                            <button type="submit" class="btn-primary">💾 Save Mapping</button>
+                            <button type="button" class="btn-secondary" onclick="clearMappingForm()">Clear</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- CSV Import -->
+                <div class="section" style="margin-top: 20px;">
+                    <h2>Bulk Import</h2>
+                    <div class="info-text">
+                        📋 Import multiple mappings from CSV. Format: master_pin, slave_pin, zone_number, multiplier_type, base_value
+                    </div>
+                    <div class="csv-upload" onclick="document.getElementById('csvFile').click()">
+                        <div class="upload-icon">📁</div>
+                        <div class="upload-text">Click to upload CSV or drag & drop</div>
+                        <div class="upload-subtext">Maximum 1000 mappings per import</div>
+                        <input type="file" id="csvFile" accept=".csv" onchange="handleCSVUpload(event)">
+                    </div>
+                    <button class="btn-primary" style="width: 100%; margin-top: 15px;" onclick="downloadCSVTemplate()">
+                        📥 Download Current Mappings (CSV)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Side: Matrix & Log -->
+            <div>
+                <!-- GPIO Matrix -->
+                <div class="section">
+                    <h2>GPIO Pin Matrix</h2>
+                    <div class="info-text">
+                        Click a cell to map it. Green cells are already mapped. The cell shows zone/multiplier/base_value.
+                    </div>
+                    <div id="matrixContainer" class="matrix-container">
+                        <p style="color: #999; text-align: center; padding: 20px;">Select a dartboard type to load matrix</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message Log -->
+            <div class="section full-width" style="margin-top: 20px;">
+                <h2>Raw Message Log</h2>
+                <div class="info-text">
+                    Real-time log of dartboard messages sent during testing. Each entry shows the raw GPIO pins and any existing mapping.
+                </div>
+                <div class="message-log" id="messageLog">
+                    <div class="log-entry" style="color: #999;">Waiting for dartboard messages...</div>
+                </div>
+                <button class="btn-secondary" style="width: 100%; margin-top: 10px;" onclick="clearMessageLog()">Clear Log</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        // Socket.IO connection
+        const socket = io();
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDartboardTypes();
+            document.getElementById('boardType').addEventListener('change', loadMatrixForSelectedBoard);
+        });
+
+        // ==================== UI Functions ====================
+
+        function showAlert(message, type = 'info') {
+            const alertsContainer = document.getElementById('alerts-container');
+            const alertId = 'alert-' + Date.now();
+            const alert = document.createElement('div');
+            alert.id = alertId;
+            alert.className = `alert ${type}`;
+            alert.innerHTML = `
+                <span>${message}</span>
+                <button onclick="document.getElementById('${alertId}').remove()">✕</button>
+            `;
+            alertsContainer.appendChild(alert);
+            setTimeout(() => {
+                const elem = document.getElementById(alertId);
+                if (elem) elem.remove();
+            }, 5000);
+        }
+
+        function addLogEntry(masterPin, slavePin, mappingInfo = null) {
+            const messageLog = document.getElementById('messageLog');
+            if (messageLog.children.length === 1 && messageLog.children[0].textContent.includes('Waiting')) {
+                messageLog.innerHTML = '';
+            }
+
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+
+            let html = `<span class="log-timestamp">[${timestamp}]</span>`;
+            html += `<span class="log-raw">GPIO: master=${masterPin}, slave=${slavePin}</span>`;
+
+            if (mappingInfo) {
+                html += `<div class="log-mapping">Zone: ${mappingInfo.zone_number}, Mult: ${mappingInfo.multiplier_type}, Value: ${mappingInfo.base_value}, Score: ${mappingInfo.score}</div>`;
+            } else {
+                html += `<div class="log-mapping" style="color: #d32f2f;"><strong>❌ Mapping not found</strong></div>`;
+            }
+
+            entry.innerHTML = html;
+            messageLog.insertBefore(entry, messageLog.firstChild);
+
+            // Keep only last 50 entries
+            while (messageLog.children.length > 50) {
+                messageLog.removeChild(messageLog.lastChild);
+            }
+        }
+
+        function clearMessageLog() {
+            const messageLog = document.getElementById('messageLog');
+            messageLog.innerHTML = '<div class="log-entry" style="color: #999;">Log cleared</div>';
+        }
+
+        function clearMappingForm() {
+            document.getElementById('mappingForm').reset();
+            document.querySelectorAll('.matrix-cell.selected').forEach(cell => {
+                cell.classList.remove('selected');
+            });
+        }
+
+        // ==================== API Functions ====================
+
+        async function loadDartboardTypes() {
+            try {
+                const response = await fetch('/api/dartboard/types');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    const select = document.getElementById('boardType');
+                    const currentValue = select.value;
+
+                    data.types.forEach(type => {
+                        if (!Array.from(select.options).some(opt => opt.value === type.name)) {
+                            const option = document.createElement('option');
+                            option.value = type.name;
+                            option.textContent = `${type.brand} - ${type.model || type.name}`;
+                            select.appendChild(option);
+                        }
+                    });
+
+                    if (currentValue) select.value = currentValue;
+                }
+            } catch (error) {
+                console.error('Error loading dartboard types:', error);
+                showAlert('Failed to load dartboard types', 'error');
+            }
+        }
+
+        async function loadMatrixForSelectedBoard() {
+            const boardType = document.getElementById('boardType').value;
+            if (!boardType) {
+                document.getElementById('matrixContainer').innerHTML =
+                    '<p style="color: #999; text-align: center; padding: 20px;">Select a dartboard type to load matrix</p>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/dartboard/matrix/${boardType}`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    renderMatrix(data);
+                    document.getElementById('boardInfo').style.display = 'block';
+                    document.getElementById('infoString').textContent = `${data.dartboard_type.brand} (${data.dartboard_type.model || 'N/A'})`;
+                    document.getElementById('infoCount').textContent = countMappings(data.matrix);
+                } else {
+                    showAlert(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error loading matrix:', error);
+                showAlert('Failed to load matrix', 'error');
+            }
+        }
+
+        function countMappings(matrix) {
+            let count = 0;
+            matrix.forEach(row => {
+                row.cells.forEach(cell => {
+                    if (cell.mapping) count++;
+                });
+            });
+            return count;
+        }
+
+        function renderMatrix(data) {
+            const container = document.getElementById('matrixContainer');
+            const masterPins = data.master_pins;
+            const slavePins = data.slave_pins;
+            const matrix = data.matrix;
+
+            let html = '<div class="matrix">';
+
+            // Header row
+            html += '<div class="matrix-header">';
+            slavePins.forEach(pin => {
+                html += `<div class="matrix-col-header">${pin}</div>`;
+            });
+            html += '</div>';
+
+            // Matrix rows
+            matrix.forEach(row => {
+                html += '<div class="matrix-row">';
+                html += `<div class="matrix-row-header">${row.master_pin}</div>`;
+
+                row.cells.forEach(cell => {
+                    const isMapped = cell.mapping !== null;
+                    const cellClass = isMapped ? 'matrix-cell mapped' : 'matrix-cell';
+
+                    let cellContent = '';
+                    if (cell.mapping) {
+                        cellContent = `
+                            <div class="cell-content">
+                                <div class="cell-zone">${cell.mapping.zone_number}</div>
+                                <div class="cell-mult">${cell.mapping.multiplier_type}</div>
+                            </div>
+                        `;
+                    }
+
+                    html += `
+                        <div class="${cellClass}" onclick="selectCellMapping(${cell.master_pin}, ${cell.slave_pin})">
+                            ${cellContent}
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function selectCellMapping(masterPin, slavePin) {
+            // Update form fields
+            document.getElementById('masterPin').value = masterPin;
+            document.getElementById('slavePin').value = slavePin;
+
+            // Update visual selection
+            document.querySelectorAll('.matrix-cell.selected').forEach(cell => {
+                cell.classList.remove('selected');
+            });
+
+            event.target.closest('.matrix-cell').classList.add('selected');
+
+            // Scroll form into view
+            document.querySelector('.section:has(#mappingForm)').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function saveSingleMapping(event) {
+            event.preventDefault();
+
+            const boardType = document.getElementById('boardType').value;
+            if (!boardType) {
+                showAlert('Please select a dartboard type', 'error');
+                return;
+            }
+
+            const masterPin = parseInt(document.getElementById('masterPin').value);
+            const slavePin = parseInt(document.getElementById('slavePin').value);
+            const zoneNumber = parseInt(document.getElementById('zoneNumber').value);
+            const multiplierType = document.getElementById('multiplierType').value;
+            const baseValue = parseInt(document.getElementById('baseValue').value);
+
+            try {
+                const response = await fetch('/api/admin/dartboard/mapping', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        boardType,
+                        masterPin,
+                        slavePin,
+                        zoneNumber,
+                        multiplierType,
+                        baseValue
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    showAlert('✓ Mapping saved successfully', 'success');
+                    addLogEntry(masterPin, slavePin, { zone_number: zoneNumber, multiplier_type: multiplierType, base_value: baseValue, score: calculateScore(baseValue, multiplierType) });
+                    clearMappingForm();
+                    loadMatrixForSelectedBoard();
+                } else {
+                    showAlert(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error saving mapping:', error);
+                showAlert('Failed to save mapping', 'error');
+            }
+        }
+
+        function calculateScore(baseValue, multiplierType) {
+            const multipliers = { SINGLE: 1, DOUBLE: 2, TRIPLE: 3 };
+            if (multiplierType === 'BULL') return 25;
+            if (multiplierType === 'DBLBULL') return 50;
+            return baseValue * (multipliers[multiplierType] || 1);
+        }
+
+        async function handleCSVUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const boardType = document.getElementById('boardType').value;
+            if (!boardType) {
+                showAlert('Please select a dartboard type first', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const mappings = parseCSV(e.target.result);
+
+                    if (mappings.length === 0) {
+                        showAlert('No valid mappings found in CSV', 'error');
+                        return;
+                    }
+
+                    const response = await fetch('/api/admin/dartboard/import', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ boardType, mappings })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status === 'success') {
+                        showAlert(`✓ Imported ${data.created} new and updated ${data.updated} existing mappings`, 'success');
+                        loadMatrixForSelectedBoard();
+                    } else {
+                        showAlert(data.message, 'error');
+                    }
+                } catch (error) {
+                    console.error('Error importing CSV:', error);
+                    showAlert('Failed to import CSV', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSV(csvContent) {
+            const lines = csvContent.trim().split('\n').filter(line => line.trim());
+            const mappings = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim());
+                if (values.length >= 5) {
+                    mappings.push({
+                        masterPin: parseInt(values[0]),
+                        slavePin: parseInt(values[1]),
+                        zoneNumber: parseInt(values[2]),
+                        multiplierType: values[3].toUpperCase(),
+                        baseValue: parseInt(values[4])
+                    });
+                }
+            }
+            return mappings;
+        }
+
+        async function downloadCSVTemplate() {
+            const boardType = document.getElementById('boardType').value;
+
+            // If no board type selected, download empty template
+            if (!boardType) {
+                const csv = `master_pin,slave_pin,zone_number,multiplier_type,base_value
+4,13,20,TRIPLE,20
+4,12,20,DOUBLE,20
+4,11,20,SINGLE,20
+2,13,1,TRIPLE,1
+2,12,1,DOUBLE,1
+16,13,25,BULL,25
+16,12,25,DBLBULL,25`;
+
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'dartboard_mappings_template.csv';
+                a.click();
+                window.URL.revokeObjectURL(url);
+                return;
+            }
+
+            // Fetch current mappings for selected board type
+            try {
+                const response = await fetch(`/api/dartboard/types/${boardType}/mappings`);
+                const data = await response.json();
+
+                if (data.status === 'success' && data.mappings && data.mappings.length > 0) {
+                    // Create CSV from actual mappings
+                    let csv = 'master_pin,slave_pin,zone_number,multiplier_type,base_value\n';
+                    data.mappings.forEach(mapping => {
+                        csv += `${mapping.master_pin},${mapping.slave_pin},${mapping.zone_number},${mapping.multiplier_type},${mapping.base_value}\n`;
+                    });
+
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `dartboard_mappings_${boardType}.csv`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    showAlert(`✓ Downloaded ${data.mappings.length} mappings for ${boardType}`, 'success');
+                } else {
+                    // No mappings found, download empty template
+                    showAlert('No mappings found for this board type. Downloading empty template.', 'info');
+                    const csv = 'master_pin,slave_pin,zone_number,multiplier_type,base_value\n';
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `dartboard_mappings_${boardType}_empty.csv`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                }
+            } catch (error) {
+                console.error('Error downloading mappings:', error);
+                showAlert('Failed to download mappings. Downloading template instead.', 'error');
+
+                // Fallback to template
+                const csv = `master_pin,slave_pin,zone_number,multiplier_type,base_value
+4,13,20,TRIPLE,20
+4,12,20,DOUBLE,20
+4,11,20,SINGLE,20`;
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'dartboard_mappings_template.csv';
+                a.click();
+                window.URL.revokeObjectURL(url);
+            }
+        }
+
+        // ==================== WebSocket Listeners ====================
+
+        socket.on('dartboard_test_received', (data) => {
+            console.log('Received dartboard test data:', data);
+
+            const masterPin = data.masterPin;
+            const slavePin = data.slavePin;
+            const zoneInfo = data.zoneInfo;
+
+            // Add to log with zone info if available
+            if (zoneInfo) {
+                addLogEntry(masterPin, slavePin, {
+                    zone_number: zoneInfo.zone_number,
+                    multiplier_type: zoneInfo.multiplier_type,
+                    base_value: zoneInfo.base_value,
+                    score: zoneInfo.score
+                });
+            } else {
+                // Fallback: fetch mapping info from the server
+                const boardType = document.getElementById('boardType').value;
+                if (boardType) {
+                    fetch(`/api/dartboard/types/${boardType}/mappings`)
+                        .then(r => r.json())
+                        .then(response => {
+                            if (response.status === 'success') {
+                                const mapping = response.mappings.find(m => m.master_pin === masterPin && m.slave_pin === slavePin);
+                                addLogEntry(masterPin, slavePin, mapping);
+                            } else {
+                                addLogEntry(masterPin, slavePin, null);
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Error fetching mapping:', err);
+                            addLogEntry(masterPin, slavePin, null);
+                        });
+                } else {
+                    addLogEntry(masterPin, slavePin, null);
+                }
+            }
+
+            // Highlight the cell in the matrix if it exists
+            highlightMatrixCell(masterPin, slavePin);
+        });
+
+        function highlightMatrixCell(masterPin, slavePin) {
+            // Find and flash the corresponding cell in the matrix
+            const cells = document.querySelectorAll('.matrix-cell');
+            cells.forEach(cell => {
+                const cellOnClick = cell.getAttribute('onclick');
+                if (cellOnClick && cellOnClick.includes(`${masterPin}, ${slavePin}`)) {
+                    cell.classList.add('cell-highlight-animation');
+                    setTimeout(() => {
+                        cell.classList.remove('cell-highlight-animation');
+                    }, 600);
+                }
+            });
+        }
+
+        // Keep dartboard types updated
+        setInterval(loadDartboardTypes, 30000);
+    </script>
+</body>
+</html>

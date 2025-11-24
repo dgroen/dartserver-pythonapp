@@ -122,3 +122,28 @@ class TestAppModule:
         assert config["vhost"] == "/custom"
         assert config["exchange"] == "custom_exchange"
         assert config["topic"] == "custom.topic"
+
+
+class TestHealthCheckEndpoint:
+    """Test health check endpoint for Docker monitoring."""
+
+    def test_health_check_returns_200_ok(self, client):
+        """Test that health check endpoint returns 200 OK status."""
+        response = client.get("/health")
+        assert response.status_code == 200
+
+    def test_health_check_returns_json_response(self, client):
+        """Test that health check endpoint returns valid JSON response."""
+        response = client.get("/health")
+        assert response.content_type == "application/json"
+        data = response.get_json()
+        assert isinstance(data, dict)
+        assert "status" in data
+        assert data["status"] == "healthy"
+
+    def test_health_check_no_auth_required(self, client):
+        """Test that health check endpoint doesn't require authentication."""
+        # Make request without login - should still return 200
+        response = client.get("/health")
+        assert response.status_code == 200
+        assert response.get_json()["status"] == "healthy"

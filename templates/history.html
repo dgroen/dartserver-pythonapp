@@ -206,14 +206,10 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>📊 Game History</h1>
-            <div class="game-info">
-                <a href="/" class="back-link">← Back to Game</a>
-            </div>
+                <div class="user-info-header">
             <div class="user-info">
                 {% if user_claims %}
-                <span class="username">👤 {{ user_claims.get('username', user_claims.get('sub', 'User')) }}</span>
+                <span class="username">👤 {{ user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + ' ' + user_claims.get('family_name', '')).strip() or user_claims.get('username', user_claims.get('sub', 'User')) }}</span>
                 {% if user_roles %}
                 <span class="user-roles">
                     {% for role in user_roles %}
@@ -223,6 +219,12 @@
                 {% endif %}
                 <a href="/logout" class="logout-btn">Logout</a>
                 {% endif %}
+            </div>
+        </div>
+        <header>
+            <h1>📊 Game History</h1>
+            <div class="game-info">
+                <a href="/" class="back-link">← Back to Game</a>
             </div>
         </header>
 
@@ -254,11 +256,7 @@
                 <!-- Filters -->
                 <div class="filters">
                     <select id="gameTypeFilter" class="filter-select">
-                        <option value="">All Game Types</option>
-                        <option value="301">301</option>
-                        <option value="401">401</option>
-                        <option value="501">501</option>
-                        <option value="cricket">Cricket</option>
+                        <!-- Options loaded dynamically via JavaScript -->
                     </select>
                 </div>
 
@@ -276,6 +274,7 @@
             console.log(`🔵 API Request: ${url}`);
             const response = await fetch(url, {
                 ...options,
+                credentials: 'include',  // Include session cookies
                 headers: {
                     'Content-Type': 'application/json',
                     ...options.headers,
@@ -283,7 +282,7 @@
             });
 
             console.log(`🔵 API Response Status: ${response.status} from ${url}`);
-            
+
             if (!response.ok && response.status === 401) {
                 console.error('❌ Unauthorized (401) - Redirecting to login');
                 window.location.href = '/login';
@@ -301,7 +300,7 @@
             try {
                 const response = await apiRequest('/api/player/statistics');
                 console.log('📊 Statistics Response:', response);
-                
+
                 if (response.success && response.statistics) {
                     const stats = response.statistics;
                     console.log('📊 Updating statistics grid with:', stats);
@@ -341,7 +340,7 @@
 
                 const response = await apiRequest(url);
                 console.log('🎮 History Response:', response);
-                
+
                 if (response.success) {
                     console.log(`🎮 Found ${response.games?.length || 0} games`);
                     displayHistory(response.games);
@@ -387,7 +386,7 @@
             console.log(`🎨 Building HTML for ${games.length} games...`);
             const historyHtml = games.map((game, index) => {
                 console.log(`🎨 Game ${index}:`, game);
-                
+
                 // Safely parse the start date
                 let dateStr = 'Date not available';
                 try {
@@ -398,7 +397,7 @@
                 } catch (e) {
                     console.warn('⚠️ Could not parse date:', game.started_at);
                 }
-                
+
                 const resultClass = game.is_winner ? 'win' : 'loss';
                 const resultText = game.is_winner ? '✓ Won' : '✗ Lost';
 
@@ -413,6 +412,18 @@
                         .join('')
                     : '<div class="player-row"><span>No player data</span></div>';
 
+                // Show game options if applicable
+                const optionsHtml = [];
+                if (game.double_out_enabled) {
+                    optionsHtml.push('<span style="color: rgba(255, 255, 255, 0.6); font-size: 0.85rem;">🎯 Double Out</span>');
+                }
+                if (game.reset_on_miss) {
+                    optionsHtml.push('<span style="color: rgba(255, 71, 87, 0.8); font-size: 0.85rem;">💀 Hard Mode</span>');
+                }
+                const optionsDisplay = optionsHtml.length > 0 
+                    ? `<div style="margin-top: 0.5rem; display: flex; gap: 1rem;">${optionsHtml.join('')}</div>`
+                    : '';
+
                 return `
                     <div class="history-card">
                         <div class="history-header">
@@ -423,6 +434,7 @@
                         <div class="game-players">
                             ${playersHtml}
                         </div>
+                        ${optionsDisplay}
                     </div>
                 `;
             }).join('');
@@ -434,14 +446,25 @@
         // Event listeners
         document.addEventListener('DOMContentLoaded', () => {
             console.log('✅ Page loaded - Starting to fetch data...');
+
+            // Load game types into filter
+            const gameTypeFilter = document.getElementById('gameTypeFilter');
+            if (gameTypeFilter && typeof loadGameTypes === 'function') {
+                loadGameTypes(gameTypeFilter, true).then(() => {
+                    // Set "All Game Types" as default
+                    gameTypeFilter.value = 'all';
+                });
+            }
+
             loadStatistics();
             loadHistory();
 
-            document.getElementById('gameTypeFilter').addEventListener('change', (e) => {
+            gameTypeFilter.addEventListener('change', (e) => {
                 console.log(`🔄 Filter changed to: ${e.target.value}`);
                 loadHistory(e.target.value);
             });
         });
     </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

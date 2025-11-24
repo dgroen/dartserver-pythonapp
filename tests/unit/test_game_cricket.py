@@ -1,6 +1,6 @@
 """Unit tests for GameCricket class."""
 
-from games.game_cricket import GameCricket
+from src.games.game_cricket import GameCricket
 
 
 class TestGameCricket:

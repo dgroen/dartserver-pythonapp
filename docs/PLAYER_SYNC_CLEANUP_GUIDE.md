@@ -5,20 +5,23 @@
 After running the cleanup utility, here's what was found:
 
 ### Current Database State
+
 - **Total Players**: 11
 - **WSO2-Linked Players**: 5 (have username)
 - **Phantom Players**: 6 (no username, will lose their games)
 - **Total Games**: 72
 
 ### The Problem: Double Dennis
+
 You have TWO player records for "Dennis":
 
-| ID | Name | Username | Games | Status |
-|----|------|----------|-------|--------|
-| 11 | Dennis | "Dennis" | 14 | ✓ **CORRECT** |
-| 21 | De (truncated) | "049198fa-75dc-492e-a830-c755c3883e3b" | 0 | ✗ **PHANTOM** |
+| ID  | Name           | Username                               | Games | Status        |
+| --- | -------------- | -------------------------------------- | ----- | ------------- |
+| 11  | Dennis         | "Dennis"                               | 14    | ✓ **CORRECT** |
+| 21  | De (truncated) | "049198fa-75dc-492e-a830-c755c3883e3b" | 0     | ✗ **PHANTOM** |
 
 **What happened:**
+
 1. Games created with player_name="Dennis" → stored under player_id=11 ✓
 2. When Dennis logged in via WSO2, it used the UUID (`sub`) as username
 3. System created a NEW player (id=21) instead of linking to existing player_id=11 ✗
@@ -29,6 +32,7 @@ You have TWO player records for "Dennis":
 ### Step 1: Delete the Phantom Player (ID=21)
 
 The phantom player has:
+
 - UUID as username (not a real WSO2 user)
 - No games associated
 - Prevents Dennis from seeing his games
@@ -38,6 +42,7 @@ python helpers/cleanup_phantom_players.py --commit
 ```
 
 This will delete:
+
 - Player ID 21 (phantom with UUID username)
 - 6 other phantom players (IDs 12-17)
 - 17 games from phantom players
@@ -49,6 +54,7 @@ python check_dennis.py
 ```
 
 Expected output:
+
 ```
 Player ID 11:
   Name: Dennis
@@ -63,12 +69,13 @@ Player ID 21: NOT FOUND   ← Phantom deleted!
 
 After cleanup, Dennis needs to **login again**:
 
-1. Go to http://localhost:5000/logout
+1. Go to <http://localhost:5000/logout>
 2. Logout completely
-3. Go to http://localhost:5000
+3. Go to <http://localhost:5000>
 4. Login again via WSO2
 
 **Important**: On re-login, the system will:
+
 - Look up Dennis in WSO2
 - Get his real username from WSO2
 - Link to existing player_id=11
@@ -77,22 +84,27 @@ After cleanup, Dennis needs to **login again**:
 
 ## What Gets Deleted
 
-### Phantom Players Being Removed:
+### Phantom Players Being Removed
+
 - ID 12-17: 6 phantom players (no username)
 - ID 21: Phantom with UUID username
 
-### Games Being Removed:
+### Games Being Removed
+
 - 17 games from phantom players
 
-### Games Being Preserved:
+### Games Being Preserved
+
 - 55 games from WSO2-linked players (IDs 11, 18, 19, 20 + others)
 
-### Dennis's Games:
+### Dennis's Games
+
 - ✓ **14 games PRESERVED** (player_id=11, username="Dennis")
 
 ## Step-by-Step Execution
 
 ### 1. Preview Cleanup (Safe, no changes)
+
 ```bash
 cd /data/dartserver-pythonapp
 python helpers/cleanup_phantom_players.py
@@ -101,6 +113,7 @@ python helpers/cleanup_phantom_players.py
 Output shows what will be deleted.
 
 ### 2. Execute Cleanup (Makes changes)
+
 ```bash
 python helpers/cleanup_phantom_players.py --commit
 ```
@@ -108,15 +121,18 @@ python helpers/cleanup_phantom_players.py --commit
 Wait for: `✅ Cleanup complete!`
 
 ### 3. Verify Success
+
 ```bash
 python check_dennis.py
 ```
 
 Should show:
+
 - Player ID 11: Dennis with 14 games
 - Player ID 21: NOT FOUND
 
 ### 4. Test History Page
+
 ```bash
 # Logout
 curl http://localhost:5000/logout
@@ -147,6 +163,7 @@ History page: No games (they're under id=11)
 ```
 
 **After your fix**, the system enforces:
+
 - Only WSO2-authenticated users create player records
 - Username MUST come from WSO2 profile (not just `sub`)
 - Player records link properly to game results
@@ -162,7 +179,7 @@ History page: No games (they're under id=11)
 
 ## Troubleshooting
 
-### If cleanup fails:
+### If cleanup fails
 
 ```bash
 # Check database connection
@@ -172,9 +189,9 @@ python -c "from src.core.database_models import DatabaseManager; print('✓ Conn
 python helpers/cleanup_phantom_players.py 2>&1 | tee cleanup.log
 ```
 
-### If Dennis still has no games after cleanup:
+### If Dennis still has no games after cleanup
 
-1. **Check session**: http://localhost:5000/api/debug/session
+1. **Check session**: <http://localhost:5000/api/debug/session>
    - Verify `player_id` is 11
 
 2. **Check database**: `python check_dennis.py`
@@ -183,7 +200,7 @@ python helpers/cleanup_phantom_players.py 2>&1 | tee cleanup.log
 3. **Check browser console**: Press F12 → Console
    - Look for error messages in the API calls
 
-### If games disappeared:
+### If games disappeared
 
 1. Restore database from backup (before cleanup)
 2. Check if games were stored under different player_id
@@ -194,6 +211,7 @@ python helpers/cleanup_phantom_players.py 2>&1 | tee cleanup.log
 ### Adding Players to Games
 
 **OLD (BROKEN):**
+
 ```bash
 # This would create phantom players
 POST /api/players
@@ -201,6 +219,7 @@ POST /api/players
 ```
 
 **NEW (CORRECT):**
+
 ```bash
 # Only WSO2 users
 POST /api/players
@@ -210,6 +229,7 @@ POST /api/players
 ### Starting Games
 
 **OLD (BROKEN):**
+
 ```python
 game_manager.new_game(
     game_type="301",
@@ -218,6 +238,7 @@ game_manager.new_game(
 ```
 
 **NEW (CORRECT):**
+
 ```python
 game_manager.new_game(
     game_type="301",
@@ -227,14 +248,14 @@ game_manager.new_game(
 
 ## Summary of Changes
 
-| Aspect | Before | After |
-|--------|--------|-------|
-| Player Creation | By name (creates phantom) | By WSO2 username only |
-| Game Storage | Wrong player_id | Correct player_id |
-| Session player_id | UUID (id=21) | Correct Dennis (id=11) |
-| History Page | "No games found" | Shows 14 games |
-| Manual Players | Allowed (creates phantom) | Not allowed |
-| Database Integrity | Orphaned records | Clean, linked records |
+| Aspect             | Before                    | After                  |
+| ------------------ | ------------------------- | ---------------------- |
+| Player Creation    | By name (creates phantom) | By WSO2 username only  |
+| Game Storage       | Wrong player_id           | Correct player_id      |
+| Session player_id  | UUID (id=21)              | Correct Dennis (id=11) |
+| History Page       | "No games found"          | Shows 14 games         |
+| Manual Players     | Allowed (creates phantom) | Not allowed            |
+| Database Integrity | Orphaned records          | Clean, linked records  |
 
 ## Files Involved in Fix
 
@@ -255,6 +276,7 @@ game_manager.new_game(
 ---
 
 **Questions?** Check:
+
 - Browser console (F12) for error logs
 - Application logs for database errors
 - `docs/WSO2_PLAYER_SYNC_FIX.md` for architecture details

@@ -1,9 +1,11 @@
-// Connect to SocketIO
-const socket = io();
+// control.js - Control Panel functionality
+// Note: socket is already defined in main.js, so we don't redeclare it here
 
 // DOM Elements
 const gameTypeSelect = document.getElementById('game-type');
 const doubleOutCheckbox = document.getElementById('double-out');
+const resetOnMissCheckbox = document.getElementById('reset-on-miss');
+const hardModeContainer = document.getElementById('hard-mode-container');
 const newGameBtn = document.getElementById('new-game-btn');
 const playersList = document.getElementById('players-list');
 const playerNameInput = document.getElementById('player-name');
@@ -19,6 +21,7 @@ const showThrowoutAdviceCheckbox = document.getElementById('show-throwout-advice
 
 let currentGameState = null;
 let selectedUser = null;
+let selectedSearchIndex = -1;  // Track selected search result for keyboard navigation
 
 // Initialize
 socket.on('connect', () => {
@@ -46,6 +49,7 @@ socket.on('play_tts', (data) => {
 newGameBtn.addEventListener('click', () => {
     const gameType = gameTypeSelect.value;
     const doubleOut = doubleOutCheckbox.checked;
+    const resetOnMiss = resetOnMissCheckbox.checked;
     const playerNames = [];
 
     // Get player names from current game state
@@ -63,15 +67,36 @@ newGameBtn.addEventListener('click', () => {
     socket.emit('new_game', {
         game_type: gameType,
         players: playerNames,
-        double_out: doubleOut
+        double_out: doubleOut,
+        reset_on_miss: resetOnMiss
     });
 });
+
+// Show/hide hard mode option based on game type
+function updateHardModeVisibility() {
+    const gameType = gameTypeSelect.value;
+    if (gameType === 'round_the_clock') {
+        hardModeContainer.style.display = 'block';
+    } else {
+        hardModeContainer.style.display = 'none';
+    }
+}
+
+gameTypeSelect.addEventListener('change', () => {
+    updateHardModeVisibility();
+});
+
+// Initialize hard mode visibility on page load
+if (gameTypeSelect) {
+    updateHardModeVisibility();
+}
 
 // WSO2 User search
 let searchTimeout;
 playerNameInput.addEventListener('input', (e) => {
     const query = e.target.value.trim();
     clearTimeout(searchTimeout);
+    selectedSearchIndex = -1;  // Reset keyboard selection on new input
 
     if (query.length < 2) {
         playerSearchResults.style.display = 'none';
@@ -82,15 +107,17 @@ playerNameInput.addEventListener('input', (e) => {
     // Debounce the search
     searchTimeout = setTimeout(async () => {
         try {
-            const response = await fetch(`/api/wso2/users/search?q=${encodeURIComponent(query)}`);
+            const response = await fetch(`/api/wso2/users/search?q=${encodeURIComponent(query)}`, {
+                credentials: 'include'  // Include session cookies
+            });
             const data = await response.json();
 
             if (data.success && data.users && data.users.length > 0) {
                 const html = data.users.map(user => `
-                    <div class="search-result-item" style="padding: 0.75rem; border-bottom: 1px solid rgba(0, 212, 255, 0.1); cursor: pointer; transition: background 0.2s;"
+                    <div class="search-result-item"
                          onclick="selectUser('${user.username}', '${user.name || user.username}', '${user.email || ''}')">
-                        <div style="font-weight: 500; color: #00d4ff;">${user.name || user.username}</div>
-                        <div style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.6);">${user.email || user.username}</div>
+                        <div class="search-result-name">${user.name || user.username}</div>
+                        <div class="search-result-email">${user.email || user.username}</div>
                     </div>
                 `).join('');
                 playerSearchResults.innerHTML = html;
@@ -106,22 +133,61 @@ playerNameInput.addEventListener('input', (e) => {
     }, 300);
 });
 
+// Keyboard navigation for search results
+playerNameInput.addEventListener('keydown', (e) => {
+    const results = playerSearchResults.querySelectorAll('.search-result-item');
+
+    if (results.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedSearchIndex = Math.min(selectedSearchIndex + 1, results.length - 1);
+        updateSearchSelection(results);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedSearchIndex = Math.max(selectedSearchIndex - 1, -1);
+        updateSearchSelection(results);
+    } else if (e.key === 'Enter' && selectedSearchIndex >= 0) {
+        e.preventDefault();
+        results[selectedSearchIndex].click();
+    } else if (e.key === 'Escape') {
+        e.preventDefault();
+        playerSearchResults.style.display = 'none';
+        selectedSearchIndex = -1;
+    }
+});
+
+// Update search result selection highlighting
+function updateSearchSelection(results) {
+    results.forEach((result, index) => {
+        if (index === selectedSearchIndex) {
+            result.classList.add('selected');
+            result.scrollIntoView({ block: 'nearest' });
+        } else {
+            result.classList.remove('selected');
+        }
+    });
+}
+
 // Select WSO2 user from search results
 window.selectUser = function(username, displayName, email) {
     selectedUser = { username, displayName, email };
     playerNameInput.value = displayName;
     playerSearchResults.style.display = 'none';
+    selectedSearchIndex = -1;
 };
 
 // Hide search results when clicking outside
 document.addEventListener('click', (e) => {
-    if (e.target !== playerNameInput) {
+    if (playerSearchResults && e.target !== playerNameInput && !playerSearchResults.contains(e.target)) {
         playerSearchResults.style.display = 'none';
+        selectedSearchIndex = -1;
     }
 });
 
 addPlayerBtn.addEventListener('click', async () => {
     const name = playerNameInput.value.trim();
+
     if (!name) {
         alert('Please enter a player name');
         return;
@@ -130,17 +196,16 @@ addPlayerBtn.addEventListener('click', async () => {
     try {
         const payload = selectedUser
             ? { username: selectedUser.username }
-            : { name: name };
+            : { username: name };
 
         const response = await fetch('/api/players', {
             method: 'POST',
+            credentials: 'include',  // Include session cookies
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
         if (response.ok) {
-            const data = await response.json();
-            console.log('Player added:', data);
             playerNameInput.value = '';
             selectedUser = null;
             playerSearchResults.style.display = 'none';
@@ -151,7 +216,7 @@ addPlayerBtn.addEventListener('click', async () => {
             alert('Error adding player: ' + (error.error || 'Unknown error'));
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error('❌ Exception caught:', error);
         alert('Failed to add player: ' + error.message);
     }
 });

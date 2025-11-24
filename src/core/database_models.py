@@ -71,6 +71,7 @@ class GameResult(Base):
     final_score = Column(Integer)  # Final score
     is_winner = Column(Boolean, default=False)
     double_out_enabled = Column(Boolean, default=False)  # For 301/401/501 games
+    reset_on_miss = Column(Boolean, default=False)  # For round_the_clock hard mode
     started_at = Column(DateTime, default=utc_now)
     finished_at = Column(DateTime)
     game_session_id = Column(String(100), nullable=False)  # UUID to group players in same game
@@ -207,6 +208,138 @@ class HotspotConfig(Base):
 
     def __repr__(self):
         return f"<HotspotConfig(id={self.id}, ssid='{self.ssid}', enabled={self.is_enabled})>"
+
+
+class DartboardType(Base):
+    """DartboardType table - stores dartboard model configurations"""
+
+    __tablename__ = "dartboard_type"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False, unique=True)  # e.g., 'carromco', 'winmau'
+    brand = Column(String(100), nullable=False)  # e.g., 'Carromco'
+    model = Column(String(100), nullable=True)  # e.g., 'Carromco Striker'
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+    # Relationships
+    zone_mappings = relationship(
+        "DartboardZoneMapping",
+        back_populates="dartboard_type",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self):
+        return f"<DartboardType(id={self.id}, name='{self.name}', brand='{self.brand}')>"
+
+
+class DartboardZoneMapping(Base):
+    """DartboardZoneMapping table - maps GPIO pin combinations to dartboard zones"""
+
+    __tablename__ = "dartboard_zone_mapping"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    dartboard_type_id = Column(Integer, ForeignKey("dartboard_type.id"), nullable=False)
+
+    # Pin combination (unique per dartboard type)
+    master_pin = Column(Integer, nullable=False)  # Row pin
+    slave_pin = Column(Integer, nullable=False)  # Column pin
+
+    # Zone information
+    zone_number = Column(Integer, nullable=False)  # 1-20 for segments, 25 for bull
+    multiplier_type = Column(String(20), nullable=False)  # SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL
+    base_value = Column(Integer, nullable=False)  # Base score (1-20, 25 for bull)
+
+    # Metadata
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+    # Relationships
+    dartboard_type = relationship("DartboardType", back_populates="zone_mappings")
+
+    def __repr__(self):
+        return (
+            f"<DartboardZoneMapping(id={self.id}, dartboard_type_id={self.dartboard_type_id}, "
+            f"pin={self.master_pin}x{self.slave_pin}, zone={self.zone_number}, "
+            f"mult={self.multiplier_type})>"
+        )
+
+
+class TrainingSession(Base):
+    """TrainingSession table - stores single-player training game sessions"""
+
+    __tablename__ = "training_session"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    player_id = Column(Integer, ForeignKey("player.id"), nullable=False)
+    game_type_id = Column(Integer, ForeignKey("gametype.id"), nullable=False)
+    session_id = Column(String(100), nullable=False, unique=True)  # UUID for session
+    start_score = Column(Integer)  # Starting score for 301/401/501 games
+    final_score = Column(Integer)  # Final score
+    double_out_enabled = Column(Boolean, default=False)  # For 301/401/501 games
+    completed = Column(Boolean, default=False)  # Whether training was completed
+    started_at = Column(DateTime, default=utc_now)
+    finished_at = Column(DateTime)
+
+    # Relationships
+    player = relationship("Player", backref="training_sessions")
+    game_type = relationship("GameType")
+    training_scores = relationship(
+        "TrainingScore",
+        back_populates="training_session",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self):
+        return (
+            f"<TrainingSession(id={self.id}, session_id={self.session_id}, "
+            f"player_id={self.player_id}, completed={self.completed})>"
+        )
+
+
+class TrainingScore(Base):
+    """
+    TrainingScore table - stores each throw in training mode for replay capability
+    """
+
+    __tablename__ = "training_score"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    training_session_id = Column(Integer, ForeignKey("training_session.id"), nullable=False)
+    player_id = Column(Integer, ForeignKey("player.id"), nullable=False)
+
+    # Throw details
+    throw_sequence = Column(Integer, nullable=False)  # Overall throw sequence in game
+    turn_number = Column(Integer, nullable=False)  # Which turn (1, 2, 3, ...)
+    throw_in_turn = Column(Integer, nullable=False)  # Position in turn (1, 2, or 3)
+
+    # Score details
+    base_score = Column(Integer, nullable=False)  # Base score (0-20 or 25 for bull)
+    multiplier = Column(String(20), nullable=False)  # SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL
+    multiplier_value = Column(Integer, nullable=False)  # 1, 2, or 3
+    actual_score = Column(Integer, nullable=False)  # base_score * multiplier_value
+    score_before = Column(Integer, nullable=False)  # Score before this throw
+    score_after = Column(Integer, nullable=False)  # Score after this throw
+
+    # Configuration and state
+    dartboard_sends_actual_score = Column(Boolean, nullable=False)  # Config at time of throw
+    is_bust = Column(Boolean, default=False)
+    is_finish = Column(Boolean, default=False)  # Winning throw
+
+    # Timestamp
+    thrown_at = Column(DateTime, default=utc_now)
+
+    # Relationships
+    training_session = relationship("TrainingSession", back_populates="training_scores")
+    player = relationship("Player")
+
+    def __repr__(self):
+        return (
+            f"<TrainingScore(id={self.id}, training_session_id={self.training_session_id}, "
+            f"throw_seq={self.throw_sequence}, score={self.actual_score})>"
+        )
 
 
 class DatabaseManager:

@@ -17,9 +17,18 @@ body {
     margin: 0 auto;
 }
 
+.user-info-header {
+    text-align: center;
+    margin-bottom: 10px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    position: relative;
+}
+
 header {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 10px;
     padding: 20px;
     background: rgba(0, 0, 0, 0.3);
     border-radius: 10px;
@@ -47,7 +56,7 @@ header h1 {
 
 .user-info {
     position: absolute;
-    top: 20px;
+    top: 5px;
     right: 20px;
     display: flex;
     align-items: center;
@@ -187,6 +196,278 @@ header h1 {
     margin-top: 5px;
 }
 
+/* Round the Clock Styles */
+.rtc-container {
+    margin-top: 15px;
+}
+
+.rtc-current-target {
+    background: rgba(0, 212, 255, 0.15);
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 15px;
+    border: 2px solid rgba(0, 212, 255, 0.3);
+}
+
+.rtc-target-label {
+    font-size: 0.9em;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.rtc-target-value {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #00d4ff;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}
+
+.rtc-target-value.bull {
+    color: #FFD700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.rtc-bull-hits {
+    font-size: 1.1em;
+    margin-top: 8px;
+    color: #FFD700;
+}
+
+/* Full Dartboard Visualization */
+.rtc-dartboard {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    margin: 20px auto;
+    background: radial-gradient(circle, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.2) 100%);
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+}
+
+.rtc-dartboard-number {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    font-size: 1.1em;
+    font-weight: bold;
+    top: 50%;
+    left: 50%;
+    margin-top: -25px;
+    margin-left: -25px;
+    transition: all 0.3s ease;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.rtc-dartboard-number.completed {
+    background: rgba(100, 100, 100, 0.4);
+    border-color: rgba(100, 100, 100, 0.6);
+    color: rgba(150, 150, 150, 0.7);
+    opacity: 0.5;
+}
+
+.rtc-dartboard-number.current {
+    background: rgba(0, 212, 255, 0.4);
+    border-color: #00d4ff;
+    color: #00d4ff;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.8);
+    animation: rtc-blink 1s ease-in-out infinite;
+}
+
+@keyframes rtc-blink {
+    0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.8);
+    }
+    50% {
+        opacity: 0.4;
+        box-shadow: 0 0 40px rgba(0, 212, 255, 1);
+    }
+}
+
+/* Bull Container with Double and Single Bull */
+.rtc-bull-container {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    top: 50%;
+    left: 50%;
+    margin-top: -40px;
+    margin-left: -40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.rtc-bull-container.current {
+    animation: rtc-blink 1s ease-in-out infinite;
+}
+
+.rtc-double-bull {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(255, 0, 0, 0.3);
+    border: 2px solid rgba(255, 0, 0, 0.6);
+    z-index: 1;
+}
+
+.rtc-bull-container.current .rtc-double-bull {
+    background: rgba(255, 100, 0, 0.5);
+    border-color: #FF6400;
+    box-shadow: 0 0 20px rgba(255, 100, 0, 0.8);
+}
+
+.rtc-single-bull {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(255, 215, 0, 0.4);
+    border: 2px solid rgba(255, 215, 0, 0.7);
+    z-index: 2;
+}
+
+.rtc-bull-container.current .rtc-single-bull {
+    background: rgba(255, 215, 0, 0.7);
+    border-color: #FFD700;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+}
+
+/* Legacy grid layout for backward compatibility */
+.rtc-progress {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.rtc-progress-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.rtc-number {
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    font-size: 1.1em;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.rtc-number.completed {
+    background: rgba(100, 100, 100, 0.3);
+    border-color: rgba(100, 100, 100, 0.5);
+    color: rgba(150, 150, 150, 0.6);
+    opacity: 0.5;
+}
+
+.rtc-number.current {
+    background: rgba(0, 212, 255, 0.3);
+    border-color: #00d4ff;
+    color: #00d4ff;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
+    animation: rtc-blink 1s ease-in-out infinite;
+}
+
+/* Realistic SVG Dartboard */
+.rtc-dartboard-container {
+    display: flex;
+    justify-content: center;
+    margin: 20px auto;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    border-radius: 12px;
+    max-width: 450px;
+}
+
+.rtc-dartboard-svg {
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.5));
+}
+
+.rtc-current-segment {
+    animation: rtc-segment-pulse 1s ease-in-out infinite;
+    filter: drop-shadow(0 0 5px rgba(0, 206, 209, 0.8));
+}
+
+@keyframes rtc-segment-pulse {
+    0%, 100% {
+        opacity: 1;
+        filter: drop-shadow(0 0 5px rgba(0, 206, 209, 0.8));
+    }
+    50% {
+        opacity: 0.7;
+        filter: drop-shadow(0 0 15px rgba(0, 206, 209, 1));
+    }
+}
+
+.rtc-current-number {
+    animation: rtc-number-pulse 1s ease-in-out infinite;
+}
+
+@keyframes rtc-number-pulse {
+    0%, 100% {
+        font-size: 18px;
+    }
+    50% {
+        font-size: 20px;
+    }
+}
+
+.rtc-current-bull {
+    animation: rtc-bull-pulse 1s ease-in-out infinite;
+}
+
+@keyframes rtc-bull-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.rtc-bull-indicator {
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(255, 215, 0, 0.1);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.2em;
+    color: rgba(255, 215, 0, 0.7);
+}
+
+.rtc-bull-indicator.current {
+    background: rgba(255, 215, 0, 0.3);
+    border-color: #FFD700;
+    color: #FFD700;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+    animation: rtc-blink 1s ease-in-out infinite;
+}
+
 .message-container {
     text-align: center;
     padding: 20px;
@@ -209,6 +490,75 @@ header h1 {
     font-size: 1.5em;
     color: #FFD700;
     min-height: 40px;
+}
+
+/* Throwout Advice */
+.throwout-advice {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1));
+    border: 2px solid #4CAF50;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.card-header {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #00d4ff;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #00d4ff;
+    padding-bottom: 0.5rem;
+}
+
+.advice-display {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #4CAF50;
+    margin-top: 0.5rem;
+    font-style: italic;
+}
+
+/* Next Player Button */
+.next-player-button-container {
+    padding: 1rem 0;
+    margin: 1rem 0;
+    text-align: center;
+}
+
+.btn-next-player {
+    width: 100%;
+    max-width: 500px;
+    padding: 1.2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #e74c3c, #d63851);
+    color: #fff;
+    border: none;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.btn-next-player:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+    background: linear-gradient(135deg, #d63851, #c62840);
+}
+
+.btn-next-player:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.button-hint {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
+    opacity: 0.8;
 }
 
 .throw-info {

@@ -13,6 +13,22 @@ from src.core.database_models import DatabaseManager, GameResult, GameType, Play
 
 load_dotenv()
 
+# Global database service instance (initialized at app startup)
+_db_service_instance = None
+
+
+def set_database_service(db_service):
+    """Set the global database service instance"""
+    global _db_service_instance
+    _db_service_instance = db_service
+
+
+def get_session():
+    """Get a new database session from the global database service"""
+    if _db_service_instance is None:
+        raise RuntimeError("Database service not initialized")
+    return _db_service_instance.db_manager.get_session()
+
 
 class DatabaseService:
     """Service for handling all database operations"""
@@ -49,6 +65,24 @@ class DatabaseService:
                 {"name": "401", "description": "401 darts game"},
                 {"name": "501", "description": "501 darts game"},
                 {"name": "cricket", "description": "Cricket darts game"},
+                {
+                    "name": "round_the_clock",
+                    "description": "Round the Clock \
+                    - hit numbers 1-20 in order \
+                    - hit single and double bull to win",
+                },
+                {
+                    "name": "round_the_clock_double",
+                    "description": "Round the Clock Double \
+                    - hit numbers 1-20 in order \
+                    - hit double bull to win",
+                },
+                {
+                    "name": "bull_practice",
+                    "description": "Bull Practice \
+                    - training game to practice hitting bulls \
+                    - auto-restarts after each round",
+                },
             ]
 
             for gt_data in game_types:
@@ -64,7 +98,14 @@ class DatabaseService:
         finally:
             session.close()
 
-    def start_new_game(self, game_type_name, player_ids, start_score=None, double_out=False):
+    def start_new_game(
+        self,
+        game_type_name,
+        player_ids,
+        start_score=None,
+        double_out=False,
+        reset_on_miss=False,
+    ):
         """
         Start a new game and create database records
 
@@ -74,6 +115,7 @@ class DatabaseService:
                 with 'db_id' key
             start_score: Starting score for 301/401/501 games
             double_out: Whether double-out is enabled
+            reset_on_miss: Whether hard mode is enabled for round_the_clock
 
         Returns:
             game_session_id: UUID for this game session
@@ -130,6 +172,7 @@ class DatabaseService:
                     start_score=start_score,
                     final_score=start_score if start_score else 0,
                     double_out_enabled=double_out,
+                    reset_on_miss=reset_on_miss,
                     game_session_id=self.current_game_session_id,
                     started_at=datetime.now(tz=timezone.utc),
                 )
@@ -423,6 +466,7 @@ class DatabaseService:
                 "game_session_id": game_session_id,
                 "game_type": game_type.name,
                 "double_out_enabled": game_results[0].double_out_enabled,
+                "reset_on_miss": game_results[0].reset_on_miss,
                 "started_at": game_results[0].started_at.isoformat(),
                 "finished_at": (
                     game_results[0].finished_at.isoformat() if game_results[0].finished_at else None
@@ -437,12 +481,13 @@ class DatabaseService:
         finally:
             session.close()
 
-    def get_recent_games(self, limit=10):
+    def get_recent_games(self, limit=10, username=None):
         """
         Get recent game sessions
 
         Args:
             limit: Maximum number of games to return
+            username: Optional username to filter games (only games where this user participated)
 
         Returns:
             List of game session summaries
@@ -455,12 +500,23 @@ class DatabaseService:
                 func.coalesce(GameResult.finished_at, GameResult.started_at),
             )
 
-            subquery = (
-                session.query(
-                    GameResult.game_session_id,
-                    max_timestamp_expr.label("max_time"),
+            # Base query for game sessions
+            base_query = session.query(
+                GameResult.game_session_id,
+                max_timestamp_expr.label("max_time"),
+            )
+
+            # If username is provided, filter to only games where this user participated
+            if username:
+                # Join with Player table to filter by username
+                base_query = base_query.join(Player, GameResult.player_id == Player.id).filter(
+                    Player.username == username,
                 )
-                .group_by(GameResult.game_session_id)
+
+            print("Base query built, about to execute subquery")
+
+            subquery = (
+                base_query.group_by(GameResult.game_session_id)
                 .order_by(max_timestamp_expr.desc())
                 .limit(limit)
                 .subquery()
@@ -470,6 +526,8 @@ class DatabaseService:
                 subquery.c.game_session_id,
                 subquery.c.max_time,
             ).all()
+
+            print(f"Found {len(game_sessions)} game sessions from subquery")
 
             results = []
             for game_session_id, _ in game_sessions:
@@ -481,7 +539,7 @@ class DatabaseService:
                     game_type = (
                         session.query(GameType).filter_by(id=game_results[0].game_type_id).first()
                     )
-                    winner = next((gr for gr in game_results if gr.is_winner), None)
+                    winner = next((gr for gr in game_results if gr.is_winner is True), None)
                     winner_name = None
                     if winner:
                         winner_player = session.query(Player).filter_by(id=winner.player_id).first()
@@ -499,6 +557,8 @@ class DatabaseService:
                                 if game_results[0].finished_at
                                 else None
                             ),
+                            "double_out_enabled": game_results[0].double_out_enabled,
+                            "reset_on_miss": game_results[0].reset_on_miss,
                         },
                     )
 
@@ -506,6 +566,39 @@ class DatabaseService:
 
         except Exception as e:
             print(f"Error getting recent games: {e}")
+            import traceback
+
+            traceback.print_exc()
+            return []
+        finally:
+            session.close()
+
+    def get_all_players_with_usernames(self):
+        """
+        Get all players who have a username (authenticated users)
+
+        Returns:
+            List of player dictionaries with id, name, username, email
+        """
+        session = self.db_manager.get_session()
+        try:
+            # Get all players with usernames (authenticated users)
+            players = session.query(Player).filter(Player.username.isnot(None)).all()
+
+            result = []
+            for player in players:
+                result.append(
+                    {
+                        "id": player.id,
+                        "name": player.name,
+                        "username": player.username,
+                        "email": player.email,
+                    },
+                )
+
+            return result
+        except Exception as e:
+            print(f"Error getting players: {e}")
             return []
         finally:
             session.close()
@@ -667,6 +760,7 @@ class DatabaseService:
                         "player_count": len(players_in_game),
                         "players": players_in_game,
                         "double_out_enabled": gr.double_out_enabled,
+                        "reset_on_miss": gr.reset_on_miss,
                     },
                 )
 
@@ -709,7 +803,7 @@ class DatabaseService:
                 }
 
             total_games = len(all_game_results)
-            wins = sum(1 for gr in all_game_results if gr.is_winner)
+            wins = sum(1 for gr in all_game_results if gr.is_winner is True)
             losses = total_games - wins
             average_score = sum(gr.final_score or 0 for gr in all_game_results) / total_games
 
@@ -729,14 +823,18 @@ class DatabaseService:
                     }
 
                 by_game_type[game_type_name]["games"] += 1  # type: ignore
-                by_game_type[game_type_name]["wins"] += 1 if gr.is_winner else 0  # type: ignore
-                by_game_type[game_type_name]["losses"] += 0 if gr.is_winner else 1  # type: ignore
+                by_game_type[game_type_name]["wins"] += 1 if gr.is_winner is True else 0  # type: ignore
+                by_game_type[game_type_name]["losses"] += 0 if gr.is_winner is True else 1  # type: ignore
                 by_game_type[game_type_name]["scores"].append(gr.final_score or 0)  # type: ignore
 
             # Calculate averages per game type
             for _game_type_name, stats in by_game_type.items():
                 if stats["scores"]:
-                    stats["average_score"] = sum(stats["scores"]) / len(stats["scores"])  # type: ignore
+                    scores_list = stats["scores"]
+                    if isinstance(scores_list, list):
+                        score_sum = sum(scores_list)
+                        score_count = len(scores_list)
+                        stats["average_score"] = score_sum / score_count
                 del stats["scores"]  # Remove scores list from final output
 
             return {
@@ -773,7 +871,7 @@ class DatabaseService:
                 .filter(
                     and_(
                         GameResult.started_at.isnot(None),
-                        GameResult.finished_at.isna(),
+                        GameResult.finished_at.is_(None),
                     ),
                 )
                 .group_by(GameResult.game_session_id)
@@ -820,5 +918,47 @@ class DatabaseService:
         except Exception as e:
             print(f"Error getting active games: {e}")
             return []
+        finally:
+            session.close()
+
+    def delete_game(self, game_session_id):
+        """
+        Delete a game and all associated data (game results and scores)
+
+        Args:
+            game_session_id: The game session ID to delete
+
+        Returns:
+            True if successfully deleted, False otherwise
+        """
+        session = self.db_manager.get_session()
+        try:
+            # Get all game results for this session
+            game_results = (
+                session.query(GameResult).filter_by(game_session_id=game_session_id).all()
+            )
+
+            if not game_results:
+                print(f"No game found with session ID: {game_session_id}")
+                return False
+
+            # Delete all associated scores (cascade should handle this, but being explicit)
+            for game_result in game_results:
+                session.query(Score).filter_by(game_result_id=game_result.id).delete()
+
+            # Delete all game results for this session
+            session.query(GameResult).filter_by(game_session_id=game_session_id).delete()
+
+            session.commit()
+            print(f"Successfully deleted game session: {game_session_id}")
+            return True
+
+        except Exception as e:
+            session.rollback()
+            print(f"Error deleting game {game_session_id}: {e}")
+            import traceback
+
+            traceback.print_exc()
+            return False
         finally:
             session.close()

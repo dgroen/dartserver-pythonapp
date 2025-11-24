@@ -63,10 +63,7 @@
                     <div class="form-group">
                         <label for="gameType">Game Type</label>
                         <select id="gameType" name="gameType" class="form-control">
-                            <option value="301">301</option>
-                            <option value="401">401</option>
-                            <option value="501" selected>501</option>
-                            <option value="cricket">Cricket</option>
+                            <!-- Options loaded dynamically via JavaScript -->
                         </select>
                     </div>
 
@@ -183,9 +180,21 @@
     <div id="toast" class="toast"></div>
 
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="/static/js/main.js"></script>
     <script src="/static/js/mobile.js"></script>
     <script src="/static/js/mobile_gamemaster.js"></script>
     <script>
+        // Load game types when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const gameTypeSelect = document.getElementById('gameType');
+            if (gameTypeSelect && typeof loadGameTypes === 'function') {
+                loadGameTypes(gameTypeSelect, false).then(() => {
+                    // Set default to 501 if available
+                    gameTypeSelect.value = '501';
+                });
+            }
+        });
+
         // Menu Toggle Functionality
         const menuToggle = document.getElementById('menuToggle');
         const mobileNav = document.getElementById('mobileNav');

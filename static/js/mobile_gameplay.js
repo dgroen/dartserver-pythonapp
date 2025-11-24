@@ -2,9 +2,11 @@
 
 let socket;
 let currentGame = null;
+let currentUser = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeSocket();
+    loadCurrentUser();
     loadCurrentGame();
     loadActiveGames();
 
@@ -15,12 +17,18 @@ document.addEventListener('DOMContentLoaded', () => {
             switchTab(tabName);
         });
     });
+
+    // Next Player button handler
+    document.getElementById('nextPlayerButton').addEventListener('click', () => {
+        handleNextPlayerClick();
+    });
 });
 
 // Helper function for API requests
 async function apiRequest(url, options = {}) {
     const response = await fetch(url, {
         ...options,
+        credentials: 'include',  // Include session cookies
         headers: {
             'Content-Type': 'application/json',
             ...options.headers,
@@ -33,6 +41,54 @@ async function apiRequest(url, options = {}) {
     }
 
     return response.json();
+}
+
+// Load current user information
+async function loadCurrentUser() {
+    try {
+        const response = await apiRequest('/api/user/current');
+        if (response.success) {
+            currentUser = response;
+            console.log('Current user loaded:', currentUser);
+        }
+    } catch (error) {
+        console.error('Failed to load current user:', error);
+    }
+}
+
+// Handle Next Player button click
+function handleNextPlayerClick() {
+    console.log('Button clicked!');
+    console.log('currentGame:', currentGame);
+
+    if (!socket || !currentGame) {
+        console.error('Cannot continue: no active game or socket connection');
+        return;
+    }
+
+    console.log('Game is_paused:', currentGame.is_paused);
+
+    // If game is paused (waiting for continue), just emit next_player
+    if (currentGame.is_paused) {
+        console.log('Emitting next_player event');
+        socket.emit('next_player');
+        return;
+    }
+
+    // Game is active - end turn early (record remaining throws as misses)
+    // For single-player games, skip confirmation
+    const isSinglePlayer = currentGame.players && currentGame.players.length === 1;
+
+    console.log('Game is active, ending turn early. Single player:', isSinglePlayer);
+
+    if (isSinglePlayer) {
+        socket.emit('end_turn_early');
+    } else {
+        // Confirm action for multi-player games
+        if (confirm('End your turn early? Any remaining throws will be recorded as misses.')) {
+            socket.emit('end_turn_early');
+        }
+    }
 }
 
 // Tab switching functionality
@@ -173,6 +229,9 @@ function displayGame(game) {
         document.getElementById('currentPlayerScore').textContent = game.current_player.score;
     }
 
+    // Show or hide Next Player button based on user role and current player
+    updateNextPlayerButton(game);
+
     displayScoreboard(game.players);
 }
 
@@ -181,9 +240,66 @@ function displayNoGame() {
         <div class="status-badge">No Active Game</div>
     `;
     document.getElementById('currentPlayerCard').style.display = 'none';
+    document.getElementById('nextPlayerButtonContainer').style.display = 'none';
     document.getElementById('scoreboardContent').innerHTML = `
         <p class="empty-state">Start a game to see scores</p>
     `;
+}
+
+// Update visibility of Next Player button based on user role and current player
+function updateNextPlayerButton(game) {
+    const buttonContainer = document.getElementById('nextPlayerButtonContainer');
+    const nextPlayerBtn = document.getElementById('nextPlayerButton');
+    const buttonHint = document.getElementById('buttonHint');
+
+    // Don't show button if no game or no user info
+    if (!game || !currentUser || !game.is_started) {
+        buttonContainer.style.display = 'none';
+        return;
+    }
+
+    // Show button if user is gamemaster (always)
+    const isGamemaster = currentUser.roles && currentUser.roles.includes('gamemaster');
+    if (isGamemaster) {
+        buttonContainer.style.display = 'block';
+        updateButtonText(game, nextPlayerBtn, buttonHint);
+        return;
+    }
+
+    // Show button if user is the current player
+    const currentPlayerIndex = game.current_player;
+    if (currentPlayerIndex !== undefined && game.players && game.players[currentPlayerIndex]) {
+        const currentPlayerDbId = game.players[currentPlayerIndex].db_id;
+        const userPlayerId = currentUser.player_id;
+
+        if (currentPlayerDbId && userPlayerId && currentPlayerDbId === userPlayerId) {
+            buttonContainer.style.display = 'block';
+            updateButtonText(game, nextPlayerBtn, buttonHint);
+            return;
+        }
+    }
+
+    // Hide button otherwise
+    buttonContainer.style.display = 'none';
+}
+
+// Update button text based on game state
+function updateButtonText(game, buttonElement, hintElement) {
+    if (!buttonElement) return;
+
+    if (game.is_paused) {
+        // Game is paused - button continues to next player
+        buttonElement.textContent = '▶️ Continue Game';
+        if (hintElement) {
+            hintElement.textContent = 'Continue to next player';
+        }
+    } else {
+        // Game is active - button ends turn early
+        buttonElement.textContent = '⏭️ End Turn Early';
+        if (hintElement) {
+            hintElement.textContent = 'Skip remaining throws (records as misses)';
+        }
+    }
 }
 
 function displayScoreboard(players) {
@@ -217,6 +333,8 @@ function updateScoreDisplay(data) {
 
     if (currentGame) {
         displayScoreboard(data.players || currentGame.players);
+        // Update button visibility in case throw count changed
+        updateNextPlayerButton(currentGame);
     }
 }
 
@@ -226,16 +344,24 @@ function updateCurrentPlayer(data) {
 
     if (currentGame) {
         displayScoreboard(data.players || currentGame.players);
+        // Update button visibility for new current player
+        updateNextPlayerButton(currentGame);
     }
 }
 
 function handleGameState(data) {
+    // Update current game state
+    currentGame = data;
+
     // Handle game state updates which may include throwout advice
     if (data.throwout_advice) {
         displayThrowoutAdvice(data.throwout_advice);
     } else {
         hideThrowoutAdvice();
     }
+
+    // Update button visibility
+    updateNextPlayerButton(data);
 }
 
 function displayThrowoutAdvice(advice) {

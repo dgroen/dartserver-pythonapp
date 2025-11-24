@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Training Mode - Darts Game</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/control.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="user-info-header">
+            <div class="user-info">
+                {% if user_claims %}
+                <span class="username">👤 {{ user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + ' ' + user_claims.get('family_name', '')).strip() or user_claims.get('username', user_claims.get('sub', 'User')) }}</span>
+                {% if user_roles %}
+                <span class="user-roles">
+                    {% for role in user_roles %}
+                    <span class="role-badge role-{{ role }}">{{ role }}</span>
+                    {% endfor %}
+                </span>
+                {% endif %}
+                <a href="/logout" class="logout-btn">Logout</a>
+                {% endif %}
+            </div>
+        </div>
+        <header>
+            <h1>🎯 Training Mode</h1>
+            <div class="header-links">
+                <a href="/" class="header-link">🎮 Main Game</a>
+                <a href="/training/dashboard" class="header-link">📊 Training Stats</a>
+                <a href="/history" class="header-link">📜 Game History</a>
+            </div>
+        </header>
+
+        <div class="control-sections">
+            <!-- Training Setup -->
+            <section class="control-section">
+                <h2>Start Training Session</h2>
+                <p>Practice your skills in single-player mode. All your training results will be saved for review.</p>
+
+                <div class="form-group">
+                    <label for="training-game-type">Game Type:</label>
+                    <select id="training-game-type">
+                        <option value="170">170</option>
+                        <option value="301">301</option>
+                        <option value="401">401</option>
+                        <option value="501">501</option>
+                        <option value="cricket">Cricket</option>
+                        <option value="round_the_clock">Round the Clock</option>
+                        <option value="round_the_clock_double">Round the Clock Double</option>
+                        <option value="bull_practice">Bull Practice (auto-restart)</option>
+                    </select>
+                    <small id="game-type-description" style="display: block; margin-top: 0.5rem; color: #888;"></small>
+                </div>
+
+                <script>
+                    // Update game type description when selection changes
+                    const gameTypeSelect = document.getElementById('training-game-type');
+                    const gameTypeDescription = document.getElementById('game-type-description');
+                    
+                    const descriptions = {
+                        '170': 'Like 301 but starting from 170 points',
+                        '301': 'Classic 301 game - score down to exactly 0',
+                        '401': '401 game - score down to exactly 0',
+                        '501': '501 game - score down to exactly 0',
+                        'cricket': 'Hit numbers 15-20 and bulls to win',
+                        'round_the_clock': 'Hit numbers 20 down to 1, then bull',
+                        'round_the_clock_double': 'Hit doubles 20 down to 1, then bull',
+                        'bull_practice': 'Score bulls consecutively. Game ends when a turn has no bulls, then auto-restarts until you click "End Training"'
+                    };
+                    
+                    function updateGameTypeDescription() {
+                        const selectedType = gameTypeSelect.value;
+                        gameTypeDescription.textContent = descriptions[selectedType] || '';
+                    }
+                    
+                    gameTypeSelect.addEventListener('change', updateGameTypeDescription);
+                    updateGameTypeDescription(); // Set initial description
+                </script>
+
+                <div class="form-group">
+                    <label for="training-double-out">
+                        <input type="checkbox" id="training-double-out">
+                        Double Out (must finish with a double)
+                    </label>
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                    <button id="start-training-btn" class="btn btn-primary">Start Training</button>
+                    <button id="end-training-btn" class="btn btn-danger" style="display: none;">End Training</button>
+                </div>
+            </section>
+
+            <!-- Training Status -->
+            <section class="control-section">
+                <h2>Training Status</h2>
+                <div id="training-status">
+                    <p>No active training session</p>
+                </div>
+            </section>
+
+            <!-- Game Display -->
+            <section class="control-section">
+                <h2>Current Game</h2>
+                <div id="game-display" style="display: none;">
+                    <div id="game-info"></div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        let trainingSessionId = null;
+
+        // Connect to socket when training starts
+        function connectSocket() {
+            if (!socket) {
+                socket = io();
+
+                socket.on('game_state', function(data) {
+                    updateGameDisplay(data);
+                });
+
+                socket.on('connect', function() {
+                    console.log('Socket connected');
+                });
+            }
+        }
+
+        function updateGameDisplay(gameState) {
+            const display = document.getElementById('game-display');
+            const info = document.getElementById('game-info');
+
+            if (gameState && gameState.is_started) {
+                display.style.display = 'block';
+
+                let html = '<h3>Game State</h3>';
+                html += '<p><strong>Game Type:</strong> ' + gameState.game_type + '</p>';
+
+                if (gameState.players && gameState.players.length > 0) {
+                    const player = gameState.players[0];
+                    html += '<p><strong>Player:</strong> ' + player.name + '</p>';
+                    html += '<p><strong>Score:</strong> ' + player.score + '</p>';
+                    
+                    // Special display for Bull Practice
+                    if (gameState.game_type === 'bull_practice') {
+                        if (player.current_turn_score !== undefined) {
+                            html += '<p><strong>Current Turn Score:</strong> ' + player.current_turn_score + '</p>';
+                        }
+                        if (player.current_turn_bull_hits !== undefined) {
+                            html += '<p><strong>Bulls This Turn:</strong> ' + player.current_turn_bull_hits + '</p>';
+                        }
+                        html += '<p style="color: #00d4ff;"><em>Hit bulls to score! Miss all bulls in a turn to end and auto-restart.</em></p>';
+                    } else if (player.throws !== undefined) {
+                        html += '<p><strong>Throws:</strong> ' + player.throws + '</p>';
+                    }
+                }
+
+                info.innerHTML = html;
+            } else {
+                display.style.display = 'none';
+            }
+        }
+
+        // Start training session
+        document.getElementById('start-training-btn').addEventListener('click', async function() {
+            const gameType = document.getElementById('training-game-type').value;
+            const doubleOut = document.getElementById('training-double-out').checked;
+
+            try {
+                const response = await fetch('/api/training/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        game_type: gameType,
+                        double_out: doubleOut
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    trainingSessionId = data.training_session_id;
+                    document.getElementById('training-status').innerHTML =
+                        '<p style="color: #00d4ff;">✓ Training session active</p>' +
+                        '<p>Session ID: ' + data.session_id + '</p>';
+
+                    document.getElementById('start-training-btn').style.display = 'none';
+                    document.getElementById('end-training-btn').style.display = 'block';
+
+                    // Connect socket to receive game updates
+                    connectSocket();
+
+                    alert('Training session started! You can now throw darts.');
+                } else {
+                    alert('Failed to start training: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error starting training:', error);
+                alert('Failed to start training session');
+            }
+        });
+
+        // End training session
+        document.getElementById('end-training-btn').addEventListener('click', async function() {
+            if (!confirm('Are you sure you want to end this training session?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/training/end', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    trainingSessionId = null;
+                    document.getElementById('training-status').innerHTML =
+                        '<p>No active training session</p>';
+
+                    document.getElementById('start-training-btn').style.display = 'block';
+                    document.getElementById('end-training-btn').style.display = 'none';
+                    document.getElementById('game-display').style.display = 'none';
+
+                    alert('Training session ended! Check your stats in the Training Dashboard.');
+                } else {
+                    alert('Failed to end training: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error ending training:', error);
+                alert('Failed to end training session');
+            }
+        });
+    </script>
+</body>
+</html>

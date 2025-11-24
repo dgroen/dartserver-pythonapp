@@ -30,6 +30,9 @@ from src.core.auth import (
     role_required,
 )
 from src.core.config import Config
+from src.core.dartboard_service import DartboardMappingError, DartboardService
+from src.core.database_models import Player
+from src.core.database_service import get_session, set_database_service
 from src.core.rabbitmq_consumer import RabbitMQConsumer
 
 # Load environment variables
@@ -69,9 +72,14 @@ app.config["SESSION_COOKIE_SECURE"] = Config.SESSION_COOKIE_SECURE
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = 3600  # 1 hour
-_dsas = os.getenv("DARTBOARD_SENDS_ACTUAL_SCORE", "false")
-app.config["DARTBOARD_SENDS_ACTUAL_SCORE"] = _dsas.lower() == "true"
-CORS(app)
+# Enable CORS with credentials support - required for session cookies to work
+CORS(
+    app,
+    origins=[Config.APP_URL],
+    supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+)
 
 # Log environment and configuration info
 logging.info(f"Application Configuration: {Config}")
@@ -98,7 +106,7 @@ swagger_template = {
     "swagger": "2.0",
     "info": {
         "title": "Darts Game API",
-        "description": "API for managing darts games (301, 401, 501, Cricket) \
+        "description": "API for managing darts games (301, 401, 501, Cricket, Round the Clock) \
         with real-time score tracking",
         "version": "1.0.0",
         "contact": {
@@ -120,7 +128,7 @@ swagger_template = {
 swagger = Swagger(app, config=swagger_config, template=swagger_template)
 
 # Initialize SocketIO
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # Initialize Game Session Manager (for multiple games)
 game_session_manager = GameSessionManager(socketio)
@@ -138,8 +146,13 @@ def _get_default_game_manager():
         default_session_id = game_session_manager.get_or_create_default_session()
         game_manager = game_session_manager.get_session(default_session_id)
         app.game_manager = game_manager  # Attach to app for access in decorators
+        # Set database service for dartboard endpoints
+        set_database_service(gm.db_service)
     return game_manager
 
+
+# Initialize global database service for dartboard endpoints
+# Note: This will be set when game_manager is lazily initialized
 
 # Initialize RabbitMQ Consumer
 rabbitmq_consumer = None
@@ -174,6 +187,35 @@ def index():
     user_roles = getattr(request, "user_roles", [])
     user_claims = getattr(request, "user_claims", {})
     return render_template("index.html", user_roles=user_roles, user_claims=user_claims)
+
+
+@app.route("/service-worker.js")
+def serve_service_worker():
+    """Serve the service worker file (no authentication required for PWA)"""
+    from flask import send_from_directory
+
+    return send_from_directory(str(_root_dir / "static"), "service-worker.js")
+
+
+@app.route("/health", methods=["GET"])
+def health_check():
+    """Health check endpoint for Docker health monitoring
+    ---
+    tags:
+      - UI
+    summary: Health check endpoint
+    description: Returns 200 OK if the application is running and healthy
+    responses:
+      200:
+        description: Application is healthy
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: healthy
+    """
+    return jsonify({"status": "healthy"}), 200
 
 
 @app.route("/control")
@@ -231,6 +273,125 @@ def dashboard():
     return render_template("dashboard.html", user_roles=user_roles, user_claims=user_claims)
 
 
+@app.route("/training")
+@login_required
+def training():
+    """Training mode page for single-player practice
+    ---
+    tags:
+      - UI
+    summary: Training mode page
+    description: Renders the training mode interface for single-player practice
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template("training.html", user_roles=user_roles, user_claims=user_claims)
+
+
+@app.route("/training/dashboard")
+@login_required
+def training_dashboard():
+    """Training statistics dashboard
+    ---
+    tags:
+      - UI
+    summary: Training statistics dashboard
+    description: Renders the training statistics and history dashboard
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template(
+        "training_dashboard.html",
+        user_roles=user_roles,
+        user_claims=user_claims,
+    )
+
+
+def _verify_callback_state():
+    """Verify state parameter to prevent CSRF."""
+    state = request.args.get("state")
+    stored_state = session.get("oauth_state")
+    app.logger.info(f"Callback state check: {state}")
+    if state != stored_state:
+        app.logger.error(f"State mismatch! {state} vs {stored_state}")
+        return False
+    return True
+
+
+def _handle_auth_code_exchange():
+    """Get code and exchange for tokens."""
+    code = request.args.get("code")
+    if not code:
+        error = request.args.get("error", "Authorization failed")
+        return None, error
+
+    token_response = exchange_code_for_token(code)
+    if not token_response:
+        return None, "Failed to obtain access token"
+
+    session["access_token"] = token_response.get("access_token")
+    session["refresh_token"] = token_response.get("refresh_token")
+    session["id_token"] = token_response.get("id_token")
+    return session["access_token"], None
+
+
+def _process_scim2_data(scim_data, username, email, name):
+    """Extract user data from SCIM2 response."""
+    username = scim_data.get("userName") or username
+    if not email:
+        emails = scim_data.get("emails", [])
+        if emails:
+            email = emails[0] if isinstance(emails[0], str) else emails[0].get("value")
+    if not name:
+        name_obj = scim_data.get("name", {})
+        if isinstance(name_obj, dict):
+            given = name_obj.get("givenName", "")
+            family = name_obj.get("familyName", "")
+            name = f"{given} {family}".strip()
+    return username, email, name
+
+
+def _fetch_scim2_user(access_token):
+    """Fetch user data from SCIM2 /Me endpoint."""
+    try:
+        import requests
+
+        wso2_url = os.getenv("WSO2_IS_INTERNAL_URL", "https://wso2is:9443")
+        verify_ssl = os.getenv("WSO2_IS_VERIFY_SSL", "false").lower() in ("true", "1", "yes")
+        resp = requests.get(
+            f"{wso2_url}/scim2/Me",
+            headers={"Authorization": f"Bearer {access_token}"},
+            verify=verify_ssl,
+            timeout=5,
+        )
+        return resp.json() if resp.status_code == 200 else None
+    except Exception:
+        return None
+
+
+def _ensure_player_exists(username, email, name):
+    """Create or get player in database."""
+    if not username:
+        return
+    try:
+        gm = _get_default_game_manager()
+        player = gm.db_service.get_or_create_player(
+            username=username,
+            email=email,
+            name=name,
+        )
+        if player:
+            session["player_id"] = player.id
+    except Exception as e:
+        app.logger.warning(f"Player creation failed: {e}")
+
+
 @app.route("/login")
 def login():
     """Login page"""
@@ -268,78 +429,40 @@ def login():
 @app.route("/callback")
 def callback():
     """OAuth2 callback endpoint"""
-    # Verify state to prevent CSRF
-    state = request.args.get("state")
-    stored_state = session.get("oauth_state")
+    app.logger.info(f"Callback - Session ID: {session.get('_id', 'No session ID')}")
 
-    # Debug logging
-    app.logger.info(f"Callback received - State from request: {state}")
-    app.logger.info(f"Callback received - State from session: {stored_state}")
-    app.logger.info(f"Session ID: {session.get('_id', 'No session ID')}")
-
-    if state != stored_state:
-        app.logger.error(f"State mismatch! Request: {state}, Session: {stored_state}")
+    if not _verify_callback_state():
         return redirect(url_for("login", error="Invalid state parameter"))
 
-    # Get authorization code
-    code = request.args.get("code")
-    if not code:
-        error = request.args.get("error", "Authorization failed")
+    access_token, error = _handle_auth_code_exchange()
+    if error:
         return redirect(url_for("login", error=error))
 
-    # Exchange code for token
-    token_response = exchange_code_for_token(code)
-    if not token_response:
-        return redirect(url_for("login", error="Failed to obtain access token"))
-
-    # Store tokens in session
-    session["access_token"] = token_response.get("access_token")
-    session["refresh_token"] = token_response.get("refresh_token")
-    session["id_token"] = token_response.get("id_token")
-
-    # Get user info
-    user_info = get_user_info(session["access_token"])
+    user_info = get_user_info(access_token)
     if user_info:
         session["user_info"] = user_info
+        username = user_info.get("preferred_username") or user_info.get("username")
+        email = user_info.get("email")
+        name = user_info.get("name") or user_info.get("given_name")
 
-        # Auto-add user to game lobby by creating/getting player in database
-        try:
-            username = user_info.get("preferred_username") or user_info.get("sub")
-            email = user_info.get("email")
-            name = user_info.get("name") or user_info.get("given_name", username)
+        if not username or "-" in str(username):
+            scim_data = _fetch_scim2_user(access_token)
+            if scim_data:
+                username, email, name = _process_scim2_data(scim_data, username, email, name)
 
-            if username:
-                gm = _get_default_game_manager()
-                player = gm.db_service.get_or_create_player(
-                    username=username,
-                    email=email,
-                    name=name,
-                )
-                if player:
-                    session["player_id"] = player.id
-                    app.logger.info(f"Player created/retrieved: {username} (ID: {player.id})")
-        except Exception as e:
-            app.logger.warning(f"Failed to create/get player in callback: {e}")
+        if username and "@" in username:
+            username = username.split("@")[0]
 
-    # Clear OAuth state
+        if not username or "-" in str(username):
+            username = user_info.get("sub")
+        if not name:
+            name = username
+
+        _ensure_player_exists(username, email, name)
+
     session.pop("oauth_state", None)
-
-    # Redirect to original destination or home
-    # First, try to get the redirect URL from session (set during login)
-    # Otherwise fall back to home page using relative URL (preserves scheme/host from proxy)
-    next_url = session.pop("login_next_url", None)
-
-    app.logger.info(f"Callback - Retrieved login_next_url from session: {next_url}")
-    app.logger.info(f"Callback - Session contents: {dict(session)}")
-
-    # Use "/" as fallback if no next_url was stored
-    if not next_url:
-        app.logger.warning("No login_next_url found in session, redirecting to home page")
-        next_url = "/"
-
-    # Mark session as modified to ensure changes are persisted
+    next_url = session.pop("login_next_url", None) or "/"
     session.modified = True
-
     app.logger.info(f"Callback redirecting to: {next_url}")
     return redirect(next_url)
 
@@ -462,8 +585,10 @@ def get_game_state():
               description: Index of the current player
             game_type:
               type: string
-              description: Type of game (301, 401, 501, cricket)
-              enum: ['301', '401', '501', 'cricket']
+              description: Type of game (301, 401, 501, cricket, round_the_clock,
+                round_the_clock_double)
+              enum: ['301', '401', '501', 'cricket', 'round_the_clock',
+                'round_the_clock_double']
             is_started:
               type: boolean
               description: Whether the game has started
@@ -481,6 +606,7 @@ def get_game_state():
               description: Game-specific data
     """
     gm = _get_default_game_manager()
+
     return jsonify(gm.get_game_state())
 
 
@@ -505,7 +631,7 @@ def new_game():
             game_type:
               type: string
               description: Type of game to start
-              enum: ['301', '401', '501', 'cricket']
+              enum: ['301', '401', '501', 'cricket', 'round_the_clock', 'round_the_clock_double']
               default: '301'
               example: '301'
             players:
@@ -518,6 +644,11 @@ def new_game():
             double_out:
               type: boolean
               description: Whether to require double-out to finish (only for 301/401/501)
+              default: false
+              example: false
+            reset_on_miss:
+              type: boolean
+              description: Enable hard mode for round_the_clock (reset to 20 after 3 misses)
               default: false
               example: false
     responses:
@@ -533,13 +664,48 @@ def new_game():
               type: string
               example: New game started
     """
+    gm = _get_default_game_manager()
+
     data = request.json
     game_type = data.get("game_type", "301")
-    player_names = data.get("players", ["Player 1", "Player 2"])
+    player_data = data.get("players", [])
     double_out = data.get("double_out", False)
+    reset_on_miss = data.get("reset_on_miss", False)
 
-    gm = _get_default_game_manager()
-    gm.new_game(game_type, player_names, double_out)
+    # Convert player names to player objects with database IDs
+    db_session = gm.db_service.db_manager.get_session()
+    player_ids = []
+
+    for player_name in player_data:
+        # Try to find player by name or username
+        player = (
+            db_session.query(Player)
+            .filter(
+                (Player.name == player_name) | (Player.username == player_name),
+            )
+            .first()
+        )
+        if player:
+            player_ids.append({"db_id": player.id, "name": player.name})
+        else:
+            # If player not found in database, raise an error
+            app.logger.warning(
+                f"Player '{player_name}' not found in database. "
+                "Only registered WSO2 users can play.",
+            )
+            raise ValueError(
+                f"Player '{player_name}' not found. Only registered WSO2 users allowed.",
+            )
+
+    if not player_ids:
+        player_ids = [session.get("player_id")]
+
+    gm.new_game(
+        game_type,
+        player_ids=player_ids,
+        double_out=double_out,
+        reset_on_miss=reset_on_miss,
+    )
     # Game state is automatically emitted by game_manager.new_game()
     return jsonify({"status": "success", "message": "New game started"})
 
@@ -743,6 +909,7 @@ def new_game_in_session(session_id):
     return jsonify({"status": "success", "message": "New game started"})
 
 
+
 @app.route("/api/players", methods=["GET"])
 @login_required
 def get_players():
@@ -751,26 +918,55 @@ def get_players():
     tags:
       - Players
     summary: Get all players
-    description: Returns a list of all players in the current game
+    description: Returns a list of all players in the current game or all database players
+    parameters:
+      - in: query
+        name: source
+        type: string
+        description: Source of players ('game' for current game, 'database' for all users)
+        default: game
+        enum: [game, database]
     responses:
       200:
-        description: List of players
+        description: List of players or status with players
         schema:
-          type: array
-          items:
-            type: object
-            properties:
-              id:
-                type: integer
-                description: Player ID
-                example: 0
-              name:
-                type: string
-                description: Player name
-                example: Alice
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            players:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Player ID
+                  name:
+                    type: string
+                    description: Player name
+                  username:
+                    type: string
+                    description: Player username (for database source)
+                  email:
+                    type: string
+                    description: Player email (for database source)
     """
     gm = _get_default_game_manager()
-    return jsonify(gm.get_players())
+
+    source = request.args.get("source", "game")
+
+    if source == "database":
+        # Return all players from database with usernames
+        try:
+            players = gm.db_service.get_all_players_with_usernames()
+            return jsonify({"status": "success", "players": players})
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+    else:
+        # Return current game players
+        return jsonify(gm.get_players())
 
 
 @app.route("/api/wso2/users/search", methods=["GET"])
@@ -875,6 +1071,8 @@ def add_player():
       500:
         description: Server error
     """
+    gm = _get_default_game_manager()
+
     try:
         data = request.json or {}
         username = data.get("username", "").strip()
@@ -909,7 +1107,6 @@ def add_player():
         email = wso2_user.get("email")
 
         # Add to database with email and username (enforces WSO2 users only)
-        gm = _get_default_game_manager()
         player = gm.db_service.get_or_create_player(
             name=player_name,
             username=username,
@@ -972,47 +1169,53 @@ def remove_player(player_id):
               example: Player removed
     """
     gm = _get_default_game_manager()
+
     gm.remove_player(player_id)
     # Game state is automatically emitted by game_manager.remove_player()
     return jsonify({"status": "success", "message": "Player removed"})
 
 
-@app.route("/api/Throw", methods=["POST"])
+@app.route("/api/Throw/zone", methods=["POST"])
 # @login_required
 # @permission_required("score:submit")
-def submit_score():
-    """Submit a score via API - requires score:submit permission
+def submit_score_zone():
+    """Submit a score via dartboard zone mapping (New generic format)
     ---
     tags:
       - Score
-    summary: Submit a dart score
-    description: Submits a dart throw score for the current player
+    summary: Submit a dart score using zone mapping
+    description: |
+        Submits a dart throw using GPIO pin combination and dartboard type.
+        The server looks up the zone information based on the dartboard type and pin combination.
+        This is the preferred format for new dartboards.
     parameters:
       - in: body
         name: body
-        description: Score information
+        description: Pin-based score information
         required: true
         schema:
           type: object
           required:
-            - score
-            - multiplier
+            - masterPin
+            - slavePin
+            - boardType
           properties:
-            score:
+            masterPin:
               type: integer
-              description: Base score value (0-20 for regular segments, 25 for bull)
-              example: 20
-              minimum: 0
-              maximum: 25
-            multiplier:
+              description: Master (row) GPIO pin number
+              example: 4
+            slavePin:
+              type: integer
+              description: Slave (column) GPIO pin number
+              example: 13
+            boardType:
               type: string
-              description: Score multiplier type
-              enum: ['SINGLE', 'DOUBLE', 'TRIPLE', 'BULL', 'DBLBULL']
-              example: TRIPLE
+              description: Dartboard type identifier (e.g., 'carromco', 'winmau')
+              example: carromco
             user:
               type: string
-              description: Optional player name (for future use)
-              example: Alice
+              description: Optional player identifier
+              example: dgroen
     responses:
       200:
         description: Score submitted successfully
@@ -1025,17 +1228,547 @@ def submit_score():
             message:
               type: string
               example: Score submitted
+            zone_info:
+              type: object
+              properties:
+                zone_number:
+                  type: integer
+                  example: 20
+                multiplier_type:
+                  type: string
+                  example: TRIPLE
+                base_value:
+                  type: integer
+                  example: 20
+                score:
+                  type: integer
+                  example: 60
+      400:
+        description: Invalid request or zone not found
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: error
+            message:
+              type: string
     """
-    data = request.json
-    score = data.get("score", 0)
-    multiplier = data.get("multiplier", "SINGLE")
-
-    # Process the score
     gm = _get_default_game_manager()
-    gm.process_score({"score": score, "multiplier": multiplier})
-    # Game state is automatically emitted by game_manager.process_score()
 
-    return jsonify({"status": "success", "message": "Score submitted"})
+    try:
+        data = request.json
+        master_pin = data.get("masterPin")
+        slave_pin = data.get("slavePin")
+        board_type = data.get("boardType", "").lower()
+
+        # Validate input
+        if not isinstance(master_pin, int) or not isinstance(slave_pin, int):
+            return (
+                jsonify({"status": "error", "message": "masterPin and slavePin must be integers"}),
+                400,
+            )
+
+        if not board_type:
+            return jsonify({"status": "error", "message": "boardType is required"}), 400
+
+        # Get database session
+        session = get_session()
+
+        try:
+            # Look up zone information
+            zone_info = DartboardService.get_zone_from_pins(
+                session,
+                board_type,
+                master_pin,
+                slave_pin,
+            )
+
+            # Emit WebSocket event for admin dartboard testing page (even if zone not found)
+            socketio.emit(
+                "dartboard_test_received",
+                {
+                    "masterPin": master_pin,
+                    "slavePin": slave_pin,
+                    "boardType": board_type,
+                    "zoneInfo": zone_info,
+                },
+                namespace="/",
+            )
+
+            if not zone_info:
+                logger.warning(
+                    f"Zone mapping not found - Received pinout: masterPin={master_pin}, "
+                    f"slavePin={slave_pin}, boardType={board_type}",
+                )
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": (
+                                f"Zone mapping not found for pins ({master_pin}, {slave_pin}) "
+                                f"on board type '{board_type}'"
+                            ),
+                        },
+                    ),
+                    400,
+                )
+
+            # Process the score using the zone information
+            # Pass the base_value and multiplier_type - game logic handles the calculation
+            gm.process_score(
+                {
+                    "score": zone_info["base_value"],
+                    "multiplier": zone_info["multiplier_type"],
+                },
+            )
+
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": "Score submitted",
+                    "zone_info": zone_info,
+                },
+            )
+        finally:
+            session.close()
+
+    except Exception as e:
+        logger.exception("Error submitting zone-based score")
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/api/dartboard/types", methods=["GET"])
+def get_dartboard_types():
+    """Get all registered dartboard types
+    ---
+    tags:
+      - Dartboard
+    summary: Get dartboard types
+    description: Returns all registered and active dartboard types
+    responses:
+      200:
+        description: List of dartboard types
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            types:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  brand:
+                    type: string
+                  model:
+                    type: string
+                  description:
+                    type: string
+    """
+    try:
+        session = get_session()
+        try:
+            types = DartboardService.list_dartboard_types(session)
+            return jsonify(
+                {
+                    "status": "success",
+                    "types": [
+                        {
+                            "id": t.id,
+                            "name": t.name,
+                            "brand": t.brand,
+                            "model": t.model,
+                            "description": t.description,
+                        }
+                        for t in types
+                    ],
+                },
+            )
+        finally:
+            session.close()
+    except Exception as e:
+        logger.exception("Error getting dartboard types")
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/api/dartboard/types/<board_type>/mappings", methods=["GET"])
+def get_dartboard_mappings(board_type):
+    """Get zone mappings for a dartboard type
+    ---
+    tags:
+      - Dartboard
+    summary: Get dartboard zone mappings
+    description: Returns all zone mappings for a specific dartboard type
+    parameters:
+      - in: path
+        name: board_type
+        type: string
+        required: true
+        description: Dartboard type name (e.g., 'carromco')
+    responses:
+      200:
+        description: List of zone mappings
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            board_type:
+              type: string
+            mappings:
+              type: array
+              items:
+                type: object
+                properties:
+                  master_pin:
+                    type: integer
+                  slave_pin:
+                    type: integer
+                  zone_number:
+                    type: integer
+                  multiplier_type:
+                    type: string
+                  base_value:
+                    type: integer
+      404:
+        description: Dartboard type not found
+    """
+    try:
+        session = get_session()
+        try:
+            mappings = DartboardService.get_dartboard_type_mappings(session, board_type.lower())
+            if mappings is None:
+                return (
+                    jsonify(
+                        {"status": "error", "message": f"Dartboard type '{board_type}' not found"},
+                    ),
+                    404,
+                )
+
+            return jsonify(
+                {
+                    "status": "success",
+                    "board_type": board_type,
+                    "mappings": [
+                        {
+                            "master_pin": m.master_pin,
+                            "slave_pin": m.slave_pin,
+                            "zone_number": m.zone_number,
+                            "multiplier_type": m.multiplier_type,
+                            "base_value": m.base_value,
+                        }
+                        for m in mappings
+                    ],
+                },
+            )
+        finally:
+            session.close()
+    except Exception as e:
+        logger.exception("Error getting dartboard mappings")
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+# ==================== ADMIN DARTBOARD TESTING ENDPOINTS ====================
+
+
+@app.route("/admin/dartboard-testing")
+@login_required
+@role_required("admin")
+def admin_dartboard_testing():
+    """Admin page for dartboard testing and calibration"""
+    return render_template("admin_dartboard_testing.html")
+
+
+@app.route("/api/admin/dartboard/matrix/<board_type>", methods=["GET"])
+@login_required
+@role_required("admin")
+def get_dartboard_matrix(board_type):
+    """Get matrix visualization for a dartboard type
+    ---
+    tags:
+      - Admin/Dartboard
+    summary: Get dartboard matrix visualization
+    description: Returns the GPIO pin matrix for a dartboard type with current mappings
+    parameters:
+      - in: path
+        name: board_type
+        type: string
+        description: Dartboard type name (e.g., 'carromco')
+    responses:
+      200:
+        description: Matrix visualization data
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            dartboard_type:
+              type: object
+            master_pins:
+              type: array
+              items:
+                type: integer
+            slave_pins:
+              type: array
+              items:
+                type: integer
+            matrix:
+              type: array
+      404:
+        description: Dartboard type not found
+    """
+    try:
+        session = get_session()
+        try:
+            result = DartboardService.get_matrix_visualization(session, board_type.lower())
+            if not result or result[0] is None:
+                return (
+                    jsonify(
+                        {"status": "error", "message": f"Dartboard type '{board_type}' not found"},
+                    ),
+                    404,
+                )
+
+            dartboard_type_dict, master_pins, slave_pins, matrix = result
+
+            return jsonify(
+                {
+                    "status": "success",
+                    "dartboard_type": dartboard_type_dict,
+                    "master_pins": master_pins,
+                    "slave_pins": slave_pins,
+                    "matrix": matrix,
+                },
+            )
+        finally:
+            session.close()
+    except Exception as e:
+        logger.exception("Error getting dartboard matrix")
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/api/admin/dartboard/mapping", methods=["POST"])
+@login_required
+@role_required("admin")
+def update_dartboard_mapping():
+    """Update or create a dartboard zone mapping
+    ---
+    tags:
+      - Admin/Dartboard
+    summary: Update dartboard mapping
+    description: Update an existing zone mapping or create a new one
+    parameters:
+      - in: body
+        name: body
+        schema:
+          type: object
+          required:
+            - boardType
+            - masterPin
+            - slavePin
+            - zoneNumber
+            - multiplierType
+            - baseValue
+          properties:
+            boardType:
+              type: string
+              example: carromco
+            masterPin:
+              type: integer
+              example: 4
+            slavePin:
+              type: integer
+              example: 13
+            zoneNumber:
+              type: integer
+              example: 20
+            multiplierType:
+              type: string
+              enum: ['SINGLE', 'DOUBLE', 'TRIPLE', 'BULL', 'DBLBULL']
+              example: TRIPLE
+            baseValue:
+              type: integer
+              example: 20
+    responses:
+      200:
+        description: Mapping updated successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+      400:
+        description: Invalid request or validation error
+    """
+    try:
+        data = request.json
+        board_type = data.get("boardType", "").lower()
+        master_pin = data.get("masterPin")
+        slave_pin = data.get("slavePin")
+        zone_number = data.get("zoneNumber")
+        multiplier_type = data.get("multiplierType", "").upper()
+        base_value = data.get("baseValue")
+
+        # Validate input
+        if not all(
+            [
+                board_type,
+                master_pin is not None,
+                slave_pin is not None,
+                zone_number is not None,
+                multiplier_type,
+                base_value is not None,
+            ],
+        ):
+            return jsonify({"status": "error", "message": "Missing required fields"}), 400
+
+        session = get_session()
+        try:
+            DartboardService.update_zone_mapping(
+                session,
+                board_type,
+                int(master_pin),
+                int(slave_pin),
+                int(zone_number),
+                multiplier_type,
+                int(base_value),
+            )
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": f"Mapping for pins ({master_pin}, {slave_pin}) updated successfully",
+                },
+            )
+        finally:
+            session.close()
+    except DartboardMappingError as e:
+        logger.exception("Dartboard mapping error")
+        return jsonify({"status": "error", "message": str(e)}), 400
+    except Exception as e:
+        logger.exception("Error updating dartboard mapping")
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/api/admin/dartboard/import", methods=["POST"])
+@login_required
+@role_required("admin")
+def import_dartboard_mappings():
+    """Bulk import dartboard mappings from CSV
+    ---
+    tags:
+      - Admin/Dartboard
+    summary: Bulk import mappings
+    description: Import multiple zone mappings at once
+    parameters:
+      - in: body
+        name: body
+        schema:
+          type: object
+          required:
+            - boardType
+            - mappings
+          properties:
+            boardType:
+              type: string
+              example: carromco
+            mappings:
+              type: array
+              items:
+                type: object
+                required:
+                  - masterPin
+                  - slavePin
+                  - zoneNumber
+                  - multiplierType
+                  - baseValue
+                properties:
+                  masterPin:
+                    type: integer
+                  slavePin:
+                    type: integer
+                  zoneNumber:
+                    type: integer
+                  multiplierType:
+                    type: string
+                  baseValue:
+                    type: integer
+    responses:
+      200:
+        description: Mappings imported successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            created:
+              type: integer
+            updated:
+              type: integer
+      400:
+        description: Invalid request or import error
+    """
+    try:
+        data = request.json
+        board_type = data.get("boardType", "").lower()
+        mappings = data.get("mappings", [])
+
+        if not board_type or not mappings:
+            return (
+                jsonify({"status": "error", "message": "boardType and mappings are required"}),
+                400,
+            )
+
+        session = get_session()
+        try:
+            # Convert CSV-like format to mapping data format
+            mapping_data = []
+            for mapping in mappings:
+                mapping_data.append(
+                    {
+                        "master_pin": mapping.get("masterPin"),
+                        "slave_pin": mapping.get("slavePin"),
+                        "zone_number": mapping.get("zoneNumber"),
+                        "multiplier_type": mapping.get("multiplierType"),
+                        "base_value": mapping.get("baseValue"),
+                    },
+                )
+
+            created, updated = DartboardService.bulk_import_mappings(
+                session,
+                board_type,
+                mapping_data,
+            )
+
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": (
+                        f"Imported {created} new mappings and updated {updated} existing mappings"
+                    ),
+                    "created": created,
+                    "updated": updated,
+                },
+            )
+        finally:
+            session.close()
+    except DartboardMappingError as e:
+        logger.exception("Dartboard import error")
+        return jsonify({"status": "error", "message": str(e)}), 400
+    except Exception as e:
+        logger.exception("Error importing dartboard mappings")
+        return jsonify({"status": "error", "message": str(e)}), 400
 
 
 @app.route("/api/tts/config", methods=["GET"])
@@ -1069,6 +1802,7 @@ def get_tts_config():
               description: Current voice type
     """
     gm = _get_default_game_manager()
+
     return jsonify(
         {
             "enabled": gm.tts.is_enabled(),
@@ -1076,6 +1810,7 @@ def get_tts_config():
             "speed": gm.tts.speed,
             "volume": gm.tts.volume,
             "voice": gm.tts.voice_type,
+            "language": gm.tts.language,
         },
     )
 
@@ -1125,8 +1860,9 @@ def update_tts_config():
               type: string
               example: TTS configuration updated
     """
-    data = request.json
     gm = _get_default_game_manager()
+
+    data = request.json
 
     if "enabled" in data:
         if data["enabled"]:
@@ -1142,6 +1878,9 @@ def update_tts_config():
 
     if "voice" in data:
         gm.tts.set_voice(data["voice"])
+
+    if "language" in data:
+        gm.tts.set_language(data["language"])
 
     return jsonify({"status": "success", "message": "TTS configuration updated"})
 
@@ -1183,6 +1922,34 @@ def get_tts_voices():
     return jsonify(voices)
 
 
+@app.route("/api/tts/languages", methods=["GET"])
+def get_tts_languages():
+    """Get supported TTS languages
+    ---
+    tags:
+      - TTS
+    summary: Get supported TTS languages
+    description: Returns a list of all supported languages for TTS
+    responses:
+      200:
+        description: Dictionary of supported languages
+        schema:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            en: English
+            nl: Dutch
+            de: German
+            fr: French
+            es: Spanish
+    """
+    from src.core.tts_service import TTSService
+
+    languages = TTSService.get_supported_languages()
+    return jsonify(languages)
+
+
 @app.route("/api/tts/test", methods=["POST"])
 def test_tts():
     """Test TTS with custom text
@@ -1218,11 +1985,10 @@ def test_tts():
               type: string
               example: TTS test completed
     """
-    data = request.json
-    text = data.get("text", "This is a test")
-
     gm = _get_default_game_manager()
 
+    data = request.json
+    text = data.get("text", "This is a test")
 
     success = gm.tts.speak(text)
 
@@ -1289,6 +2055,8 @@ def generate_tts_audio():
               type: string
               example: Failed to generate audio
     """
+    gm = _get_default_game_manager()
+
     from flask import Response
 
     data = request.json
@@ -1298,9 +2066,6 @@ def generate_tts_audio():
     if not text:
         return jsonify({"status": "error", "message": "Text is required"}), 400
 
-    gm = _get_default_game_manager()
-
-
     audio_data = gm.tts.generate_audio_data(text, lang)
 
     if audio_data:
@@ -1308,15 +2073,51 @@ def generate_tts_audio():
     return jsonify({"status": "error", "message": "Failed to generate audio"}), 500
 
 
+@app.route("/api/admin/tts/player", methods=["GET"])
+@role_required("admin")
+def tts_player():
+    """TTS player UI for testing
+    ---
+    tags:
+      - TTS
+    summary: TTS Audio Player
+    description: Interactive HTML page for testing TTS with built-in audio player (admin only)
+    parameters:
+      - in: query
+        name: text
+        type: string
+        description: Text to generate audio for
+        example: "Hello, this is a test"
+        required: false
+    responses:
+      200:
+        description: HTML page with audio player
+        content:
+          text/html:
+            schema:
+              type: string
+      403:
+        description: Forbidden - admin role required
+    """
+    text = request.args.get("text", "Hello, this is a test message")
+    return render_template(
+        "tts_player.html",
+        initial_text=text,
+    )
+
+
 # SocketIO Events
 @app.route("/api/game/history", methods=["GET"])
+@login_required
 def get_game_history():
     """Get recent game history
     ---
     tags:
       - Game
     summary: Get recent game history
-    description: Returns a list of recent games with basic information
+    description: >
+      Returns a list of recent games. Regular users see only their games,
+      admins can filter by user.
     parameters:
       - in: query
         name: limit
@@ -1324,6 +2125,11 @@ def get_game_history():
         description: Maximum number of games to return
         default: 10
         example: 10
+      - in: query
+        name: user
+        type: string
+        description: Filter by username (admin only)
+        example: john_doe
     responses:
       200:
         description: List of recent games
@@ -1357,11 +2163,43 @@ def get_game_history():
                     type: string
                     description: Game finish timestamp
     """
-    limit = request.args.get("limit", 10, type=int)
-    try:
-        gm = _get_default_game_manager()
+    gm = _get_default_game_manager()
 
-        games = gm.db_service.get_recent_games(limit=limit)
+    limit = request.args.get("limit", 10, type=int)
+    filter_user = request.args.get("user")
+
+    # Get current user info
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+
+    # Log all available claims for debugging
+    logger.info(f"get_game_history: Available claims: {list(user_claims.keys())}")
+    logger.info(
+        f"get_game_history: username={user_claims.get('username')}, \
+        preferred_username={user_claims.get('preferred_username')}, sub={user_claims.get('sub')}",
+    )
+
+    current_username = (
+        user_claims.get("username")
+        or user_claims.get("preferred_username")
+        or user_claims.get("sub")
+    )
+
+    # Strip WSO2 tenant suffix (e.g., @carbon.super) from username if present
+    if current_username and "@" in current_username:
+        current_username = current_username.split("@")[0]
+
+    logger.info(f"get_game_history: current_username={current_username}, user_roles={user_roles}")
+
+    # Determine which username to filter by
+    # Admins can filter by specific user or see all games; regular users only see their own
+    username_filter = filter_user if "admin" in user_roles else current_username
+
+    logger.info(f"get_game_history: username_filter={username_filter}, limit={limit}")
+
+    try:
+        games = gm.db_service.get_recent_games(limit=limit, username=username_filter)
+        logger.info(f"get_game_history: Found {len(games)} games")
         return jsonify({"status": "success", "games": games})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -1417,9 +2255,9 @@ def get_game_replay(game_session_id):
       404:
         description: Game not found
     """
-    try:
-        gm = _get_default_game_manager()
+    gm = _get_default_game_manager()
 
+    try:
         game_data = gm.db_service.get_game_replay_data(game_session_id)
         if game_data:
             return jsonify({"status": "success", "game_data": game_data})
@@ -1449,10 +2287,12 @@ def get_current_game_session_id():
               type: string
               description: Current game session ID (null if no active game)
     """
+    gm = _get_default_game_manager()
+
     return jsonify(
         {
             "status": "success",
-            "game_session_id": _get_default_game_manager().db_service.current_game_session_id,
+            "game_session_id": gm.db_service.current_game_session_id,
         },
     )
 
@@ -2047,9 +2887,11 @@ def dartboard_submit_score():
             message:
               type: string
     """
+    gm = _get_default_game_manager()
+
     data = request.json
     # Process score through game manager
-    game_manager.process_score(data)
+    gm.process_score(data)
     return jsonify({"success": True, "message": "Score submitted"})
 
 
@@ -2080,8 +2922,104 @@ def get_current_game():
               description: Current game state
     """
     gm = _get_default_game_manager()
+
     game_state = gm.get_game_state()
     return jsonify({"success": True, "game": game_state})
+
+
+@app.route("/api/user/current", methods=["GET"])
+@login_required
+def get_current_user():
+    """Get current user information
+    ---
+    tags:
+      - User
+    summary: Get current user info
+    description: Returns the current authenticated user's username, roles, and player ID
+    responses:
+      200:
+        description: Current user information
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            username:
+              type: string
+              description: User's username
+            roles:
+              type: array
+              items:
+                type: string
+              description: User's roles (admin, gamemaster, player, etc.)
+            player_id:
+              type: integer
+              description: User's player database ID
+    """
+    user_info = session.get("user_info", {})
+    user_roles = getattr(request, "user_roles", [])
+    username = user_info.get("preferred_username") or user_info.get("username")
+    player_id = session.get("player_id")
+
+    return jsonify(
+        {
+            "success": True,
+            "username": username,
+            "roles": user_roles,
+            "player_id": player_id,
+        },
+    )
+
+
+@app.route("/api/game/types", methods=["GET"])
+def get_game_types():
+    """Get available game types
+    ---
+    tags:
+      - Game
+    summary: Get all available game types
+    description: Returns a list of all game types available in the system
+    responses:
+      200:
+        description: List of game types
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            game_types:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Game type ID
+                  name:
+                    type: string
+                    description: Game type name (e.g., '301', '501', 'cricket')
+                  description:
+                    type: string
+                    description: Game type description
+    """
+    gm = _get_default_game_manager()
+
+    try:
+        from src.core.database_models import GameType
+
+        session = gm.db_service.db_manager.get_session()
+        try:
+            game_types = session.query(GameType).order_by(GameType.name).all()
+            game_types_list = [
+                {"id": gt.id, "name": gt.name, "description": gt.description} for gt in game_types
+            ]
+            return jsonify({"status": "success", "game_types": game_types_list})
+        finally:
+            session.close()
+    except Exception as e:
+        logger.exception("Error fetching game types")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.route("/api/game/start", methods=["POST"])
@@ -2106,7 +3044,7 @@ def start_game():
             game_type:
               type: string
               description: Type of game to start
-              enum: ['301', '401', '501', 'cricket']
+              enum: ['301', '401', '501', 'cricket', 'round_the_clock', 'round_the_clock_double']
               default: '301'
             players:
               type: array
@@ -2116,6 +3054,10 @@ def start_game():
             double_out:
               type: boolean
               description: Whether to require double-out to finish
+              default: false
+            reset_on_miss:
+              type: boolean
+              description: Enable hard mode for round_the_clock (reset to 20 after 3 misses)
               default: false
     responses:
       200:
@@ -2130,13 +3072,48 @@ def start_game():
             game:
               type: object
     """
+    gm = _get_default_game_manager()
+
     data = request.json
     game_type = data.get("game_type", "301")
-    player_names = data.get("players", ["Player 1", "Player 2"])
+    player_data = data.get("players", [])
     double_out = data.get("double_out", False)
+    reset_on_miss = data.get("reset_on_miss", False)
 
-    gm = _get_default_game_manager()
-    gm.new_game(game_type, player_names, double_out)
+    # Convert player names to player objects with database IDs
+    db_session = gm.db_service.db_manager.get_session()
+    player_ids = []
+
+    for player_name in player_data:
+        # Try to find player by name or username
+        player = (
+            db_session.query(Player)
+            .filter(
+                (Player.name == player_name) | (Player.username == player_name),
+            )
+            .first()
+        )
+        if player:
+            player_ids.append({"db_id": player.id, "name": player.name})
+        else:
+            # If player not found in database, raise an error
+            app.logger.warning(
+                f"Player '{player_name}' not found in database. "
+                "Only registered WSO2 users can play.",
+            )
+            raise ValueError(
+                f"Player '{player_name}' not found. Only registered WSO2 users allowed.",
+            )
+
+    if not player_ids:
+        player_ids = [session.get("player_id")]
+
+    gm.new_game(
+        game_type,
+        player_ids=player_ids,
+        double_out=double_out,
+        reset_on_miss=reset_on_miss,
+    )
     game_state = gm.get_game_state()
 
     return jsonify(
@@ -2183,6 +3160,7 @@ def end_game():
 
     # Reset the game state
     gm = _get_default_game_manager()
+
     gm.reset_game()
 
     return jsonify(
@@ -2191,6 +3169,188 @@ def end_game():
             "message": "Game ended successfully",
         },
     )
+
+
+@app.route("/api/game/<game_session_id>", methods=["DELETE"])
+@login_required
+@permission_required("game:create")
+def delete_game(game_session_id):
+    """Delete a game - requires game:create permission
+    ---
+    tags:
+      - Game
+    summary: Delete a game
+    description: >
+      Deletes a game and all associated data (game results and scores).
+      Only incomplete games older than 1 day can be deleted.
+    parameters:
+      - in: path
+        name: game_session_id
+        type: string
+        required: true
+        description: The game session ID to delete
+    responses:
+      200:
+        description: Game deleted successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: Game deleted successfully
+      403:
+        description: Game cannot be deleted (too recent or already completed)
+      404:
+        description: Game not found
+      500:
+        description: Error deleting game
+    """
+    gm = _get_default_game_manager()
+
+    try:
+        # Get the game to check if it can be deleted
+        game_data = gm.db_service.get_game_replay_data(game_session_id)
+
+        if not game_data:
+            return jsonify({"status": "error", "message": "Game not found"}), 404
+
+        # Check if game is completed
+        if game_data["finished_at"]:
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": "Cannot delete completed games",
+                    },
+                ),
+                403,
+            )
+
+        # Check if game is older than 1 day
+        from datetime import datetime, timedelta, timezone
+
+        started_at_str = game_data["started_at"]
+        # Parse the ISO format datetime string
+        if started_at_str.endswith("Z"):
+            started_at_str = started_at_str.replace("Z", "+00:00")
+        started_at = datetime.fromisoformat(started_at_str)
+
+        # Ensure both datetimes are timezone-aware for comparison
+        if started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=timezone.utc)
+
+        now = datetime.now(timezone.utc)
+        age = now - started_at
+
+        if age < timedelta(days=1):
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": "Game must be at least 1 day old to be deleted",
+                    },
+                ),
+                403,
+            )
+
+        # Delete the game
+        success = gm.db_service.delete_game(game_session_id)
+
+        if success:
+            return jsonify({"status": "success", "message": "Game deleted successfully"})
+
+        return jsonify({"status": "error", "message": "Failed to delete game"}), 500
+
+    except Exception as e:
+        logger.exception(f"Error deleting game {game_session_id}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/game/resume/<game_session_id>", methods=["POST"])
+@login_required
+@permission_required("game:create")
+def resume_game(game_session_id):
+    """Resume an incomplete game - requires game:create permission
+    ---
+    tags:
+      - Game
+    summary: Resume an incomplete game
+    description: >
+      Starts a new game with the same settings as the incomplete game.
+      The original incomplete game data is preserved in the database.
+      Redirects to the game board to continue playing.
+    parameters:
+      - in: path
+        name: game_session_id
+        type: string
+        required: true
+        description: The game session ID to resume
+    responses:
+      200:
+        description: Game setup for resumption
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: Starting new game with same settings
+            redirect_url:
+              type: string
+              example: /
+      403:
+        description: Game cannot be resumed (already completed)
+      404:
+        description: Game not found
+      500:
+        description: Error resuming game
+    """
+    gm = _get_default_game_manager()
+
+    try:
+        # Get the game data
+        game_data = gm.db_service.get_game_replay_data(game_session_id)
+
+        if not game_data:
+            return jsonify({"status": "error", "message": "Game not found"}), 404
+
+        # Check if game is already completed
+        if game_data["finished_at"]:
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": "Cannot resume a completed game",
+                    },
+                ),
+                403,
+            )
+
+        # Resume the game by replaying all throws to restore state
+        success = gm.resume_game_from_replay_data(game_data)
+
+        if not success:
+            return jsonify({"status": "error", "message": "Failed to resume game"}), 500
+
+        # Emit game state to all clients
+        socketio.emit("game_state", gm.get_game_state(), namespace="/")
+
+        return jsonify(
+            {
+                "status": "success",
+                "message": f"Game resumed with {len(game_data['throws'])} throws replayed",
+                "redirect_url": "/",
+            },
+        )
+
+    except Exception as e:
+        logger.exception(f"Error resuming game {game_session_id}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.route("/api/game/results", methods=["GET"])
@@ -2225,12 +3385,12 @@ def get_game_results():
               items:
                 type: object
     """
+    gm = _get_default_game_manager()
+
     limit = request.args.get("limit", 10, type=int)
     game_type = request.args.get("game_type")
 
     try:
-        gm = _get_default_game_manager()
-
         games = gm.db_service.get_recent_games(limit=limit)
 
         # Filter by game type if specified
@@ -2276,6 +3436,8 @@ def get_player_history():
       401:
         description: Unauthorized - player ID not available
     """
+    gm = _get_default_game_manager()
+
     try:
         player_id = session.get("player_id")
         if not player_id:
@@ -2283,9 +3445,6 @@ def get_player_history():
 
         game_type = request.args.get("game_type")
         limit = request.args.get("limit", 50, type=int)
-
-        gm = _get_default_game_manager()
-
 
         games = gm.db_service.get_player_game_history(
             player_id=player_id,
@@ -2320,12 +3479,13 @@ def get_player_statistics():
       401:
         description: Unauthorized - player ID not available
     """
+    gm = _get_default_game_manager()
+
     try:
         player_id = session.get("player_id")
         if not player_id:
             return jsonify({"success": False, "error": "Player ID not available"}), 401
 
-        gm = _get_default_game_manager()
         stats = gm.db_service.get_player_statistics(player_id=player_id)
 
         if stats:
@@ -2357,9 +3517,9 @@ def get_active_games():
               items:
                 type: object
     """
-    try:
-        gm = _get_default_game_manager()
+    gm = _get_default_game_manager()
 
+    try:
         games = gm.db_service.get_active_games()
         return jsonify({"success": True, "games": games})
     except Exception as e:
@@ -2379,13 +3539,353 @@ def debug_session():
     )
 
 
+@app.route("/api/training/start", methods=["POST"])
+@login_required
+def start_training():
+    """Start a new training session
+    ---
+    tags:
+      - Training
+    summary: Start training session
+    description: Initializes a new single-player training session
+    parameters:
+      - in: body
+        name: body
+        description: Training configuration
+        required: true
+        schema:
+          type: object
+          properties:
+            game_type:
+              type: string
+              description: Type of game to practice
+              enum: ['170', '301', '401', '501', 'cricket', 'round_the_clock',
+                'round_the_clock_double', 'bull_practice']
+              default: '301'
+            double_out:
+              type: boolean
+              description: Whether to require double-out to finish
+              default: false
+    responses:
+      200:
+        description: Training session started successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+            session_id:
+              type: string
+    """
+    gm = _get_default_game_manager()
+
+    try:
+        data = request.json
+        game_type = data.get("game_type", "301")
+        double_out = data.get("double_out", False)
+
+        player_id = session.get("player_id")
+        if not player_id:
+            return jsonify({"success": False, "error": "Player ID not available"}), 401
+
+        # Start training session using database service
+        import uuid
+
+        from src.core.database_models import TrainingSession
+
+        db_session = gm.db_service.db_manager.get_session()
+
+        # Get or create game type
+        from src.core.database_models import GameType
+
+        game_type_obj = db_session.query(GameType).filter(GameType.name == game_type).first()
+        if not game_type_obj:
+            game_type_obj = GameType(name=game_type, description=f"{game_type} game")
+            db_session.add(game_type_obj)
+            db_session.commit()
+
+        # Create training session
+        session_id = str(uuid.uuid4())
+        start_score_map = {"170": 170, "301": 301, "401": 401, "501": 501}
+        start_score = start_score_map.get(game_type)
+
+        training_session = TrainingSession(
+            player_id=player_id,
+            game_type_id=game_type_obj.id,
+            session_id=session_id,
+            start_score=start_score,
+            double_out_enabled=double_out,
+            completed=False,
+        )
+        db_session.add(training_session)
+        db_session.commit()
+
+        # Store training session ID in session
+        session["training_session_id"] = training_session.id
+
+        # Start game in game manager with single player
+        gm.new_game(
+            game_type=game_type,
+            player_ids=[{"db_id": player_id, "name": session.get("username", "Player")}],
+            double_out=double_out,
+        )
+
+        # Set training mode flags in game manager
+        gm.is_training_mode = True
+        gm.training_session_id = training_session.id
+
+        db_session.close()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "Training session started",
+                "session_id": session_id,
+                "training_session_id": training_session.id,
+            },
+        )
+    except Exception:
+        app.logger.exception("Failed to start training session")
+        return (
+            jsonify({"success": False, "error": "Failed to start training session"}),
+            500,
+        )
+
+
+@app.route("/api/training/end", methods=["POST"])
+@login_required
+def end_training():
+    """End the current training session
+    ---
+    tags:
+      - Training
+    summary: End training session
+    description: Ends the current training session and saves results
+    responses:
+      200:
+        description: Training session ended successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+    """
+    gm = _get_default_game_manager()
+
+    try:
+        training_session_id = session.get("training_session_id")
+        if not training_session_id:
+            return jsonify({"success": False, "error": "No active training session"}), 400
+
+        from datetime import datetime, timezone
+
+        from src.core.database_models import TrainingSession
+
+        db_session = gm.db_service.db_manager.get_session()
+        training_session = (
+            db_session.query(TrainingSession)
+            .filter(TrainingSession.id == training_session_id)
+            .first()
+        )
+
+        if training_session:
+            training_session.completed = True
+            training_session.finished_at = datetime.now(tz=timezone.utc)
+            training_session.final_score = (
+                gm.game.get_player_score(0) if gm.game else 0
+            )
+            db_session.commit()
+
+        db_session.close()
+
+        # Clear training mode flags
+        gm.is_training_mode = False
+        gm.training_session_id = None
+
+        # Reset game manager
+        gm.reset_game()
+
+        # Clear training session from session
+        session.pop("training_session_id", None)
+
+        return jsonify({"success": True, "message": "Training session ended"})
+    except Exception:
+        app.logger.exception("Failed to end training session")
+        return (
+            jsonify({"success": False, "error": "Failed to end training session"}),
+            500,
+        )
+
+
+@app.route("/api/training/history", methods=["GET"])
+@login_required
+def get_training_history():
+    """Get training session history for current player
+    ---
+    tags:
+      - Training
+    summary: Get training history
+    description: Returns the training session history for the logged-in player
+    responses:
+      200:
+        description: Training history retrieved successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            sessions:
+              type: array
+              items:
+                type: object
+    """
+    gm = _get_default_game_manager()
+
+    try:
+        player_id = session.get("player_id")
+        if not player_id:
+            return jsonify({"success": False, "error": "Player ID not available"}), 401
+
+        from src.core.database_models import GameType, TrainingSession
+
+        db_session = gm.db_service.db_manager.get_session()
+        training_sessions = (
+            db_session.query(TrainingSession)
+            .join(GameType, TrainingSession.game_type_id == GameType.id)
+            .filter(TrainingSession.player_id == player_id)
+            .order_by(TrainingSession.started_at.desc())
+            .all()
+        )
+
+        sessions_data = []
+        for ts in training_sessions:
+            sessions_data.append(
+                {
+                    "id": ts.id,
+                    "session_id": ts.session_id,
+                    "game_type": ts.game_type.name,
+                    "start_score": ts.start_score,
+                    "final_score": ts.final_score,
+                    "double_out_enabled": ts.double_out_enabled,
+                    "completed": ts.completed,
+                    "started_at": ts.started_at.isoformat() if ts.started_at else None,
+                    "finished_at": ts.finished_at.isoformat() if ts.finished_at else None,
+                    "throws_count": len(ts.training_scores),
+                },
+            )
+
+        db_session.close()
+
+        return jsonify({"success": True, "sessions": sessions_data})
+    except Exception:
+        app.logger.exception("Failed to get training history")
+        return (
+            jsonify({"success": False, "error": "Failed to retrieve training history"}),
+            500,
+        )
+
+
+@app.route("/api/training/statistics", methods=["GET"])
+@login_required
+def get_training_statistics():
+    """Get training statistics for current player
+    ---
+    tags:
+      - Training
+    summary: Get training statistics
+    description: Returns aggregated training statistics for the logged-in player
+    responses:
+      200:
+        description: Training statistics retrieved successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            statistics:
+              type: object
+    """
+    gm = _get_default_game_manager()
+
+    try:
+        player_id = session.get("player_id")
+        if not player_id:
+            return jsonify({"success": False, "error": "Player ID not available"}), 401
+
+        from sqlalchemy import func
+
+        from src.core.database_models import TrainingScore, TrainingSession
+
+        db_session = gm.db_service.db_manager.get_session()
+
+        # Count total sessions
+        total_sessions = (
+            db_session.query(func.count(TrainingSession.id))
+            .filter(TrainingSession.player_id == player_id)
+            .scalar()
+        )
+
+        # Count completed sessions
+        completed_sessions = (
+            db_session.query(func.count(TrainingSession.id))
+            .filter(
+                TrainingSession.player_id == player_id,
+                TrainingSession.completed.is_(True),
+            )
+            .scalar()
+        )
+
+        # Calculate average score
+        avg_score = (
+            db_session.query(func.avg(TrainingScore.actual_score))
+            .join(TrainingSession, TrainingScore.training_session_id == TrainingSession.id)
+            .filter(TrainingSession.player_id == player_id)
+            .scalar()
+        )
+
+        # Count total throws
+        total_throws = (
+            db_session.query(func.count(TrainingScore.id))
+            .join(TrainingSession, TrainingScore.training_session_id == TrainingSession.id)
+            .filter(TrainingSession.player_id == player_id)
+            .scalar()
+        )
+
+        db_session.close()
+
+        statistics = {
+            "total_sessions": total_sessions or 0,
+            "completed_sessions": completed_sessions or 0,
+            "average_score_per_throw": round(avg_score, 2) if avg_score else 0,
+            "total_throws": total_throws or 0,
+        }
+
+        return jsonify({"success": True, "statistics": statistics})
+    except Exception:
+        app.logger.exception("Failed to get training statistics")
+        return (
+            jsonify({"success": False, "error": "Failed to retrieve training statistics"}),
+            500,
+        )
+
+
 @socketio.on("connect", namespace="/")
 def handle_connect():
     """Handle client connection"""
+    gm = _get_default_game_manager()
+
     print("Client connected")
     # Use socketio.emit to ensure the message reaches the test client
-    gm = _get_default_game_manager()
-    socketio.emit("game_state", gm.get_game_state(), namespace="/", to=request.sid)  # type: ignore
+    socketio.emit(
+        "game_state",
+        gm.get_game_state(),
+        namespace="/",
+        to=request.sid,  # type: ignore[attr-defined]
+    )
 
 
 @socketio.on("disconnect", namespace="/")
@@ -2397,17 +3897,54 @@ def handle_disconnect():
 @socketio.on("new_game", namespace="/")
 def handle_new_game(data):
     """Handle new game request"""
-    game_type = data.get("game_type", "301")
-    player_names = data.get("players", ["Player 1", "Player 2"])
-    double_out = data.get("double_out", False)
     gm = _get_default_game_manager()
-    gm.new_game(game_type, player_names, double_out)
+
+    game_type = data.get("game_type", "301")
+    player_data = data.get("players", [])
+    double_out = data.get("double_out", False)
+    reset_on_miss = data.get("reset_on_miss", False)
+
+    # Convert player names to player objects with database IDs
+    db_session = gm.db_service.db_manager.get_session()
+    player_ids = []
+
+    for player_name in player_data:
+        # Try to find player by name or username
+        player = (
+            db_session.query(Player)
+            .filter(
+                (Player.name == player_name) | (Player.username == player_name),
+            )
+            .first()
+        )
+        if player:
+            player_ids.append({"db_id": player.id, "name": player.name})
+        else:
+            # If player not found in database, raise an error
+            app.logger.warning(
+                f"Player '{player_name}' not found in database. "
+                "Only registered WSO2 users can play.",
+            )
+            raise ValueError(
+                f"Player '{player_name}' not found. Only registered WSO2 users allowed.",
+            )
+
+    if not player_ids:
+        player_ids = [session.get("player_id")]
+
+    gm.new_game(
+        game_type,
+        player_ids=player_ids,
+        double_out=double_out,
+        reset_on_miss=reset_on_miss,
+    )
 
 
 @socketio.on("add_player", namespace="/")
 def handle_add_player(data):
     """Handle add player request"""
     gm = _get_default_game_manager()
+
     player_name = data.get("name", f"Player {len(gm.players) + 1}")
     gm.add_player(player_name)
 
@@ -2415,9 +3952,10 @@ def handle_add_player(data):
 @socketio.on("remove_player", namespace="/")
 def handle_remove_player(data):
     """Handle remove player request"""
+    gm = _get_default_game_manager()
+
     player_id = data.get("player_id")
     if player_id is not None:
-        gm = _get_default_game_manager()
         gm.remove_player(player_id)
 
 
@@ -2425,31 +3963,50 @@ def handle_remove_player(data):
 def handle_next_player():
     """Handle next player request"""
     gm = _get_default_game_manager()
+
     gm.next_player()
 
 
 @socketio.on("skip_to_player", namespace="/")
 def handle_skip_to_player(data):
     """Handle skip to specific player"""
+    gm = _get_default_game_manager()
+
     player_id = data.get("player_id")
     if player_id is not None:
-        gm = _get_default_game_manager()
         gm.skip_to_player(player_id)
+
+
+@socketio.on("end_turn_early", namespace="/")
+def handle_end_turn_early():
+    """Handle end turn early request - records remaining throws as misses"""
+    gm = _get_default_game_manager()
+
+    gm.end_turn_early()
 
 
 @socketio.on("manual_score", namespace="/")
 def handle_manual_score(data):
     """Handle manual score entry"""
     gm = _get_default_game_manager()
+
     gm.process_score(data)
 
 
 @socketio.on("set_throwout_advice", namespace="/")
 def handle_set_throwout_advice(data):
     """Handle toggle of throwout advice"""
-    enabled = data.get("enabled", False)
     gm = _get_default_game_manager()
+
+    enabled = data.get("enabled", False)
     gm.set_show_throwout_advice(enabled)
+
+
+@socketio.on("dartboard_test_message", namespace="/")
+def handle_dartboard_test_message(data):
+    """Handle raw dartboard test messages for admin calibration"""
+    # Broadcast to all admin clients for real-time testing feedback
+    socketio.emit("dartboard_test_received", data, namespace="/")
 
 
 def start_rabbitmq_consumer():

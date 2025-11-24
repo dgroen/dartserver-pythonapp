@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Raw Data Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #00ff00;
+        }
+        .container {
+            background: #2d2d2d;
+            border: 1px solid #00ff00;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        h1 {
+            color: #00ff00;
+            border-bottom: 2px solid #00ff00;
+            padding-bottom: 10px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #1e1e1e;
+            border-radius: 4px;
+        }
+        .log {
+            background: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 4px;
+            height: 300px;
+            overflow-y: auto;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 5px;
+            border-left: 3px solid #00ff00;
+            padding-left: 10px;
+        }
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.connected {
+            background: #004400;
+            border: 1px solid #00ff00;
+        }
+        .status.disconnected {
+            background: #440000;
+            border: 1px solid #ff0000;
+            color: #ff0000;
+        }
+        .info {
+            color: #ffff00;
+        }
+        .error {
+            color: #ff0000;
+        }
+        .success {
+            color: #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Dartboard Raw Data WebSocket Test</h1>
+
+        <div class="section">
+            <h3>Connection Status</h3>
+            <div id="status" class="status disconnected">❌ Disconnected</div>
+        </div>
+
+        <div class="section">
+            <h3>Test Controls</h3>
+            <button onclick="sendTestThrow(4, 13, 'carromco')">Test: Master=4, Slave=13</button>
+            <button onclick="sendTestThrow(4, 12, 'carromco')">Test: Master=4, Slave=12</button>
+            <button onclick="sendTestThrow(2, 13, 'carromco')">Test: Master=2, Slave=13</button>
+            <button onclick="clearLog()" style="background: #ff6600;">Clear Log</button>
+        </div>
+
+        <div class="section">
+            <h3>WebSocket Events Log</h3>
+            <div class="info">
+                ℹ️ This page listens for 'dartboard_test_received' events from the server.
+                Click the test buttons to send data to /api/Throw/zone endpoint.
+            </div>
+            <div id="log" class="log">
+                <div class="log-entry">Waiting for WebSocket connection...</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>HTTP Response Log</h3>
+            <div id="httpLog" class="log">
+                <div class="log-entry">No HTTP requests sent yet...</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Instructions</h3>
+            <ol style="color: #ffff00;">
+                <li>Check the connection status above (should show "✅ Connected")</li>
+                <li>Click one of the test buttons to simulate a dartboard throw</li>
+                <li>Watch for WebSocket events in the "WebSocket Events Log"</li>
+                <li>If events appear, the fix is working! ✅</li>
+                <li>If no events appear, there may be an issue with the WebSocket emission ❌</li>
+            </ol>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        // Connect to Socket.IO
+        const socket = io();
+        const logDiv = document.getElementById('log');
+        const httpLogDiv = document.getElementById('httpLog');
+        const statusDiv = document.getElementById('status');
+
+        let eventCount = 0;
+        let httpCount = 0;
+
+        // Connection handlers
+        socket.on('connect', () => {
+            updateStatus('connected', '✅ Connected to WebSocket server');
+            addLog('🔌 WebSocket connected', 'success');
+        });
+
+        socket.on('disconnect', () => {
+            updateStatus('disconnected', '❌ Disconnected from WebSocket server');
+            addLog('🔌 WebSocket disconnected', 'error');
+        });
+
+        // Listen for dartboard test events
+        socket.on('dartboard_test_received', (data) => {
+            eventCount++;
+            const timestamp = new Date().toLocaleTimeString();
+
+            let message = `[${timestamp}] Event #${eventCount}: dartboard_test_received\n`;
+            message += `   Master Pin: ${data.masterPin}\n`;
+            message += `   Slave Pin: ${data.slavePin}\n`;
+            message += `   Board Type: ${data.boardType || 'N/A'}`;
+
+            if (data.zoneInfo) {
+                message += `\n   Zone: ${data.zoneInfo.zone_number} × ${data.zoneInfo.multiplier_type} = ${data.zoneInfo.score}`;
+            }
+
+            addLog(message, 'success');
+            console.log('Received dartboard_test_received:', data);
+        });
+
+        function updateStatus(status, text) {
+            statusDiv.className = `status ${status}`;
+            statusDiv.textContent = text;
+        }
+
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = message;
+
+            if (logDiv.children.length === 1 && logDiv.children[0].textContent.includes('Waiting')) {
+                logDiv.innerHTML = '';
+            }
+
+            logDiv.insertBefore(entry, logDiv.firstChild);
+
+            // Keep only last 50 entries
+            while (logDiv.children.length > 50) {
+                logDiv.removeChild(logDiv.lastChild);
+            }
+        }
+
+        function addHttpLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = message;
+
+            if (httpLogDiv.children.length === 1 && httpLogDiv.children[0].textContent.includes('No HTTP')) {
+                httpLogDiv.innerHTML = '';
+            }
+
+            httpLogDiv.insertBefore(entry, httpLogDiv.firstChild);
+
+            // Keep only last 20 entries
+            while (httpLogDiv.children.length > 20) {
+                httpLogDiv.removeChild(httpLogDiv.lastChild);
+            }
+        }
+
+        async function sendTestThrow(masterPin, slavePin, boardType) {
+            httpCount++;
+            const timestamp = new Date().toLocaleTimeString();
+
+            addLog(`[${timestamp}] Sending HTTP request #${httpCount}...`, 'info');
+            addHttpLog(`[${timestamp}] Request #${httpCount}: Sending to /api/Throw/zone`, 'info');
+
+            try {
+                const response = await fetch('/api/Throw/zone', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        masterPin: masterPin,
+                        slavePin: slavePin,
+                        boardType: boardType
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    let httpMsg = `[${timestamp}] ✅ HTTP ${response.status}: ${data.message}`;
+                    if (data.zone_info) {
+                        httpMsg += `\n   Zone: ${data.zone_info.zone_number} × ${data.zone_info.multiplier_type} = ${data.zone_info.score}`;
+                    }
+                    addHttpLog(httpMsg, 'success');
+                    addLog(`✅ HTTP request successful. Waiting for WebSocket event...`, 'info');
+                } else {
+                    addHttpLog(`[${timestamp}] ❌ HTTP ${response.status}: ${data.message || 'Error'}`, 'error');
+                    addLog(`❌ HTTP request failed: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                addHttpLog(`[${timestamp}] ❌ Error: ${error.message}`, 'error');
+                addLog(`❌ HTTP request error: ${error.message}`, 'error');
+            }
+        }
+
+        function clearLog() {
+            logDiv.innerHTML = '<div class="log-entry">Log cleared</div>';
+            httpLogDiv.innerHTML = '<div class="log-entry">Log cleared</div>';
+            eventCount = 0;
+            httpCount = 0;
+        }
+
+        // Log when page loads
+        console.log('WebSocket test page loaded');
+        console.log('Listening for dartboard_test_received events...');
+    </script>
+</body>
+</html>

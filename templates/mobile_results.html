@@ -165,11 +165,7 @@
                 <!-- Filter -->
                 <div class="filters">
                     <select id="gameTypeFilter" class="filter-select">
-                        <option value="">All Game Types</option>
-                        <option value="301">301</option>
-                        <option value="401">401</option>
-                        <option value="501">501</option>
-                        <option value="cricket">Cricket</option>
+                        <!-- Options loaded dynamically via JavaScript -->
                     </select>
                 </div>
 
@@ -188,6 +184,19 @@
         </main>
     </div>
 
+    <script src="/static/js/main.js"></script>
     <script src="/static/js/mobile_results.js"></script>
+    <script>
+        // Load game types when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const gameTypeFilter = document.getElementById('gameTypeFilter');
+            if (gameTypeFilter && typeof loadGameTypes === 'function') {
+                loadGameTypes(gameTypeFilter, true).then(() => {
+                    // Set "All Game Types" as default
+                    gameTypeFilter.value = 'all';
+                });
+            }
+        });
+    </script>
 </body>
 </html>
