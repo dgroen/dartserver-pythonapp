@@ -1,0 +1,202 @@
+# Default values for darts-app Helm chart
+# This is a YAML-formatted file.
+
+# Global settings
+global:
+  namespace: darts-app
+  environment: production
+
+# Image settings
+image:
+  dartsApp:
+    repository: darts-app
+    tag: latest
+    pullPolicy: Always
+  apiGateway:
+    repository: api-gateway
+    tag: latest
+    pullPolicy: Always
+  postgres:
+    repository: postgres
+    tag: 16-alpine
+    pullPolicy: IfNotPresent
+  rabbitmq:
+    repository: rabbitmq
+    tag: 3-management
+    pullPolicy: IfNotPresent
+  wso2is:
+    repository: wso2/wso2is
+    tag: 7.1.0
+    pullPolicy: IfNotPresent
+
+# Darts Application
+dartsApp:
+  enabled: true
+  replicaCount: 2
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# API Gateway
+apiGateway:
+  enabled: true
+  replicaCount: 2
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# PostgreSQL Database
+postgres:
+  enabled: true
+  replicaCount: 1
+  storage:
+    size: 20Gi
+    storageClass: gp3
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+
+# RabbitMQ Message Broker
+rabbitmq:
+  enabled: true
+  replicaCount: 1
+  storage:
+    size: 10Gi
+    storageClass: gp3
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+
+# WSO2 Identity Server
+wso2is:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1500m"
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+  hosts:
+    - host: letsplaydarts.eu
+      paths:
+        - path: /api/gateway
+          pathType: Prefix
+          service: api-gateway-service
+          port: 8080
+        - path: /
+          pathType: Prefix
+          service: darts-app-service
+          port: 5000
+    - host: wso2.letsplaydarts.eu
+      paths:
+        - path: /
+          pathType: Prefix
+          service: wso2is-service
+          port: 9443
+  tls: []
+  # - secretName: darts-app-tls
+  #   hosts:
+  #     - letsplaydarts.eu
+
+# Monitoring
+monitoring:
+  prometheus:
+    enabled: true
+    namespace: monitoring
+  grafana:
+    enabled: true
+    namespace: monitoring
+
+# Logging
+logging:
+  fluentBit:
+    enabled: true
+    namespace: logging
+    cloudwatch:
+      region: us-east-1
+      logGroupName: /aws/eks/darts-app/application
+
+# Network Policies
+networkPolicies:
+  enabled: true
+
+# Secrets (should be managed externally in production)
+secrets:
+  secretKey: "change-this-in-production-use-strong-random-key"
+  database:
+    user: "postgres"
+    password: "postgres"
+    name: "dartsdb"
+  rabbitmq:
+    user: "guest"
+    password: "guest"
+  wso2:
+    clientId: "your_client_id_here"
+    clientSecret: "your_client_secret_here"
+    introspectUser: "admin"
+    introspectPassword: "admin"
+    redirectUri: "https://letsplaydarts.eu/callback"
+    postLogoutRedirectUri: "https://letsplaydarts.eu/"
+
+# ConfigMaps
+config:
+  flask:
+    host: "0.0.0.0"
+    port: "5000"
+    debug: "False"
+    useSSL: "False"
+  rabbitmq:
+    vhost: "/"
+    exchange: "darts_exchange"
+    topic: "darts.scores.#"
+  wso2:
+    verifySSL: "False"
+    jwtValidationMode: "introspection"
+    sessionCookieSecure: "True"
+  dartboard:
+    sendsActualScore: "True"
+  tts:
+    enabled: "true"
+    engine: "gtts"
+    speed: "150"
+    volume: "0.9"
+    voice: "default"

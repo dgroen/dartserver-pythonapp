@@ -72,3 +72,20 @@ docker-backups
 .env____
 .venv-test/
 wso2is-7-config
+
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/*.tfplan
+terraform/*.tfvars
+!terraform/*.tfvars.example
+
+# Kubernetes
+k8s/base/secrets/app-secrets.yaml.local
+*.kubeconfig
+
+# Helm
+helm/**/charts/
+helm/**/*.tgz

@@ -1,0 +1,207 @@
+# Makefile for Kubernetes Deployment
+
+.PHONY: help
+help: ## Show this help message
+	@echo "Darts Application - Kubernetes Deployment"
+	@echo ""
+	@echo "Available targets:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+# Variables
+AWS_REGION ?= us-east-1
+CLUSTER_NAME ?= darts-eks-cluster
+NAMESPACE ?= darts-app
+HELM_RELEASE ?= darts-app
+
+# Docker
+ECR_REGISTRY ?= $(shell aws sts get-caller-identity --query Account --output text).dkr.ecr.$(AWS_REGION).amazonaws.com
+APP_IMAGE ?= $(ECR_REGISTRY)/darts-app
+GATEWAY_IMAGE ?= $(ECR_REGISTRY)/api-gateway
+VERSION ?= latest
+
+## Infrastructure
+.PHONY: tf-init tf-plan tf-apply tf-destroy
+tf-init: ## Initialize Terraform
+	cd terraform && terraform init
+
+tf-plan: ## Plan Terraform changes
+	cd terraform && terraform plan
+
+tf-apply: ## Apply Terraform changes
+	cd terraform && terraform apply
+
+tf-destroy: ## Destroy Terraform infrastructure
+	cd terraform && terraform destroy
+
+## Kubernetes
+.PHONY: k8s-config k8s-info k8s-apply k8s-delete
+k8s-config: ## Update kubeconfig for EKS
+	aws eks update-kubeconfig --region $(AWS_REGION) --name $(CLUSTER_NAME)
+
+k8s-info: ## Show cluster information
+	kubectl cluster-info
+	kubectl get nodes
+	kubectl get namespaces
+
+k8s-apply: ## Apply Kubernetes manifests with kustomize
+	kubectl apply -k k8s/
+
+k8s-delete: ## Delete Kubernetes resources
+	kubectl delete -k k8s/
+
+## Docker
+.PHONY: docker-login docker-build docker-push docker-build-push
+docker-login: ## Login to ECR
+	aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(ECR_REGISTRY)
+
+docker-build: ## Build Docker images
+	docker build -t $(APP_IMAGE):$(VERSION) -f Dockerfile .
+	docker build -t $(GATEWAY_IMAGE):$(VERSION) -f Dockerfile.gateway .
+
+docker-push: ## Push Docker images to ECR
+	docker push $(APP_IMAGE):$(VERSION)
+	docker push $(GATEWAY_IMAGE):$(VERSION)
+
+docker-build-push: docker-build docker-push ## Build and push Docker images
+
+## Helm
+.PHONY: helm-lint helm-install helm-upgrade helm-uninstall helm-status
+helm-lint: ## Lint Helm chart
+	helm lint helm/darts-app
+
+helm-install: ## Install Helm chart (development)
+	helm install $(HELM_RELEASE) ./helm/darts-app \
+		--namespace $(NAMESPACE) \
+		--create-namespace \
+		--values ./helm/darts-app/values-development.yaml
+
+helm-install-prod: ## Install Helm chart (production)
+	helm install $(HELM_RELEASE) ./helm/darts-app \
+		--namespace $(NAMESPACE) \
+		--create-namespace \
+		--values ./helm/darts-app/values-production.yaml
+
+helm-upgrade: ## Upgrade Helm release
+	helm upgrade $(HELM_RELEASE) ./helm/darts-app \
+		--namespace $(NAMESPACE) \
+		--values ./helm/darts-app/values-production.yaml
+
+helm-uninstall: ## Uninstall Helm release
+	helm uninstall $(HELM_RELEASE) --namespace $(NAMESPACE)
+
+helm-status: ## Show Helm release status
+	helm status $(HELM_RELEASE) --namespace $(NAMESPACE)
+
+## Monitoring
+.PHONY: monitoring-install monitoring-port-forward
+monitoring-install: ## Install monitoring stack
+	kubectl apply -f k8s/monitoring/
+
+monitoring-port-forward: ## Port forward to Grafana
+	@echo "Prometheus: http://localhost:9090"
+	@echo "Grafana: http://localhost:3000 (admin/admin)"
+	kubectl port-forward svc/prometheus-service 9090:9090 -n monitoring & \
+	kubectl port-forward svc/grafana-service 3000:3000 -n monitoring
+
+## Logging
+.PHONY: logging-install logs-app logs-gateway
+logging-install: ## Install logging stack
+	kubectl apply -f k8s/logging/
+
+logs-app: ## View Darts app logs
+	kubectl logs -l app=darts-app -n $(NAMESPACE) --tail=100 -f
+
+logs-gateway: ## View API Gateway logs
+	kubectl logs -l app=api-gateway -n $(NAMESPACE) --tail=100 -f
+
+logs-cloudwatch: ## View CloudWatch logs
+	aws logs tail /aws/eks/darts-app/application --follow
+
+## Debugging
+.PHONY: debug-pods debug-events debug-describe debug-exec
+debug-pods: ## Show pod status
+	kubectl get pods -n $(NAMESPACE)
+	kubectl get pods -n monitoring
+	kubectl get pods -n logging
+
+debug-events: ## Show recent events
+	kubectl get events -n $(NAMESPACE) --sort-by='.lastTimestamp' | tail -20
+
+debug-describe: ## Describe failed pods
+	@echo "Describing failed pods..."
+	@kubectl get pods -n $(NAMESPACE) --field-selector=status.phase!=Running,status.phase!=Succeeded -o name | \
+		xargs -I {} kubectl describe {} -n $(NAMESPACE)
+
+debug-exec: ## Execute shell in darts-app pod
+	kubectl exec -it deployment/darts-app -n $(NAMESPACE) -- /bin/bash
+
+## Testing
+.PHONY: test-connectivity test-health test-smoke
+test-connectivity: ## Test service connectivity
+	kubectl run test-pod --image=curlimages/curl --rm -i --restart=Never -n $(NAMESPACE) -- \
+		curl -v http://darts-app-service:5000/health
+
+test-health: ## Check health of all services
+	@echo "Checking Darts App health..."
+	@kubectl run health-check --image=curlimages/curl --rm -i --restart=Never -n $(NAMESPACE) -- \
+		curl -s http://darts-app-service:5000/health || echo "FAILED"
+	@echo "Checking API Gateway health..."
+	@kubectl run health-check --image=curlimages/curl --rm -i --restart=Never -n $(NAMESPACE) -- \
+		curl -s http://api-gateway-service:8080/health || echo "FAILED"
+
+test-smoke: ## Run smoke tests
+	@echo "Running smoke tests..."
+	./scripts/smoke-tests.sh
+
+## Scaling
+.PHONY: scale-app scale-gateway hpa-status
+scale-app: ## Scale Darts app manually (usage: make scale-app REPLICAS=5)
+	kubectl scale deployment darts-app --replicas=$(REPLICAS) -n $(NAMESPACE)
+
+scale-gateway: ## Scale API Gateway manually (usage: make scale-gateway REPLICAS=3)
+	kubectl scale deployment api-gateway --replicas=$(REPLICAS) -n $(NAMESPACE)
+
+hpa-status: ## Show HPA status
+	kubectl get hpa -n $(NAMESPACE)
+	kubectl describe hpa -n $(NAMESPACE)
+
+## Cleanup
+.PHONY: clean clean-all
+clean: ## Clean Helm releases and resources
+	helm uninstall $(HELM_RELEASE) --namespace $(NAMESPACE) || true
+	kubectl delete namespace $(NAMESPACE) || true
+
+clean-all: clean ## Clean everything including monitoring and logging
+	kubectl delete namespace monitoring || true
+	kubectl delete namespace logging || true
+
+## Full deployment
+.PHONY: deploy-all deploy-full
+deploy-all: docker-login docker-build-push helm-install monitoring-install logging-install ## Full deployment (development)
+
+deploy-full: docker-login docker-build-push helm-install-prod monitoring-install logging-install ## Full deployment (production)
+
+## Quick commands
+.PHONY: status watch top
+status: ## Show overall status
+	@echo "=== Cluster Status ==="
+	kubectl get nodes
+	@echo ""
+	@echo "=== Application Pods ==="
+	kubectl get pods -n $(NAMESPACE)
+	@echo ""
+	@echo "=== Services ==="
+	kubectl get svc -n $(NAMESPACE)
+	@echo ""
+	@echo "=== Ingress ==="
+	kubectl get ingress -n $(NAMESPACE)
+	@echo ""
+	@echo "=== HPA ==="
+	kubectl get hpa -n $(NAMESPACE)
+
+watch: ## Watch pods status
+	watch -n 2 kubectl get pods -n $(NAMESPACE)
+
+top: ## Show resource usage
+	kubectl top nodes
+	kubectl top pods -n $(NAMESPACE)

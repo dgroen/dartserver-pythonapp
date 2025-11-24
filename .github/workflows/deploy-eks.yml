@@ -1,0 +1,201 @@
+name: Build and Deploy to EKS
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'src/**'
+      - 'Dockerfile'
+      - 'requirements.txt'
+      - 'k8s/**'
+      - '.github/workflows/deploy-eks.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - production
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: darts-eks-cluster
+  ECR_REPOSITORY_APP: darts-app
+  ECR_REPOSITORY_GATEWAY: api-gateway
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      app-image-tag: ${{ steps.image-tags.outputs.app-tag }}
+      gateway-image-tag: ${{ steps.image-tags.outputs.gateway-tag }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tags
+        id: image-tags
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "app-tag=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_APP }}:${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "gateway-tag=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_GATEWAY }}:${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "APP_IMAGE_TAG=${SHORT_SHA}" >> $GITHUB_ENV
+          echo "GATEWAY_IMAGE_TAG=${SHORT_SHA}" >> $GITHUB_ENV
+
+      - name: Build and push Darts App image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ steps.image-tags.outputs.app-tag }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_APP }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push API Gateway image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.gateway
+          push: true
+          tags: |
+            ${{ steps.image-tags.outputs.gateway-tag }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_GATEWAY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan images for vulnerabilities
+        run: |
+          echo "Scanning images for vulnerabilities..."
+          # Add vulnerability scanning with Trivy or similar
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image --severity HIGH,CRITICAL \
+            ${{ steps.image-tags.outputs.app-tag }}
+
+  deploy-to-eks:
+    name: Deploy to EKS
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'development') }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.13.0'
+
+      - name: Set deployment environment
+        id: deployment-env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "ENVIRONMENT=production" >> $GITHUB_ENV
+            echo "VALUES_FILE=values-production.yaml" >> $GITHUB_ENV
+          else
+            echo "ENVIRONMENT=development" >> $GITHUB_ENV
+            echo "VALUES_FILE=values-development.yaml" >> $GITHUB_ENV
+          fi
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install darts-app ./helm/darts-app \
+            --namespace darts-app \
+            --create-namespace \
+            --values ./helm/darts-app/${{ env.VALUES_FILE }} \
+            --set image.dartsApp.tag=${{ needs.build-and-push.outputs.app-image-tag }} \
+            --set image.apiGateway.tag=${{ needs.build-and-push.outputs.gateway-image-tag }} \
+            --wait \
+            --timeout 10m
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/darts-app -n darts-app --timeout=5m
+          kubectl rollout status deployment/api-gateway -n darts-app --timeout=5m
+          kubectl get pods -n darts-app
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests..."
+          kubectl run test-pod --image=curlimages/curl:latest -n darts-app --rm -i --restart=Never -- \
+            curl -f http://darts-app-service:5000/health || exit 1
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment to ${{ env.ENVIRONMENT }} successful"
+          else
+            echo "❌ Deployment to ${{ env.ENVIRONMENT }} failed"
+          fi
+
+  rollback:
+    name: Rollback on Failure
+    needs: [build-and-push, deploy-to-eks]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+
+      - name: Rollback Helm release
+        run: |
+          helm rollback darts-app -n darts-app
+          echo "⚠️ Rolled back to previous version"

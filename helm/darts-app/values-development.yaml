@@ -1,0 +1,75 @@
+# Development values for darts-app
+# Override default values for development environment
+
+global:
+  environment: development
+
+# Development with latest tags
+image:
+  dartsApp:
+    tag: "latest"
+  apiGateway:
+    tag: "latest"
+
+# Lower resource limits for development
+dartsApp:
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  autoscaling:
+    enabled: false
+
+apiGateway:
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "25m"
+    limits:
+      memory: "256Mi"
+      cpu: "250m"
+  autoscaling:
+    enabled: false
+
+# Smaller storage for dev
+postgres:
+  storage:
+    size: 10Gi
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+rabbitmq:
+  storage:
+    size: 5Gi
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+# Disable TLS for dev
+ingress:
+  tls: []
+
+# Development monitoring - optional
+monitoring:
+  prometheus:
+    enabled: false
+  grafana:
+    enabled: false
+
+logging:
+  fluentBit:
+    enabled: false

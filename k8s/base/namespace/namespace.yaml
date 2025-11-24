@@ -1,0 +1,9 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: darts-app
+  labels:
+    app: darts-game
+    environment: production
+    managed-by: kubernetes
