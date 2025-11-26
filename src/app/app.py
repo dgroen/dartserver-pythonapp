@@ -2865,6 +2865,125 @@ def start_game():
     )
 
 
+@app.route("/api/mobile/game/start-single-player", methods=["POST"])
+@login_required
+def start_single_player_game():
+    """Start a new single-player game with the current user
+    ---
+    tags:
+      - Mobile
+    summary: Start a single-player game
+    description: |
+      Starts a new single-player game with the currently logged-in user as the only player.
+      Any authenticated user can start a single-player game.
+      Training modes (bull_practice) require gamemaster or admin role.
+    parameters:
+      - in: body
+        name: body
+        description: Game configuration
+        required: true
+        schema:
+          type: object
+          properties:
+            game_type:
+              type: string
+              description: Type of game to start
+              enum: ['170', '301', '401', '501', 'cricket', 'round_the_clock',
+                'round_the_clock_double', 'bull_practice']
+              default: '301'
+            double_out:
+              type: boolean
+              description: Whether to require double-out to finish (only for 170/301/401/501)
+              default: false
+            reset_on_miss:
+              type: boolean
+              description: Enable hard mode for round_the_clock (reset after 3 misses)
+              default: false
+    responses:
+      200:
+        description: Game started successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+            game:
+              type: object
+      401:
+        description: Player ID not available
+      403:
+        description: Training mode requires gamemaster or admin role
+      500:
+        description: Failed to start game
+    """
+    try:
+        data = request.json or {}
+        game_type = data.get("game_type", "301")
+        double_out = data.get("double_out", False)
+        reset_on_miss = data.get("reset_on_miss", False)
+
+        # Get current player's ID and info from session
+        player_id = session.get("player_id")
+        if not player_id:
+            return jsonify({"success": False, "error": "Player ID not available"}), 401
+
+        # Get user roles for training mode access check
+        user_roles = getattr(request, "user_roles", [])
+
+        # Training modes (bull_practice) require gamemaster or admin role
+        training_modes = ["bull_practice"]
+        if game_type in training_modes:
+            if "admin" not in user_roles and "gamemaster" not in user_roles:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": (
+                                f"Training mode '{game_type}' requires gamemaster or admin role"
+                            ),
+                        },
+                    ),
+                    403,
+                )
+
+        # Get player name from session
+        user_info = session.get("user_info", {})
+        player_name = (
+            user_info.get("name")
+            or user_info.get("preferred_username")
+            or user_info.get("username")
+            or "Player"
+        )
+
+        # Start single-player game with current user
+        player_ids = [{"db_id": player_id, "name": player_name}]
+
+        game_manager.new_game(
+            game_type=game_type,
+            player_ids=player_ids,
+            double_out=double_out,
+            reset_on_miss=reset_on_miss,
+        )
+
+        game_state = game_manager.get_game_state()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Single-player {game_type} game started",
+                "game": game_state,
+            },
+        )
+    except Exception as e:
+        app.logger.exception("Failed to start single-player game")
+        return (
+            jsonify({"success": False, "error": str(e)}),
+            500,
+        )
+
+
 @app.route("/api/game/end", methods=["POST"])
 @login_required
 @permission_required("game:create")
