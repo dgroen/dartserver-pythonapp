@@ -40,21 +40,23 @@ This directory contains GitHub Actions workflows for automated deployment of the
 
 5. **Automatic Restore on Failure:**
    - **Triggers only if deployment fails**
-   - Automatically restores from backup created in step 3
-   - Uses `helpers/restore_docker_volumes.sh` script
+   - **Requires approval to proceed with restore**
+   - Can approve to restore OR skip if manual fix preferred
+   - Skipping is treated as success (no further action)
+   - If approved: Automatically restores from backup created in step 3
+   - Uses inline restore logic (works without helper scripts)
    - Restores all volumes and database
    - Verifies restored deployment
-   - No manual intervention required
 
 6. **Post-Deployment Verification:**
    - **Requires manual verification** after successful deployment
    - Uses `production-verification` environment
    - Options:
      - ✅ **Approve:** Deployment is working properly → Pipeline completes
-     - ❌ **Reject:** Needs rollback → Proceeds to manual rollback step
+     - ⏭️ **Reject/Cancel/Skip:** Skip verification → Pipeline completes as success (no rollback triggered)
 
-7. **Manual Rollback (if verification fails):**
-   - Triggers if verification is rejected or cancelled
+7. **Manual Rollback (only if verification explicitly fails):**
+   - Triggers ONLY if verification step explicitly fails (not if skipped)
    - Requires confirmation via `production-rollback` environment
    - Restores production to backup created in step 3
    - Verifies rollback success
@@ -223,21 +225,29 @@ The unified pipeline requires GitHub Environments to be configured for approval 
 9. Configure environment URL: `https://letsplaydarts.eu`
 10. Optionally add reviewers or leave without protection (pre-deployment approval is primary gate)
 
-#### Environment 3: `production-verification` (Post-Deployment Verification)
+#### Environment 3: `production-restore-approval` (Restore After Failure)
 
-11. Create environment named `production-verification`
+11. Create environment named `production-restore-approval`
 12. Configure **Required reviewers**:
-   - Add reviewers who will verify deployment success
-   - These can be same or different from pre-deployment reviewers
+   - Add reviewers who will decide whether to restore or manually fix
+   - Can be same as pre-deployment reviewers
 13. Click **Save protection rules**
 
-#### Environment 4: `production-rollback` (Manual Rollback Confirmation)
+#### Environment 4: `production-verification` (Post-Deployment Verification)
 
-14. Create environment named `production-rollback`
+14. Create environment named `production-verification`
 15. Configure **Required reviewers**:
+   - Add reviewers who will verify deployment success
+   - These can be same or different from pre-deployment reviewers
+16. Click **Save protection rules**
+
+#### Environment 5: `production-rollback` (Manual Rollback Confirmation)
+
+17. Create environment named `production-rollback`
+18. Configure **Required reviewers**:
    - Add reviewers authorized to approve rollbacks
    - Recommended: Use senior team members for rollback decisions
-16. Click **Save protection rules**
+19. Click **Save protection rules**
 
 **How the approval gates work:**
 1. **Pre-Deployment:** Test deployment completes → workflow pauses at `production-approval`
@@ -245,19 +255,20 @@ The unified pipeline requires GitHub Environments to be configured for approval 
    - Approve or reject production deployment
    - If approved → backup is created → production deployment proceeds
 
-2. **Automatic Restore:** If deployment **fails**
-   - No approval needed
-   - Automatically restores from backup
-   - Verifies restoration
+2. **Restore After Failure:** If deployment **fails**
+   - Workflow pauses at `production-restore-approval`
+   - Options:
+     - ✅ Approve → Automatically restores from backup
+     - ⏭️ Reject/Cancel → Skips restore (manual fix needed), treated as success
 
 3. **Post-Deployment Verification:** If deployment **succeeds**
    - Workflow pauses at `production-verification`
    - Reviewers verify production is working correctly
    - Options:
      - ✅ Approve → Pipeline completes successfully
-     - ❌ Reject → Proceeds to rollback step
+     - ⏭️ Reject/Cancel/Skip → Pipeline completes as success (no rollback)
 
-4. **Manual Rollback:** If verification is rejected
+4. **Manual Rollback:** Only if verification explicitly fails (not skipped)
    - Workflow pauses at `production-rollback`
    - Requires final confirmation to rollback
    - If approved → restores from backup

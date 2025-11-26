@@ -639,6 +639,16 @@ def new_game():
             message:
               type: string
               example: New game started
+      400:
+        description: Invalid request or player not found
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: error
+            message:
+              type: string
     """
     data = request.json
     game_type = data.get("game_type", "301")
@@ -648,40 +658,64 @@ def new_game():
 
     # Convert player names to player objects with database IDs
     db_session = game_manager.db_service.db_manager.get_session()
-    player_ids = []
+    try:
+        player_ids = []
 
-    for player_name in player_data:
-        # Try to find player by name or username
-        player = (
-            db_session.query(Player)
-            .filter(
-                (Player.name == player_name) | (Player.username == player_name),
+        for player_name in player_data:
+            # Try to find player by name or username
+            player = (
+                db_session.query(Player)
+                .filter(
+                    (Player.name == player_name) | (Player.username == player_name),
+                )
+                .first()
             )
-            .first()
+            if player:
+                player_ids.append({"db_id": player.id, "name": player.name})
+            else:
+                # If player not found in database, return an error response
+                app.logger.warning(
+                    f"Player '{player_name}' not found in database. "
+                    "Only registered WSO2 users can play.",
+                )
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": (
+                                f"Player '{player_name}' not found. "
+                                "Only registered WSO2 users allowed."
+                            ),
+                        },
+                    ),
+                    400,
+                )
+
+        if not player_ids:
+            player_ids = [session.get("player_id")]
+
+        game_manager.new_game(
+            game_type,
+            player_ids=player_ids,
+            double_out=double_out,
+            reset_on_miss=reset_on_miss,
         )
-        if player:
-            player_ids.append({"db_id": player.id, "name": player.name})
-        else:
-            # If player not found in database, raise an error
-            app.logger.warning(
-                f"Player '{player_name}' not found in database. "
-                "Only registered WSO2 users can play.",
-            )
-            raise ValueError(
-                f"Player '{player_name}' not found. Only registered WSO2 users allowed.",
-            )
-
-    if not player_ids:
-        player_ids = [session.get("player_id")]
-
-    game_manager.new_game(
-        game_type,
-        player_ids=player_ids,
-        double_out=double_out,
-        reset_on_miss=reset_on_miss,
-    )
-    # Game state is automatically emitted by game_manager.new_game()
-    return jsonify({"status": "success", "message": "New game started"})
+        # Game state is automatically emitted by game_manager.new_game()
+        return jsonify({"status": "success", "message": "New game started"})
+    except Exception:
+        app.logger.exception("Error starting new game")
+        # Don't expose internal error details to clients
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": "An error occurred while starting the game. Please try again.",
+                },
+            ),
+            500,
+        )
+    finally:
+        db_session.close()
 
 
 @app.route("/api/players", methods=["GET"])
@@ -2813,6 +2847,15 @@ def start_game():
               type: string
             game:
               type: object
+      400:
+        description: Invalid request or player not found
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
     """
     data = request.json
     game_type = data.get("game_type", "301")
@@ -2822,47 +2865,190 @@ def start_game():
 
     # Convert player names to player objects with database IDs
     db_session = game_manager.db_service.db_manager.get_session()
-    player_ids = []
+    try:
+        player_ids = []
 
-    for player_name in player_data:
-        # Try to find player by name or username
-        player = (
-            db_session.query(Player)
-            .filter(
-                (Player.name == player_name) | (Player.username == player_name),
+        for player_name in player_data:
+            # Try to find player by name or username
+            player = (
+                db_session.query(Player)
+                .filter(
+                    (Player.name == player_name) | (Player.username == player_name),
+                )
+                .first()
             )
-            .first()
+            if player:
+                player_ids.append({"db_id": player.id, "name": player.name})
+            else:
+                # If player not found in database, return an error response
+                app.logger.warning(
+                    f"Player '{player_name}' not found in database. "
+                    "Only registered WSO2 users can play.",
+                )
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "message": (
+                                f"Player '{player_name}' not found. "
+                                "Only registered WSO2 users allowed."
+                            ),
+                        },
+                    ),
+                    400,
+                )
+
+        if not player_ids:
+            player_ids = [session.get("player_id")]
+
+        game_manager.new_game(
+            game_type,
+            player_ids=player_ids,
+            double_out=double_out,
+            reset_on_miss=reset_on_miss,
         )
-        if player:
-            player_ids.append({"db_id": player.id, "name": player.name})
-        else:
-            # If player not found in database, raise an error
-            app.logger.warning(
-                f"Player '{player_name}' not found in database. "
-                "Only registered WSO2 users can play.",
-            )
-            raise ValueError(
-                f"Player '{player_name}' not found. Only registered WSO2 users allowed.",
-            )
+        game_state = game_manager.get_game_state()
 
-    if not player_ids:
-        player_ids = [session.get("player_id")]
+        return jsonify(
+            {
+                "success": True,
+                "message": "Game started successfully",
+                "game": game_state,
+            },
+        )
+    except Exception:
+        app.logger.exception("Error starting game")
+        # Don't expose internal error details to clients
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "An error occurred while starting the game. Please try again.",
+                },
+            ),
+            500,
+        )
+    finally:
+        db_session.close()
 
-    game_manager.new_game(
-        game_type,
-        player_ids=player_ids,
-        double_out=double_out,
-        reset_on_miss=reset_on_miss,
-    )
-    game_state = game_manager.get_game_state()
 
-    return jsonify(
-        {
-            "success": True,
-            "message": "Game started successfully",
-            "game": game_state,
-        },
-    )
+@app.route("/api/mobile/game/start-single-player", methods=["POST"])
+@login_required
+def start_single_player_game():
+    """Start a new single-player game with the current user
+    ---
+    tags:
+      - Mobile
+    summary: Start a single-player game
+    description: |
+      Starts a new single-player game with the currently logged-in user as the only player.
+      Any authenticated user can start a single-player game.
+      Training modes (bull_practice) require gamemaster or admin role.
+    parameters:
+      - in: body
+        name: body
+        description: Game configuration
+        required: true
+        schema:
+          type: object
+          properties:
+            game_type:
+              type: string
+              description: Type of game to start
+              enum: ['170', '301', '401', '501', 'cricket', 'round_the_clock',
+                'round_the_clock_double', 'bull_practice']
+              default: '301'
+            double_out:
+              type: boolean
+              description: Whether to require double-out to finish (only for 170/301/401/501)
+              default: false
+            reset_on_miss:
+              type: boolean
+              description: Enable hard mode for round_the_clock (reset after 3 misses)
+              default: false
+    responses:
+      200:
+        description: Game started successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+            game:
+              type: object
+      401:
+        description: Player ID not available
+      403:
+        description: Training mode requires gamemaster or admin role
+      500:
+        description: Failed to start game
+    """
+    try:
+        data = request.json or {}
+        game_type = data.get("game_type", "301")
+        double_out = data.get("double_out", False)
+        reset_on_miss = data.get("reset_on_miss", False)
+
+        # Get current player's ID and info from session
+        player_id = session.get("player_id")
+        if not player_id:
+            return jsonify({"success": False, "error": "Player ID not available"}), 401
+
+        # Get user roles for training mode access check
+        user_roles = getattr(request, "user_roles", [])
+
+        # Training modes (bull_practice) require gamemaster or admin role
+        training_modes = ["bull_practice"]
+        if game_type in training_modes:
+            if "admin" not in user_roles and "gamemaster" not in user_roles:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": (
+                                f"Training mode '{game_type}' requires gamemaster or admin role"
+                            ),
+                        },
+                    ),
+                    403,
+                )
+
+        # Get player name from session
+        user_info = session.get("user_info", {})
+        player_name = (
+            user_info.get("name")
+            or user_info.get("preferred_username")
+            or user_info.get("username")
+            or "Player"
+        )
+
+        # Start single-player game with current user
+        player_ids = [{"db_id": player_id, "name": player_name}]
+
+        game_manager.new_game(
+            game_type=game_type,
+            player_ids=player_ids,
+            double_out=double_out,
+            reset_on_miss=reset_on_miss,
+        )
+
+        game_state = game_manager.get_game_state()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Single-player {game_type} game started",
+                "game": game_state,
+            },
+        )
+    except Exception as e:
+        app.logger.exception("Failed to start single-player game")
+        return (
+            jsonify({"success": False, "error": str(e)}),
+            500,
+        )
 
 
 @app.route("/api/game/end", methods=["POST"])
@@ -3620,38 +3806,57 @@ def handle_new_game(data):
 
     # Convert player names to player objects with database IDs
     db_session = game_manager.db_service.db_manager.get_session()
-    player_ids = []
+    try:
+        player_ids = []
 
-    for player_name in player_data:
-        # Try to find player by name or username
-        player = (
-            db_session.query(Player)
-            .filter(
-                (Player.name == player_name) | (Player.username == player_name),
+        for player_name in player_data:
+            # Try to find player by name or username
+            player = (
+                db_session.query(Player)
+                .filter(
+                    (Player.name == player_name) | (Player.username == player_name),
+                )
+                .first()
             )
-            .first()
+            if player:
+                player_ids.append({"db_id": player.id, "name": player.name})
+            else:
+                # If player not found in database, emit error and return
+                app.logger.warning(
+                    f"Player '{player_name}' not found in database. "
+                    "Only registered WSO2 users can play.",
+                )
+                socketio.emit(
+                    "error",
+                    {
+                        "message": (
+                            f"Player '{player_name}' not found. "
+                            "Only registered WSO2 users allowed."
+                        ),
+                    },
+                    namespace="/",
+                )
+                return
+
+        if not player_ids:
+            player_ids = [session.get("player_id")]
+
+        game_manager.new_game(
+            game_type,
+            player_ids=player_ids,
+            double_out=double_out,
+            reset_on_miss=reset_on_miss,
         )
-        if player:
-            player_ids.append({"db_id": player.id, "name": player.name})
-        else:
-            # If player not found in database, raise an error
-            app.logger.warning(
-                f"Player '{player_name}' not found in database. "
-                "Only registered WSO2 users can play.",
-            )
-            raise ValueError(
-                f"Player '{player_name}' not found. Only registered WSO2 users allowed.",
-            )
-
-    if not player_ids:
-        player_ids = [session.get("player_id")]
-
-    game_manager.new_game(
-        game_type,
-        player_ids=player_ids,
-        double_out=double_out,
-        reset_on_miss=reset_on_miss,
-    )
+    except Exception:
+        app.logger.exception("Error starting new game via WebSocket")
+        # Don't expose internal error details to clients
+        socketio.emit(
+            "error",
+            {"message": "An error occurred while starting the game. Please try again."},
+            namespace="/",
+        )
+    finally:
+        db_session.close()
 
 
 @socketio.on("add_player", namespace="/")
