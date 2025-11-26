@@ -702,13 +702,14 @@ def new_game():
         )
         # Game state is automatically emitted by game_manager.new_game()
         return jsonify({"status": "success", "message": "New game started"})
-    except Exception as e:
+    except Exception:
         app.logger.exception("Error starting new game")
+        # Don't expose internal error details to clients
         return (
             jsonify(
                 {
                     "status": "error",
-                    "message": str(e),
+                    "message": "An error occurred while starting the game. Please try again.",
                 },
             ),
             500,
@@ -2915,13 +2916,14 @@ def start_game():
                 "game": game_state,
             },
         )
-    except Exception as e:
+    except Exception:
         app.logger.exception("Error starting game")
+        # Don't expose internal error details to clients
         return (
             jsonify(
                 {
                     "success": False,
-                    "message": str(e),
+                    "message": "An error occurred while starting the game. Please try again.",
                 },
             ),
             500,
@@ -3726,11 +3728,12 @@ def handle_new_game(data):
             double_out=double_out,
             reset_on_miss=reset_on_miss,
         )
-    except Exception as e:
+    except Exception:
         app.logger.exception("Error starting new game via WebSocket")
+        # Don't expose internal error details to clients
         socketio.emit(
             "error",
-            {"message": str(e)},
+            {"message": "An error occurred while starting the game. Please try again."},
             namespace="/",
         )
     finally:
