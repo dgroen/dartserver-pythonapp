@@ -10,6 +10,13 @@ import secrets
 import threading
 from pathlib import Path
 
+from dartserver_app import register_events
+from dartserver_services import (
+    DartboardMappingError,
+    DartboardService,
+    MobileService,
+    RabbitMQConsumer,
+)
 from dotenv import load_dotenv
 from flasgger import Swagger
 from flask import Flask, jsonify, redirect, render_template, request, session, url_for
@@ -18,7 +25,6 @@ from flask_socketio import SocketIO
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src.app.game_manager import GameManager
-from src.app.mobile_service import MobileService
 from src.core.auth import (
     exchange_code_for_token,
     get_authorization_url,
@@ -29,10 +35,8 @@ from src.core.auth import (
     role_required,
 )
 from src.core.config import Config
-from src.core.dartboard_service import DartboardMappingError, DartboardService
 from src.core.database_models import Player
 from src.core.database_service import get_session, set_database_service
-from src.core.rabbitmq_consumer import RabbitMQConsumer
 
 # Load environment variables
 load_dotenv()
@@ -135,6 +139,8 @@ app.game_manager = game_manager  # Attach to app for access in decorators
 
 # Initialize global database service for dartboard endpoints
 set_database_service(game_manager.db_service)
+
+register_events(socketio, app)
 
 # Initialize RabbitMQ Consumer
 rabbitmq_consumer = None
@@ -1738,7 +1744,7 @@ def get_tts_languages():
             fr: French
             es: Spanish
     """
-    from src.core.tts_service import TTSService
+    from dartserver_services import TTSService
 
     languages = TTSService.get_supported_languages()
     return jsonify(languages)
