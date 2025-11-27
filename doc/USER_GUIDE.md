@@ -1,54 +1,171 @@
 # User Guide
 
-Welcome to the Dartserver Python Application!
-
-## Overview
-This app lets you play and manage darts games with real-time updates, user authentication, and persistent results.
-
-## Accessing the Application
-
-- Game Board: [http://localhost:5000](http://localhost:5000)
-- Control Panel: [http://localhost:5000/control](http://localhost:5000/control)
-- RabbitMQ Management: [http://localhost:15672](http://localhost:15672) (guest/guest)
-
-## Main Features
-
-- User authentication (OAuth/WSO2)
-- Real-time game updates
-- Game persistence and statistics
-- REST API and WebSocket endpoints
-
 ## Getting Started
 
-1. Log in using your credentials (OAuth/WSO2)
-2. Start a new game or join an existing one
-3. Play darts and track scores in real time
-4. View results and statistics
+### Accessing the Application
 
-## Example Game Flow
+1. Navigate to the application URL in your browser
+2. If authentication is enabled, you'll see a login page
+3. Enter your credentials to log in
+4. You'll be redirected to the game board
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Frontend
-    participant Backend
-    participant DB
-    User->>Frontend: Login
-    Frontend->>Backend: Auth request
-    Backend->>WSO2: Token introspection
-    WSO2-->>Backend: User info
-    Backend-->>Frontend: Auth success
-    User->>Frontend: Start game
-    Frontend->>Backend: POST /api/game/start
-    Backend->>DB: Save game
-    Backend-->>Frontend: Game started
-    User->>Frontend: Throw dart
-    Frontend->>Backend: WebSocket event
-    Backend->>DB: Update score
-    Backend-->>Frontend: Score update
+### User Roles
+
 ```
+┌─────────────────────────────────────────────────────────┐
+│ ROLE-BASED ACCESS CONTROL                               │
+├─────────────────────────────────────────────────────────┤
+│ 🟢 Player                                               │
+│    • View game board                                    │
+│    • Submit dart scores                                 │
+│    • View current game state                            │
+│                                                         │
+│ 🟡 Game Master                                          │
+│    • All Player permissions                             │
+│    • Create and manage games                            │
+│    • Add/remove players                                 │
+│    • Control game flow                                  │
+│    • Access control panel                               │
+│                                                         │
+│ 🔴 Admin                                                │
+│    • All permissions                                    │
+│    • Full system access                                │
+│    • User management (via WSO2)                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Playing a Game
+
+### Starting a New Game
+
+1. **Access Control Panel**
+   - Click "Control" or navigate to /control
+   - Requires Game Master role
+
+2. **Create Game**
+   - Select game type: 301, 401, 501, or Cricket
+   - Enter player names
+   - Click "Start Game"
+
+3. **Game Board**
+   - Real-time score display
+   - Current player highlighted
+   - Automatic UI refresh
+
+### Submitting Scores
+
+#### Via RabbitMQ (Automated)
+- Send JSON message to RabbitMQ exchange
+- Format: {"score": 20, "multiplier": "TRIPLE", "user": "Player 1"}
+- Multipliers: SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL
+
+#### Via Web Interface (Manual)
+- Use the score entry interface
+- Select score and multiplier
+- Submit to record dart
+
+#### Via REST API
+- POST /api/score
+- JSON: {"score": 20, "multiplier": "TRIPLE"}
+
+### Game Rules
+
+#### 301/401/501
+- Start with target points (301/401/501)
+- Each dart score subtracts from total
+- First to reach exactly 0 wins
+- Going below 0 = "bust" (score resets)
+- Last dart must be double (if enabled)
+
+#### Cricket
+- Hit numbers: 15, 16, 17, 18, 19, 20, Bull
+- Each number needs 3 hits to "open"
+- Unopened numbers: 1 point per hit
+- Opened numbers: Regular points
+- Closed numbers: No points
+- Highest score wins
+
+### Real-Time Updates
+
+- All connected clients automatically refresh
+- Score updates appear instantly
+- Game state synchronized across devices
+- WebSocket connection status shown
+
+## Features
+
+### Game Board
+- **Scoreboard**: Current scores for all players
+- **Turn Indicator**: Shows current player
+- **Game Info**: Type, rules, status
+- **History**: Recent scores and moves
+
+### Control Panel
+- **Game Management**: Start, pause, end games
+- **Player Management**: Add, remove players
+- **Manual Entry**: Enter scores manually
+- **Game History**: View previous games
+- **Settings**: Configure game options
+
+### Mobile Support
+- Responsive web interface
+- Works on tablets and phones
+- Touch-optimized controls
+- Mobile game master interface
+
+### Sound & Announcements
+- Text-to-speech announcements
+- Sound effects (optional)
+- Scoring feedback
+
+## Frequently Asked Questions
+
+**Q: How do I reset a game?**
+A: Use the Control Panel → End Game → Start New Game
+
+**Q: Can I play with more than 6 players?**
+A: Currently limited to 6 players for performance
+
+**Q: What if I enter the wrong score?**
+A: In manual mode, only Game Masters can correct scores
+
+**Q: How do I log out?**
+A: Click your profile name → Logout
+
+**Q: Does the app work offline?**
+A: Scores require connectivity for real-time sync
+
+**Q: Can I export game history?**
+A: Export functionality available in Control Panel
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| N | New game |
+| P | Next player |
+| S | Submit score |
+| C | Control panel |
+| ? | Help |
 
 ## Troubleshooting
 
-- If you can't log in, check your token or contact admin.
-- For game issues, check server logs or contact support.
+| Issue | Solution |
+|-------|----------|
+| Can't log in | Check credentials in authentication system |
+| Game won't start | Ensure all players are valid |
+| Scores not updating | Check WebSocket connection |
+| Can't submit score | Verify your role permissions |
+
+## Tips & Tricks
+
+- **Fast Entry**: Use keyboard shortcuts for rapid scoring
+- **Multiple Devices**: Connect multiple screens for optimal viewing
+- **Broadcast**: Project on big screen for audience
+- **Mobile**: Use mobile interface for mobile game master on phone
+
+## Getting Help
+
+- API Documentation: /apidocs
+- System Status: /api/health
+- Support: Contact system administrator
