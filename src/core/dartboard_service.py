@@ -3,6 +3,7 @@ Dartboard service for mapping GPIO pin combinations to game zones
 Handles both generic pin-based input and legacy score/multiplier input
 """
 
+import json
 from typing import Any, ClassVar, cast
 
 from sqlalchemy.orm import Session
@@ -28,6 +29,29 @@ class DartboardService:
     VALID_ZONES: ClassVar = set(range(1, 21)) | {25}  # 1-20 and 25 (bull)
     MULTIPLIER_TYPES: ClassVar = {"SINGLE", "DOUBLE", "TRIPLE", "BULL", "DBLBULL"}
 
+    # Common ESP32 GPIO pins used for dartboard matrices
+    AVAILABLE_GPIO_PINS: ClassVar = [
+        2,
+        4,
+        5,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        21,
+        22,
+        23,
+        25,
+        26,
+        27,
+        32,
+        33,
+    ]
+
     @staticmethod
     def register_dartboard_type(
         session: Session,
@@ -35,6 +59,8 @@ class DartboardService:
         brand: str,
         model: str | None = None,
         description: str | None = None,
+        master_pins: list[int] | None = None,
+        slave_pins: list[int] | None = None,
     ) -> DartboardType:
         """
         Register a new dartboard type
@@ -45,6 +71,8 @@ class DartboardService:
             brand: Brand name (e.g., 'Carromco')
             model: Model name (optional)
             description: Description (optional)
+            master_pins: List of GPIO pins for master (row) lines (optional)
+            slave_pins: List of GPIO pins for slave (column) lines (optional)
 
         Returns:
             DartboardType instance
@@ -58,8 +86,41 @@ class DartboardService:
             brand=brand,
             model=model,
             description=description,
+            master_pins=json.dumps(master_pins) if master_pins else None,
+            slave_pins=json.dumps(slave_pins) if slave_pins else None,
         )
         session.add(dartboard_type)
+        session.commit()
+        return dartboard_type
+
+    @staticmethod
+    def update_dartboard_pins(
+        session: Session,
+        dartboard_type_name: str,
+        master_pins: list[int] | None = None,
+        slave_pins: list[int] | None = None,
+    ) -> DartboardType:
+        """
+        Update GPIO pin configuration for a dartboard type
+
+        Args:
+            session: Database session
+            dartboard_type_name: Dartboard type name
+            master_pins: List of GPIO pins for master (row) lines
+            slave_pins: List of GPIO pins for slave (column) lines
+
+        Returns:
+            Updated DartboardType instance
+        """
+        dartboard_type = session.query(DartboardType).filter_by(name=dartboard_type_name).first()
+        if not dartboard_type:
+            raise DartboardMappingError(f"Dartboard type '{dartboard_type_name}' not found")
+
+        if master_pins is not None:
+            dartboard_type.master_pins = json.dumps(master_pins)  # type: ignore
+        if slave_pins is not None:
+            dartboard_type.slave_pins = json.dumps(slave_pins)  # type: ignore
+
         session.commit()
         return dartboard_type
 
@@ -301,9 +362,23 @@ class DartboardService:
             session.query(DartboardZoneMapping).filter_by(dartboard_type_id=dartboard_type.id).all()
         )
 
-        # Get unique master and slave pins, sorted
-        master_pins = sorted({m.master_pin for m in mappings})
-        slave_pins = sorted({m.slave_pin for m in mappings})
+        # Use stored pins if available, otherwise extract from mappings
+        # Handle potential JSON parsing errors gracefully
+        try:
+            if dartboard_type.master_pins:
+                master_pins = sorted(json.loads(dartboard_type.master_pins))
+            else:
+                master_pins = sorted({m.master_pin for m in mappings})
+        except (json.JSONDecodeError, TypeError):
+            master_pins = sorted({m.master_pin for m in mappings})
+
+        try:
+            if dartboard_type.slave_pins:
+                slave_pins = sorted(json.loads(dartboard_type.slave_pins))
+            else:
+                slave_pins = sorted({m.slave_pin for m in mappings})
+        except (json.JSONDecodeError, TypeError):
+            slave_pins = sorted({m.slave_pin for m in mappings})
 
         # Create a lookup dictionary for faster access
         mapping_dict = {
@@ -336,12 +411,28 @@ class DartboardService:
                 },
             )
 
+        # Parse stored pins for response with error handling
+        try:
+            stored_master_pins = (
+                json.loads(dartboard_type.master_pins) if dartboard_type.master_pins else None
+            )
+        except (json.JSONDecodeError, TypeError):
+            stored_master_pins = None
+        try:
+            stored_slave_pins = (
+                json.loads(dartboard_type.slave_pins) if dartboard_type.slave_pins else None
+            )
+        except (json.JSONDecodeError, TypeError):
+            stored_slave_pins = None
+
         dartboard_type_dict = {
             "id": dartboard_type.id,
             "name": dartboard_type.name,
             "brand": dartboard_type.brand,
             "model": dartboard_type.model,
             "description": dartboard_type.description,
+            "master_pins": stored_master_pins,
+            "slave_pins": stored_slave_pins,
         }
 
         return dartboard_type_dict, master_pins, slave_pins, matrix
