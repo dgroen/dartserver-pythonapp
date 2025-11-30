@@ -1571,6 +1571,130 @@ def import_dartboard_mappings():
         return jsonify({"status": "error", "message": str(e)}), 400
 
 
+@app.route("/api/admin/dartboard/type", methods=["POST"])
+@login_required
+@role_required("admin")
+def create_dartboard_type():
+    """Create a new dartboard type
+    ---
+    tags:
+      - Admin/Dartboard
+    summary: Create new dartboard type
+    description: Register a new dartboard type that can then be configured with zone mappings
+    parameters:
+      - in: body
+        name: body
+        schema:
+          type: object
+          required:
+            - name
+            - brand
+          properties:
+            name:
+              type: string
+              description: Unique identifier for the dartboard type (lowercase, no spaces)
+              example: granboard
+            brand:
+              type: string
+              description: Brand name of the dartboard
+              example: Gran Board
+            model:
+              type: string
+              description: Model name or number (optional)
+              example: Gran Board 3
+            description:
+              type: string
+              description: Description of the dartboard (optional)
+              example: Electronic dartboard with Bluetooth connectivity
+    responses:
+      201:
+        description: Dartboard type created successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+            dartboard_type:
+              type: object
+              properties:
+                id:
+                  type: integer
+                name:
+                  type: string
+                brand:
+                  type: string
+                model:
+                  type: string
+                description:
+                  type: string
+      400:
+        description: Invalid request or dartboard type already exists
+    """
+    try:
+        data = request.json
+        name = data.get("name", "").lower().strip()
+        brand = data.get("brand", "").strip()
+        model = data.get("model", "").strip() if data.get("model") else None
+        description = data.get("description", "").strip() if data.get("description") else None
+
+        # Validate required fields
+        if not name:
+            return jsonify({"status": "error", "message": "Name is required"}), 400
+        if not brand:
+            return jsonify({"status": "error", "message": "Brand is required"}), 400
+
+        # Validate name format (lowercase, alphanumeric with underscores)
+        if not name.replace("_", "").replace("-", "").isalnum():
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": (
+                            "Name must contain only letters, numbers, hyphens and underscores"
+                        ),
+                    },
+                ),
+                400,
+            )
+
+        session = get_session()
+        try:
+            dartboard_type = DartboardService.register_dartboard_type(
+                session,
+                name=name,
+                brand=brand,
+                model=model,
+                description=description,
+            )
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": f"Dartboard type '{name}' created successfully",
+                        "dartboard_type": {
+                            "id": dartboard_type.id,
+                            "name": dartboard_type.name,
+                            "brand": dartboard_type.brand,
+                            "model": dartboard_type.model,
+                            "description": dartboard_type.description,
+                        },
+                    },
+                ),
+                201,
+            )
+        finally:
+            session.close()
+    except DartboardMappingError as e:
+        logger.warning("Dartboard type creation failed: %s", str(e))
+        return jsonify({"status": "error", "message": str(e)}), 400
+    except Exception as e:
+        logger.exception("Error creating dartboard type")
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
 @app.route("/api/tts/config", methods=["GET"])
 def get_tts_config():
     """Get TTS configuration

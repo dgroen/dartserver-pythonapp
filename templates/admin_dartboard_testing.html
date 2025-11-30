@@ -496,12 +496,45 @@
                         <label for="boardType">Select Dartboard Type:</label>
                         <select id="boardType">
                             <option value="">-- Choose a dartboard --</option>
+                            <option value="__new__">➕ Add New Dartboard Type...</option>
                         </select>
                     </div>
                     <div id="boardInfo" style="background: white; padding: 12px; border-radius: 4px; margin-top: 10px; display: none;">
                         <p style="margin: 5px 0; font-size: 13px;"><strong>Brand:</strong> <span id="infoString">-</span></p>
                         <p style="margin: 5px 0; font-size: 13px;"><strong>Total Mappings:</strong> <span id="infoCount">0</span></p>
                     </div>
+                </div>
+
+                <!-- Add New Dartboard Type Form -->
+                <div class="section" id="newBoardSection" style="margin-top: 20px; display: none;">
+                    <h2>Add New Dartboard Type</h2>
+                    <div class="info-text">
+                        🆕 Create a new dartboard type to configure with GPIO pin mappings
+                    </div>
+                    <form id="newBoardForm" onsubmit="createDartboardType(event)">
+                        <div class="mapping-form">
+                            <div class="form-group">
+                                <label for="newBoardName">Board Type Name:</label>
+                                <input type="text" id="newBoardName" placeholder="e.g., granboard" pattern="[a-z0-9_-]+" title="Lowercase letters, numbers, hyphens and underscores only" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="newBoardBrand">Brand:</label>
+                                <input type="text" id="newBoardBrand" placeholder="e.g., Gran Board" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="newBoardModel">Model (optional):</label>
+                                <input type="text" id="newBoardModel" placeholder="e.g., Gran Board 3">
+                            </div>
+                            <div class="form-group">
+                                <label for="newBoardDescription">Description (optional):</label>
+                                <input type="text" id="newBoardDescription" placeholder="e.g., Electronic dartboard with Bluetooth">
+                            </div>
+                        </div>
+                        <div class="button-group" style="margin-top: 20px;">
+                            <button type="submit" class="btn-success">➕ Create Dartboard Type</button>
+                            <button type="button" class="btn-secondary" onclick="cancelNewBoard()">Cancel</button>
+                        </div>
+                    </form>
                 </div>
 
                 <!-- Manual Mapping Form -->
@@ -674,13 +707,15 @@
                 if (data.status === 'success') {
                     const select = document.getElementById('boardType');
                     const currentValue = select.value;
+                    const addNewOption = select.querySelector('option[value="__new__"]');
 
                     data.types.forEach(type => {
                         if (!Array.from(select.options).some(opt => opt.value === type.name)) {
                             const option = document.createElement('option');
                             option.value = type.name;
                             option.textContent = `${type.brand} - ${type.model || type.name}`;
-                            select.appendChild(option);
+                            // Insert before the "Add New" option
+                            select.insertBefore(option, addNewOption);
                         }
                     });
 
@@ -694,9 +729,23 @@
 
         async function loadMatrixForSelectedBoard() {
             const boardType = document.getElementById('boardType').value;
+
+            // Handle "Add New" option
+            if (boardType === '__new__') {
+                document.getElementById('newBoardSection').style.display = 'block';
+                document.getElementById('boardInfo').style.display = 'none';
+                document.getElementById('matrixContainer').innerHTML =
+                    '<p style="color: #999; text-align: center; padding: 20px;">Create a new dartboard type first</p>';
+                return;
+            }
+
+            // Hide new board form when selecting existing board
+            document.getElementById('newBoardSection').style.display = 'none';
+
             if (!boardType) {
                 document.getElementById('matrixContainer').innerHTML =
                     '<p style="color: #999; text-align: center; padding: 20px;">Select a dartboard type to load matrix</p>';
+                document.getElementById('boardInfo').style.display = 'none';
                 return;
             }
 
@@ -716,6 +765,67 @@
                 console.error('Error loading matrix:', error);
                 showAlert('Failed to load matrix', 'error');
             }
+        }
+
+        // ==================== New Dartboard Type Functions ====================
+
+        async function createDartboardType(event) {
+            event.preventDefault();
+
+            const name = document.getElementById('newBoardName').value.toLowerCase().trim();
+            const brand = document.getElementById('newBoardBrand').value.trim();
+            const model = document.getElementById('newBoardModel').value.trim() || null;
+            const description = document.getElementById('newBoardDescription').value.trim() || null;
+
+            if (!name || !brand) {
+                showAlert('Name and Brand are required', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/dartboard/type', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, brand, model, description })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    showAlert(`✓ Dartboard type '${name}' created successfully`, 'success');
+
+                    // Reset and hide form
+                    document.getElementById('newBoardForm').reset();
+                    document.getElementById('newBoardSection').style.display = 'none';
+
+                    // Reload dartboard types and select the new one
+                    const select = document.getElementById('boardType');
+
+                    // Add the new option
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = `${brand} - ${model || name}`;
+                    // Insert before the "Add New" option (which is at index 1)
+                    const addNewOption = select.querySelector('option[value="__new__"]');
+                    select.insertBefore(option, addNewOption);
+
+                    // Select the new dartboard type
+                    select.value = name;
+                    loadMatrixForSelectedBoard();
+                } else {
+                    showAlert(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error creating dartboard type:', error);
+                showAlert('Failed to create dartboard type', 'error');
+            }
+        }
+
+        function cancelNewBoard() {
+            document.getElementById('newBoardForm').reset();
+            document.getElementById('newBoardSection').style.display = 'none';
+            document.getElementById('boardType').value = '';
+            loadMatrixForSelectedBoard();
         }
 
         function countMappings(matrix) {
