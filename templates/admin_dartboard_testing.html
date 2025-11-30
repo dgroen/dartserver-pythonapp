@@ -772,7 +772,7 @@
         async function createDartboardType(event) {
             event.preventDefault();
 
-            const name = document.getElementById('newBoardName').value.toLowerCase().trim();
+            const name = document.getElementById('newBoardName').value.trim();
             const brand = document.getElementById('newBoardBrand').value.trim();
             const model = document.getElementById('newBoardModel').value.trim() || null;
             const description = document.getElementById('newBoardDescription').value.trim() || null;
@@ -792,7 +792,9 @@
                 const data = await response.json();
 
                 if (data.status === 'success') {
-                    showAlert(`✓ Dartboard type '${name}' created successfully`, 'success');
+                    // Use the server-returned name (lowercase) for display
+                    const createdName = data.dartboard_type.name;
+                    showAlert(`✓ Dartboard type '${createdName}' created successfully`, 'success');
 
                     // Reset and hide form
                     document.getElementById('newBoardForm').reset();
@@ -803,14 +805,14 @@
 
                     // Add the new option
                     const option = document.createElement('option');
-                    option.value = name;
-                    option.textContent = `${brand} - ${model || name}`;
+                    option.value = createdName;
+                    option.textContent = `${brand} - ${model || createdName}`;
                     // Insert before the "Add New" option (which is at index 1)
                     const addNewOption = select.querySelector('option[value="__new__"]');
                     select.insertBefore(option, addNewOption);
 
                     // Select the new dartboard type
-                    select.value = name;
+                    select.value = createdName;
                     loadMatrixForSelectedBoard();
                 } else {
                     showAlert(data.message, 'error');

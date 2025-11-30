@@ -1646,7 +1646,7 @@ def create_dartboard_type():
         if not brand:
             return jsonify({"status": "error", "message": "Brand is required"}), 400
 
-        # Validate name format (lowercase, alphanumeric with underscores)
+        # Validate name format (lowercase, alphanumeric with hyphens and underscores)
         if not name.replace("_", "").replace("-", "").isalnum():
             return (
                 jsonify(
