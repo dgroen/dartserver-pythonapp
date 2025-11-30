@@ -363,14 +363,21 @@ class DartboardService:
         )
 
         # Use stored pins if available, otherwise extract from mappings
-        if dartboard_type.master_pins:
-            master_pins = sorted(json.loads(dartboard_type.master_pins))
-        else:
+        # Handle potential JSON parsing errors gracefully
+        try:
+            if dartboard_type.master_pins:
+                master_pins = sorted(json.loads(dartboard_type.master_pins))
+            else:
+                master_pins = sorted({m.master_pin for m in mappings})
+        except (json.JSONDecodeError, TypeError):
             master_pins = sorted({m.master_pin for m in mappings})
 
-        if dartboard_type.slave_pins:
-            slave_pins = sorted(json.loads(dartboard_type.slave_pins))
-        else:
+        try:
+            if dartboard_type.slave_pins:
+                slave_pins = sorted(json.loads(dartboard_type.slave_pins))
+            else:
+                slave_pins = sorted({m.slave_pin for m in mappings})
+        except (json.JSONDecodeError, TypeError):
             slave_pins = sorted({m.slave_pin for m in mappings})
 
         # Create a lookup dictionary for faster access
@@ -404,13 +411,19 @@ class DartboardService:
                 },
             )
 
-        # Parse stored pins for response
-        stored_master_pins = (
-            json.loads(dartboard_type.master_pins) if dartboard_type.master_pins else None
-        )
-        stored_slave_pins = (
-            json.loads(dartboard_type.slave_pins) if dartboard_type.slave_pins else None
-        )
+        # Parse stored pins for response with error handling
+        try:
+            stored_master_pins = (
+                json.loads(dartboard_type.master_pins) if dartboard_type.master_pins else None
+            )
+        except (json.JSONDecodeError, TypeError):
+            stored_master_pins = None
+        try:
+            stored_slave_pins = (
+                json.loads(dartboard_type.slave_pins) if dartboard_type.slave_pins else None
+            )
+        except (json.JSONDecodeError, TypeError):
+            stored_slave_pins = None
 
         dartboard_type_dict = {
             "id": dartboard_type.id,
