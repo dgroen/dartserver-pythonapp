@@ -466,6 +466,60 @@
                 transform: scale(1);
             }
         }
+
+        /* Pin Selection Checkboxes */
+        .pin-selection {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .pin-selection h4 {
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .pin-checkboxes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .pin-checkbox {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 10px;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+
+        .pin-checkbox:hover {
+            background: #e3f2fd;
+            border-color: #667eea;
+        }
+
+        .pin-checkbox input[type="checkbox"] {
+            cursor: pointer;
+        }
+
+        .pin-checkbox input[type="checkbox"]:checked + span {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .pin-checkbox.selected {
+            background: #e3f2fd;
+            border-color: #667eea;
+        }
     </style>
 </head>
 <body>
@@ -496,12 +550,72 @@
                         <label for="boardType">Select Dartboard Type:</label>
                         <select id="boardType">
                             <option value="">-- Choose a dartboard --</option>
+                            <option value="__new__">➕ Add New Dartboard Type...</option>
                         </select>
                     </div>
                     <div id="boardInfo" style="background: white; padding: 12px; border-radius: 4px; margin-top: 10px; display: none;">
                         <p style="margin: 5px 0; font-size: 13px;"><strong>Brand:</strong> <span id="infoString">-</span></p>
                         <p style="margin: 5px 0; font-size: 13px;"><strong>Total Mappings:</strong> <span id="infoCount">0</span></p>
                     </div>
+                </div>
+
+                <!-- Pin Configuration Section (for existing boards) -->
+                <div class="section" id="pinConfigSection" style="margin-top: 20px; display: none;">
+                    <h2>GPIO Pin Configuration</h2>
+                    <div class="info-text">
+                        📌 Select which GPIO pins are used for this dartboard's matrix
+                    </div>
+                    <div class="pin-selection">
+                        <h4>Master Pins (Rows):</h4>
+                        <div class="pin-checkboxes" id="existingMasterPins"></div>
+                    </div>
+                    <div class="pin-selection">
+                        <h4>Slave Pins (Columns):</h4>
+                        <div class="pin-checkboxes" id="existingSlavePins"></div>
+                    </div>
+                    <div class="button-group" style="margin-top: 15px;">
+                        <button type="button" class="btn-primary" onclick="savePinConfiguration()">💾 Save Pin Configuration</button>
+                    </div>
+                </div>
+
+                <!-- Add New Dartboard Type Form -->
+                <div class="section" id="newBoardSection" style="margin-top: 20px; display: none;">
+                    <h2>Add New Dartboard Type</h2>
+                    <div class="info-text">
+                        🆕 Create a new dartboard type to configure with GPIO pin mappings
+                    </div>
+                    <form id="newBoardForm" onsubmit="createDartboardType(event)">
+                        <div class="mapping-form">
+                            <div class="form-group">
+                                <label for="newBoardName">Board Type Name:</label>
+                                <input type="text" id="newBoardName" placeholder="e.g., granboard" pattern="[a-z0-9_-]+" title="Lowercase letters, numbers, hyphens and underscores only" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="newBoardBrand">Brand:</label>
+                                <input type="text" id="newBoardBrand" placeholder="e.g., Gran Board" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="newBoardModel">Model (optional):</label>
+                                <input type="text" id="newBoardModel" placeholder="e.g., Gran Board 3">
+                            </div>
+                            <div class="form-group">
+                                <label for="newBoardDescription">Description (optional):</label>
+                                <input type="text" id="newBoardDescription" placeholder="e.g., Electronic dartboard with Bluetooth">
+                            </div>
+                        </div>
+                        <div class="pin-selection">
+                            <h4>Master Pins (Rows):</h4>
+                            <div class="pin-checkboxes" id="newMasterPins"></div>
+                        </div>
+                        <div class="pin-selection">
+                            <h4>Slave Pins (Columns):</h4>
+                            <div class="pin-checkboxes" id="newSlavePins"></div>
+                        </div>
+                        <div class="button-group" style="margin-top: 20px;">
+                            <button type="submit" class="btn-success">➕ Create Dartboard Type</button>
+                            <button type="button" class="btn-secondary" onclick="cancelNewBoard()">Cancel</button>
+                        </div>
+                    </form>
                 </div>
 
                 <!-- Manual Mapping Form -->
@@ -599,11 +713,81 @@
         // Socket.IO connection
         const socket = io();
 
+        // Available GPIO pins for ESP32
+        const AVAILABLE_PINS = [2, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33];
+
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadDartboardTypes();
             document.getElementById('boardType').addEventListener('change', loadMatrixForSelectedBoard);
+            // Initialize pin checkboxes for new board form
+            renderPinCheckboxes('newMasterPins', [], 'newMaster');
+            renderPinCheckboxes('newSlavePins', [], 'newSlave');
         });
+
+        // ==================== Pin Selection Functions ====================
+
+        function renderPinCheckboxes(containerId, selectedPins, prefix) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            AVAILABLE_PINS.forEach(pin => {
+                const isChecked = selectedPins.includes(pin);
+                const label = document.createElement('label');
+                label.className = 'pin-checkbox' + (isChecked ? ' selected' : '');
+                label.innerHTML = `
+                    <input type="checkbox" name="${prefix}Pin${pin}" value="${pin}" ${isChecked ? 'checked' : ''} onchange="togglePinCheckbox(this)">
+                    <span>GPIO ${pin}</span>
+                `;
+                container.appendChild(label);
+            });
+        }
+
+        function togglePinCheckbox(checkbox) {
+            const label = checkbox.closest('.pin-checkbox');
+            if (checkbox.checked) {
+                label.classList.add('selected');
+            } else {
+                label.classList.remove('selected');
+            }
+        }
+
+        function getSelectedPins(containerId) {
+            const container = document.getElementById(containerId);
+            const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+            return Array.from(checkboxes).map(cb => parseInt(cb.value));
+        }
+
+        async function savePinConfiguration() {
+            const boardType = document.getElementById('boardType').value;
+            if (!boardType || boardType === '__new__') {
+                showAlert('Please select a dartboard type first', 'error');
+                return;
+            }
+
+            const masterPins = getSelectedPins('existingMasterPins');
+            const slavePins = getSelectedPins('existingSlavePins');
+
+            try {
+                const response = await fetch(`/api/admin/dartboard/type/${boardType}/pins`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ masterPins, slavePins })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    showAlert('✓ Pin configuration saved successfully', 'success');
+                    loadMatrixForSelectedBoard();
+                } else {
+                    showAlert(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error saving pin configuration:', error);
+                showAlert('Failed to save pin configuration', 'error');
+            }
+        }
 
         // ==================== UI Functions ====================
 
@@ -674,13 +858,15 @@
                 if (data.status === 'success') {
                     const select = document.getElementById('boardType');
                     const currentValue = select.value;
+                    const addNewOption = select.querySelector('option[value="__new__"]');
 
                     data.types.forEach(type => {
                         if (!Array.from(select.options).some(opt => opt.value === type.name)) {
                             const option = document.createElement('option');
                             option.value = type.name;
                             option.textContent = `${type.brand} - ${type.model || type.name}`;
-                            select.appendChild(option);
+                            // Insert before the "Add New" option
+                            select.insertBefore(option, addNewOption);
                         }
                     });
 
@@ -694,9 +880,25 @@
 
         async function loadMatrixForSelectedBoard() {
             const boardType = document.getElementById('boardType').value;
+
+            // Handle "Add New" option
+            if (boardType === '__new__') {
+                document.getElementById('newBoardSection').style.display = 'block';
+                document.getElementById('pinConfigSection').style.display = 'none';
+                document.getElementById('boardInfo').style.display = 'none';
+                document.getElementById('matrixContainer').innerHTML =
+                    '<p style="color: #999; text-align: center; padding: 20px;">Create a new dartboard type first</p>';
+                return;
+            }
+
+            // Hide new board form when selecting existing board
+            document.getElementById('newBoardSection').style.display = 'none';
+
             if (!boardType) {
                 document.getElementById('matrixContainer').innerHTML =
                     '<p style="color: #999; text-align: center; padding: 20px;">Select a dartboard type to load matrix</p>';
+                document.getElementById('boardInfo').style.display = 'none';
+                document.getElementById('pinConfigSection').style.display = 'none';
                 return;
             }
 
@@ -709,6 +911,13 @@
                     document.getElementById('boardInfo').style.display = 'block';
                     document.getElementById('infoString').textContent = `${data.dartboard_type.brand} (${data.dartboard_type.model || 'N/A'})`;
                     document.getElementById('infoCount').textContent = countMappings(data.matrix);
+
+                    // Show pin configuration section and populate with current pins
+                    document.getElementById('pinConfigSection').style.display = 'block';
+                    const storedMasterPins = data.dartboard_type.master_pins || [];
+                    const storedSlavePins = data.dartboard_type.slave_pins || [];
+                    renderPinCheckboxes('existingMasterPins', storedMasterPins, 'existingMaster');
+                    renderPinCheckboxes('existingSlavePins', storedSlavePins, 'existingSlave');
                 } else {
                     showAlert(data.message, 'error');
                 }
@@ -716,6 +925,81 @@
                 console.error('Error loading matrix:', error);
                 showAlert('Failed to load matrix', 'error');
             }
+        }
+
+        // ==================== New Dartboard Type Functions ====================
+
+        async function createDartboardType(event) {
+            event.preventDefault();
+
+            const name = document.getElementById('newBoardName').value.trim();
+            const brand = document.getElementById('newBoardBrand').value.trim();
+            const model = document.getElementById('newBoardModel').value.trim() || null;
+            const description = document.getElementById('newBoardDescription').value.trim() || null;
+            const masterPins = getSelectedPins('newMasterPins');
+            const slavePins = getSelectedPins('newSlavePins');
+
+            if (!name || !brand) {
+                showAlert('Name and Brand are required', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/dartboard/type', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        name, 
+                        brand, 
+                        model, 
+                        description,
+                        masterPins: masterPins.length > 0 ? masterPins : null,
+                        slavePins: slavePins.length > 0 ? slavePins : null
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    // Use the server-returned name (lowercase) for display
+                    const createdName = data.dartboard_type.name;
+                    showAlert(`✓ Dartboard type '${createdName}' created successfully`, 'success');
+
+                    // Reset and hide form
+                    document.getElementById('newBoardForm').reset();
+                    // Reset pin checkboxes
+                    renderPinCheckboxes('newMasterPins', [], 'newMaster');
+                    renderPinCheckboxes('newSlavePins', [], 'newSlave');
+                    document.getElementById('newBoardSection').style.display = 'none';
+
+                    // Reload dartboard types and select the new one
+                    const select = document.getElementById('boardType');
+
+                    // Add the new option
+                    const option = document.createElement('option');
+                    option.value = createdName;
+                    option.textContent = `${brand} - ${model || createdName}`;
+                    // Insert before the "Add New" option (which is at index 1)
+                    const addNewOption = select.querySelector('option[value="__new__"]');
+                    select.insertBefore(option, addNewOption);
+
+                    // Select the new dartboard type
+                    select.value = createdName;
+                    loadMatrixForSelectedBoard();
+                } else {
+                    showAlert(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error creating dartboard type:', error);
+                showAlert('Failed to create dartboard type', 'error');
+            }
+        }
+
+        function cancelNewBoard() {
+            document.getElementById('newBoardForm').reset();
+            document.getElementById('newBoardSection').style.display = 'none';
+            document.getElementById('boardType').value = '';
+            loadMatrixForSelectedBoard();
         }
 
         function countMappings(matrix) {
