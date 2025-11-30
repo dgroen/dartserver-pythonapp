@@ -1606,6 +1606,18 @@ def create_dartboard_type():
               type: string
               description: Description of the dartboard (optional)
               example: Electronic dartboard with Bluetooth connectivity
+            masterPins:
+              type: array
+              items:
+                type: integer
+              description: List of GPIO pins for master (row) lines
+              example: [2, 4, 5, 16, 17, 18, 19]
+            slavePins:
+              type: array
+              items:
+                type: integer
+              description: List of GPIO pins for slave (column) lines
+              example: [12, 13, 14, 25, 26, 27, 32, 33]
     responses:
       201:
         description: Dartboard type created successfully
@@ -1630,6 +1642,14 @@ def create_dartboard_type():
                   type: string
                 description:
                   type: string
+                master_pins:
+                  type: array
+                  items:
+                    type: integer
+                slave_pins:
+                  type: array
+                  items:
+                    type: integer
       400:
         description: Invalid request or dartboard type already exists
     """
@@ -1639,6 +1659,8 @@ def create_dartboard_type():
         brand = data.get("brand", "").strip()
         model = data.get("model", "").strip() if data.get("model") else None
         description = data.get("description", "").strip() if data.get("description") else None
+        master_pins = data.get("masterPins")
+        slave_pins = data.get("slavePins")
 
         # Validate required fields
         if not name:
@@ -1660,6 +1682,22 @@ def create_dartboard_type():
                 400,
             )
 
+        # Validate pin arrays if provided
+        if master_pins is not None and (
+            not isinstance(master_pins, list) or not all(isinstance(p, int) for p in master_pins)
+        ):
+            return (
+                jsonify({"status": "error", "message": "masterPins must be an array of integers"}),
+                400,
+            )
+        if slave_pins is not None and (
+            not isinstance(slave_pins, list) or not all(isinstance(p, int) for p in slave_pins)
+        ):
+            return (
+                jsonify({"status": "error", "message": "slavePins must be an array of integers"}),
+                400,
+            )
+
         session = get_session()
         try:
             dartboard_type = DartboardService.register_dartboard_type(
@@ -1668,6 +1706,8 @@ def create_dartboard_type():
                 brand=brand,
                 model=model,
                 description=description,
+                master_pins=master_pins,
+                slave_pins=slave_pins,
             )
             return (
                 jsonify(
@@ -1680,6 +1720,8 @@ def create_dartboard_type():
                             "brand": dartboard_type.brand,
                             "model": dartboard_type.model,
                             "description": dartboard_type.description,
+                            "master_pins": master_pins,
+                            "slave_pins": slave_pins,
                         },
                     },
                 ),
@@ -1693,6 +1735,131 @@ def create_dartboard_type():
     except Exception as e:
         logger.exception("Error creating dartboard type")
         return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/api/admin/dartboard/type/<board_type>/pins", methods=["PUT"])
+@login_required
+@role_required("admin")
+def update_dartboard_pins(board_type):
+    """Update GPIO pin configuration for a dartboard type
+    ---
+    tags:
+      - Admin/Dartboard
+    summary: Update dartboard GPIO pins
+    description: Update the master and slave GPIO pin configuration for an existing dartboard type
+    parameters:
+      - in: path
+        name: board_type
+        type: string
+        required: true
+        description: Dartboard type name
+      - in: body
+        name: body
+        schema:
+          type: object
+          properties:
+            masterPins:
+              type: array
+              items:
+                type: integer
+              description: List of GPIO pins for master (row) lines
+              example: [2, 4, 5, 16, 17, 18, 19]
+            slavePins:
+              type: array
+              items:
+                type: integer
+              description: List of GPIO pins for slave (column) lines
+              example: [12, 13, 14, 25, 26, 27, 32, 33]
+    responses:
+      200:
+        description: Pins updated successfully
+      400:
+        description: Invalid request
+      404:
+        description: Dartboard type not found
+    """
+    try:
+        data = request.json
+        master_pins = data.get("masterPins")
+        slave_pins = data.get("slavePins")
+
+        # Validate pin arrays if provided
+        if master_pins is not None and (
+            not isinstance(master_pins, list) or not all(isinstance(p, int) for p in master_pins)
+        ):
+            return (
+                jsonify({"status": "error", "message": "masterPins must be an array of integers"}),
+                400,
+            )
+        if slave_pins is not None and (
+            not isinstance(slave_pins, list) or not all(isinstance(p, int) for p in slave_pins)
+        ):
+            return (
+                jsonify({"status": "error", "message": "slavePins must be an array of integers"}),
+                400,
+            )
+
+        session = get_session()
+        try:
+            dartboard_type = DartboardService.update_dartboard_pins(
+                session,
+                board_type.lower(),
+                master_pins=master_pins,
+                slave_pins=slave_pins,
+            )
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": f"Pins updated for '{board_type}'",
+                    "dartboard_type": {
+                        "id": dartboard_type.id,
+                        "name": dartboard_type.name,
+                        "master_pins": master_pins,
+                        "slave_pins": slave_pins,
+                    },
+                },
+            )
+        finally:
+            session.close()
+    except DartboardMappingError as e:
+        logger.warning("Dartboard pin update failed: %s", str(e))
+        return jsonify({"status": "error", "message": str(e)}), 404
+    except Exception as e:
+        logger.exception("Error updating dartboard pins")
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/api/admin/dartboard/available-pins", methods=["GET"])
+@login_required
+@role_required("admin")
+def get_available_pins():
+    """Get list of available GPIO pins for dartboard configuration
+    ---
+    tags:
+      - Admin/Dartboard
+    summary: Get available GPIO pins
+    description: Returns a list of common ESP32 GPIO pins that can be used for dartboard matrices
+    responses:
+      200:
+        description: List of available pins
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            pins:
+              type: array
+              items:
+                type: integer
+              example: [2, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33]
+    """
+    return jsonify(
+        {
+            "status": "success",
+            "pins": DartboardService.AVAILABLE_GPIO_PINS,
+        },
+    )
 
 
 @app.route("/api/tts/config", methods=["GET"])

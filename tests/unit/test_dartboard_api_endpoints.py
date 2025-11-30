@@ -749,3 +749,224 @@ class TestCreateDartboardTypeEndpoint:
         assert data["status"] == "success"
         assert data["dartboard_type"]["model"] is None
         assert data["dartboard_type"]["description"] is None
+
+
+class TestUpdateDartboardPinsEndpoint:
+    """Test /api/admin/dartboard/type/<board_type>/pins endpoint"""
+
+    @pytest.fixture
+    def admin_client(self):
+        """Create test client with admin authentication"""
+        app.config["TESTING"] = True
+        with app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["access_token"] = "test-admin-token"
+            yield client
+
+    @patch("src.core.auth.validate_token")
+    @patch("src.app.app.DartboardService")
+    @patch("src.app.app.get_session")
+    def test_update_pins_success(
+        self,
+        mock_get_session,
+        mock_service,
+        mock_validate,
+        admin_client,
+    ):
+        """Test successfully updating dartboard pins"""
+        mock_validate.return_value = {
+            "sub": "admin-user",
+            "username": "admin",
+            "groups": ["admin"],
+        }
+
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
+        mock_dartboard = MagicMock()
+        mock_dartboard.id = 1
+        mock_dartboard.name = "carromco"
+        mock_service.update_dartboard_pins.return_value = mock_dartboard
+
+        response = admin_client.put(
+            "/api/admin/dartboard/type/carromco/pins",
+            json={
+                "masterPins": [2, 4, 5, 16, 17, 18, 19],
+                "slavePins": [12, 13, 14, 25, 26, 27, 32, 33],
+            },
+            content_type="application/json",
+        )
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["status"] == "success"
+        mock_service.update_dartboard_pins.assert_called_once()
+
+    @patch("src.core.auth.validate_token")
+    @patch("src.app.app.get_session")
+    def test_update_pins_invalid_master_pins(
+        self,
+        mock_get_session,
+        mock_validate,
+        admin_client,
+    ):
+        """Test updating pins with invalid masterPins type"""
+        mock_validate.return_value = {
+            "sub": "admin-user",
+            "username": "admin",
+            "groups": ["admin"],
+        }
+
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
+        response = admin_client.put(
+            "/api/admin/dartboard/type/carromco/pins",
+            json={"masterPins": "not-an-array"},
+            content_type="application/json",
+        )
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert "array of integers" in data["message"]
+
+    @patch("src.core.auth.validate_token")
+    @patch("src.app.app.DartboardService")
+    @patch("src.app.app.get_session")
+    def test_update_pins_not_found(
+        self,
+        mock_get_session,
+        mock_service,
+        mock_validate,
+        admin_client,
+    ):
+        """Test updating pins for non-existent dartboard type"""
+        mock_validate.return_value = {
+            "sub": "admin-user",
+            "username": "admin",
+            "groups": ["admin"],
+        }
+
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
+        mock_service.update_dartboard_pins.side_effect = DartboardMappingError(
+            "Dartboard type 'nonexistent' not found",
+        )
+
+        response = admin_client.put(
+            "/api/admin/dartboard/type/nonexistent/pins",
+            json={"masterPins": [2, 4, 5]},
+            content_type="application/json",
+        )
+
+        assert response.status_code == 404
+
+    @patch("src.core.auth.validate_token")
+    def test_update_pins_non_admin(self, mock_validate, admin_client):
+        """Test that non-admin users cannot update pins"""
+        mock_validate.return_value = {
+            "sub": "regular-user",
+            "username": "player",
+            "groups": ["player"],
+        }
+
+        response = admin_client.put(
+            "/api/admin/dartboard/type/carromco/pins",
+            json={"masterPins": [2, 4, 5]},
+            content_type="application/json",
+        )
+
+        assert response.status_code == 403
+
+
+class TestCreateDartboardTypeWithPins:
+    """Test creating dartboard types with pin configuration"""
+
+    @pytest.fixture
+    def admin_client(self):
+        """Create test client with admin authentication"""
+        app.config["TESTING"] = True
+        with app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["access_token"] = "test-admin-token"
+            yield client
+
+    @patch("src.core.auth.validate_token")
+    @patch("src.app.app.DartboardService")
+    @patch("src.app.app.get_session")
+    def test_create_with_pins(
+        self,
+        mock_get_session,
+        mock_service,
+        mock_validate,
+        admin_client,
+    ):
+        """Test creating dartboard type with pin configuration"""
+        mock_validate.return_value = {
+            "sub": "admin-user",
+            "username": "admin",
+            "groups": ["admin"],
+        }
+
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
+        mock_dartboard = MagicMock()
+        mock_dartboard.id = 1
+        mock_dartboard.name = "newboard"
+        mock_dartboard.brand = "New Brand"
+        mock_dartboard.model = None
+        mock_dartboard.description = None
+        mock_service.register_dartboard_type.return_value = mock_dartboard
+
+        response = admin_client.post(
+            "/api/admin/dartboard/type",
+            json={
+                "name": "newboard",
+                "brand": "New Brand",
+                "masterPins": [2, 4, 5, 16, 17, 18, 19],
+                "slavePins": [12, 13, 14, 25, 26, 27, 32, 33],
+            },
+            content_type="application/json",
+        )
+
+        assert response.status_code == 201
+        data = json.loads(response.data)
+        assert data["status"] == "success"
+        # Verify pins were passed to service
+        call_kwargs = mock_service.register_dartboard_type.call_args[1]
+        assert call_kwargs["master_pins"] == [2, 4, 5, 16, 17, 18, 19]
+        assert call_kwargs["slave_pins"] == [12, 13, 14, 25, 26, 27, 32, 33]
+
+
+class TestGetAvailablePinsEndpoint:
+    """Test /api/admin/dartboard/available-pins endpoint"""
+
+    @pytest.fixture
+    def admin_client(self):
+        """Create test client with admin authentication"""
+        app.config["TESTING"] = True
+        with app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["access_token"] = "test-admin-token"
+            yield client
+
+    @patch("src.core.auth.validate_token")
+    def test_get_available_pins(self, mock_validate, admin_client):
+        """Test getting list of available GPIO pins"""
+        mock_validate.return_value = {
+            "sub": "admin-user",
+            "username": "admin",
+            "groups": ["admin"],
+        }
+
+        response = admin_client.get("/api/admin/dartboard/available-pins")
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["status"] == "success"
+        assert "pins" in data
+        assert isinstance(data["pins"], list)
+        assert 2 in data["pins"]  # Common ESP32 GPIO pin
+        assert 4 in data["pins"]
