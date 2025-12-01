@@ -99,10 +99,6 @@ jobs:
           cp -r dartserver-config/environments/test/ssl ./ssl
           cp -r dartserver-config/environments/test/nginx ./nginx
 
-          # Upgrade database schema
-          echo "🗄️  Upgrading database schema to latest migration..."
-          alembic upgrade head
-
           # Rebuild containers
           echo "🔨 Rebuilding containers..."
           docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml build --no-cache
@@ -114,6 +110,10 @@ jobs:
           # Wait for services to be healthy
           echo "⏳ Waiting for services to be healthy..."
           sleep 30
+
+          # Upgrade database schema
+          echo "🗄️  Upgrading database schema to latest migration..."
+          alembic upgrade head
 
           # Check container status
           echo "✅ Checking container status..."
