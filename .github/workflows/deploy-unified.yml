@@ -111,9 +111,9 @@ jobs:
           echo "⏳ Waiting for services to be healthy..."
           sleep 30
 
-          # Upgrade database schema
-          echo "🗄️  Upgrading database schema to latest migration..."
-          alembic upgrade head
+          # # Upgrade database schema
+          # echo "🗄️  Upgrading database schema to latest migration..."
+          # alembic upgrade head
 
           # Check container status
           echo "✅ Checking container status..."
