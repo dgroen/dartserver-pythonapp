@@ -220,6 +220,9 @@ class DartboardType(Base):
     brand = Column(String(100), nullable=False)  # e.g., 'Carromco'
     model = Column(String(100), nullable=True)  # e.g., 'Carromco Striker'
     description = Column(Text, nullable=True)
+    # GPIO pin configuration stored as JSON arrays (e.g., "[2,4,5,16,17,18,19]")
+    master_pins = Column(Text, nullable=True)  # JSON array of master (row) GPIO pins
+    slave_pins = Column(Text, nullable=True)  # JSON array of slave (column) GPIO pins
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
