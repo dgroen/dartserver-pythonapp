@@ -111,6 +111,10 @@ jobs:
           echo "⏳ Waiting for services to be healthy..."
           sleep 30
 
+          # Upgrade database schema
+          echo "🗄️  Upgrading database schema to latest migration..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml exec -T darts-app alembic upgrade head
+
           # Check container status
           echo "✅ Checking container status..."
           docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml ps
@@ -383,6 +387,10 @@ jobs:
           # Wait for services to be healthy
           echo "⏳ Waiting for services to be healthy..."
           sleep 45
+
+          # Upgrade database schema
+          echo "🗄️  Upgrading database schema to latest migration..."
+          docker-compose -f docker-compose-wso2.yml exec -T darts-app alembic upgrade head
 
           # Check container status
           echo "✅ Checking container status..."
