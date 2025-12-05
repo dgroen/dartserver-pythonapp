@@ -8,10 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.app.app import app
 
-
-@pytest.fixture
+@pytest.fixture()
 def client():
     """Create test client"""
     app.config["TESTING"] = True
@@ -19,7 +17,7 @@ def client():
         yield client
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_game_manager():
     """Mock game manager"""
     with patch("src.app.app.game_manager") as mock:
@@ -27,14 +25,14 @@ def mock_game_manager():
         yield mock
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_dartboard_service():
     """Mock dartboard service"""
     with patch("src.app.app.DartboardService") as mock:
         yield mock
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_db_session():
     """Create mock database session"""
     with patch("src.app.app.get_session") as mock_get_session:

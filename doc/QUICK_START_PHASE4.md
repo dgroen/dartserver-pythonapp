@@ -145,7 +145,7 @@ def some_route():
 def handle_score(data):
     # Process score
     app.game_manager.process_score(data)
-    
+
     # Emit update to all connected clients
     socketio.emit("score_update", {
         "player": data["player"],

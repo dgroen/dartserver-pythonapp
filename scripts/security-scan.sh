@@ -40,9 +40,9 @@ for pkg in packages/*/; do
     pkg_name=$(basename "$pkg")
     echo ""
     echo -e "${YELLOW}Scanning $pkg_name...${NC}"
-    
+
     cd "$pkg"
-    
+
     # Run Bandit
     echo -n "  Bandit: "
     if bandit -r src/ -q 2>/dev/null; then
@@ -51,7 +51,7 @@ for pkg in packages/*/; do
         echo -e "${RED}✗ Failed${NC}"
         FAILED=1
     fi
-    
+
     # Run Safety
     echo -n "  Safety: "
     if safety check --json 2>/dev/null | grep -q '"vulnerabilities": \[\]'; then
@@ -59,7 +59,7 @@ for pkg in packages/*/; do
     else
         echo -e "${YELLOW}⚠ Check required${NC}"
     fi
-    
+
     # Run pip-audit
     echo -n "  pip-audit: "
     if pip-audit 2>/dev/null | grep -q "No known vulnerabilities"; then
@@ -67,7 +67,7 @@ for pkg in packages/*/; do
     else
         echo -e "${YELLOW}⚠ Check required${NC}"
     fi
-    
+
     cd - > /dev/null
 done
 

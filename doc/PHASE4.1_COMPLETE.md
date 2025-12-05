@@ -77,7 +77,7 @@ Uses **closure pattern** for event registration:
 ```python
 def register_events(socketio, app):
     game_manager = app.game_manager
-    
+
     @socketio.on("event_name", namespace="/")
     def handle_event():
         # Handler with access to game_manager and app context

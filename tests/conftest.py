@@ -6,8 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from src.app.app import app as flask_app
+from dartserver_app import create_app
 
 os.environ["ENVIRONMENT"] = "test"
 os.environ["APP_DOMAIN"] = "test.letsplaydarts.eu"
@@ -28,7 +27,7 @@ os.environ["AUTH_DISABLED"] = "false"
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_socketio():
     """Mock SocketIO instance."""
     mock = MagicMock()
@@ -36,7 +35,7 @@ def mock_socketio():
     return mock
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_players():
     """Sample player data for testing."""
     return [
@@ -45,7 +44,7 @@ def sample_players():
     ]
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_players_four():
     """Sample player data with four players."""
     return [
@@ -56,7 +55,7 @@ def sample_players_four():
     ]
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_score_data():
     """Sample score data for testing."""
     return {
@@ -66,23 +65,24 @@ def sample_score_data():
     }
 
 
-@pytest.fixture
+@pytest.fixture()
 def app():
     """Flask app fixture for pytest-flask and tests."""
+    flask_app, socketio = create_app(debug=True)
     flask_app.config["TESTING"] = True
     return flask_app
 
 
-@pytest.fixture
+@pytest.fixture()
 def app_client():
     """Flask test client."""
-
+    flask_app, socketio = create_app(debug=True)
     flask_app.config["TESTING"] = True
     with flask_app.test_client() as client:
         yield client
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_rabbitmq_config():
     """Mock RabbitMQ configuration."""
     return {
@@ -96,10 +96,10 @@ def mock_rabbitmq_config():
     }
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_database_service():
     """Mock DatabaseService for testing."""
-    with patch("src.app.game_manager.DatabaseService") as mock_db:
+    with patch("dartserver_app.game_manager.DatabaseService") as mock_db:
         mock_instance = MagicMock()
         mock_instance.initialize_database = MagicMock()
         mock_instance.start_new_game = MagicMock()
@@ -112,17 +112,17 @@ def mock_database_service():
         yield mock_instance
 
 
-@pytest.fixture
+@pytest.fixture()
 def in_memory_db():
     """Create an in-memory database for testing."""
-    from src.core.database_service import DatabaseService
+    from dartserver_core.database_service import DatabaseService
 
     db_service = DatabaseService("sqlite:///:memory:")
     db_service.initialize_database()
     return db_service
 
 
-@pytest.fixture
+@pytest.fixture()
 def player_ids_with_db():
     """Helper to create player dicts with database IDs."""
 

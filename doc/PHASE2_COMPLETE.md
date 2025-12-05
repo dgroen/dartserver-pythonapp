@@ -105,28 +105,28 @@ Created `base.py` to establish a common interface for all game types:
 ```python
 class BaseGame(ABC):
     """Abstract base class for all game types."""
-    
+
     @abstractmethod
     def __init__(self, players: List[Dict[str, Any]]) -> None: ...
-    
+
     @abstractmethod
     def add_player(self, player: Dict[str, Any]) -> None: ...
-    
+
     @abstractmethod
     def remove_player(self, player_id: int) -> None: ...
-    
+
     @abstractmethod
     def process_score(self, base_score: int, multiplier_type: str) -> Dict[str, Any]: ...
-    
+
     @abstractmethod
     def set_current_player(self, player_id: int) -> None: ...
-    
+
     @abstractmethod
     def get_player_score(self, player_id: int) -> int: ...
-    
+
     @abstractmethod
     def get_state(self) -> Dict[str, Any]: ...
-    
+
     @abstractmethod
     def reset(self) -> None: ...
 ```

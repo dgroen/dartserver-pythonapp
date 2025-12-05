@@ -5,18 +5,15 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import jwt
-from flask import Flask, jsonify
-
-from src.core.auth import (
+from dartserver_core.auth import (
     get_dynamic_post_logout_redirect_uri,
     get_dynamic_redirect_uri,
-    get_user_roles,
-    has_permission,
     login_required,
     permission_required,
     role_required,
     validate_token,
 )
+from flask import Flask, jsonify
 
 
 class TestValidateToken:
@@ -625,7 +622,7 @@ class TestSearchWSO2Users:
     @patch("src.core.auth.requests.get")
     def test_search_users_success(self, mock_get):
         """Test successful user search."""
-        from src.core.auth import search_wso2_users
+        from dartserver_core import search_wso2_users
 
         mock_response = Mock()
         mock_response.status_code = 200
@@ -657,7 +654,7 @@ class TestSearchWSO2Users:
     @patch("src.core.auth.requests.get")
     def test_search_users_no_results(self, mock_get):
         """Test search with no results."""
-        from src.core.auth import search_wso2_users
+        from dartserver_core import search_wso2_users
 
         mock_response = Mock()
         mock_response.status_code = 200
@@ -670,7 +667,7 @@ class TestSearchWSO2Users:
     @patch("src.core.auth.requests.get")
     def test_search_users_http_error(self, mock_get):
         """Test search with HTTP error."""
-        from src.core.auth import search_wso2_users
+        from dartserver_core import search_wso2_users
 
         mock_response = Mock()
         mock_response.status_code = 500
@@ -683,7 +680,7 @@ class TestSearchWSO2Users:
     @patch("src.core.auth.requests.get")
     def test_search_users_network_error(self, mock_get):
         """Test search with network error."""
-        from src.core.auth import search_wso2_users
+        from dartserver_core import search_wso2_users
 
         mock_get.side_effect = Exception("Connection error")
 
@@ -693,7 +690,7 @@ class TestSearchWSO2Users:
     @patch("src.core.auth.requests.get")
     def test_search_users_missing_email(self, mock_get):
         """Test search with user missing email."""
-        from src.core.auth import search_wso2_users
+        from dartserver_core import search_wso2_users
 
         mock_response = Mock()
         mock_response.status_code = 200
@@ -717,7 +714,7 @@ class TestSearchWSO2Users:
     @patch("src.core.auth.requests.get")
     def test_search_users_missing_name(self, mock_get):
         """Test search with user missing name."""
-        from src.core.auth import search_wso2_users
+        from dartserver_core import search_wso2_users
 
         mock_response = Mock()
         mock_response.status_code = 200
@@ -741,7 +738,7 @@ class TestSearchWSO2Users:
     @patch("src.core.auth.requests.get")
     def test_search_users_with_access_token(self, mock_get):
         """Test search using access token instead of admin credentials."""
-        from src.core.auth import search_wso2_users
+        from dartserver_core import search_wso2_users
 
         mock_response = Mock()
         mock_response.status_code = 200

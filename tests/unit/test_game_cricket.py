@@ -1,6 +1,6 @@
 """Unit tests for GameCricket class."""
 
-from src.games.game_cricket import GameCricket
+from dartserver_games.game_cricket import GameCricket
 
 
 class TestGameCricket:
@@ -21,7 +21,7 @@ class TestGameCricket:
 
     def test_cricket_targets(self):
         """Test cricket targets are correct."""
-        assert GameCricket.CRICKET_TARGETS == [15, 16, 17, 18, 19, 20, 25]
+        assert [15, 16, 17, 18, 19, 20, 25] == GameCricket.CRICKET_TARGETS
 
     def test_add_player(self, sample_players):
         """Test adding a player."""

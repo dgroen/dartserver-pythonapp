@@ -9,20 +9,20 @@ graph TB
     Client["Web Clients<br/>(Browser)"]
     Mobile["Mobile Clients"]
     RMQ["RabbitMQ<br/>(Score Queue)"]
-    
+
     Client -->|HTTP/WebSocket| Flask["Flask App<br/>(Port 5000)"]
     Mobile -->|HTTP/WebSocket| Flask
     RMQ -->|Consumer| Flask
-    
+
     Flask -->|SQL| DB["PostgreSQL<br/>(Database)"]
     Flask -->|Token Validation| WSO2["WSO2 Identity<br/>(Port 9443)"]
-    
+
     Nginx["Nginx<br/>(Reverse Proxy)"]
     Nginx -->|http:5000| Flask
-    
+
     Browser["User Browser"]
     Browser -->|https| Nginx
-    
+
     style Flask fill:#4A90E2
     style DB fill:#50C878
     style WSO2 fill:#FF6B6B
@@ -55,7 +55,7 @@ graph LR
     Game -->|301 Logic| G301["Game 301"]
     Game -->|Cricket Logic| GCricket["Game Cricket"]
     GM -->|Persist| DB[(Database)]
-    
+
     style GM fill:#4A90E2
     style G301 fill:#50C878
     style GCricket fill:#50C878
@@ -75,7 +75,7 @@ sequenceDiagram
     participant User
     participant App as Flask App
     participant WSO2
-    
+
     User->>App: Click Login
     App->>WSO2: Redirect to authorize endpoint
     WSO2->>User: Show login form
@@ -103,12 +103,12 @@ graph LR
     Queue["Dart Scores<br/>(JSON)"]
     GM["Game Manager"]
     WebSocket["WebSocket Emit"]
-    
+
     RMQ -->|Subscribe| Consumer
     Consumer -->|Parse| Queue
     Queue -->|Apply Score| GM
     GM -->|broadcast| WebSocket
-    
+
     style RMQ fill:#F5A623
     style Consumer fill:#4A90E2
 ```
@@ -127,14 +127,14 @@ erDiagram
     PLAYER ||--o{ GAME_PLAYER : joins
     GAME ||--o{ GAME_PLAYER : contains
     GAME ||--o{ GAME_HISTORY : tracks
-    
+
     PLAYER {
         int id
         string name
         string email
         datetime created_at
     }
-    
+
     GAME {
         int id
         string game_type
@@ -142,7 +142,7 @@ erDiagram
         datetime created_at
         datetime ended_at
     }
-    
+
     GAME_PLAYER {
         int id
         int game_id
@@ -151,7 +151,7 @@ erDiagram
         int current_score
         int turn_number
     }
-    
+
     GAME_HISTORY {
         int id
         int game_id
@@ -173,23 +173,23 @@ graph TD
     C["RabbitMQ Message"]
     D["REST API POST"]
     E["WebSocket Event"]
-    
+
     A --> B
     B -->|RabbitMQ| C
     B -->|REST API| D
     B -->|WebSocket| E
-    
+
     C -->|Consumer Processes| F["Validate Score"]
     D -->|Route Handler| F
     E -->|Event Handler| F
-    
+
     F -->|Invalid| G["Return Error"]
     F -->|Valid| H["Game Manager<br/>Apply Score"]
-    
+
     H -->|Update| I["Database"]
     I -->|Emit Event| J["WebSocket Broadcast"]
     J -->|Update| K["All Connected Clients"]
-    
+
     style F fill:#FF6B6B
     style H fill:#4A90E2
     style J fill:#F5A623
@@ -211,7 +211,7 @@ stateDiagram-v2
     TokenExchange --> TokenValidation: Validate token
     TokenValidation --> Authenticated: Extract roles
     Authenticated --> GameBoard: Render UI
-    
+
     Authenticated --> Logout: User clicks logout
     Logout --> [*]
 ```
@@ -228,10 +228,10 @@ stateDiagram-v2
     NextTurn --> InProgress: Continue game
     NextTurn --> Finished: Win condition met
     Finished --> [*]
-    
+
     InProgress --> Paused: Pause requested
     Paused --> InProgress: Resume requested
-    
+
     Created --> Cancelled: Game cancelled
     Cancelled --> [*]
 ```
@@ -243,32 +243,32 @@ graph TB
     subgraph Internet["Internet"]
         User["Users"]
     end
-    
+
     subgraph CloudFlare["CloudFlare / DNS"]
         DNS["DNS: yourdomain.com"]
     end
-    
+
     subgraph Production["Production Server"]
         subgraph Nginx["Nginx Reverse Proxy"]
             NginxServer["Port 443<br/>(HTTPS)"]
         end
-        
+
         subgraph App["Flask Application"]
             Flask["Flask-SocketIO<br/>Port 5000"]
         end
-        
+
         subgraph Services["Background Services"]
             RabbitMQ["RabbitMQ<br/>Port 5672"]
             PostgreSQL["PostgreSQL<br/>Port 5432"]
         end
     end
-    
+
     User -->|HTTPS| DNS
     DNS -->|Resolves| NginxServer
     NginxServer -->|Proxy| Flask
     Flask -->|Consume| RabbitMQ
     Flask -->|Query| PostgreSQL
-    
+
     style NginxServer fill:#FFA500
     style Flask fill:#4A90E2
     style RabbitMQ fill:#F5A623
@@ -316,19 +316,19 @@ graph TB
 ```mermaid
 graph TB
     LB["Load Balancer"]
-    
+
     LB --> Flask1["Flask 1<br/>Port 5000"]
     LB --> Flask2["Flask 2<br/>Port 5001"]
     LB --> Flask3["Flask 3<br/>Port 5002"]
-    
+
     Flask1 --> RMQ["Shared RabbitMQ"]
     Flask2 --> RMQ
     Flask3 --> RMQ
-    
+
     Flask1 --> DB["Shared PostgreSQL"]
     Flask2 --> DB
     Flask3 --> DB
-    
+
     RMQ --> Redis["Redis Cache<br/>(Optional)"]
 ```
 
@@ -356,13 +356,13 @@ graph LR
     App["Flask<br/>(Input Validation)"]
     Auth["Auth Module<br/>(Token Validation)"]
     DB["Database<br/>(SQL Injection Prevention)"]
-    
+
     User -->|HTTPS Only| Nginx
     Nginx -->|Security Headers| App
     App -->|Validate Input| Auth
     Auth -->|Check Permissions| App
     App -->|Parameterized Queries| DB
-    
+
     style Nginx fill:#FF6B6B
     style Auth fill:#FF6B6B
 ```

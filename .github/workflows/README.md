@@ -396,7 +396,7 @@ If your deployment server is behind a jumphost/bastion server, ensure:
    ```bash
    # Test jumphost connection
    ssh -i ~/.ssh/jumphost_key jumphost_user@jumphost_host
-   
+
    # Test target server through jumphost
    ssh -i ~/.ssh/target_key -J jumphost_user@jumphost_host target_user@target_host:target_port
    ```

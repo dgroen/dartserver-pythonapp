@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """
 Main entry point for the Darts Game Web Application
-Imports and runs the Flask app from dartserver_app package
+Uses legacy src.app.app until route migration is complete
 """
 
 import logging
 import os
 import sys
 
-from dartserver_app import create_app
-
-app, socketio = create_app()
+# Use legacy app which has all routes registered
+from src.app.app import app, socketio
 
 if __name__ == "__main__":
     # Configure logging
@@ -31,6 +30,7 @@ if __name__ == "__main__":
 
         logger.info(f"Starting Flask-SocketIO server on {host}:{port}")
         logger.info(f"Debug mode: {debug}")
+        logger.info(f"Using legacy app with {len(list(app.url_map.iter_rules()))} routes")
 
         # Run the Flask application with SocketIO support
         # Disable reloader to avoid hanging issues in Docker

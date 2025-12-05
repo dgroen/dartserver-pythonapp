@@ -184,7 +184,7 @@ function createGameCard(game) {
     if (game.reset_on_miss) {
         optionsBadges.push('<span class="option-badge hard-mode">💀 Hard Mode</span>');
     }
-    const optionsHtml = optionsBadges.length > 0 
+    const optionsHtml = optionsBadges.length > 0
         ? `<div class="game-options">${optionsBadges.join('')}</div>`
         : '';
 
@@ -192,14 +192,14 @@ function createGameCard(game) {
     let actionButtons = '';
     if (!isCompleted) {
         actionButtons = '<div class="game-actions">';
-        
+
         // Resume button - always visible for incomplete games
         actionButtons += `
             <button class="action-btn resume-btn" data-session-id="${game.game_session_id}" title="Resume game">
                 ▶️ Resume
             </button>
         `;
-        
+
         // Remove button - only visible for games older than 1 day
         if (isOlderThanOneDay) {
             actionButtons += `
@@ -208,7 +208,7 @@ function createGameCard(game) {
                 </button>
             `;
         }
-        
+
         actionButtons += '</div>';
     }
 

@@ -168,21 +168,23 @@ def register_routes(app):
     """
     Register all routes with the Flask app.
 
-    Routes are currently defined in src/app/app.py.
-    This function validates route organization and can be extended to
-    register blueprints as routes are incrementally extracted.
+    Routes are imported from src/app/app.py until migration is complete.
 
     Args:
         app: Flask application instance
     """
+    from dartserver_app.routes.legacy import register_legacy_routes
+
+    # Register legacy routes
+    register_legacy_routes(app, app.socketio, app.game_manager)
+
+    route_count = len([r for r in app.url_map.iter_rules() if r.endpoint != "static"])
+    logger.info(f"Registered {route_count} routes")
+
     summary = get_routes_summary()
     logger.info(
-        f"Route registry loaded: {summary['total_routes']} routes across \
-            {summary['domains']} domains"
+        f"Route registry: {summary['total_routes']} routes across {summary['domains']} domains"
     )
-
-    for domain, info in ROUTE_DOMAINS.items():
-        logger.debug(f"  {domain}: {info['count']} routes ({info['description']})")
 
 
 __all__ = [

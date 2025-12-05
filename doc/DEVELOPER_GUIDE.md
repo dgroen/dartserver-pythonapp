@@ -144,7 +144,7 @@ class TestPlayer:
         player = Player(name="Test Player")
         db_session.add(player)
         db_session.commit()
-        
+
         assert player.name == "Test Player"
         assert player.id is not None
 ```
@@ -180,7 +180,7 @@ from src.core.database_models import Base
 
 class Player(Base):
     __tablename__ = "players"
-    
+
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False)
     email = Column(String(100), unique=True)
@@ -302,14 +302,14 @@ git commit --no-verify
 def calculate_score(score, multiplier):
     """
     Calculate final dart score with multiplier.
-    
+
     Args:
         score: Base score (1-20, 25 for bull)
         multiplier: SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL
-        
+
     Returns:
         Final score value
-        
+
     Raises:
         ValueError: If score or multiplier invalid
     """

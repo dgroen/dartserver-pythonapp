@@ -30,10 +30,7 @@ from dartserver_core.database_models import (
     HotspotConfig,
     Player,
 )
-from dartserver_core.database_service import (
-    get_session,
-    set_database_service,
-)
+from dartserver_core.database_service import get_session, set_database_service
 
 __version__ = "1.0.0"
 __all__ = [

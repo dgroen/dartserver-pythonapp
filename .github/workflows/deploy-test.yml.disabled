@@ -23,7 +23,7 @@ jobs:
           echo "${{ secrets.TEST_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
           echo "${{ secrets.JUMPHOST_SSH_KEY }}" > ~/.ssh/jumphost_key
           chmod 600 ~/.ssh/deploy_key ~/.ssh/jumphost_key
-          
+
           # Configure SSH config for jumphost setup
           cat > ~/.ssh/config << 'SSHCONFIG'
           Host jumphost
@@ -36,7 +36,7 @@ jobs:
             HostKeyAlgorithms +ssh-rsa
             LogLevel FATAL
             PasswordAuthentication no
-          
+
           Host test-server
             HostName ${{ secrets.TEST_SERVER_HOST }}
             Port ${{ secrets.TEST_SERVER_PORT }}
@@ -48,7 +48,7 @@ jobs:
             PasswordAuthentication no
             LogLevel FATAL
           SSHCONFIG
-          
+
           chmod 600 ~/.ssh/config
 
       - name: Deploy to Test Server
@@ -59,7 +59,7 @@ jobs:
           # Encode secrets to base64 to avoid any shell expansion issues during heredoc
           export WSO2IS_DEPLOYMENT_TOML_B64="$(printf '%s' '${{ secrets.TEST_WSO2IS_DEPLOYMENT_TOML }}' | base64 -w 0)"
           export ENV_FILE_B64="$(printf '%s' '${{ secrets.TEST_ENV }}' | base64 -w 0)"
-          
+
           ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} << ENDSSH
           set -e
           echo "🚀 Starting deployment to test environment..."

@@ -3,9 +3,8 @@
 from unittest.mock import patch
 
 import pytest
-
-from src.core.database_models import DatabaseManager, Player
-from src.core.database_service import DatabaseService
+from dartserver_core.database_models import DatabaseManager, Player
+from dartserver_core.database_service import DatabaseService
 
 
 class TestDatabaseManager:
@@ -34,7 +33,7 @@ class TestDatabaseManager:
 class TestDatabaseService:
     """Test DatabaseService class."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def db_service(self):
         """Create a test database service."""
         service = DatabaseService("sqlite:///:memory:")

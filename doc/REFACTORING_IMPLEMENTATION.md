@@ -244,27 +244,27 @@ class BaseGame(ABC):
 
     game_type: str
     max_players: int = 6
-    
+
     def __init__(self, game_id: str, players: List[str]):
         self.game_id = game_id
         self.players = players
         self.current_player_index = 0
-    
+
     @abstractmethod
     def apply_score(self, player: str, score: int, multiplier: str) -> Dict[str, Any]:
         """Apply a score to the game."""
         pass
-    
+
     @abstractmethod
     def get_state(self) -> Dict[str, Any]:
         """Get current game state."""
         pass
-    
+
     @abstractmethod
     def is_finished(self) -> bool:
         """Check if game is finished."""
         pass
-    
+
     @abstractmethod
     def get_winner(self) -> Optional[str]:
         """Get winner if game is finished."""
@@ -377,33 +377,33 @@ logger = logging.getLogger(__name__)
 
 class RabbitMQConsumer:
     """RabbitMQ consumer that emits events."""
-    
+
     def __init__(self, host: str, user: str, password: str, exchange: str):
         self.host = host
         self.user = user
         self.password = password
         self.exchange = exchange
         self.on_score_received: Optional[Callable] = None
-    
+
     def set_score_handler(self, callback: Callable) -> None:
         """Register callback for score events."""
         self.on_score_received = callback
-    
+
     def consume_scores(self, topic: str = "darts.scores.#") -> None:
         """Start consuming score messages."""
         credentials = pika.PlainCredentials(self.user, self.password)
         connection = pika.BlockingConnection(
             pika.ConnectionParameters(host=self.host, credentials=credentials)
         )
-        
+
         channel = connection.channel()
         channel.exchange_declare(exchange=self.exchange, exchange_type="topic")
-        
+
         result = channel.queue_declare(queue="", exclusive=True)
         queue_name = result.method.queue
-        
+
         channel.queue_bind(exchange=self.exchange, queue=queue_name, routing_key=topic)
-        
+
         def callback(ch, method, properties, body):
             try:
                 score_data = json.loads(body)
@@ -411,7 +411,7 @@ class RabbitMQConsumer:
                     self.on_score_received(score_data)
             except Exception as e:
                 logger.error(f"Error processing score: {e}")
-        
+
         channel.basic_consume(queue=queue_name, on_message_callback=callback)
         channel.start_consuming()
 ```

@@ -92,7 +92,7 @@ Test Deployment Success?
 │   ├─ Everything OK?
 │   │   ├─ Yes → Approve production deployment ✅
 │   │   └─ No → Fix issues, re-deploy to test
-│   └─ 
+│   └─
 └─ No → Check logs, fix issues, re-deploy
 
 Production Deployment Success?
@@ -146,7 +146,7 @@ du -sh docker-backups/
 **Solution:** Check logs: `docker-compose logs`, verify backup integrity
 
 ### Issue: Health check failing
-**Solution:** 
+**Solution:**
 ```bash
 # Check app logs
 docker-compose logs darts-app

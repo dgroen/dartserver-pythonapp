@@ -39,7 +39,7 @@ packages/dartserver-services/
 
 #### 1. **RabbitMQConsumer** (140 LOC)
 - **Location**: `src/dartserver_services/rabbitmq/consumer.py`
-- **Functionality**: 
+- **Functionality**:
   - Connects to RabbitMQ broker for score messages
   - Handles connection parameters with heartbeat and timeout settings
   - Processes incoming dart scores from dartboards
@@ -353,7 +353,7 @@ Phase 4 will focus on extracting the Application Module (routes, handlers, middl
 
 ## Summary
 
-**Phase 3** successfully completed the extraction of all service modules into a production-ready `dartserver-services` package. The refactoring follows the established template from Phases 1-2, maintaining consistency and best practices. 
+**Phase 3** successfully completed the extraction of all service modules into a production-ready `dartserver-services` package. The refactoring follows the established template from Phases 1-2, maintaining consistency and best practices.
 
 Key achievements:
 - **4 services** extracted and properly packaged
