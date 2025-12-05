@@ -25,15 +25,13 @@ from dartserver_core.database_models import (
     Dartboard,
     DartboardType,
     DartboardZoneMapping,
-    Game,
-    GameHistory,
-    GamePlayer,
+    GameResult,
+    GameType,
     HotspotConfig,
     Player,
 )
 from dartserver_core.database_service import (
     get_session,
-    init_db,
     set_database_service,
 )
 
@@ -41,7 +39,6 @@ __version__ = "1.0.0"
 __all__ = [
     "Config",
     "get_session",
-    "init_db",
     "set_database_service",
     "login_required",
     "role_required",
@@ -53,9 +50,8 @@ __all__ = [
     "get_dynamic_redirect_uri",
     "get_dynamic_post_logout_redirect_uri",
     "Player",
-    "Game",
-    "GamePlayer",
-    "GameHistory",
+    "GameResult",
+    "GameType",
     "ApiKey",
     "Dartboard",
     "HotspotConfig",

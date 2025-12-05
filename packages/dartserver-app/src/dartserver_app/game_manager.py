@@ -3,6 +3,7 @@
 import base64
 import os
 
+from dartserver_core.database_service import DatabaseService
 from dartserver_games import (
     Game301,
     GameBullPractice,
@@ -12,8 +13,6 @@ from dartserver_games import (
 )
 from dartserver_services import TTSService
 from sqlalchemy import func
-
-from src.core.database_service import DatabaseService
 
 
 class GameManager:
@@ -1137,7 +1136,7 @@ class GameManager:
             # Check if we're in training mode
             if self.is_training_mode and self.training_session_id:
                 # Record training throw
-                from src.core.database_models import TrainingScore
+                from dartserver_core.database_models import TrainingScore
 
                 db_session = self.db_service.db_manager.get_session()
                 player_db_id = self.players[self.current_player].get("db_id")
