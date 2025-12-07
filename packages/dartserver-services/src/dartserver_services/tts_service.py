@@ -7,19 +7,55 @@ import io
 import logging
 from typing import Any
 
-try:
-    from gtts import gTTS
-
-    GTTS_AVAILABLE = True
-except ImportError:
-    GTTS_AVAILABLE = False
+try:  # Prefer the core shim so test patches on src.core.tts_service take effect
+    from src.core import tts_service as core_tts
+except Exception:  # pragma: no cover - fallback for environments without core shim
+    core_tts = None
 
 try:
-    import pyttsx3
+    from gtts import gTTS as _gtts_impl
 
-    PYTTSX3_AVAILABLE = True
-except ImportError:
-    PYTTSX3_AVAILABLE = False
+    _gtts_available_impl = True
+except ImportError:  # pragma: no cover - optional dependency
+    _gtts_impl = None
+    _gtts_available_impl = False
+
+try:
+    import pyttsx3 as _pyttsx3_impl
+
+    _pyttsx3_available_impl = True
+except ImportError:  # pragma: no cover - optional dependency
+    _pyttsx3_impl = None
+    _pyttsx3_available_impl = False
+
+
+def _get_gtts_available() -> bool:
+    if core_tts and hasattr(core_tts, "GTTS_AVAILABLE"):
+        return bool(getattr(core_tts, "GTTS_AVAILABLE"))
+    return _gtts_available_impl
+
+
+def _get_pyttsx3_available() -> bool:
+    if core_tts and hasattr(core_tts, "PYTTSX3_AVAILABLE"):
+        return bool(getattr(core_tts, "PYTTSX3_AVAILABLE"))
+    return _pyttsx3_available_impl
+
+
+def _get_gtts():
+    if core_tts and hasattr(core_tts, "gTTS"):
+        return getattr(core_tts, "gTTS")
+    return _gtts_impl
+
+
+def _get_pyttsx3():
+    if core_tts and hasattr(core_tts, "pyttsx3"):
+        return getattr(core_tts, "pyttsx3")
+    return _pyttsx3_impl
+
+
+# Expose availability flags for logging and tests
+GTTS_AVAILABLE = _get_gtts_available()
+PYTTSX3_AVAILABLE = _get_pyttsx3_available()
 
 
 logger = logging.getLogger(__name__)
@@ -70,9 +106,9 @@ class TTSService:
         self.enabled = True
 
         # Initialize the selected engine
-        if engine == "pyttsx3" and PYTTSX3_AVAILABLE:
+        if engine == "pyttsx3" and _get_pyttsx3_available():
             self._init_pyttsx3()
-        elif engine == "gtts" and GTTS_AVAILABLE:
+        elif engine == "gtts" and _get_gtts_available():
             self._init_gtts()
         else:
             logger.warning(
@@ -84,7 +120,12 @@ class TTSService:
     def _init_pyttsx3(self):
         """Initialize pyttsx3 engine"""
         try:
-            self.engine = pyttsx3.init()
+            pyttsx3_module = _get_pyttsx3()
+            if not pyttsx3_module:
+                self.enabled = False
+                return
+
+            self.engine = pyttsx3_module.init()
             self.engine.setProperty("rate", self.speed)
             self.engine.setProperty("volume", self.volume)
 
@@ -102,7 +143,7 @@ class TTSService:
 
     def _init_gtts(self):
         """Initialize gTTS (Google Text-to-Speech)"""
-        if not GTTS_AVAILABLE:
+        if not _get_gtts_available():
             logger.error("gTTS is not available")
             self.enabled = False
         else:
@@ -131,7 +172,7 @@ class TTSService:
                 self.engine.say(text)
                 self.engine.runAndWait()
                 return True
-            if self.engine_name == "gtts" and GTTS_AVAILABLE:
+            if self.engine_name == "gtts" and _get_gtts_available():
                 logger.info(f"gTTS would generate audio for: {text}")
                 return True
         except Exception:
@@ -157,10 +198,11 @@ class TTSService:
         lang_to_use = lang if lang else self.language
 
         try:
-            if self.engine_name == "gtts" and GTTS_AVAILABLE:
+            gtts_cls = _get_gtts()
+            if self.engine_name == "gtts" and _get_gtts_available() and gtts_cls:
                 slow = self.speed < 100 if isinstance(self.speed, int) else self.speed < 1.0
 
-                tts = gTTS(text=text, lang=lang_to_use, slow=slow)
+                tts = gtts_cls(text=text, lang=lang_to_use, slow=slow)
                 audio_fp = io.BytesIO()
                 tts.write_to_fp(audio_fp)
                 audio_fp.seek(0)

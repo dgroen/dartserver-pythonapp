@@ -14,10 +14,13 @@ from dartserver_core.auth import (
     get_dynamic_post_logout_redirect_uri,
     get_dynamic_redirect_uri,
     get_user_info,
+    get_user_roles,
+    has_permission,
     login_required,
     logout_user,
     permission_required,
     role_required,
+    search_wso2_users,
 )
 from dartserver_core.config import Config
 from dartserver_core.database_models import (
@@ -46,6 +49,9 @@ __all__ = [
     "get_user_info",
     "get_dynamic_redirect_uri",
     "get_dynamic_post_logout_redirect_uri",
+    "get_user_roles",
+    "has_permission",
+    "search_wso2_users",
     "Player",
     "GameResult",
     "GameType",
