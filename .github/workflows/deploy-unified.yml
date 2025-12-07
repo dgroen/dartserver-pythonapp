@@ -112,6 +112,18 @@ jobs:
           cp -r dartserver-config/environments/test/ssl ./ssl
           cp -r dartserver-config/environments/test/nginx ./nginx
 
+          # Fix .env file encoding (convert from any encoding to UTF-8 without BOM)
+          echo "🔧 Fixing .env file encoding..."
+          if [ -f ./.env ]; then
+            # Use iconv to convert to UTF-8, removing BOM if present
+            iconv -f UTF-16LE -t UTF-8 ./.env > ./.env.tmp 2>/dev/null || cp ./.env ./.env.tmp
+            # Remove any BOM characters
+            sed -i '1s/^\xEF\xBB\xBF//' ./.env.tmp
+            mv ./.env.tmp ./.env
+            # Verify the file is readable
+            file ./.env
+          fi
+
           # Rebuild containers
           echo "🔨 Rebuilding containers..."
           docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml build --no-cache
