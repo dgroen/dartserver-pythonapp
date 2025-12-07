@@ -79,7 +79,7 @@ jobs:
         env:
           TEST_SERVER_HOST: test-server
           TEST_SERVER_USER: ${{ secrets.TEST_SERVER_USER }}
-          CONFIG_ENCRYPTION_KEY: ${{ secrets.CONFIG_ENCRYPTION_KEY }}
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
         run: |
           ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} bash -s << ENDSSH
           set -e
