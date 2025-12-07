@@ -1,6 +1,6 @@
 """Unit tests for Game301 class."""
 
-from src.games.game_301 import Game301
+from dartserver_games.game_301 import Game301
 
 
 class TestGame301:

@@ -1,6 +1,6 @@
 """Unit tests for GameManager class."""
 
-from src.app.game_manager import GameManager
+from dartserver_app import GameManager
 
 
 class TestGameManager:

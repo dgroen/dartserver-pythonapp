@@ -8,12 +8,10 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from src.app.app import app
-from src.core.dartboard_service import DartboardMappingError
+from dartserver_services import DartboardMappingError
 
 
-@pytest.fixture
+@pytest.fixture()
 def client():
     """Create test client"""
     app.config["TESTING"] = True
@@ -21,7 +19,7 @@ def client():
         yield client
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_game_manager():
     """Mock game manager"""
     with patch("src.app.app.game_manager") as mock:
@@ -29,7 +27,7 @@ def mock_game_manager():
         yield mock
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_db_session():
     """Create mock database session"""
     with patch("src.app.app.get_session") as mock_get_session:
@@ -467,7 +465,7 @@ class TestEdgeCases:
 class TestCreateDartboardTypeEndpoint:
     """Test /api/admin/dartboard/type endpoint"""
 
-    @pytest.fixture
+    @pytest.fixture()
     def admin_client(self):
         """Create test client with admin authentication"""
         app.config["TESTING"] = True
@@ -754,7 +752,7 @@ class TestCreateDartboardTypeEndpoint:
 class TestUpdateDartboardPinsEndpoint:
     """Test /api/admin/dartboard/type/<board_type>/pins endpoint"""
 
-    @pytest.fixture
+    @pytest.fixture()
     def admin_client(self):
         """Create test client with admin authentication"""
         app.config["TESTING"] = True
@@ -883,7 +881,7 @@ class TestUpdateDartboardPinsEndpoint:
 class TestCreateDartboardTypeWithPins:
     """Test creating dartboard types with pin configuration"""
 
-    @pytest.fixture
+    @pytest.fixture()
     def admin_client(self):
         """Create test client with admin authentication"""
         app.config["TESTING"] = True
@@ -943,7 +941,7 @@ class TestCreateDartboardTypeWithPins:
 class TestGetAvailablePinsEndpoint:
     """Test /api/admin/dartboard/available-pins endpoint"""
 
-    @pytest.fixture
+    @pytest.fixture()
     def admin_client(self):
         """Create test client with admin authentication"""
         app.config["TESTING"] = True
