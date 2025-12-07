@@ -3,8 +3,7 @@
 from unittest.mock import MagicMock
 
 import pytest
-
-from src.app.game_manager import GameManager
+from dartserver_app import GameManager
 
 # Constants for testing
 DEFAULT_PLAYER_IDS = [
@@ -13,13 +12,13 @@ DEFAULT_PLAYER_IDS = [
 ]
 
 
-@pytest.fixture
+@pytest.fixture()
 def socketio():
     """Mock SocketIO instance."""
     return MagicMock()
 
 
-@pytest.fixture
+@pytest.fixture()
 def game_manager(socketio):
     """Create GameManager instance."""
     return GameManager(socketio)

@@ -237,8 +237,8 @@ November 15, 2025
 
 4. **Verify Database**
    ```sql
-   SELECT game_session_id, game_type_id, reset_on_miss 
-   FROM gameresults 
+   SELECT game_session_id, game_type_id, reset_on_miss
+   FROM gameresults
    WHERE game_session_id = '<session_id_from_test>';
    ```
 

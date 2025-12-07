@@ -4,13 +4,10 @@ import json
 from unittest.mock import patch
 
 import pytest
-
-from src.app.app import app as flask_app
-from src.app.app import game_manager
-from src.core.database_service import DatabaseService
+from dartserver_core.database_service import DatabaseService
 
 
-@pytest.fixture
+@pytest.fixture()
 def db_service():
     """Create in-memory database service for testing."""
     db = DatabaseService("sqlite:///:memory:")
@@ -25,7 +22,7 @@ def db_service():
     return db
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_auth():
     """Mock authentication decorators."""
     # Mock validate_token to return valid claims
@@ -39,7 +36,7 @@ def mock_auth():
         yield mock_validate
 
 
-@pytest.fixture
+@pytest.fixture()
 def app(mock_auth, db_service):
     """Create Flask app for testing."""
     with (
@@ -54,7 +51,7 @@ def app(mock_auth, db_service):
         yield flask_app
 
 
-@pytest.fixture
+@pytest.fixture()
 def client(app, db_service):
     """Create test client."""
     # Make sure game_manager uses the test database
@@ -251,7 +248,7 @@ class TestAppEndpoints:
         # Complete the game by setting finished_at
         session = db_service.db_manager.get_session()
         try:
-            from src.core.database_models import GameResult
+            from dartserver_core import GameResult
 
             results = session.query(GameResult).filter_by(game_session_id=game_session_id).all()
             for result in results:
@@ -309,7 +306,7 @@ class TestAppEndpoints:
         # Modify the game to be older than 1 day
         session = db_service.db_manager.get_session()
         try:
-            from src.core.database_models import GameResult
+            from dartserver_core import GameResult
 
             results = session.query(GameResult).filter_by(game_session_id=game_session_id).all()
             old_date = datetime.now(timezone.utc) - timedelta(days=2)
@@ -356,7 +353,7 @@ class TestAppEndpoints:
         # Mark as completed
         session = db_service.db_manager.get_session()
         try:
-            from src.core.database_models import GameResult
+            from dartserver_core import GameResult
 
             results = session.query(GameResult).filter_by(game_session_id=game_session_id).all()
             for result in results:

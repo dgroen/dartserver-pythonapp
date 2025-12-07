@@ -1,6 +1,7 @@
-"""
-Compatibility wrapper for database_models module - imports from new location
+"""Compatibility shim to expose core database models for tests.
+
+This module re-exports symbols from dartserver_core.database_models so tests
+that import `database_models` can still resolve them.
 """
 
-# pylint: disable=wildcard-import,unused-wildcard-import
-from src.core.database_models import *  # noqa: F403
+from dartserver_core.database_models import *  # noqa: F403

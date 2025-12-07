@@ -1,6 +1,6 @@
 """Unit tests for GameRoundTheClock hard mode (reset on miss) feature."""
 
-from src.games.game_round_the_clock import GameRoundTheClock
+from dartserver_games.game_round_the_clock import GameRoundTheClock
 
 
 class TestGameRoundTheClockHardMode:

@@ -1,6 +1,6 @@
 """Tests for Round the Clock Double game variant"""
 
-from src.games.game_round_the_clock_double import GameRoundTheClockDouble
+from dartserver_games.game_round_the_clock_double import GameRoundTheClockDouble
 
 
 class TestGameRoundTheClockDouble:

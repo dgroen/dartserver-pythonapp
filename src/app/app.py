@@ -1654,7 +1654,7 @@ def create_dartboard_type():
         description: Invalid request or dartboard type already exists
     """
     try:
-        data = request.json
+        data = request.json or {}
         name = data.get("name", "").lower().strip()
         brand = data.get("brand", "").strip()
         model = data.get("model", "").strip() if data.get("model") else None
@@ -1663,40 +1663,26 @@ def create_dartboard_type():
         slave_pins = data.get("slavePins")
 
         # Validate required fields
+        error_msg = None
+        status_code = 400
+
         if not name:
-            return jsonify({"status": "error", "message": "Name is required"}), 400
-        if not brand:
-            return jsonify({"status": "error", "message": "Brand is required"}), 400
-
-        # Validate name format (lowercase, alphanumeric with hyphens and underscores)
-        if not name.replace("_", "").replace("-", "").isalnum():
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": (
-                            "Name must contain only letters, numbers, hyphens and underscores"
-                        ),
-                    },
-                ),
-                400,
-            )
-
-        # Validate pin arrays if provided
-        if master_pins is not None and (
+            error_msg = "Name is required"
+        elif not brand:
+            error_msg = "Brand is required"
+        elif not name.replace("_", "").replace("-", "").isalnum():
+            error_msg = "Name must contain only letters, numbers, hyphens and underscores"
+        elif master_pins is not None and (
             not isinstance(master_pins, list) or not all(isinstance(p, int) for p in master_pins)
         ):
-            return (
-                jsonify({"status": "error", "message": "masterPins must be an array of integers"}),
-                400,
-            )
-        if slave_pins is not None and (
+            error_msg = "masterPins must be an array of integers"
+        elif slave_pins is not None and (
             not isinstance(slave_pins, list) or not all(isinstance(p, int) for p in slave_pins)
         ):
-            return (
-                jsonify({"status": "error", "message": "slavePins must be an array of integers"}),
-                400,
-            )
+            error_msg = "slavePins must be an array of integers"
+
+        if error_msg:
+            return jsonify({"status": "error", "message": error_msg}), status_code
 
         session = get_session()
         try:
@@ -3292,19 +3278,20 @@ def start_single_player_game():
 
         # Training modes (bull_practice) require gamemaster or admin role
         training_modes = ["bull_practice"]
-        if game_type in training_modes:
-            if "admin" not in user_roles and "gamemaster" not in user_roles:
-                return (
-                    jsonify(
-                        {
-                            "success": False,
-                            "error": (
-                                f"Training mode '{game_type}' requires gamemaster or admin role"
-                            ),
-                        },
-                    ),
-                    403,
-                )
+        if (
+            game_type in training_modes
+            and "admin" not in user_roles
+            and "gamemaster" not in user_roles
+        ):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": (f"Training mode '{game_type}' requires gamemaster or admin role"),
+                    },
+                ),
+                403,
+            )
 
         # Get player name from session
         user_info = session.get("user_info", {})

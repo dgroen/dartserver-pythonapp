@@ -8,7 +8,10 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 # Add the parent directory to the path so we can import our models
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+root_dir = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(root_dir))
+sys.path.insert(0, str(root_dir / "packages" / "dartserver-core" / "src"))
+sys.path.insert(0, str(root_dir / "packages" / "dartserver-services" / "src"))
 
 # Import our models
 from dotenv import load_dotenv

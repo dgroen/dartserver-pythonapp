@@ -1,16 +1,13 @@
 """Unit tests for single-player game endpoint."""
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-
-from src.app.app import app as flask_app
-from src.app.app import game_manager
-from src.core.database_service import DatabaseService
+from dartserver_core.database_service import DatabaseService
 
 
-@pytest.fixture
+@pytest.fixture()
 def db_service():
     """Create in-memory database service for testing."""
     db = DatabaseService("sqlite:///:memory:")
@@ -22,7 +19,7 @@ def db_service():
     return db, player
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_auth_player():
     """Mock authentication decorators with player role."""
     with patch("src.core.auth.validate_token") as mock_validate:
@@ -37,7 +34,7 @@ def mock_auth_player():
         yield mock_validate
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_auth_admin():
     """Mock authentication decorators with admin role."""
     with patch("src.core.auth.validate_token") as mock_validate:
@@ -52,7 +49,7 @@ def mock_auth_admin():
         yield mock_validate
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_auth_gamemaster():
     """Mock authentication decorators with gamemaster role."""
     with patch("src.core.auth.validate_token") as mock_validate:
@@ -67,7 +64,7 @@ def mock_auth_gamemaster():
         yield mock_validate
 
 
-@pytest.fixture
+@pytest.fixture()
 def app_with_player(mock_auth_player, db_service):
     """Create Flask app for testing with player role."""
     db, player = db_service
@@ -81,7 +78,7 @@ def app_with_player(mock_auth_player, db_service):
         yield flask_app, player
 
 
-@pytest.fixture
+@pytest.fixture()
 def app_with_admin(mock_auth_admin, db_service):
     """Create Flask app for testing with admin role."""
     db, player = db_service
@@ -95,7 +92,7 @@ def app_with_admin(mock_auth_admin, db_service):
         yield flask_app, player
 
 
-@pytest.fixture
+@pytest.fixture()
 def app_with_gamemaster(mock_auth_gamemaster, db_service):
     """Create Flask app for testing with gamemaster role."""
     db, player = db_service
@@ -109,7 +106,7 @@ def app_with_gamemaster(mock_auth_gamemaster, db_service):
         yield flask_app, player
 
 
-@pytest.fixture
+@pytest.fixture()
 def client_player(app_with_player, db_service):
     """Create test client with player role."""
     app, player = app_with_player
@@ -129,7 +126,7 @@ def client_player(app_with_player, db_service):
     return client
 
 
-@pytest.fixture
+@pytest.fixture()
 def client_admin(app_with_admin, db_service):
     """Create test client with admin role."""
     app, player = app_with_admin
@@ -149,7 +146,7 @@ def client_admin(app_with_admin, db_service):
     return client
 
 
-@pytest.fixture
+@pytest.fixture()
 def client_gamemaster(app_with_gamemaster, db_service):
     """Create test client with gamemaster role."""
     app, player = app_with_gamemaster

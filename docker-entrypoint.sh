@@ -66,10 +66,10 @@ with db.get_session() as session:
     result = session.execute('SELECT current_database()')
     db_name = result.scalar()
     print(f'✓ Connected to database: {db_name}')
-    
+
     # Check if gameresults table exists and has required columns
     result = session.execute(
-        \"SELECT column_name FROM information_schema.columns 
+        \"SELECT column_name FROM information_schema.columns
          WHERE table_name = 'gameresults' AND column_name = 'reset_on_miss'\"
     )
     if result.scalar():
