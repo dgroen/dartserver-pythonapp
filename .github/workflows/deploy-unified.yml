@@ -79,6 +79,7 @@ jobs:
         env:
           TEST_SERVER_HOST: test-server
           TEST_SERVER_USER: ${{ secrets.TEST_SERVER_USER }}
+          CONFIG_ENCRYPTION_KEY: ${{ secrets.CONFIG_ENCRYPTION_KEY }}
         run: |
           ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} bash -s << ENDSSH
           set -e
@@ -111,6 +112,25 @@ jobs:
           cp -r dartserver-config/environments/test/wso2is-config ./wso2is-7-config
           cp -r dartserver-config/environments/test/ssl ./ssl
           cp -r dartserver-config/environments/test/nginx ./nginx
+
+          # Decrypt .env file if it's encrypted
+          echo "🔐 Decrypting .env file..."
+          if [ -f ./.env ]; then
+            # Check if file appears to be encrypted (starts with common encryption markers)
+            if head -c 5 ./.env | grep -q "^-----"; then
+              # File is encrypted with OpenSSL format
+              openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$CONFIG_ENCRYPTION_KEY" 2>/dev/null && \
+              mv ./.env.decrypted ./.env || \
+              echo "⚠️  Could not decrypt .env file, using as-is"
+            elif file ./.env | grep -q "encrypted"; then
+              # File is encrypted, try to decrypt it
+              openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$CONFIG_ENCRYPTION_KEY" 2>/dev/null && \
+              mv ./.env.decrypted ./.env || \
+              echo "⚠️  Could not decrypt .env file, using as-is"
+            else
+              echo "✓ .env file is not encrypted"
+            fi
+          fi
 
           # Fix .env file encoding (convert from any encoding to UTF-8 without BOM)
           echo "🔧 Fixing .env file encoding..."
