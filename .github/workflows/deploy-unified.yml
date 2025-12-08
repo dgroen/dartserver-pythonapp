@@ -113,35 +113,24 @@ jobs:
           cp -r dartserver-config/environments/test/ssl ./ssl
           cp -r dartserver-config/environments/test/nginx ./nginx
 
-          # Decrypt .env file if it's encrypted
+          # Decrypt .env file if it's encrypted (normalize encoding first)
           echo "🔐 Decrypting .env file..."
           if [ -f ./.env ]; then
-            # Check if file appears to be encrypted (starts with common encryption markers)
+            # Fix encoding first (convert to UTF-8 without BOM)
+            echo "🔧 Fixing .env file encoding..."
+            iconv -f UTF-16LE -t UTF-8 ./.env > ./.env.tmp 2>/dev/null || cp ./.env ./.env.tmp
+            sed -i '1s/^\xEF\xBB\xBF//' ./.env.tmp
+            mv ./.env.tmp ./.env
+
+            # Now check if encrypted and decrypt
             if head -c 5 ./.env | grep -q "^-----"; then
-              # File is encrypted with OpenSSL format
-              openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$GIT_CRYPT_KEY" 2>/dev/null && \
-              mv ./.env.decrypted ./.env || \
-              echo "⚠️  Could not decrypt .env file, using as-is"
-            elif file ./.env | grep -q "encrypted"; then
-              # File is encrypted, try to decrypt it
+              echo "Decrypting OpenSSL-formatted file..."
               openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$GIT_CRYPT_KEY" 2>/dev/null && \
               mv ./.env.decrypted ./.env || \
               echo "⚠️  Could not decrypt .env file, using as-is"
             else
-              echo "✓ .env file is not encrypted"
+              echo "✓ .env file is not encrypted or already decrypted"
             fi
-          fi
-
-          # Fix .env file encoding (convert from any encoding to UTF-8 without BOM)
-          echo "🔧 Fixing .env file encoding..."
-          if [ -f ./.env ]; then
-            # Use iconv to convert to UTF-8, removing BOM if present
-            iconv -f UTF-16LE -t UTF-8 ./.env > ./.env.tmp 2>/dev/null || cp ./.env ./.env.tmp
-            # Remove any BOM characters
-            sed -i '1s/^\xEF\xBB\xBF//' ./.env.tmp
-            mv ./.env.tmp ./.env
-            # Verify the file is readable
-            file ./.env
           fi
 
           # Rebuild containers
@@ -401,6 +390,7 @@ jobs:
         env:
           PROD_SERVER_HOST: prod-server
           PROD_SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
         run: |
           ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} bash -s << ENDSSH
           set -e
@@ -432,6 +422,24 @@ jobs:
           cp -r dartserver-config/environments/production/wso2is-config ./wso2is-7-config
           cp -r dartserver-config/environments/production/ssl ./ssl
           cp -r dartserver-config/environments/production/nginx ./nginx
+
+          # Decrypt .env file if it's encrypted (normalize encoding first)
+          echo "🔐 Decrypting .env file..."
+          if [ -f ./.env ]; then
+            echo "🔧 Fixing .env file encoding..."
+            iconv -f UTF-16LE -t UTF-8 ./.env > ./.env.tmp 2>/dev/null || cp ./.env ./.env.tmp
+            sed -i '1s/^\xEF\xBB\xBF//' ./.env.tmp
+            mv ./.env.tmp ./.env
+
+            if head -c 5 ./.env | grep -q "^-----"; then
+              echo "Decrypting OpenSSL-formatted file..."
+              openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$GIT_CRYPT_KEY" 2>/dev/null && \
+              mv ./.env.decrypted ./.env || \
+              echo "⚠️  Could not decrypt .env file, using as-is"
+            else
+              echo "✓ .env file is not encrypted or already decrypted"
+            fi
+          fi
 
           # Rebuild containers
           echo "🔨 Rebuilding containers..."
