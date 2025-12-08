@@ -113,32 +113,32 @@ jobs:
           cp -r dartserver-config/environments/test/ssl ./ssl
           cp -r dartserver-config/environments/test/nginx ./nginx
 
-          # Normalize encoding and attempt decryption of .env
-          echo "🔐 Preparing .env (encoding + optional decrypt)..."
-          if [ -f ./.env ]; then
-            echo "🔧 Fixing .env file encoding..."
-            iconv -f UTF-16LE -t UTF-8 ./.env > ./.env.tmp 2>/dev/null || cp ./.env ./.env.tmp
-            sed -i '1s/^\xEF\xBB\xBF//' ./.env.tmp
-            mv ./.env.tmp ./.env
+          # # Normalize encoding and attempt decryption of .env
+          # echo "🔐 Preparing .env (encoding + optional decrypt)..."
+          # if [ -f ./.env ]; then
+          #   echo "🔧 Fixing .env file encoding..."
+          #   iconv -f UTF-16LE -t UTF-8 ./.env > ./.env.tmp 2>/dev/null || cp ./.env ./.env.tmp
+          #   sed -i '1s/^\xEF\xBB\xBF//' ./.env.tmp
+          #   mv ./.env.tmp ./.env
 
-            if [ -z "${GIT_CRYPT_KEY:-}" ]; then
-              echo "⚠️  GIT_CRYPT_KEY not set; skipping decryption"
-            else
-              echo "🔓 Attempting to decrypt .env..."
-              if openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$GIT_CRYPT_KEY" 2>/dev/null; then
-                if [ -s ./.env.decrypted ]; then
-                  mv ./.env.decrypted ./.env
-                  echo "✅ .env decrypted"
-                else
-                  echo "⚠️  Decryption produced empty output; keeping original"
-                  rm -f ./.env.decrypted
-                fi
-              else
-                echo "ℹ️  Decryption failed; keeping original .env"
-                rm -f ./.env.decrypted
-              fi
-            fi
-          fi
+          #   if [ -z "${GIT_CRYPT_KEY:-}" ]; then
+          #     echo "⚠️  GIT_CRYPT_KEY not set; skipping decryption"
+          #   else
+          #     echo "🔓 Attempting to decrypt .env..."
+          #     if openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$GIT_CRYPT_KEY" 2>/dev/null; then
+          #       if [ -s ./.env.decrypted ]; then
+          #         mv ./.env.decrypted ./.env
+          #         echo "✅ .env decrypted"
+          #       else
+          #         echo "⚠️  Decryption produced empty output; keeping original"
+          #         rm -f ./.env.decrypted
+          #       fi
+          #     else
+          #       echo "ℹ️  Decryption failed; keeping original .env"
+          #       rm -f ./.env.decrypted
+          #     fi
+          #   fi
+          # fi
 
           # Rebuild containers
           echo "🔨 Rebuilding containers..."
