@@ -113,23 +113,30 @@ jobs:
           cp -r dartserver-config/environments/test/ssl ./ssl
           cp -r dartserver-config/environments/test/nginx ./nginx
 
-          # Decrypt .env file if it's encrypted (normalize encoding first)
-          echo "🔐 Decrypting .env file..."
+          # Normalize encoding and attempt decryption of .env
+          echo "🔐 Preparing .env (encoding + optional decrypt)..."
           if [ -f ./.env ]; then
-            # Fix encoding first (convert to UTF-8 without BOM)
             echo "🔧 Fixing .env file encoding..."
             iconv -f UTF-16LE -t UTF-8 ./.env > ./.env.tmp 2>/dev/null || cp ./.env ./.env.tmp
             sed -i '1s/^\xEF\xBB\xBF//' ./.env.tmp
             mv ./.env.tmp ./.env
 
-            # Now check if encrypted and decrypt
-            if head -c 5 ./.env | grep -q "^-----"; then
-              echo "Decrypting OpenSSL-formatted file..."
-              openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$GIT_CRYPT_KEY" 2>/dev/null && \
-              mv ./.env.decrypted ./.env || \
-              echo "⚠️  Could not decrypt .env file, using as-is"
+            if [ -z "${GIT_CRYPT_KEY:-}" ]; then
+              echo "⚠️  GIT_CRYPT_KEY not set; skipping decryption"
             else
-              echo "✓ .env file is not encrypted or already decrypted"
+              echo "🔓 Attempting to decrypt .env..."
+              if openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$GIT_CRYPT_KEY" 2>/dev/null; then
+                if [ -s ./.env.decrypted ]; then
+                  mv ./.env.decrypted ./.env
+                  echo "✅ .env decrypted"
+                else
+                  echo "⚠️  Decryption produced empty output; keeping original"
+                  rm -f ./.env.decrypted
+                fi
+              else
+                echo "ℹ️  Decryption failed; keeping original .env"
+                rm -f ./.env.decrypted
+              fi
             fi
           fi
 
@@ -423,21 +430,30 @@ jobs:
           cp -r dartserver-config/environments/production/ssl ./ssl
           cp -r dartserver-config/environments/production/nginx ./nginx
 
-          # Decrypt .env file if it's encrypted (normalize encoding first)
-          echo "🔐 Decrypting .env file..."
+          # Normalize encoding and attempt decryption of .env
+          echo "🔐 Preparing .env (encoding + optional decrypt)..."
           if [ -f ./.env ]; then
             echo "🔧 Fixing .env file encoding..."
             iconv -f UTF-16LE -t UTF-8 ./.env > ./.env.tmp 2>/dev/null || cp ./.env ./.env.tmp
             sed -i '1s/^\xEF\xBB\xBF//' ./.env.tmp
             mv ./.env.tmp ./.env
 
-            if head -c 5 ./.env | grep -q "^-----"; then
-              echo "Decrypting OpenSSL-formatted file..."
-              openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$GIT_CRYPT_KEY" 2>/dev/null && \
-              mv ./.env.decrypted ./.env || \
-              echo "⚠️  Could not decrypt .env file, using as-is"
+            if [ -z "${GIT_CRYPT_KEY:-}" ]; then
+              echo "⚠️  GIT_CRYPT_KEY not set; skipping decryption"
             else
-              echo "✓ .env file is not encrypted or already decrypted"
+              echo "🔓 Attempting to decrypt .env..."
+              if openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$GIT_CRYPT_KEY" 2>/dev/null; then
+                if [ -s ./.env.decrypted ]; then
+                  mv ./.env.decrypted ./.env
+                  echo "✅ .env decrypted"
+                else
+                  echo "⚠️  Decryption produced empty output; keeping original"
+                  rm -f ./.env.decrypted
+                fi
+              else
+                echo "ℹ️  Decryption failed; keeping original .env"
+                rm -f ./.env.decrypted
+              fi
             fi
           fi
 
