@@ -119,12 +119,12 @@ jobs:
             # Check if file appears to be encrypted (starts with common encryption markers)
             if head -c 5 ./.env | grep -q "^-----"; then
               # File is encrypted with OpenSSL format
-              openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$CONFIG_ENCRYPTION_KEY" 2>/dev/null && \
+              openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$GIT_CRYPT_KEY" 2>/dev/null && \
               mv ./.env.decrypted ./.env || \
               echo "⚠️  Could not decrypt .env file, using as-is"
             elif file ./.env | grep -q "encrypted"; then
               # File is encrypted, try to decrypt it
-              openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$CONFIG_ENCRYPTION_KEY" 2>/dev/null && \
+              openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$GIT_CRYPT_KEY" 2>/dev/null && \
               mv ./.env.decrypted ./.env || \
               echo "⚠️  Could not decrypt .env file, using as-is"
             else
