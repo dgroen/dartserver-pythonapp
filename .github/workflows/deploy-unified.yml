@@ -117,12 +117,31 @@ jobs:
           cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp || \
             { echo "❌ Application directory not found"; exit 1; }
 
+          normalize_env() {
+            ENV_PATH="$1"
+            if [ -f "$ENV_PATH" ]; then
+              TMP_ENV=$(mktemp)
+              if iconv -f UTF-8 -t UTF-8 "$ENV_PATH" > "$TMP_ENV" 2>/dev/null; then
+                :
+              elif iconv -f ISO-8859-1 -t UTF-8 "$ENV_PATH" > "$TMP_ENV" 2>/dev/null; then
+                :
+              else
+                cp "$ENV_PATH" "$TMP_ENV"
+              fi
+              perl -0777 -pe 's/^\xEF\xBB\xBF//' "$TMP_ENV" > "$ENV_PATH"
+              rm -f "$TMP_ENV"
+            fi
+          }
+
           # Refresh config bundle from runner
           if [ -f /tmp/dartserver-config.tgz ]; then
             rm -rf dartserver-config
             mkdir -p dartserver-config
             tar xzf /tmp/dartserver-config.tgz -C dartserver-config
           fi
+
+          # Normalize existing .env (from previous deploy) before any docker-compose command
+          normalize_env ".env"
 
           # Stop existing containers first (to release file locks)
           echo "🛑 Stopping existing containers..."
@@ -142,20 +161,7 @@ jobs:
           cp -r dartserver-config/environments/test/nginx ./nginx
 
           echo "🔧 Normalizing .env encoding to UTF-8 (strip BOM, convert Latin-1 if needed)..."
-          if [ -f ./.env ]; then
-            TMP_ENV=$(mktemp)
-            # Try UTF-8 first, then Latin-1 as fallback; keep original on failure
-            if iconv -f UTF-8 -t UTF-8 ./.env > "$TMP_ENV" 2>/dev/null; then
-              :
-            elif iconv -f ISO-8859-1 -t UTF-8 ./.env > "$TMP_ENV" 2>/dev/null; then
-              :
-            else
-              cp ./.env "$TMP_ENV"
-            fi
-            # Strip UTF-8 BOM if present
-            perl -0777 -pe 's/^\xEF\xBB\xBF//' "$TMP_ENV" > ./.env
-            rm -f "$TMP_ENV"
-          fi
+          normalize_env ".env"
 
           # Rebuild containers
           echo "🔨 Rebuilding containers..."
@@ -447,12 +453,31 @@ jobs:
           cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp || \
             { echo "❌ Application directory not found"; exit 1; }
 
+          normalize_env() {
+            ENV_PATH="$1"
+            if [ -f "$ENV_PATH" ]; then
+              TMP_ENV=$(mktemp)
+              if iconv -f UTF-8 -t UTF-8 "$ENV_PATH" > "$TMP_ENV" 2>/dev/null; then
+                :
+              elif iconv -f ISO-8859-1 -t UTF-8 "$ENV_PATH" > "$TMP_ENV" 2>/dev/null; then
+                :
+              else
+                cp "$ENV_PATH" "$TMP_ENV"
+              fi
+              perl -0777 -pe 's/^\xEF\xBB\xBF//' "$TMP_ENV" > "$ENV_PATH"
+              rm -f "$TMP_ENV"
+            fi
+          }
+
           # Refresh config bundle from runner
           if [ -f /tmp/dartserver-config.tgz ]; then
             rm -rf dartserver-config
             mkdir -p dartserver-config
             tar xzf /tmp/dartserver-config.tgz -C dartserver-config
           fi
+
+          # Normalize existing .env before any docker-compose command
+          normalize_env ".env"
 
           # Stop existing containers
           echo "🛑 Stopping existing containers..."
@@ -472,18 +497,7 @@ jobs:
           cp -r dartserver-config/environments/production/nginx ./nginx
 
           echo "🔧 Normalizing .env encoding to UTF-8 (strip BOM, convert Latin-1 if needed)..."
-          if [ -f ./.env ]; then
-            TMP_ENV=$(mktemp)
-            if iconv -f UTF-8 -t UTF-8 ./.env > "$TMP_ENV" 2>/dev/null; then
-              :
-            elif iconv -f ISO-8859-1 -t UTF-8 ./.env > "$TMP_ENV" 2>/dev/null; then
-              :
-            else
-              cp ./.env "$TMP_ENV"
-            fi
-            perl -0777 -pe 's/^\xEF\xBB\xBF//' "$TMP_ENV" > ./.env
-            rm -f "$TMP_ENV"
-          fi
+          normalize_env ".env"
 
           # Rebuild containers
           echo "🔨 Rebuilding containers..."
