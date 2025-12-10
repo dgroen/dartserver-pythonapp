@@ -127,32 +127,21 @@ jobs:
           cp -r dartserver-config/environments/test/ssl ./ssl
           cp -r dartserver-config/environments/test/nginx ./nginx
 
-          # # Normalize encoding and attempt decryption of .env
-          # echo "🔐 Preparing .env (encoding + optional decrypt)..."
-          # if [ -f ./.env ]; then
-          #   echo "🔧 Fixing .env file encoding..."
-          #   iconv -f UTF-16LE -t UTF-8 ./.env > ./.env.tmp 2>/dev/null || cp ./.env ./.env.tmp
-          #   sed -i '1s/^\xEF\xBB\xBF//' ./.env.tmp
-          #   mv ./.env.tmp ./.env
-
-          #   if [ -z "${GIT_CRYPT_KEY:-}" ]; then
-          #     echo "⚠️  GIT_CRYPT_KEY not set; skipping decryption"
-          #   else
-          #     echo "🔓 Attempting to decrypt .env..."
-          #     if openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$GIT_CRYPT_KEY" 2>/dev/null; then
-          #       if [ -s ./.env.decrypted ]; then
-          #         mv ./.env.decrypted ./.env
-          #         echo "✅ .env decrypted"
-          #       else
-          #         echo "⚠️  Decryption produced empty output; keeping original"
-          #         rm -f ./.env.decrypted
-          #       fi
-          #     else
-          #       echo "ℹ️  Decryption failed; keeping original .env"
-          #       rm -f ./.env.decrypted
-          #     fi
-          #   fi
-          # fi
+          echo "🔧 Normalizing .env encoding to UTF-8 (strip BOM, convert Latin-1 if needed)..."
+          if [ -f ./.env ]; then
+            TMP_ENV=$(mktemp)
+            # Try UTF-8 first, then Latin-1 as fallback; keep original on failure
+            if iconv -f UTF-8 -t UTF-8 ./.env > "$TMP_ENV" 2>/dev/null; then
+              :
+            elif iconv -f ISO-8859-1 -t UTF-8 ./.env > "$TMP_ENV" 2>/dev/null; then
+              :
+            else
+              cp ./.env "$TMP_ENV"
+            fi
+            # Strip UTF-8 BOM if present
+            perl -0777 -pe 's/^\xEF\xBB\xBF//' "$TMP_ENV" > ./.env
+            rm -f "$TMP_ENV"
+          fi
 
           # Rebuild containers
           echo "🔨 Rebuilding containers..."
@@ -454,31 +443,18 @@ jobs:
           cp -r dartserver-config/environments/production/ssl ./ssl
           cp -r dartserver-config/environments/production/nginx ./nginx
 
-          # Normalize encoding and attempt decryption of .env
-          echo "🔐 Preparing .env (encoding + optional decrypt)..."
+          echo "🔧 Normalizing .env encoding to UTF-8 (strip BOM, convert Latin-1 if needed)..."
           if [ -f ./.env ]; then
-            echo "🔧 Fixing .env file encoding..."
-            iconv -f UTF-16LE -t UTF-8 ./.env > ./.env.tmp 2>/dev/null || cp ./.env ./.env.tmp
-            sed -i '1s/^\xEF\xBB\xBF//' ./.env.tmp
-            mv ./.env.tmp ./.env
-
-            if [ -z "${GIT_CRYPT_KEY:-}" ]; then
-              echo "⚠️  GIT_CRYPT_KEY not set; skipping decryption"
+            TMP_ENV=$(mktemp)
+            if iconv -f UTF-8 -t UTF-8 ./.env > "$TMP_ENV" 2>/dev/null; then
+              :
+            elif iconv -f ISO-8859-1 -t UTF-8 ./.env > "$TMP_ENV" 2>/dev/null; then
+              :
             else
-              echo "🔓 Attempting to decrypt .env..."
-              if openssl enc -aes-256-cbc -d -in ./.env -out ./.env.decrypted -k "$GIT_CRYPT_KEY" 2>/dev/null; then
-                if [ -s ./.env.decrypted ]; then
-                  mv ./.env.decrypted ./.env
-                  echo "✅ .env decrypted"
-                else
-                  echo "⚠️  Decryption produced empty output; keeping original"
-                  rm -f ./.env.decrypted
-                fi
-              else
-                echo "ℹ️  Decryption failed; keeping original .env"
-                rm -f ./.env.decrypted
-              fi
+              cp ./.env "$TMP_ENV"
             fi
+            perl -0777 -pe 's/^\xEF\xBB\xBF//' "$TMP_ENV" > ./.env
+            rm -f "$TMP_ENV"
           fi
 
           # Rebuild containers
