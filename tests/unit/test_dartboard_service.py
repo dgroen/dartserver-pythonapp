@@ -4,14 +4,13 @@ Tests both new generic pin-based and legacy score/multiplier formats
 """
 
 import pytest
+from dartserver_core.database_models import Base
+from dartserver_services import DartboardMappingError, DartboardService
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.core.dartboard_service import DartboardMappingError, DartboardService
-from src.core.database_models import Base
 
-
-@pytest.fixture
+@pytest.fixture()
 def db_session():
     """Create in-memory SQLite database for testing"""
     engine = create_engine("sqlite:///:memory:")
@@ -22,7 +21,7 @@ def db_session():
     session.close()
 
 
-@pytest.fixture
+@pytest.fixture()
 def carromco_board(db_session):
     """Create Carromco dartboard type with sample mappings"""
     board_type = DartboardService.register_dartboard_type(

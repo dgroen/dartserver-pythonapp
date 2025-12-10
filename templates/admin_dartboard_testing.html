@@ -741,7 +741,7 @@
         function renderPinCheckboxes(containerId, selectedPins, prefix) {
             const container = document.getElementById(containerId);
             container.innerHTML = '';
-            
+
             AVAILABLE_PINS.forEach(pin => {
                 const isChecked = selectedPins.includes(pin);
                 const label = document.createElement('label');
@@ -964,10 +964,10 @@
                 const response = await fetch('/api/admin/dartboard/type', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        name, 
-                        brand, 
-                        model, 
+                    body: JSON.stringify({
+                        name,
+                        brand,
+                        model,
                         description,
                         masterPins: masterPins.length > 0 ? masterPins : null,
                         slavePins: slavePins.length > 0 ? slavePins : null
@@ -1036,14 +1036,14 @@
         function analyzeMappings(matrix) {
             // Build a mapping of zone + multiplier -> count for detecting duplicates
             const segmentMap = {};
-            
+
             matrix.forEach(row => {
                 row.cells.forEach(cell => {
                     if (cell.mapping) {
                         const zone = cell.mapping.zone_number;
                         const mult = cell.mapping.multiplier_type;
                         const key = `${zone}-${mult}`;
-                        
+
                         if (!segmentMap[key]) {
                             segmentMap[key] = { count: 0, mappings: [] };
                         }
@@ -1052,14 +1052,14 @@
                     }
                 });
             });
-            
+
             return segmentMap;
         }
 
         function getSegmentStatus(zone, multiplier, segmentMap) {
             const key = `${zone}-${multiplier}`;
             const segment = segmentMap[key];
-            
+
             if (!segment) {
                 return 'unmapped';  // Grey
             }
@@ -1072,7 +1072,7 @@
         function renderDartboardVisual(data) {
             const container = document.getElementById('dartboardVisualContainer');
             const segmentMap = analyzeMappings(data.matrix);
-            
+
             // Create SVG dartboard
             const svgNS = 'http://www.w3.org/2000/svg';
             const svg = document.createElementNS(svgNS, 'svg');
@@ -1080,10 +1080,10 @@
             svg.setAttribute('width', '350');
             svg.setAttribute('height', '350');
             svg.style.maxWidth = '100%';
-            
+
             const cx = 225;
             const cy = 225;
-            
+
             // Color scheme
             const colors = {
                 mapped: '#4CAF50',       // Green
@@ -1094,7 +1094,7 @@
                 bullOuter: '#D4600C',    // Orange-red for outer bull
                 bullInner: '#D4A600',    // Gold for inner bull
             };
-            
+
             // Ring radii
             const radii = {
                 outerDouble: 185,
@@ -1105,37 +1105,37 @@
                 bullOuter: 16,
                 bullInner: 8,
             };
-            
+
             // Create segments for each number
             DARTBOARD_NUMBERS.forEach((num, index) => {
                 const startAngle = (index - 0.5) * (360 / 20) - 90;
                 const endAngle = (index + 0.5) * (360 / 20) - 90;
                 const startRad = (startAngle * Math.PI) / 180;
                 const endRad = (endAngle * Math.PI) / 180;
-                
+
                 // Double ring (outer)
-                createVisualSegment(svg, cx, cy, radii.innerDouble, radii.outerDouble, startRad, endRad, 
+                createVisualSegment(svg, cx, cy, radii.innerDouble, radii.outerDouble, startRad, endRad,
                     getSegmentStatus(num, 'DOUBLE', segmentMap), colors, svgNS);
-                
+
                 // Single outer ring
-                createVisualSegment(svg, cx, cy, radii.outerTriple, radii.innerDouble, startRad, endRad, 
+                createVisualSegment(svg, cx, cy, radii.outerTriple, radii.innerDouble, startRad, endRad,
                     getSegmentStatus(num, 'SINGLE', segmentMap), colors, svgNS);
-                
+
                 // Triple ring
-                createVisualSegment(svg, cx, cy, radii.innerTriple, radii.outerTriple, startRad, endRad, 
+                createVisualSegment(svg, cx, cy, radii.innerTriple, radii.outerTriple, startRad, endRad,
                     getSegmentStatus(num, 'TRIPLE', segmentMap), colors, svgNS);
-                
+
                 // Single inner ring
-                createVisualSegment(svg, cx, cy, radii.singleInner, radii.innerTriple, startRad, endRad, 
+                createVisualSegment(svg, cx, cy, radii.singleInner, radii.innerTriple, startRad, endRad,
                     getSegmentStatus(num, 'SINGLE', segmentMap), colors, svgNS);
-                
+
                 // Number labels
                 const midAngle = (startAngle + endAngle) / 2;
                 const midRad = (midAngle * Math.PI) / 180;
                 const labelRadius = 205;
                 const labelX = cx + labelRadius * Math.cos(midRad);
                 const labelY = cy + labelRadius * Math.sin(midRad);
-                
+
                 const text = document.createElementNS(svgNS, 'text');
                 text.setAttribute('x', labelX);
                 text.setAttribute('y', labelY);
@@ -1147,7 +1147,7 @@
                 text.textContent = num;
                 svg.appendChild(text);
             });
-            
+
             // Outer border
             const outerRing = document.createElementNS(svgNS, 'circle');
             outerRing.setAttribute('cx', cx);
@@ -1157,7 +1157,7 @@
             outerRing.setAttribute('stroke', colors.stroke);
             outerRing.setAttribute('stroke-width', '4');
             svg.appendChild(outerRing);
-            
+
             // Bull's eye - Outer (BULL)
             const bullStatus = getSegmentStatus(25, 'BULL', segmentMap);
             const doubleBull = document.createElementNS(svgNS, 'circle');
@@ -1168,7 +1168,7 @@
             doubleBull.setAttribute('stroke', colors.stroke);
             doubleBull.setAttribute('stroke-width', '2');
             svg.appendChild(doubleBull);
-            
+
             // Bull's eye - Inner (DBLBULL)
             const dblbullStatus = getSegmentStatus(25, 'DBLBULL', segmentMap);
             const singleBull = document.createElementNS(svgNS, 'circle');
@@ -1179,28 +1179,28 @@
             singleBull.setAttribute('stroke', colors.stroke);
             singleBull.setAttribute('stroke-width', '2');
             svg.appendChild(singleBull);
-            
+
             // Update container
             container.innerHTML = '';
             container.appendChild(svg);
-            
+
             // Add legend
             const legend = document.createElement('div');
             legend.style.cssText = 'display: flex; gap: 15px; justify-content: center; margin-top: 10px; flex-wrap: wrap;';
-            
+
             const legendItems = [
                 { color: colors.mapped, label: 'Mapped' },
                 { color: colors.unmapped, label: 'Unmapped' },
                 { color: colors.faulty, label: 'Faulty (duplicate)' },
             ];
-            
+
             legendItems.forEach(item => {
                 const legendItem = document.createElement('div');
                 legendItem.style.cssText = 'display: flex; align-items: center; gap: 5px; font-size: 12px;';
                 legendItem.innerHTML = `<div style="width: 16px; height: 16px; background: ${item.color}; border-radius: 3px;"></div><span>${item.label}</span>`;
                 legend.appendChild(legendItem);
             });
-            
+
             container.appendChild(legend);
         }
 
@@ -1213,17 +1213,17 @@
             const y3 = cy + outerRadius * Math.sin(endAngle);
             const x4 = cx + innerRadius * Math.cos(endAngle);
             const y4 = cy + innerRadius * Math.sin(endAngle);
-            
+
             const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
-            
+
             const pathData = `M ${x1} ${y1} L ${x2} ${y2} A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${x3} ${y3} L ${x4} ${y4} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x1} ${y1} Z`;
-            
+
             const path = document.createElementNS(svgNS, 'path');
             path.setAttribute('d', pathData);
             path.setAttribute('fill', colors[status] || colors.unmapped);
             path.setAttribute('stroke', colors.stroke);
             path.setAttribute('stroke-width', '1');
-            
+
             // Add hover effect
             path.style.transition = 'opacity 0.2s';
             path.addEventListener('mouseenter', () => {
@@ -1232,7 +1232,7 @@
             path.addEventListener('mouseleave', () => {
                 path.style.opacity = '1';
             });
-            
+
             svg.appendChild(path);
         }
 

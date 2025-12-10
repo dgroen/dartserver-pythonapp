@@ -58,7 +58,7 @@ async function loadGameTypes(selectElement, includeAllOption = false) {
                 } else {
                     selectElement.value = data.game_types[0].name;
                 }
-                
+
                 // Trigger change event so any listeners (like hard mode visibility) can react
                 selectElement.dispatchEvent(new Event('change'));
             }

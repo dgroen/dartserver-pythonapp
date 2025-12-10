@@ -1,5 +1,5 @@
 """
-Compatibility wrapper for api_gateway module - imports from new location
+Compatibility wrapper for api_gateway module - imports from src.api_gateway
 Starts the API Gateway Flask application with RabbitMQ integration
 """
 

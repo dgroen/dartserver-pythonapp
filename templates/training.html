@@ -58,7 +58,7 @@
                     // Update game type description when selection changes
                     const gameTypeSelect = document.getElementById('training-game-type');
                     const gameTypeDescription = document.getElementById('game-type-description');
-                    
+
                     const descriptions = {
                         '170': 'Like 301 but starting from 170 points',
                         '301': 'Classic 301 game - score down to exactly 0',
@@ -69,12 +69,12 @@
                         'round_the_clock_double': 'Hit doubles 20 down to 1, then bull',
                         'bull_practice': 'Score bulls consecutively. Game ends when a turn has no bulls, then auto-restarts until you click "End Training"'
                     };
-                    
+
                     function updateGameTypeDescription() {
                         const selectedType = gameTypeSelect.value;
                         gameTypeDescription.textContent = descriptions[selectedType] || '';
                     }
-                    
+
                     gameTypeSelect.addEventListener('change', updateGameTypeDescription);
                     updateGameTypeDescription(); // Set initial description
                 </script>
@@ -143,7 +143,7 @@
                     const player = gameState.players[0];
                     html += '<p><strong>Player:</strong> ' + player.name + '</p>';
                     html += '<p><strong>Score:</strong> ' + player.score + '</p>';
-                    
+
                     // Special display for Bull Practice
                     if (gameState.game_type === 'bull_practice') {
                         if (player.current_turn_score !== undefined) {

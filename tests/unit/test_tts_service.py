@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from src.core.tts_service import TTSService
+from dartserver_services import TTSService
 
 
 class TestTTSService:

@@ -78,3 +78,30 @@ docker-backups
 .venv-test/
 wso2is-7-config
 >>>>>>> 49fe593a5d0f672d19c90766cc88afbdffee1665
+
+# Security and credentials
+# Security scanning outputs
+bandit-report.json
+safety-report.json
+.bandit
+security-report.html
+
+# Secrets and credentials
+.env.local
+.env.*.local
+secrets.json
+credentials.json
+
+# Keys
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Tokens
+token
+tokens.json
+
+# API keys
+api_keys.json
+.api_keys
