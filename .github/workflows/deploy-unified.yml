@@ -178,9 +178,10 @@ jobs:
           git checkout test
           git pull origin test
 
-          # Rebuild containers
+          # Rebuild containers (build services individually to avoid context issues)
           echo "🔨 Rebuilding containers..."
-          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml build --no-cache
+          docker-compose -f docker-compose-wso2.yml build --no-cache darts-app
+          docker-compose -f docker-compose-wso2.yml build --no-cache api-gateway
 
           # Start containers
           echo "▶️  Starting containers..."
@@ -528,9 +529,10 @@ jobs:
           git checkout main
           git pull origin main
 
-          # Rebuild containers
+          # Rebuild containers (build services individually to avoid context issues)
           echo "🔨 Rebuilding containers..."
-          docker-compose -f docker-compose-wso2.yml build --no-cache
+          docker-compose -f docker-compose-wso2.yml build --no-cache darts-app
+          docker-compose -f docker-compose-wso2.yml build --no-cache api-gateway
 
           # Start containers
           echo "▶️  Starting containers..."
