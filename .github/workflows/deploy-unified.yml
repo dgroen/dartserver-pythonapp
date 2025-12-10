@@ -73,6 +73,11 @@ jobs:
 
           chmod 600 ~/.ssh/config
 
+      - name: Inspect config repo layout
+        run: |
+          ls -la dartserver-config
+          find dartserver-config -maxdepth 3 -type d
+
       - name: Sync Test Config to Server
         run: |
           if [ -d "dartserver-config/environments/test" ]; then
@@ -84,7 +89,6 @@ jobs:
             echo "✅ Test configuration files synced"
           else
             echo "❌ dartserver-config/environments/test directory not found"
-            ls -la dartserver-config/ || echo "dartserver-config directory not found"
             exit 1
           fi
 
