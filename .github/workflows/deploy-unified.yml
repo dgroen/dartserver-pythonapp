@@ -26,18 +26,15 @@ jobs:
       - name: Checkout config repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ secrets.CONFIG_REPO }}
-          token: ${{ secrets.CONFIG_REPO_TOKEN }}
+          repository: ${{ github.repository_owner }}/dartserver-config
           path: dartserver-config
-          ref: main 
+          token: ${{ secrets.CONFIG_REPO_TOKEN }}
 
       - name: Decrypt config repository
         run: |
           cd dartserver-config
-          echo "${{ secrets.GIT_CRYPT_KEY }}" | base64 -d > /tmp/git-crypt.key
-          git-crypt unlock /tmp/git-crypt.key
-          rm /tmp/git-crypt.key
-          cd ..
+          chmod +x scripts/decrypt-configs.sh
+          ./scripts/decrypt-configs.sh
 
       - name: Setup SSH
         run: |
@@ -341,17 +338,15 @@ jobs:
       - name: Checkout config repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ secrets.CONFIG_REPO }}
+          repository: ${{ github.repository_owner }}/dartserver-config
           path: dartserver-config
           token: ${{ secrets.CONFIG_REPO_TOKEN }}
 
       - name: Decrypt config repository
         run: |
           cd dartserver-config
-          echo "${{ secrets.GIT_CRYPT_KEY }}" | base64 -d > /tmp/git-crypt.key
-          git-crypt unlock /tmp/git-crypt.key
-          rm /tmp/git-crypt.key
-          cd ..
+          chmod +x scripts/decrypt-configs.sh
+          ./scripts/decrypt-configs.sh
 
       - name: Setup SSH
         run: |
