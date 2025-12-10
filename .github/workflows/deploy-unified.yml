@@ -28,11 +28,12 @@ jobs:
         with:
           repository: ${{ secrets.CONFIG_REPO }}
           token: ${{ secrets.CONFIG_REPO_TOKEN }}
-          path: config-repo
+          path: dartserver-config
+          ref: main 
 
       - name: Decrypt config repository
         run: |
-          cd config-repo
+          cd dartserver-config
           echo "${{ secrets.GIT_CRYPT_KEY }}" | base64 -d > /tmp/git-crypt.key
           git-crypt unlock /tmp/git-crypt.key
           rm /tmp/git-crypt.key
@@ -74,7 +75,7 @@ jobs:
 
       - name: Sync Test Config to Server
         run: |
-          cp config-repo/.env .env
+          cp dartserver-config/.env .env
           # Other config files as needed
           # tar czf /tmp/dartserver-config-test.tgz -C dartserver-config environments/test
           # scp /tmp/dartserver-config-test.tgz test-server:/tmp/dartserver-config.tgz
@@ -375,7 +376,7 @@ jobs:
 
       - name: Sync Production Config to Server
         run: |
-          cp config-repo/.env .env
+          cp dartserver-config/.env .env
           # Other config files as needed
           # tar czf /tmp/dartserver-config-production.tgz -C dartserver-config environments/production
           # scp /tmp/dartserver-config-production.tgz prod-server:/tmp/dartserver-config.tgz
