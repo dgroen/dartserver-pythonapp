@@ -50,6 +50,28 @@ jobs:
           chmod +x scripts/decrypt-configs.sh
           ./scripts/decrypt-configs.sh
 
+      - name: Normalize and bundle test config
+        run: |
+          normalize_env() {
+            ENV_PATH="$1"
+            if [ -f "$ENV_PATH" ]; then
+              TMP_ENV=$(mktemp)
+              if iconv -f UTF-8 -t UTF-8 "$ENV_PATH" > "$TMP_ENV" 2>/dev/null; then
+                :
+              elif iconv -f ISO-8859-1 -t UTF-8 "$ENV_PATH" > "$TMP_ENV" 2>/dev/null; then
+                :
+              else
+                cp "$ENV_PATH" "$TMP_ENV"
+              fi
+              perl -0777 -pe 's/^\xEF\xBB\xBF//' "$TMP_ENV" > "$ENV_PATH"
+              rm -f "$TMP_ENV"
+            fi
+          }
+
+          normalize_env "dartserver-config/environments/test/.env"
+
+          tar czf /tmp/dartserver-config.tgz -C dartserver-config environments/test
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -89,19 +111,15 @@ jobs:
           ls -la dartserver-config
           find dartserver-config -maxdepth 3 -type d
 
-      - name: Sync Test Config to Server
+      - name: Send config bundle to test server
         run: |
-          if [ -d "dartserver-config/environments/test" ]; then
-            cp dartserver-config/environments/test/.env .env
-            mkdir -p wso2is-7-config ssl nginx
-            cp -r dartserver-config/environments/test/wso2is-config/* ./wso2is-7-config/ 2>/dev/null || true
-            cp -r dartserver-config/environments/test/ssl/* ./ssl/ 2>/dev/null || true
-            cp -r dartserver-config/environments/test/nginx/* ./nginx/ 2>/dev/null || true
-            echo "✅ Test configuration files synced"
-          else
-            echo "❌ dartserver-config/environments/test directory not found"
+          if [ ! -f /tmp/dartserver-config.tgz ]; then
+            echo "❌ /tmp/dartserver-config.tgz not found"
             exit 1
           fi
+          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            /tmp/dartserver-config.tgz test-server:/tmp/dartserver-config.tgz
+          echo "✅ Test config bundle uploaded to test-server"
 
       - name: Deploy to Test Server
         env:
@@ -140,7 +158,14 @@ jobs:
             tar xzf /tmp/dartserver-config.tgz -C dartserver-config
           fi
 
-          # Normalize existing .env (from previous deploy) before any docker-compose command
+          # Copy configuration files from config repository (fresh bundle)
+          echo "📝 Copying configuration files from config repository..."
+          cp dartserver-config/environments/test/.env ./.env
+          cp -r dartserver-config/environments/test/wso2is-config ./wso2is-7-config
+          cp -r dartserver-config/environments/test/ssl ./ssl
+          cp -r dartserver-config/environments/test/nginx ./nginx
+
+          echo "🔧 Normalizing .env encoding to UTF-8 (strip BOM, convert Latin-1 if needed)..."
           normalize_env ".env"
 
           # Stop existing containers first (to release file locks)
@@ -152,16 +177,6 @@ jobs:
           git fetch origin
           git checkout test
           git pull origin test
-
-          # Copy configuration files from config repository
-          echo "📝 Copying configuration files from config repository..."
-          cp dartserver-config/environments/test/.env ./.env
-          cp -r dartserver-config/environments/test/wso2is-config ./wso2is-7-config
-          cp -r dartserver-config/environments/test/ssl ./ssl
-          cp -r dartserver-config/environments/test/nginx ./nginx
-
-          echo "🔧 Normalizing .env encoding to UTF-8 (strip BOM, convert Latin-1 if needed)..."
-          normalize_env ".env"
 
           # Rebuild containers
           echo "🔨 Rebuilding containers..."
@@ -371,6 +386,28 @@ jobs:
           chmod +x scripts/decrypt-configs.sh
           ./scripts/decrypt-configs.sh
 
+      - name: Normalize and bundle production config
+        run: |
+          normalize_env() {
+            ENV_PATH="$1"
+            if [ -f "$ENV_PATH" ]; then
+              TMP_ENV=$(mktemp)
+              if iconv -f UTF-8 -t UTF-8 "$ENV_PATH" > "$TMP_ENV" 2>/dev/null; then
+                :
+              elif iconv -f ISO-8859-1 -t UTF-8 "$ENV_PATH" > "$TMP_ENV" 2>/dev/null; then
+                :
+              else
+                cp "$ENV_PATH" "$TMP_ENV"
+              fi
+              perl -0777 -pe 's/^\xEF\xBB\xBF//' "$TMP_ENV" > "$ENV_PATH"
+              rm -f "$TMP_ENV"
+            fi
+          }
+
+          normalize_env "dartserver-config/environments/production/.env"
+
+          tar czf /tmp/dartserver-config.tgz -C dartserver-config environments/production
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -404,20 +441,15 @@ jobs:
 
           chmod 600 ~/.ssh/config
 
-      - name: Sync Production Config to Server
+      - name: Send config bundle to production server
         run: |
-          if [ -d "dartserver-config/environments/production" ]; then
-            cp dartserver-config/environments/production/.env .env
-            mkdir -p wso2is-7-config ssl nginx
-            cp -r dartserver-config/environments/production/wso2is-config/* ./wso2is-7-config/ 2>/dev/null || true
-            cp -r dartserver-config/environments/production/ssl/* ./ssl/ 2>/dev/null || true
-            cp -r dartserver-config/environments/production/nginx/* ./nginx/ 2>/dev/null || true
-            echo "✅ Production configuration files synced"
-          else
-            echo "❌ dartserver-config/environments/production directory not found"
-            ls -la dartserver-config/ || echo "dartserver-config directory not found"
+          if [ ! -f /tmp/dartserver-config.tgz ]; then
+            echo "❌ /tmp/dartserver-config.tgz not found"
             exit 1
           fi
+          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            /tmp/dartserver-config.tgz prod-server:/tmp/dartserver-config.tgz
+          echo "✅ Production config bundle uploaded to prod-server"
 
       - name: Merge to Production Branch
         run: |
@@ -476,7 +508,14 @@ jobs:
             tar xzf /tmp/dartserver-config.tgz -C dartserver-config
           fi
 
-          # Normalize existing .env before any docker-compose command
+          # Copy configuration files from config repository (fresh bundle)
+          echo "📝 Copying configuration files from config repository..."
+          cp dartserver-config/environments/production/.env ./.env
+          cp -r dartserver-config/environments/production/wso2is-config ./wso2is-7-config
+          cp -r dartserver-config/environments/production/ssl ./ssl
+          cp -r dartserver-config/environments/production/nginx ./nginx
+
+          echo "🔧 Normalizing .env encoding to UTF-8 (strip BOM, convert Latin-1 if needed)..."
           normalize_env ".env"
 
           # Stop existing containers
@@ -488,16 +527,6 @@ jobs:
           git fetch origin
           git checkout main
           git pull origin main
-
-          # Copy configuration files from config repository
-          echo "📝 Copying configuration files from config repository..."
-          cp dartserver-config/environments/production/.env ./.env
-          cp -r dartserver-config/environments/production/wso2is-config ./wso2is-7-config
-          cp -r dartserver-config/environments/production/ssl ./ssl
-          cp -r dartserver-config/environments/production/nginx ./nginx
-
-          echo "🔧 Normalizing .env encoding to UTF-8 (strip BOM, convert Latin-1 if needed)..."
-          normalize_env ".env"
 
           # Rebuild containers
           echo "🔨 Rebuilding containers..."
