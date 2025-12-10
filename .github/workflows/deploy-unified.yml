@@ -75,10 +75,18 @@ jobs:
 
       - name: Sync Test Config to Server
         run: |
-          cp dartserver-config/.env .env
-          # Other config files as needed
-          # tar czf /tmp/dartserver-config-test.tgz -C dartserver-config environments/test
-          # scp /tmp/dartserver-config-test.tgz test-server:/tmp/dartserver-config.tgz
+          if [ -d "dartserver-config/environments/test" ]; then
+            cp dartserver-config/environments/test/.env .env
+            mkdir -p wso2is-7-config ssl nginx
+            cp -r dartserver-config/environments/test/wso2is-config/* ./wso2is-7-config/ 2>/dev/null || true
+            cp -r dartserver-config/environments/test/ssl/* ./ssl/ 2>/dev/null || true
+            cp -r dartserver-config/environments/test/nginx/* ./nginx/ 2>/dev/null || true
+            echo "✅ Test configuration files synced"
+          else
+            echo "❌ dartserver-config/environments/test directory not found"
+            ls -la dartserver-config/ || echo "dartserver-config directory not found"
+            exit 1
+          fi
 
       - name: Deploy to Test Server
         env:
@@ -376,10 +384,18 @@ jobs:
 
       - name: Sync Production Config to Server
         run: |
-          cp dartserver-config/.env .env
-          # Other config files as needed
-          # tar czf /tmp/dartserver-config-production.tgz -C dartserver-config environments/production
-          # scp /tmp/dartserver-config-production.tgz prod-server:/tmp/dartserver-config.tgz
+          if [ -d "dartserver-config/environments/production" ]; then
+            cp dartserver-config/environments/production/.env .env
+            mkdir -p wso2is-7-config ssl nginx
+            cp -r dartserver-config/environments/production/wso2is-config/* ./wso2is-7-config/ 2>/dev/null || true
+            cp -r dartserver-config/environments/production/ssl/* ./ssl/ 2>/dev/null || true
+            cp -r dartserver-config/environments/production/nginx/* ./nginx/ 2>/dev/null || true
+            echo "✅ Production configuration files synced"
+          else
+            echo "❌ dartserver-config/environments/production directory not found"
+            ls -la dartserver-config/ || echo "dartserver-config directory not found"
+            exit 1
+          fi
 
       - name: Merge to Production Branch
         run: |
