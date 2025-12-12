@@ -603,7 +603,8 @@ jobs:
     name: Restore Production on Deployment Failure
     runs-on: ubuntu-latest
     needs: [backup-production, deploy-production]
-    if: failure()
+    # Only trigger restore when the production deployment failed AND a backup was created
+    if: ${{ needs.deploy-production.result == 'failure' && needs.backup-production.result == 'success' }}
     environment:
       name: production-restore-approval
       # NOTE: Configure with Required Reviewers to approve/skip restore
