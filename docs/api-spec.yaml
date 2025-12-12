@@ -163,14 +163,19 @@ paths:
                 score:
                   type: integer
                   minimum: 0
-                  maximum: 25
+                  maximum: 60
                 multiplier:
                   type: string
-                  enum: [SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL]
+                  enum: [SINGLE, DOUBLE, TRIPLE]
+              description: |
+                Note: The legacy `POST /api/Throw` endpoint is kept for compatibility,
+                but the API Gateway (`/api/v1/scores`) validates scores up to 60 and
+                supports multipliers `SINGLE`, `DOUBLE`, and `TRIPLE`. Bull values
+                are typically represented by the dartboard zone endpoints.
             examples:
               triple20:
                 value:
-                  score: 20
+                  score: 60
                   multiplier: TRIPLE
       responses:
         "200":
@@ -252,9 +257,10 @@ paths:
       tags: [Players]
       summary: Search WSO2 users
       parameters:
-        - name: query
+        - name: q
           in: query
           required: true
+          description: Search query (username, email or name). The server expects the parameter `q`.
           schema:
             type: string
       responses:
@@ -568,3 +574,174 @@ components:
 
 security:
   - oauth2: []
+
+# API Gateway (v1) - proxy endpoints exposed by the API Gateway service
+# These endpoints are implemented by the API Gateway service (`src/api_gateway/app.py`).
+# They publish events to RabbitMQ and perform token validation.
+/api/v1/scores:
+  post:
+    tags: [Scores]
+    summary: Submit score (gateway)
+    description: Submits score via the API Gateway (validates token and publishes message to RabbitMQ).
+    security:
+      - oauth2: [score:write]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [score, multiplier]
+            properties:
+              score:
+                type: integer
+                minimum: 0
+                maximum: 60
+              multiplier:
+                type: string
+                enum: [SINGLE, DOUBLE, TRIPLE]
+              player_id:
+                type: integer
+              game_id:
+                type: string
+    responses:
+      "201":
+        description: Score accepted and published
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  example: success
+                message:
+                  type: string
+                  example: Score submitted successfully
+                data:
+                  type: object
+                  properties:
+                    score:
+                      type: integer
+                    multiplier:
+                      type: string
+                    player_id:
+                      type: integer
+                    game_id:
+                      type: string
+                    user:
+                      type: string
+                      description: User identifier from token claims
+                    timestamp:
+                      type: string
+                      format: date-time
+
+/api/v1/games:
+  post:
+    tags: [Game Management]
+    summary: Create game (gateway)
+    description: Create a new game via API Gateway (publishes to RabbitMQ).
+    security:
+      - oauth2: [game:write]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [game_type, players]
+            properties:
+              game_type:
+                type: string
+              players:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    username:
+                      type: string
+                    name:
+                      type: string
+                description: List of player objects (username/name). May also accept plain strings in some clients.
+    responses:
+      "201":
+        description: Game created and published
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  example: success
+                message:
+                  type: string
+                  example: Game created successfully
+                data:
+                  type: object
+                  properties:
+                    action:
+                      type: string
+                      example: new_game
+                    game_type:
+                      type: string
+                    players:
+                      type: array
+                      items:
+                        type: object
+                    double_out:
+                      type: boolean
+                    created_by:
+                      type: string
+                    timestamp:
+                      type: string
+                      format: date-time
+
+/api/v1/players:
+  post:
+    tags: [Players]
+    summary: Add player (gateway)
+    description: Adds a player via the API Gateway (publishes to RabbitMQ).
+    security:
+      - oauth2: [player:write]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name]
+            properties:
+              name:
+                type: string
+              username:
+                type: string
+              email:
+                type: string
+    responses:
+      "201":
+        description: Player added and published
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  example: success
+                message:
+                  type: string
+                  example: Player added successfully
+                data:
+                  type: object
+                  properties:
+                    action:
+                      type: string
+                      example: add_player
+                    name:
+                      type: string
+                    added_by:
+                      type: string
+                    timestamp:
+                      type: string
+                      format: date-time
