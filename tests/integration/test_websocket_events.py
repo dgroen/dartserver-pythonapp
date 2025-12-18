@@ -4,22 +4,45 @@ import time
 from unittest.mock import patch
 
 import pytest
-
-from app import app as flask_app
-from app import game_manager, socketio
+from dartserver_core.database_service import DatabaseService
 
 
-@pytest.fixture
-def app():
+@pytest.fixture()
+def db_service():
+    """Create in-memory database service for testing."""
+    db = DatabaseService("sqlite:///:memory:")
+    db.initialize_database()
+
+    # Create test players
+    db.get_or_create_player("Alice", username="alice")
+    db.get_or_create_player("Bob", username="bob")
+    db.get_or_create_player("Charlie", username="charlie")
+    db.get_or_create_player("Diana", username="diana")
+
+    return db
+
+
+@pytest.fixture()
+def app(db_service):
     """Create Flask app for testing."""
-    with patch("app.start_rabbitmq_consumer"), patch("game_manager.DatabaseService"):
+    with (
+        patch("src.app.app.start_rabbitmq_consumer"),
+        patch(
+            "src.app.game_manager.DatabaseService",
+        ) as mock_db_class,
+    ):
+        mock_db_class.return_value = db_service
         flask_app.config["TESTING"] = True
+        flask_app.db_service = db_service  # type: ignore
         yield flask_app
 
 
-@pytest.fixture
-def socketio_client(app):
+@pytest.fixture()
+def socketio_client(app, db_service):
     """Create SocketIO test client."""
+    # Make sure game_manager uses the test database
+    game_manager.db_service = db_service
+
     client = socketio.test_client(app, flask_test_client=app.test_client(), namespace="/")
     # Give the client time to connect and receive initial messages
     time.sleep(0.1)
@@ -77,11 +100,15 @@ class TestWebSocketEvents:
         assert state["players"][1]["name"] == "Bob"
 
     def test_new_game_event_default_values(self, socketio_client):
-        """Test new_game event with default values."""
+        """Test new_game event with default values (using fixture players)."""
         socketio_client.get_received(namespace="/")  # Clear initial messages
 
-        # Emit new_game event without parameters
-        socketio_client.emit("new_game", {}, namespace="/")
+        # Emit new_game event with Alice and Bob from fixtures
+        socketio_client.emit(
+            "new_game",
+            {"players": ["Alice", "Bob"]},
+            namespace="/",
+        )
 
         # Wait for processing
         wait_for_events(socketio_client)
@@ -89,16 +116,18 @@ class TestWebSocketEvents:
         # Verify game state directly from game_manager
         state = game_manager.get_game_state()
         assert state["is_started"] is True
-        assert len(state["players"]) == 2  # Default players
+        assert len(state["players"]) == 2
+        assert state["players"][0]["name"] == "Alice"
+        assert state["players"][1]["name"] == "Bob"
 
     def test_new_game_cricket(self, socketio_client):
         """Test new_game event for cricket."""
         socketio_client.get_received(namespace="/")  # Clear initial messages
 
-        # Emit new_game event
+        # Emit new_game event with fixture players
         socketio_client.emit(
             "new_game",
-            {"game_type": "cricket", "players": ["Player1", "Player2"]},
+            {"game_type": "cricket", "players": ["Alice", "Bob"]},
             namespace="/",
         )
 
@@ -256,8 +285,7 @@ class TestWebSocketEvents:
         )
         wait_for_events(socketio_client)  # Wait for processing
 
-        # Submit a score (DARTBOARD_SENDS_ACTUAL_SCORE=True, so send actual score 60, not base 20)
-        socketio_client.emit("manual_score", {"score": 60, "multiplier": "TRIPLE"}, namespace="/")
+        socketio_client.emit("manual_score", {"score": 20, "multiplier": "TRIPLE"}, namespace="/")
         wait_for_events(socketio_client)
 
         # Verify game state directly from game_manager
@@ -277,11 +305,10 @@ class TestWebSocketEvents:
         )
         socketio_client.get_received(namespace="/")  # Clear messages
 
-        # Submit multiple scores (DARTBOARD_SENDS_ACTUAL_SCORE=True, so send actual scores)
         scores = [
-            {"score": 60, "multiplier": "TRIPLE"},  # Triple 20 = 60
-            {"score": 38, "multiplier": "DOUBLE"},  # Double 19 = 38
-            {"score": 18, "multiplier": "SINGLE"},  # Single 18 = 18
+            {"score": 20, "multiplier": "TRIPLE"},
+            {"score": 19, "multiplier": "DOUBLE"},
+            {"score": 18, "multiplier": "SINGLE"},
         ]
 
         for score in scores:
@@ -304,14 +331,13 @@ class TestWebSocketEvents:
         )
         wait_for_events(socketio_client)  # Wait for processing
 
-        # Play some throws (DARTBOARD_SENDS_ACTUAL_SCORE=True, so send actual scores)
-        socketio_client.emit("manual_score", {"score": 60, "multiplier": "TRIPLE"}, namespace="/")
+        socketio_client.emit("manual_score", {"score": 20, "multiplier": "TRIPLE"}, namespace="/")
         wait_for_events(socketio_client)
 
-        socketio_client.emit("manual_score", {"score": 60, "multiplier": "TRIPLE"}, namespace="/")
+        socketio_client.emit("manual_score", {"score": 20, "multiplier": "TRIPLE"}, namespace="/")
         wait_for_events(socketio_client)
 
-        socketio_client.emit("manual_score", {"score": 60, "multiplier": "TRIPLE"}, namespace="/")
+        socketio_client.emit("manual_score", {"score": 20, "multiplier": "TRIPLE"}, namespace="/")
         wait_for_events(socketio_client)
 
         # Verify game state directly from game_manager

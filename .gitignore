@@ -33,6 +33,8 @@ ENV/
 
 # Environment variables
 .env
+.env.dev
+*.db
 
 # IDE
 .vscode/
@@ -51,6 +53,9 @@ Thumbs.db
 # Testing
 .pytest_cache/
 .coverage
+.tox/
+.mypy_cache/
+.ruff_cache/
 
 # Documentation build
 docs/build/
@@ -59,3 +64,44 @@ docs/source/*
 dartserver-pythonapp.code-workspace
 .env_bu
 .zencoder/rules/repo.md
+<<<<<<< HEAD
+helpers/docker-backups/
+wso2is-7-config
+node_modules/.cache
+=======
+docker-backups
+wso2is-7-config/deployment.prod.example.toml
+wso2is-7-config/deployment.dev.example.toml
+node_modules/.cache
+docker-backups
+.env____
+.venv-test/
+wso2is-7-config
+>>>>>>> 49fe593a5d0f672d19c90766cc88afbdffee1665
+
+# Security and credentials
+# Security scanning outputs
+bandit-report.json
+safety-report.json
+.bandit
+security-report.html
+
+# Secrets and credentials
+.env.local
+.env.*.local
+secrets.json
+credentials.json
+
+# Keys
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Tokens
+token
+tokens.json
+
+# API keys
+api_keys.json
+.api_keys

@@ -3,17 +3,22 @@
 from unittest.mock import MagicMock
 
 import pytest
+from dartserver_app import GameManager
 
-from game_manager import GameManager
+# Constants for testing
+DEFAULT_PLAYER_IDS = [
+    {"db_id": 1, "name": "Alice"},
+    {"db_id": 2, "name": "Bob"},
+]
 
 
-@pytest.fixture
+@pytest.fixture()
 def socketio():
     """Mock SocketIO instance."""
     return MagicMock()
 
 
-@pytest.fixture
+@pytest.fixture()
 def game_manager(socketio):
     """Create GameManager instance."""
     return GameManager(socketio)
@@ -47,7 +52,7 @@ class TestGameManagerEdgeCases:
     def test_skip_to_player_negative_id(self, game_manager):
         """Test skip_to_player with negative player ID."""
         # Start game
-        game_manager.new_game("301", ["Alice", "Bob"])
+        game_manager.new_game("301", player_ids=DEFAULT_PLAYER_IDS)
 
         # Try to skip to negative player ID
         game_manager.skip_to_player(-1)
@@ -58,7 +63,7 @@ class TestGameManagerEdgeCases:
     def test_skip_to_player_out_of_range(self, game_manager):
         """Test skip_to_player with out of range player ID."""
         # Start game
-        game_manager.new_game("301", ["Alice", "Bob"])
+        game_manager.new_game("301", player_ids=DEFAULT_PLAYER_IDS)
 
         # Try to skip to player ID beyond range
         game_manager.skip_to_player(10)
@@ -80,7 +85,7 @@ class TestGameManagerEdgeCases:
     def test_get_game_state_with_game(self, game_manager):
         """Test get_game_state when game is active."""
         # Start game
-        game_manager.new_game("301", ["Alice", "Bob"])
+        game_manager.new_game("301", player_ids=DEFAULT_PLAYER_IDS)
 
         state = game_manager.get_game_state()
 
@@ -93,7 +98,7 @@ class TestGameManagerEdgeCases:
     def test_process_score_with_bull_multiplier(self, game_manager):
         """Test processing score with BULL multiplier."""
         # Start game
-        game_manager.new_game("301", ["Alice", "Bob"])
+        game_manager.new_game("301", player_ids=DEFAULT_PLAYER_IDS)
 
         # Process bull score
         game_manager.process_score({"score": 25, "multiplier": "BULL"})
@@ -104,7 +109,7 @@ class TestGameManagerEdgeCases:
     def test_process_score_with_dblbull_multiplier(self, game_manager):
         """Test processing score with DBLBULL multiplier."""
         # Start game
-        game_manager.new_game("301", ["Alice", "Bob"])
+        game_manager.new_game("301", player_ids=DEFAULT_PLAYER_IDS)
 
         # Process double bull score
         game_manager.process_score({"score": 25, "multiplier": "DBLBULL"})
@@ -115,7 +120,7 @@ class TestGameManagerEdgeCases:
     def test_process_score_with_miss(self, game_manager):
         """Test processing score with miss (score 0)."""
         # Start game
-        game_manager.new_game("301", ["Alice", "Bob"])
+        game_manager.new_game("301", player_ids=DEFAULT_PLAYER_IDS)
 
         # Process miss
         game_manager.process_score({"score": 0, "multiplier": "SINGLE"})
@@ -188,7 +193,7 @@ class TestGameManagerEdgeCases:
     def test_handle_bust(self, game_manager, socketio):
         """Test _handle_bust method."""
         # Start game
-        game_manager.new_game("301", ["Alice", "Bob"])
+        game_manager.new_game("301", player_ids=DEFAULT_PLAYER_IDS)
 
         # Trigger bust
         game_manager._handle_bust(None)
@@ -203,7 +208,7 @@ class TestGameManagerEdgeCases:
     def test_handle_winner(self, game_manager, socketio):
         """Test _handle_winner method."""
         # Start game
-        game_manager.new_game("301", ["Alice", "Bob"])
+        game_manager.new_game("301", player_ids=DEFAULT_PLAYER_IDS)
 
         # Trigger winner
         game_manager._handle_winner(0)
@@ -218,7 +223,7 @@ class TestGameManagerEdgeCases:
     def test_end_turn(self, game_manager, socketio):
         """Test _end_turn method."""
         # Start game
-        game_manager.new_game("301", ["Alice", "Bob"])
+        game_manager.new_game("301", player_ids=DEFAULT_PLAYER_IDS)
 
         # End turn
         game_manager._end_turn()
@@ -232,7 +237,7 @@ class TestGameManagerEdgeCases:
     def test_emit_game_state(self, game_manager, socketio):
         """Test _emit_game_state method."""
         # Start game
-        game_manager.new_game("301", ["Alice", "Bob"])
+        game_manager.new_game("301", player_ids=DEFAULT_PLAYER_IDS)
 
         # Emit game state
         game_manager._emit_game_state()
@@ -278,7 +283,7 @@ class TestGameManagerEdgeCases:
 
     def test_new_game_401(self, game_manager):
         """Test starting a 401 game."""
-        game_manager.new_game("401", ["Alice", "Bob"])
+        game_manager.new_game("401", player_ids=DEFAULT_PLAYER_IDS)
 
         assert game_manager.game_type == "401"
         assert game_manager.is_started is True
@@ -287,7 +292,7 @@ class TestGameManagerEdgeCases:
 
     def test_new_game_unknown_type(self, game_manager):
         """Test starting game with unknown type defaults to 301."""
-        game_manager.new_game("999", ["Alice", "Bob"])
+        game_manager.new_game("999", player_ids=DEFAULT_PLAYER_IDS)
 
         # Should default to 301
         assert game_manager.game_type == "999"
@@ -296,7 +301,7 @@ class TestGameManagerEdgeCases:
     def test_process_score_complete_turn(self, game_manager):
         """Test processing score that completes a turn."""
         # Start game
-        game_manager.new_game("301", ["Alice", "Bob"])
+        game_manager.new_game("301", player_ids=DEFAULT_PLAYER_IDS)
 
         # Process 3 throws
         game_manager.process_score({"score": 20, "multiplier": "SINGLE"})
@@ -326,7 +331,7 @@ class TestGameManagerEdgeCases:
 
     def test_cricket_game_initialization(self, game_manager):
         """Test cricket game initialization."""
-        game_manager.new_game("cricket", ["Alice", "Bob"])
+        game_manager.new_game("cricket", player_ids=DEFAULT_PLAYER_IDS)
 
         assert game_manager.game_type == "cricket"
         assert game_manager.is_started is True
@@ -335,7 +340,7 @@ class TestGameManagerEdgeCases:
     def test_process_score_cricket_target(self, game_manager):
         """Test processing cricket target score."""
         # Start cricket game
-        game_manager.new_game("cricket", ["Alice", "Bob"])
+        game_manager.new_game("cricket", player_ids=DEFAULT_PLAYER_IDS)
 
         # Process cricket target (20)
         game_manager.process_score({"score": 20, "multiplier": "TRIPLE"})

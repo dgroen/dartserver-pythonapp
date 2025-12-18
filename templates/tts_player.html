@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTS Audio Player</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #555;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 100px;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            transition: border-color 0.3s;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-generate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-generate:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-clear {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-clear:hover {
+            background: #e0e0e0;
+        }
+
+        .player-section {
+            display: none;
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .player-section.active {
+            display: block;
+        }
+
+        audio {
+            width: 100%;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+
+        .status {
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .status.loading {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #667eea;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #333;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 TTS Audio Player</h1>
+
+        <div class="form-group">
+            <label for="textInput">Text to Convert:</label>
+            <textarea id="textInput" placeholder="Enter text to convert to speech...">{{ initial_text }}</textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+                <label for="engineSelect">Engine:</label>
+                <select id="engineSelect">
+                    <option value="gtts">Google TTS</option>
+                    <option value="pyttsx3">pyttsx3</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="voiceSelect">Voice:</label>
+                <select id="voiceSelect">
+                    <option value="default">Default</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="languageSelect">Language:</label>
+            <select id="languageSelect">
+                <option value="en">English</option>
+                <option value="nl">Dutch (Nederlands)</option>
+                <option value="de">German</option>
+                <option value="fr">French</option>
+                <option value="es">Spanish</option>
+                <option value="it">Italian</option>
+                <option value="pt">Portuguese</option>
+                <option value="ru">Russian</option>
+                <option value="ja">Japanese</option>
+                <option value="zh-cn">Chinese (Simplified)</option>
+                <option value="zh-tw">Chinese (Traditional)</option>
+                <option value="ko">Korean</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="configInput">TTS Configuration (JSON):</label>
+            <textarea id="configInput" placeholder="Enter TTS configuration as JSON..." style="font-family: 'Courier New', monospace; font-size: 12px; min-height: 120px;">{"enabled":true,"engine":"gtts","speed":150,"voice":"default","volume":0.9,"language":"en"}</textarea>
+            <small style="display: block; margin-top: 6px; color: #888;">Modify engine, speed, voice, volume, language, or enabled status. Changes are synced with the dropdown selectors.</small>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-generate" id="generateBtn" onclick="generateAudio()">Generate Audio</button>
+            <button class="btn-clear" onclick="clearText()">Clear</button>
+        </div>
+
+        <div class="player-section" id="playerSection">
+            <div id="status" class="status"></div>
+            <audio id="audioPlayer" controls></audio>
+        </div>
+
+        <div class="info-box">
+            <strong>ℹ️ How to use:</strong> Enter your text, select a language, and click "Generate Audio" to convert it to speech. The audio player will appear below with playback controls.
+        </div>
+    </div>
+
+    <script>
+        const textInput = document.getElementById('textInput');
+        const configInput = document.getElementById('configInput');
+        const engineSelect = document.getElementById('engineSelect');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const languageSelect = document.getElementById('languageSelect');
+        const generateBtn = document.getElementById('generateBtn');
+        const playerSection = document.getElementById('playerSection');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const statusDiv = document.getElementById('status');
+
+        function parseConfig() {
+            try {
+                const configText = configInput.value.trim();
+                const config = JSON.parse(configText);
+                return config;
+            } catch (error) {
+                throw new Error('Invalid JSON: ' + error.message);
+            }
+        }
+
+        function fetchVoices(engine) {
+            return fetch('/api/tts/voices')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch voices');
+                    }
+                    return response.json();
+                })
+                .then(voices => {
+                    voiceSelect.innerHTML = '';
+                    if (voices.length === 0) {
+                        voiceSelect.innerHTML = '<option value="default">Default</option>';
+                    } else {
+                        voices.forEach(voice => {
+                            const option = document.createElement('option');
+                            option.value = voice.name;
+                            option.textContent = voice.name;
+                            voiceSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.warn('Could not fetch voices:', error);
+                    voiceSelect.innerHTML = '<option value="default">Default</option>';
+                });
+        }
+
+        function applyConfig(config) {
+            return fetch('/api/tts/config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(config)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Config failed: ' + response.status);
+                }
+                return response.json();
+            });
+        }
+
+        function generateAudio() {
+            const text = textInput.value.trim();
+            const selectedEngine = engineSelect.value;
+            const selectedVoice = voiceSelect.value;
+            const selectedLanguage = languageSelect.value;
+
+            if (!text) {
+                showStatus('Please enter some text', 'error');
+                return;
+            }
+
+            let config;
+            try {
+                config = parseConfig();
+                config.engine = selectedEngine;
+                config.voice = selectedVoice;
+                config.language = selectedLanguage;
+            } catch (error) {
+                showStatus('✗ ' + error.message, 'error');
+                return;
+            }
+
+            generateBtn.disabled = true;
+            showStatus('<span class="spinner"></span>Applying config...', 'loading');
+
+            applyConfig(config)
+                .then(() => {
+                    showStatus('<span class="spinner"></span>Generating audio...', 'loading');
+                    return fetch('/api/tts/generate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            text: text,
+                            lang: selectedLanguage
+                        })
+                    });
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Generate failed: ' + response.status);
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    if (blob.size === 0) {
+                        throw new Error('Empty audio response');
+                    }
+                    const url = URL.createObjectURL(blob);
+                    audioPlayer.src = url;
+                    playerSection.classList.add('active');
+                    showStatus('✓ Audio generated successfully!', 'success');
+                    generateBtn.disabled = false;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showStatus('✗ ' + error.message, 'error');
+                    generateBtn.disabled = false;
+                });
+        }
+
+        function showStatus(message, type) {
+            statusDiv.className = 'status ' + type;
+            statusDiv.innerHTML = message;
+        }
+
+        function clearText() {
+            textInput.value = '';
+            textInput.focus();
+            playerSection.classList.remove('active');
+            audioPlayer.src = '';
+            statusDiv.innerHTML = '';
+        }
+
+        engineSelect.addEventListener('change', () => {
+            try {
+                const config = parseConfig();
+                config.engine = engineSelect.value;
+                configInput.value = JSON.stringify(config);
+                fetchVoices(engineSelect.value);
+            } catch (error) {
+                console.warn('Could not sync engine to config');
+            }
+        });
+
+        voiceSelect.addEventListener('change', () => {
+            try {
+                const config = parseConfig();
+                config.voice = voiceSelect.value;
+                configInput.value = JSON.stringify(config);
+            } catch (error) {
+                console.warn('Could not sync voice to config');
+            }
+        });
+
+        languageSelect.addEventListener('change', () => {
+            try {
+                const config = parseConfig();
+                config.language = languageSelect.value;
+                configInput.value = JSON.stringify(config);
+            } catch (error) {
+                console.warn('Could not sync language to config');
+            }
+        });
+
+        textInput.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                generateAudio();
+            }
+        });
+
+        configInput.addEventListener('change', () => {
+            try {
+                const config = parseConfig();
+                if (config.engine) engineSelect.value = config.engine;
+                if (config.voice) voiceSelect.value = config.voice;
+                if (config.language) languageSelect.value = config.language;
+            } catch (error) {
+                console.warn('Could not sync config to dropdowns');
+            }
+        });
+
+        fetchVoices(engineSelect.value);
+    </script>
+</body>
+</html>

@@ -21,23 +21,25 @@ docker-compose -f docker-compose-wso2.yml restart [service_name]
 
 ## Service URLs
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| RabbitMQ Management | http://localhost:15672 | guest/guest |
-| WSO2 IS Console | https://localhost:9443/carbon | admin/admin |
-| WSO2 APIM Publisher | https://localhost:9444/publisher | admin/admin |
-| WSO2 APIM DevPortal | https://localhost:9444/devportal | admin/admin |
-| API Gateway | http://localhost:8080 | - |
-| Darts App | http://localhost:5000 | - |
+| Service             | URL                                | Credentials |
+| ------------------- | ---------------------------------- | ----------- |
+| RabbitMQ Management | <http://localhost:15672>           | guest/guest |
+| WSO2 IS Console     | <https://localhost:9443/carbon>    | admin/admin |
+| WSO2 APIM Publisher | <https://localhost:9444/publisher> | admin/admin |
+| WSO2 APIM DevPortal | <https://localhost:9444/devportal> | admin/admin |
+| API Gateway         | <http://localhost:8080>            | -           |
+| Darts App           | <http://localhost:5000>            | -           |
 
 ## API Endpoints
 
 ### Health Check
+
 ```bash
 curl http://localhost:8080/health
 ```
 
 ### Get Access Token
+
 ```bash
 curl -k -X POST https://localhost:9443/oauth2/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
@@ -48,6 +50,7 @@ curl -k -X POST https://localhost:9443/oauth2/token \
 ```
 
 ### Submit Score
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/scores \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -61,6 +64,7 @@ curl -X POST http://localhost:8080/api/v1/scores \
 ```
 
 ### Create Game
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/games \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -73,6 +77,7 @@ curl -X POST http://localhost:8080/api/v1/games \
 ```
 
 ### Add Player
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/players \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -84,23 +89,23 @@ curl -X POST http://localhost:8080/api/v1/players \
 
 ## OAuth2 Scopes
 
-| Scope | Description | Required Role |
-|-------|-------------|---------------|
-| `score:write` | Submit scores | dartboard_device, game_admin, player |
-| `score:read` | Read scores | game_admin |
-| `game:write` | Create/manage games | game_admin |
-| `game:read` | Read game info | game_admin, player, spectator |
-| `player:write` | Add/manage players | game_admin |
-| `player:read` | Read player info | game_admin, player |
+| Scope          | Description         | Required Role                        |
+| -------------- | ------------------- | ------------------------------------ |
+| `score:write`  | Submit scores       | dartboard_device, game_admin, player |
+| `score:read`   | Read scores         | game_admin                           |
+| `game:write`   | Create/manage games | game_admin                           |
+| `game:read`    | Read game info      | game_admin, player, spectator        |
+| `player:write` | Add/manage players  | game_admin                           |
+| `player:read`  | Read player info    | game_admin, player                   |
 
 ## User Roles
 
-| Role | Scopes |
-|------|--------|
-| `dartboard_device` | score:write |
-| `game_admin` | All scopes |
-| `player` | score:write, game:read, player:read |
-| `spectator` | game:read |
+| Role               | Scopes                              |
+| ------------------ | ----------------------------------- |
+| `dartboard_device` | score:write                         |
+| `game_admin`       | All scopes                          |
+| `player`           | score:write, game:read, player:read |
+| `spectator`        | game:read                           |
 
 ## Environment Variables
 
@@ -128,6 +133,7 @@ API_GATEWAY_PORT=8080
 ## Common Issues & Solutions
 
 ### Token Validation Fails
+
 ```bash
 # Check JWKS endpoint
 curl -k https://localhost:9443/oauth2/jwks
@@ -138,6 +144,7 @@ docker-compose -f docker-compose-wso2.yml restart api-gateway
 ```
 
 ### RabbitMQ Connection Failed
+
 ```bash
 # Check RabbitMQ status
 docker exec darts-rabbitmq rabbitmq-diagnostics ping
@@ -147,6 +154,7 @@ docker exec darts-rabbitmq rabbitmqctl list_exchanges
 ```
 
 ### WSO2 Not Starting
+
 ```bash
 # Check logs
 docker logs darts-wso2is
@@ -184,47 +192,50 @@ if client.check_health():
 
 ## RabbitMQ Routing Keys
 
-| Action | Routing Key |
-|--------|-------------|
-| Score submission | `darts.scores.api` |
-| Game creation | `darts.games.create` |
-| Player addition | `darts.players.add` |
+| Action           | Routing Key          |
+| ---------------- | -------------------- |
+| Score submission | `darts.scores.api`   |
+| Game creation    | `darts.games.create` |
+| Player addition  | `darts.players.add`  |
 
 ## Rate Limits
 
-| Endpoint | Limit |
-|----------|-------|
-| POST /api/v1/scores | 100 req/min |
-| POST /api/v1/games | 10 req/min |
-| POST /api/v1/players | 20 req/min |
+| Endpoint             | Limit       |
+| -------------------- | ----------- |
+| POST /api/v1/scores  | 100 req/min |
+| POST /api/v1/games   | 10 req/min  |
+| POST /api/v1/players | 20 req/min  |
 
 ## Validation Rules
 
 ### Score Submission
+
 - `score`: Integer, 0-60
 - `multiplier`: "SINGLE", "DOUBLE", or "TRIPLE"
 - `player_id`: Optional string
 - `game_id`: Optional string
 
 ### Game Creation
+
 - `game_type`: "301", "401", "501", or "cricket"
 - `players`: Array, minimum 1 player
 - `double_out`: Boolean, optional
 
 ### Player Addition
+
 - `name`: Non-empty string
 
 ## HTTP Status Codes
 
-| Code | Meaning |
-|------|---------|
-| 200 | Success |
-| 201 | Created |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Not Found |
-| 500 | Internal Server Error |
+| Code | Meaning               |
+| ---- | --------------------- |
+| 200  | Success               |
+| 201  | Created               |
+| 400  | Bad Request           |
+| 401  | Unauthorized          |
+| 403  | Forbidden             |
+| 404  | Not Found             |
+| 500  | Internal Server Error |
 
 ## Useful Docker Commands
 

@@ -1,6 +1,6 @@
 # 🎯 Get Started with Darts Game Application
 
-## Welcome!
+## Welcome
 
 You now have a complete Python web application for managing darts games with RabbitMQ integration. This guide will get you up and running in minutes.
 
@@ -17,9 +17,10 @@ docker-compose up
 That's it! The application will start with RabbitMQ included.
 
 **Access:**
-- Game Board: http://localhost:5000
-- Control Panel: http://localhost:5000/control
-- RabbitMQ Management: http://localhost:15672 (guest/guest)
+
+- Game Board: <http://localhost:5000>
+- Control Panel: <http://localhost:5000/control>
+- RabbitMQ Management: <http://localhost:15672> (guest/guest)
 
 ---
 
@@ -32,6 +33,7 @@ That's it! The application will start with RabbitMQ included.
 ```
 
 The script will:
+
 1. Create a virtual environment
 2. Install dependencies
 3. Start the application
@@ -67,6 +69,7 @@ python verify_installation.py
 ```
 
 This will check:
+
 - ✓ Python version
 - ✓ Required packages
 - ✓ File structure
@@ -78,7 +81,7 @@ This will check:
 
 ### Step 1: Open the Control Panel
 
-Navigate to: http://localhost:5000/control
+Navigate to: <http://localhost:5000/control>
 
 ### Step 2: Start a Game
 
@@ -88,6 +91,7 @@ Navigate to: http://localhost:5000/control
 ### Step 3: Send a Score
 
 **Option A: Use the test script**
+
 ```bash
 # In a new terminal
 python test_rabbitmq.py
@@ -95,6 +99,7 @@ python test_rabbitmq.py
 ```
 
 **Option B: Use the control panel**
+
 1. Go to "Manual Score Entry"
 2. Enter score: **20**
 3. Select multiplier: **TRIPLE**
@@ -102,9 +107,10 @@ python test_rabbitmq.py
 
 ### Step 4: Watch the Game Board
 
-Open: http://localhost:5000
+Open: <http://localhost:5000>
 
 You'll see:
+
 - Player scores update in real-time
 - Current player highlighted
 - Score messages displayed
@@ -122,11 +128,13 @@ You'll see:
 ### Learn the Basics
 
 1. **Read the Quick Start Guide**
+
    ```bash
    cat QUICKSTART.md
    ```
 
 2. **Explore the Examples**
+
    ```bash
    # REST API examples
    python examples/api_examples.py
@@ -136,6 +144,7 @@ You'll see:
    ```
 
 3. **Understand the Architecture**
+
    ```bash
    cat ARCHITECTURE.md
    ```
@@ -143,11 +152,13 @@ You'll see:
 ### Try Different Game Modes
 
 **301 Game:**
+
 - Start with 301 points
 - Subtract each dart
 - First to exactly 0 wins
 
 **Cricket Game:**
+
 - Hit 15, 16, 17, 18, 19, 20, Bull
 - 3 hits to "open" each number
 - Score points on opened numbers
@@ -160,6 +171,7 @@ python test_rabbitmq.py
 ```
 
 Choose from:
+
 1. Send all test scores
 2. Send single random score
 3. Send custom score
@@ -171,6 +183,7 @@ If you have an electronic dartboard:
 
 1. Configure Arduino/ESP32 to publish to RabbitMQ
 2. Use message format:
+
    ```json
    {
      "score": 20,
@@ -178,6 +191,7 @@ If you have an electronic dartboard:
      "user": "Player 1"
    }
    ```
+
 3. Publish to exchange: `darts_exchange`
 4. Routing key: `darts.scores.*`
 
@@ -188,10 +202,12 @@ If you have an electronic dartboard:
 ### Add More Players
 
 **Via Control Panel:**
+
 1. Enter player name
 2. Click "Add Player"
 
 **Via API:**
+
 ```bash
 curl -X POST http://localhost:5000/api/players \
   -H "Content-Type: application/json" \
@@ -201,10 +217,12 @@ curl -X POST http://localhost:5000/api/players \
 ### Change Game Type
 
 **Via Control Panel:**
+
 1. Select game type (301, 401, 501, Cricket)
 2. Click "Start New Game"
 
 **Via API:**
+
 ```bash
 curl -X POST http://localhost:5000/api/game/new \
   -H "Content-Type: application/json" \
@@ -214,9 +232,10 @@ curl -X POST http://localhost:5000/api/game/new \
 ### Get Game State
 
 **Via Browser:**
-http://localhost:5000/api/game/state
+<http://localhost:5000/api/game/state>
 
 **Via Command Line:**
+
 ```bash
 curl http://localhost:5000/api/game/state
 ```
@@ -224,6 +243,7 @@ curl http://localhost:5000/api/game/state
 ### Stop the Application
 
 **Docker:**
+
 ```bash
 docker-compose down
 ```
@@ -238,11 +258,13 @@ Press `Ctrl+C` in the terminal
 ### Application Won't Start
 
 **Check Python version:**
+
 ```bash
 python --version  # Should be 3.8 or higher
 ```
 
 **Reinstall dependencies:**
+
 ```bash
 pip install -r requirements.txt --force-reinstall
 ```
@@ -250,16 +272,19 @@ pip install -r requirements.txt --force-reinstall
 ### RabbitMQ Connection Failed
 
 **Check if RabbitMQ is running:**
+
 ```bash
 sudo systemctl status rabbitmq-server
 ```
 
 **Start RabbitMQ:**
+
 ```bash
 sudo systemctl start rabbitmq-server
 ```
 
 **Check credentials in .env:**
+
 ```bash
 RABBITMQ_USER=guest
 RABBITMQ_PASSWORD=guest
@@ -269,11 +294,13 @@ RABBITMQ_PASSWORD=guest
 
 **Change Flask port:**
 Edit `.env`:
+
 ```bash
 FLASK_PORT=5001
 ```
 
 **Or specify when running:**
+
 ```bash
 FLASK_PORT=5001 python app.py
 ```
@@ -281,7 +308,7 @@ FLASK_PORT=5001 python app.py
 ### Scores Not Appearing
 
 1. **Check RabbitMQ Management UI:**
-   http://localhost:15672
+   <http://localhost:15672>
    - Verify exchange `darts_exchange` exists
    - Check if messages are being received
 
@@ -289,6 +316,7 @@ FLASK_PORT=5001 python app.py
    Look for error messages in the terminal
 
 3. **Verify message format:**
+
    ```json
    {
      "score": 20,
@@ -311,12 +339,14 @@ FLASK_PORT=5001 python app.py
 ## 🎯 Quick Reference
 
 ### URLs
-- Game Board: http://localhost:5000
-- Control Panel: http://localhost:5000/control
-- API Docs: http://localhost:5000/api/game/state
-- RabbitMQ UI: http://localhost:15672
+
+- Game Board: <http://localhost:5000>
+- Control Panel: <http://localhost:5000/control>
+- API Docs: <http://localhost:5000/api/game/state>
+- RabbitMQ UI: <http://localhost:15672>
 
 ### Commands
+
 ```bash
 # Start application
 python app.py
@@ -333,6 +363,7 @@ python examples/websocket_client.py
 ```
 
 ### Message Format
+
 ```json
 {
   "score": 20,
@@ -342,6 +373,7 @@ python examples/websocket_client.py
 ```
 
 ### API Endpoints
+
 ```
 GET  /api/game/state      - Get game state
 POST /api/game/new        - Start new game
@@ -352,9 +384,10 @@ DELETE /api/players/<id>  - Remove player
 
 ---
 
-## 🎉 You're Ready!
+## 🎉 You're Ready
 
 You now have everything you need to:
+
 - ✅ Run the darts game application
 - ✅ Start games and manage players
 - ✅ Send scores via RabbitMQ

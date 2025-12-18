@@ -47,27 +47,29 @@ curl -X POST http://localhost:5000/api/tts/test \
 
 ## 🎮 Game Announcements
 
-| Event | Announcement |
-|-------|-------------|
-| Game Start | "Welcome to the game" |
-| Player Turn | "{Player}, Throw Darts" |
-| Triple | "Triple! {score} points" |
-| Double | "Double! {score} points" |
-| Bullseye | "Bullseye! {score} points" |
+| Event       | Announcement                      |
+| ----------- | --------------------------------- |
+| Game Start  | "Welcome to the game"             |
+| Player Turn | "{Player}, Throw Darts"           |
+| Triple      | "Triple! {score} points"          |
+| Double      | "Double! {score} points"          |
+| Bullseye    | "Bullseye! {score} points"        |
 | Double Bull | "Double Bullseye! {score} points" |
-| Bust | "Bust!" |
-| Winner | "We have a winner! {name} wins!" |
+| Bust        | "Bust!"                           |
+| Winner      | "We have a winner! {name} wins!"  |
 
 ---
 
 ## 🔧 Runtime Configuration
 
 ### Get Config
+
 ```bash
 curl http://localhost:5000/api/tts/config
 ```
 
 ### Change Speed
+
 ```bash
 curl -X POST http://localhost:5000/api/tts/config \
   -H "Content-Type: application/json" \
@@ -75,6 +77,7 @@ curl -X POST http://localhost:5000/api/tts/config \
 ```
 
 ### Change Voice
+
 ```bash
 curl -X POST http://localhost:5000/api/tts/config \
   -H "Content-Type: application/json" \
@@ -82,6 +85,7 @@ curl -X POST http://localhost:5000/api/tts/config \
 ```
 
 ### Disable TTS
+
 ```bash
 curl -X POST http://localhost:5000/api/tts/config \
   -H "Content-Type: application/json" \
@@ -92,14 +96,14 @@ curl -X POST http://localhost:5000/api/tts/config \
 
 ## 🎚️ Speed Guide
 
-| Speed | Description |
-|-------|-------------|
-| 100 | Very slow, clear |
-| 125 | Slow |
-| 150 | Normal (default) |
-| 175 | Slightly faster |
-| 200 | Fast |
-| 250 | Very fast |
+| Speed | Description      |
+| ----- | ---------------- |
+| 100   | Very slow, clear |
+| 125   | Slow             |
+| 150   | Normal (default) |
+| 175   | Slightly faster  |
+| 200   | Fast             |
+| 250   | Very fast        |
 
 ---
 

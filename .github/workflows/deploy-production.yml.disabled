@@ -1,0 +1,180 @@
+name: Deploy to Production Environment
+
+on:
+  push:
+    branches:
+      - prod
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-production:
+    name: Deploy to Production Server
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://letsplaydarts.eu
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.JUMPHOST_SSH_KEY }}" > ~/.ssh/jumphost_key
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/jumphost_key
+
+          # Configure SSH config for jumphost setup
+          cat > ~/.ssh/config << 'SSHCONFIG'
+          Host jumphost
+            HostName ${{ secrets.JUMPHOST_HOST }}
+            User ${{ secrets.JUMPHOST_USER }}
+            IdentityFile ~/.ssh/jumphost_key
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PubkeyAcceptedKeyTypes +ssh-rsa
+            HostKeyAlgorithms +ssh-rsa
+            LogLevel FATAL
+            PasswordAuthentication no
+
+          Host prod-server
+            HostName ${{ secrets.PROD_SERVER_HOST }}
+            Port ${{ secrets.PROD_SERVER_PORT }}
+            User ${{ secrets.PROD_SERVER_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            ProxyJump jumphost
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PasswordAuthentication no
+            LogLevel FATAL
+          SSHCONFIG
+
+          chmod 600 ~/.ssh/config
+
+      - name: Deploy to Production Server
+        env:
+          PROD_SERVER_HOST: prod-server
+          PROD_SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
+        run: |
+          # Encode secrets to base64 to avoid any shell expansion issues during heredoc
+          export WSO2IS_DEPLOYMENT_TOML_B64="$(printf '%s' '${{ secrets.PROD_WSO2IS_DEPLOYMENT_TOML }}' | base64 -w 0)"
+          export ENV_FILE_B64="$(printf '%s' '${{ secrets.PROD_ENV }}' | base64 -w 0)"
+
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} << ENDSSH
+            set -e
+            echo "🚀 Starting deployment to production environment..."
+
+            # Navigate to application directory
+            cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp || \
+              { echo "❌ Application directory not found"; exit 1; }
+
+            # Create backup before deployment
+            BACKUP_DIR="backups/backup-\$(date +%Y%m%d-%H%M%S)"
+            echo "💾 Creating backup in \$BACKUP_DIR..."
+            mkdir -p "\$BACKUP_DIR"
+            git rev-parse HEAD > "\$BACKUP_DIR/commit.txt" || true
+            cp -r wso2is-7-config "\$BACKUP_DIR/" 2>/dev/null || true
+            cp .env "\$BACKUP_DIR/" 2>/dev/null || true
+
+            # Stop existing containers first (to release file locks)
+            echo "🛑 Stopping existing containers..."
+            docker-compose -f docker-compose-wso2.yml down || true
+
+            # Pull latest changes from prod branch
+            echo "📥 Pulling latest changes from prod branch..."
+            git fetch origin
+            git checkout prod
+            git pull origin prod
+
+            # Create deployment.toml from secret using base64 decode (no sudo)
+            echo "📝 Creating deployment.toml from secret (base64 decode)..."
+            rm -rf wso2is-7-config
+            mkdir -p wso2is-7-config
+            echo "\$WSO2IS_DEPLOYMENT_TOML_B64" | base64 -d > wso2is-7-config/deployment.toml
+
+            # Create .env file from secret (base64 decode)
+            echo "📝 Creating .env file from secret (base64 decode)..."
+            echo "\$ENV_FILE_B64" | base64 -d > .env
+
+            # Rebuild containers
+            echo "🔨 Rebuilding containers..."
+            docker-compose -f docker-compose-wso2.yml build --no-cache
+
+            # Start containers
+            echo "▶️  Starting containers..."
+            docker-compose -f docker-compose-wso2.yml up -d
+
+            # Wait for services to be healthy
+            echo "⏳ Waiting for services to be healthy..."
+            sleep 45
+
+            # Check container status
+            echo "✅ Checking container status..."
+            docker-compose -f docker-compose-wso2.yml ps
+
+            echo "🎉 Deployment to production environment completed successfully!"
+          ENDSSH
+
+      - name: Verify Deployment
+        env:
+          PROD_SERVER_HOST: prod-server
+        run: |
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} << 'ENDSSH'
+            cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
+
+            # Check if containers are running
+            RUNNING_CONTAINERS=$(docker-compose -f docker-compose-wso2.yml ps \
+              --services --filter "status=running" | wc -l)
+            echo "Running containers: $RUNNING_CONTAINERS"
+
+            if [ "$RUNNING_CONTAINERS" -lt 1 ]; then
+              echo "❌ Not all containers are running"
+              exit 1
+            fi
+
+            echo "✅ All containers are running"
+          ENDSSH
+
+      - name: Health Check
+        env:
+          PROD_SERVER_HOST: prod-server
+        run: |
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} << 'ENDSSH'
+            cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
+
+            # Wait a bit more for application to be ready
+            sleep 15
+
+            # Check application health endpoint
+            echo "🏥 Checking application health..."
+            HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/health || echo "000")
+
+            if [ "$HEALTH_STATUS" = "200" ]; then
+              echo "✅ Application health check passed (HTTP $HEALTH_STATUS)"
+            else
+              echo "⚠️  Application health check returned HTTP $HEALTH_STATUS"
+              echo "Checking logs..."
+              docker-compose -f docker-compose-wso2.yml logs --tail=50 darts-app
+              exit 1
+            fi
+          ENDSSH
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key ~/.ssh/jumphost_key
+
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "✅ Production deployment completed successfully"
+
+      - name: Notify Failure
+        if: failure()
+        run: |
+          echo "❌ Production deployment failed"
+          echo "Check logs and consider rolling back if necessary"
+          exit 1

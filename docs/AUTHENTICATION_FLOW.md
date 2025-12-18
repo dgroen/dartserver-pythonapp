@@ -187,21 +187,22 @@ This document provides visual representations of the authentication and authoriz
 
 ## Route Protection Matrix
 
-| Route | Decorator | Required Role | Required Permission | Access |
-|-------|-----------|---------------|---------------------|--------|
-| `/` | `@login_required` | Any | `game:view` | 🟢 Player, 🟡 GameMaster, 🔴 Admin |
-| `/control` | `@login_required`<br>`@role_required("admin", "gamemaster")` | admin, gamemaster | `game:control` | 🟡 GameMaster, 🔴 Admin |
-| `/login` | None | None | None | 🌐 Public |
-| `/callback` | None | None | None | 🌐 Public |
-| `/logout` | `@login_required` | Any | None | 🟢 Player, 🟡 GameMaster, 🔴 Admin |
-| `/profile` | `@login_required` | Any | None | 🟢 Player, 🟡 GameMaster, 🔴 Admin |
-| `GET /api/game` | `@login_required`<br>`@permission_required("game:view")` | Any | `game:view` | 🟢 Player, 🟡 GameMaster, 🔴 Admin |
-| `POST /api/game` | `@login_required`<br>`@permission_required("game:create")` | gamemaster, admin | `game:create` | 🟡 GameMaster, 🔴 Admin |
-| `POST /api/player` | `@login_required`<br>`@permission_required("player:add")` | gamemaster, admin | `player:add` | 🟡 GameMaster, 🔴 Admin |
-| `DELETE /api/player/<id>` | `@login_required`<br>`@permission_required("player:remove")` | gamemaster, admin | `player:remove` | 🟡 GameMaster, 🔴 Admin |
-| `POST /api/score` | `@login_required`<br>`@permission_required("score:submit")` | Any | `score:submit` | 🟢 Player, 🟡 GameMaster, 🔴 Admin |
+| Route                     | Decorator                                                    | Required Role     | Required Permission | Access                             |
+| ------------------------- | ------------------------------------------------------------ | ----------------- | ------------------- | ---------------------------------- |
+| `/`                       | `@login_required`                                            | Any               | `game:view`         | 🟢 Player, 🟡 GameMaster, 🔴 Admin |
+| `/control`                | `@login_required`<br>`@role_required("admin", "gamemaster")` | admin, gamemaster | `game:control`      | 🟡 GameMaster, 🔴 Admin            |
+| `/login`                  | None                                                         | None              | None                | 🌐 Public                          |
+| `/callback`               | None                                                         | None              | None                | 🌐 Public                          |
+| `/logout`                 | `@login_required`                                            | Any               | None                | 🟢 Player, 🟡 GameMaster, 🔴 Admin |
+| `/profile`                | `@login_required`                                            | Any               | None                | 🟢 Player, 🟡 GameMaster, 🔴 Admin |
+| `GET /api/game`           | `@login_required`<br>`@permission_required("game:view")`     | Any               | `game:view`         | 🟢 Player, 🟡 GameMaster, 🔴 Admin |
+| `POST /api/game`          | `@login_required`<br>`@permission_required("game:create")`   | gamemaster, admin | `game:create`       | 🟡 GameMaster, 🔴 Admin            |
+| `POST /api/player`        | `@login_required`<br>`@permission_required("player:add")`    | gamemaster, admin | `player:add`        | 🟡 GameMaster, 🔴 Admin            |
+| `DELETE /api/player/<id>` | `@login_required`<br>`@permission_required("player:remove")` | gamemaster, admin | `player:remove`     | 🟡 GameMaster, 🔴 Admin            |
+| `POST /api/score`         | `@login_required`<br>`@permission_required("score:submit")`  | Any               | `score:submit`      | 🟢 Player, 🟡 GameMaster, 🔴 Admin |
 
 Legend:
+
 - 🌐 Public - No authentication required
 - 🟢 Player - Basic role
 - 🟡 GameMaster - Intermediate role
