@@ -38,6 +38,14 @@
         </nav>
 
         <main class="mobile-content">
+            <!-- Active Games List -->
+            <section class="control-section">
+                <h2>🎮 Active Games</h2>
+                <div id="activeGamesList" class="games-list-mobile">
+                    <div class="loading-state">Loading games...</div>
+                </div>
+            </section>
+
             <!-- Game Status Card -->
             <div class="status-card game-status" id="gameStatusCard">
                 <div class="status-indicator">
@@ -60,6 +68,12 @@
             <section class="control-section">
                 <h2>🎮 Start New Game</h2>
                 <form id="newGameForm" class="game-form">
+                    <div class="form-group">
+                        <label for="gameId">Game ID (optional)</label>
+                        <input type="text" id="gameId" name="gameId" class="form-control"
+                               placeholder="Leave empty for auto-generated ID">
+                    </div>
+
                     <div class="form-group">
                         <label for="gameType">Game Type</label>
                         <select id="gameType" name="gameType" class="form-control">

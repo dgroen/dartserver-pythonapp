@@ -450,3 +450,108 @@ select.form-control {
 .state-container::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.5);
 }
+
+/* Mobile Games List Styles */
+.games-list-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.game-card-mobile {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 16px;
+    border: 2px solid transparent;
+    transition: all 0.3s;
+}
+
+.game-card-mobile.active {
+    background: rgba(0, 212, 255, 0.15);
+    border-color: rgba(0, 212, 255, 0.5);
+}
+
+.game-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.game-card-title {
+    font-weight: bold;
+    font-size: 1.1em;
+    color: #fff;
+}
+
+.game-card-status {
+    font-size: 0.85em;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.game-card-status.started {
+    background: #28a745;
+    color: white;
+}
+
+.game-card-status.not-started {
+    background: #6c757d;
+    color: white;
+}
+
+.game-card-body {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.game-card-type {
+    font-weight: bold;
+    color: #ffc107;
+    margin-bottom: 8px;
+    font-size: 1em;
+}
+
+.game-card-players {
+    font-size: 0.9em;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.player-names {
+    margin-top: 4px;
+    font-size: 0.85em;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.game-card-action {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-switch-game {
+    width: 100%;
+    padding: 10px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.btn-switch-game:hover, .btn-switch-game:active {
+    background: #0056b3;
+}
+
+.empty-state, .loading-state {
+    text-align: center;
+    padding: 30px 20px;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+}

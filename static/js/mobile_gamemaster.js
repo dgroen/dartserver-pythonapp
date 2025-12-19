@@ -110,6 +110,7 @@ async function loadCurrentGame() {
 async function startNewGame(e) {
     e.preventDefault();
 
+    const gameId = document.getElementById('gameId') ? document.getElementById('gameId').value.trim() : '';
     const gameType = document.getElementById('gameType').value;
     const doubleOut = document.getElementById('doubleOut').checked;
     const playerNamesText = document.getElementById('playerNames').value;
@@ -130,17 +131,25 @@ async function startNewGame(e) {
     submitBtn.disabled = true;
 
     try {
-        const response = await fetch('/api/game/start', {
+        // Use multi-game API
+        const createPayload = {
+            game_type: gameType,
+            double_out: doubleOut,
+            players: playerNames,
+            set_as_active: true
+        };
+        
+        if (gameId) {
+            createPayload.game_id = gameId;
+        }
+
+        const response = await fetch('/api/games/create', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             credentials: 'include',
-            body: JSON.stringify({
-                game_type: gameType,
-                double_out: doubleOut,
-                players: playerNames
-            })
+            body: JSON.stringify(createPayload)
         });
 
         if (!response.ok) {
@@ -149,18 +158,23 @@ async function startNewGame(e) {
         }
 
         const data = await response.json();
-        currentGame = data.game;
-        updateGameDisplay(data.game);
-        showToast('Game started successfully!', 'success');
+        showToast(`Game created: ${data.game_id}`, 'success');
+        
+        // Reload game state and games list
+        loadCurrentGame();
+        loadGamesList();
 
         // Clear form
+        if (document.getElementById('gameId')) {
+            document.getElementById('gameId').value = '';
+        }
         document.getElementById('playerNames').value = '';
         document.getElementById('doubleOut').checked = false;
     } catch (error) {
         console.error('Failed to start game:', error);
         showToast('Failed to start game: ' + error.message, 'error');
     } finally {
-        submitBtn.classList.remove('loading');
+        submitBtn.classList.add('loading');
         submitBtn.disabled = false;
     }
 }
@@ -456,4 +470,122 @@ async function apiRequest(url, options = {}) {
         console.error('API request failed:', error);
         throw error;
     }
+}
+
+// ========================================
+// Multi-Game Management for Mobile
+// ========================================
+
+let gamesListRefreshInterval = null;
+
+// Load games list on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadGamesList();
+    
+    // Refresh games list every 5 seconds
+    if (gamesListRefreshInterval) {
+        clearInterval(gamesListRefreshInterval);
+    }
+    gamesListRefreshInterval = setInterval(loadGamesList, 5000);
+});
+
+async function loadGamesList() {
+    try {
+        const response = await fetch('/api/games');
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            displayGamesList(data.games, data.active_game_id);
+        }
+    } catch (error) {
+        console.error('Error loading games list:', error);
+    }
+}
+
+function displayGamesList(games, activeGameId) {
+    const gamesList = document.getElementById('activeGamesList');
+    if (!gamesList) return;
+    
+    if (!games || games.length === 0) {
+        gamesList.innerHTML = '<div class="empty-state">No games available. Create one below!</div>';
+        return;
+    }
+    
+    gamesList.innerHTML = games.map(game => {
+        const isActive = game.game_id === activeGameId;
+        const statusClass = game.is_started ? 'started' : 'not-started';
+        const statusText = game.is_started ? 'Active' : 'Not Started';
+        const statusIcon = game.is_started ? '🟢' : '⚪';
+        
+        return `
+            <div class="game-card-mobile ${isActive ? 'active' : ''}" data-game-id="${game.game_id}">
+                <div class="game-card-header">
+                    <div class="game-card-title">
+                        ${isActive ? '▶️ ' : ''}${game.game_id}
+                    </div>
+                    <div class="game-card-status ${statusClass}">
+                        ${statusIcon} ${statusText}
+                    </div>
+                </div>
+                <div class="game-card-body">
+                    <div class="game-card-type">${formatGameTypeName(game.game_type || 'N/A')}</div>
+                    <div class="game-card-players">
+                        👥 ${game.player_count} player${game.player_count !== 1 ? 's' : ''}
+                        ${game.players && game.players.length > 0 ? 
+                            '<div class="player-names">' + game.players.slice(0, 3).join(', ') + 
+                            (game.players.length > 3 ? '...' : '') + '</div>' : ''}
+                    </div>
+                </div>
+                ${!isActive ? '<div class="game-card-action"><button class="btn-switch-game">Switch to This Game</button></div>' : ''}
+            </div>
+        `;
+    }).join('');
+    
+    // Add click handlers to switch buttons
+    gamesList.querySelectorAll('.btn-switch-game').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const gameCard = this.closest('.game-card-mobile');
+            const gameId = gameCard.dataset.gameId;
+            switchToGame(gameId);
+        });
+    });
+}
+
+async function switchToGame(gameId) {
+    try {
+        const response = await fetch(`/api/games/${gameId}/activate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            showToast(`Switched to game: ${gameId}`, 'success');
+            loadGamesList();
+            loadCurrentGame();
+        } else {
+            showToast(`Error switching game: ${data.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error switching game:', error);
+        showToast('Failed to switch game', 'error');
+    }
+}
+
+function formatGameTypeName(name) {
+    const specialNames = {
+        'round_the_clock': 'Round the Clock',
+        'round_the_clock_double': 'Round the Clock Double',
+        'cricket': 'Cricket'
+    };
+    
+    if (specialNames[name]) {
+        return specialNames[name];
+    }
+    
+    return name.toUpperCase();
 }
