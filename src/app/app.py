@@ -216,6 +216,25 @@ def control():
     return render_template("control.html", user_roles=user_roles, user_claims=user_claims)
 
 
+@app.route("/game/create")
+@login_required
+@permission_required("game:create")
+def game_create():
+    """Game creation page - requires game:create permission
+    ---
+    tags:
+      - UI
+    summary: Game creation page
+    description: Renders the game creation interface for starting new games
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template("game_create.html", user_roles=user_roles, user_claims=user_claims)
+
+
 @app.route("/history")
 @login_required
 def history():

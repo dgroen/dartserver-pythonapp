@@ -1059,3 +1059,122 @@ document.addEventListener('keydown', (e) => {
         socket.emit('next_player');
     }
 });
+
+// ========================================
+// Games Sidebar Management
+// ========================================
+
+let currentGameId = null;
+let gamesRefreshInterval = null;
+
+// Initialize games sidebar
+function initGamesSidebar() {
+    const newGameBtn = document.getElementById('btn-new-game');
+    if (newGameBtn) {
+        newGameBtn.addEventListener('click', () => {
+            window.location.href = '/game/create';
+        });
+    }
+    
+    // Load games list
+    loadGamesList();
+    
+    // Refresh games list every 5 seconds
+    if (gamesRefreshInterval) {
+        clearInterval(gamesRefreshInterval);
+    }
+    gamesRefreshInterval = setInterval(loadGamesList, 5000);
+}
+
+// Load and display list of games
+async function loadGamesList() {
+    try {
+        const response = await fetch('/api/games');
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            displayGamesList(data.games, data.active_game_id);
+        }
+    } catch (error) {
+        console.error('Error loading games list:', error);
+    }
+}
+
+// Display games in sidebar
+function displayGamesList(games, activeGameId) {
+    const gamesList = document.getElementById('games-list');
+    if (!gamesList) return;
+    
+    if (!games || games.length === 0) {
+        gamesList.innerHTML = '<div class="no-games">No games available.<br>Click + to create one!</div>';
+        return;
+    }
+    
+    currentGameId = activeGameId;
+    
+    gamesList.innerHTML = games.map(game => {
+        const isActive = game.game_id === activeGameId;
+        const statusClass = game.is_started ? 'started' : 'not-started';
+        const statusText = game.is_started ? 'Active' : 'Not Started';
+        
+        return `
+            <div class="game-item ${isActive ? 'active' : ''}" data-game-id="${game.game_id}">
+                <div class="game-item-header">
+                    <span class="game-item-id">${game.game_id}</span>
+                    <span class="game-item-status ${statusClass}">${statusText}</span>
+                </div>
+                <div class="game-item-info">
+                    <div class="game-item-type">${formatGameTypeName(game.game_type || 'N/A')}</div>
+                    <div class="game-item-players">
+                        👥 ${game.player_count} player${game.player_count !== 1 ? 's' : ''}
+                        ${game.players && game.players.length > 0 ? '<br>' + game.players.slice(0, 2).join(', ') + (game.players.length > 2 ? '...' : '') : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Add click handlers to game items
+    gamesList.querySelectorAll('.game-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const gameId = this.dataset.gameId;
+            switchToGame(gameId);
+        });
+    });
+}
+
+// Switch to a different game
+async function switchToGame(gameId) {
+    if (gameId === currentGameId) {
+        console.log('Already viewing this game');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/games/${gameId}/activate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            console.log(`Switched to game: ${gameId}`);
+            currentGameId = gameId;
+            // Reload game state
+            loadGamesList();
+            // The socket will receive game_state_update automatically
+        } else {
+            console.error('Error switching game:', data.message);
+        }
+    } catch (error) {
+        console.error('Error switching game:', error);
+    }
+}
+
+// Initialize games sidebar on page load
+if (document.getElementById('games-sidebar')) {
+    document.addEventListener('DOMContentLoaded', initGamesSidebar);
+}
