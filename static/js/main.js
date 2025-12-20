@@ -1122,6 +1122,24 @@ function displayGamesList(games, activeGameId) {
         const statusClass = game.is_started ? 'started' : 'not-started';
         const statusText = game.is_started ? 'Active' : 'Not Started';
         
+        // Format player info with scores
+        let playersHtml = '';
+        if (game.players && game.players.length > 0) {
+            const playerList = game.players.slice(0, 3).map(p => {
+                if (typeof p === 'string') {
+                    return p;
+                } else if (p.name) {
+                    // Show score if available
+                    return p.score !== undefined ? `${p.name} (${p.score})` : p.name;
+                }
+                return 'Unknown';
+            });
+            playersHtml = '<br>' + playerList.join('<br>');
+            if (game.players.length > 3) {
+                playersHtml += '<br>...';
+            }
+        }
+        
         return `
             <div class="game-item ${isActive ? 'active' : ''}" data-game-id="${game.game_id}">
                 <div class="game-item-header">
@@ -1132,7 +1150,7 @@ function displayGamesList(games, activeGameId) {
                     <div class="game-item-type">${formatGameTypeName(game.game_type || 'N/A')}</div>
                     <div class="game-item-players">
                         👥 ${game.player_count} player${game.player_count !== 1 ? 's' : ''}
-                        ${game.players && game.players.length > 0 ? '<br>' + game.players.slice(0, 2).join(', ') + (game.players.length > 2 ? '...' : '') : ''}
+                        ${playersHtml}
                     </div>
                 </div>
             </div>
