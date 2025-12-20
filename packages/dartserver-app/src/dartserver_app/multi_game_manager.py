@@ -2,7 +2,7 @@
 
 from typing import Dict, Optional
 
-from game_manager import GameManager
+from dartserver_app.game_manager import GameManager
 
 
 class MultiGameManager:
