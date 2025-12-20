@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -14,6 +15,7 @@
     <link rel="stylesheet" href="/static/css/mobile.css">
     <link rel="stylesheet" href="/static/css/mobile_gamemaster.css">
 </head>
+
 <body>
     <div class="mobile-app">
         <header class="mobile-header">
@@ -38,13 +40,15 @@
         </nav>
 
         <main class="mobile-content">
-            <!-- Active Games List -->
+            <!-- Active Games List - Only for gamemaster and admin roles -->
+            {% if 'gamemaster' in user_roles or 'admin' in user_roles %}
             <section class="control-section">
                 <h2>🎮 Active Games</h2>
                 <div id="activeGamesList" class="games-list-mobile">
                     <div class="loading-state">Loading games...</div>
                 </div>
             </section>
+            {% endif %}
 
             <!-- Game Status Card -->
             <div class="status-card game-status" id="gameStatusCard">
@@ -71,7 +75,7 @@
                     <div class="form-group">
                         <label for="gameId">Game ID (optional)</label>
                         <input type="text" id="gameId" name="gameId" class="form-control"
-                               placeholder="Leave empty for auto-generated ID">
+                            placeholder="Leave empty for auto-generated ID">
                     </div>
 
                     <div class="form-group">
@@ -88,10 +92,17 @@
                         </label>
                     </div>
 
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="showThrowoutAdvice" name="showThrowoutAdvice">
+                            <span class="checkbox-text">Show Throw-out Advice</span>
+                        </label>
+                    </div>
+
                     <div class="form-group">
                         <label for="playerNames">Players (one per line)</label>
                         <textarea id="playerNames" name="playerNames" rows="5" class="form-control"
-                                  placeholder="Player 1&#10;Player 2&#10;Player 3"></textarea>
+                            placeholder="Player 1&#10;Player 2&#10;Player 3"></textarea>
                         <small class="form-hint">Enter at least 1 player</small>
                     </div>
 
@@ -112,8 +123,7 @@
                 <!-- Add Player During Game -->
                 <div class="add-player-section" id="addPlayerSection" style="display: none;">
                     <div class="form-group">
-                        <input type="text" id="newPlayerName" class="form-control"
-                               placeholder="New player name">
+                        <input type="text" id="newPlayerName" class="form-control" placeholder="New player name">
                     </div>
                     <button class="btn btn-success" id="addPlayerBtn">
                         <span class="btn-icon">➕</span>
@@ -148,8 +158,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="scoreValue">Score</label>
-                            <input type="number" id="scoreValue" class="form-control"
-                                   min="0" max="60" value="20">
+                            <input type="number" id="scoreValue" class="form-control" min="0" max="60" value="20">
                         </div>
                         <div class="form-group">
                             <label for="multiplier">Multiplier</label>
@@ -199,7 +208,7 @@
     <script src="/static/js/mobile_gamemaster.js"></script>
     <script>
         // Load game types when page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const gameTypeSelect = document.getElementById('gameType');
             if (gameTypeSelect && typeof loadGameTypes === 'function') {
                 loadGameTypes(gameTypeSelect, false).then(() => {
@@ -244,4 +253,5 @@
         }
     </script>
 </body>
+
 </html>

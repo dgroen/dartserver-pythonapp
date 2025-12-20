@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,9 +8,11 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
+
 <body>
     <div class="app-container">
-        <!-- Games Sidebar -->
+        <!-- Games Sidebar - Only for gamemaster and admin roles -->
+        {% if 'gamemaster' in user_roles or 'admin' in user_roles %}
         <aside class="games-sidebar" id="games-sidebar">
             <div class="sidebar-header">
                 <h3>🎮 Active Games</h3>
@@ -20,13 +23,16 @@
                 <div class="loading-games">Loading games...</div>
             </div>
         </aside>
+        {% endif %}
 
         <!-- Main Content -->
         <div class="container">
             <div class="user-info-header">
                 <div class="user-info">
                     {% if user_claims %}
-                    <span class="username">👤 {{ user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + ' ' + user_claims.get('family_name', '')).strip() or user_claims.get('username', user_claims.get('sub', 'User')) }}</span>
+                    <span class="username">👤 {{ user_claims.get('displayName') or user_claims.get('name') or
+                        (user_claims.get('given_name', '') + ' ' + user_claims.get('family_name', '')).strip() or
+                        user_claims.get('username', user_claims.get('sub', 'User')) }}</span>
                     {% if user_roles %}
                     <span class="user-roles">
                         {% for role in user_roles %}
@@ -48,52 +54,53 @@
             </header>
 
             <div class="main-content">
-            <!-- Players Display -->
-            <div class="players-container" id="players-container">
-                <!-- Players will be dynamically added here -->
-            </div>
+                <!-- Players Display -->
+                <div class="players-container" id="players-container">
+                    <!-- Players will be dynamically added here -->
+                </div>
 
-            <!-- Message Display -->
-            <div class="message-container">
-                <div id="big-message" class="big-message"></div>
-                <div id="alert-message" class="alert-message"></div>
+                <!-- Message Display -->
+                <div class="message-container">
+                    <div id="big-message" class="big-message"></div>
+                    <div id="alert-message" class="alert-message"></div>
 
-                <!-- Continue Game Button -->
-                <div class="next-player-button-container" id="nextPlayerButtonContainer" style="display: none;">
-                    <button class="btn-primary btn-next-player" id="nextPlayerButton">
-                        ▶️ Continue Game
-                    </button>
-                    <p class="button-hint" id="buttonHint">End turn early or continue to next player</p>
+                    <!-- Continue Game Button -->
+                    <div class="next-player-button-container" id="nextPlayerButtonContainer" style="display: none;">
+                        <button class="btn-primary btn-next-player" id="nextPlayerButton">
+                            ▶️ Continue Game
+                        </button>
+                        <p class="button-hint" id="buttonHint">End turn early or continue to next player</p>
+                    </div>
+                </div>
+
+                <!-- Throwout Advice Display -->
+                <div class="throwout-advice" id="throwoutAdvice" style="display: none;">
+                    <div class="card-header">💡 Finishing Tip</div>
+                    <div class="advice-display" id="adviceDisplay">-</div>
+                </div>
+
+                <!-- Current Throw Info -->
+                <div class="throw-info">
+                    <span>Throw: <span id="current-throw">1</span> / 3</span>
                 </div>
             </div>
 
-            <!-- Throwout Advice Display -->
-            <div class="throwout-advice" id="throwoutAdvice" style="display: none;">
-                <div class="card-header">💡 Finishing Tip</div>
-                <div class="advice-display" id="adviceDisplay">-</div>
+            <!-- Video/Animation Container -->
+            <div id="video-container" class="video-container hidden">
+                <video id="effect-video" autoplay></video>
             </div>
 
-            <!-- Current Throw Info -->
-            <div class="throw-info">
-                <span>Throw: <span id="current-throw">1</span> / 3</span>
+            <!-- Navigation Links -->
+            <div class="nav-links">
+                <a href="/training" class="nav-link">🎯 Training Mode</a>
+                <a href="/history" class="nav-link">📊 Game History</a>
+                <a href="/dashboard" class="nav-link">📊 View Dashboard</a>
+                <a href="/control" class="nav-link">⚙️ Control Panel</a>
             </div>
-        </div>
-
-        <!-- Video/Animation Container -->
-        <div id="video-container" class="video-container hidden">
-            <video id="effect-video" autoplay></video>
-        </div>
-
-        <!-- Navigation Links -->
-        <div class="nav-links">
-            <a href="/training" class="nav-link">🎯 Training Mode</a>
-            <a href="/history" class="nav-link">📊 Game History</a>
-            <a href="/dashboard" class="nav-link">📊 View Dashboard</a>
-            <a href="/control" class="nav-link">⚙️ Control Panel</a>
-        </div>
         </div>
     </div>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
+
 </html>

@@ -138,6 +138,10 @@ default_game_manager = multi_game_manager.create_game("default")
 game_manager = default_game_manager  # Keep for backward compatibility with existing code
 app.game_manager = game_manager  # Attach to app for access in decorators
 
+# Multi-game management - track all active games
+games_store = {}  # Dict[str, dict] - stores game metadata
+active_game_id = None  # Current active game
+
 # Initialize global database service for dartboard endpoints
 set_database_service(game_manager.db_service)
 
@@ -663,6 +667,9 @@ def new_game():
             message:
               type: string
               example: New game started
+            game_id:
+              type: string
+              description: The ID of the created game
       400:
         description: Invalid request or player not found
         schema:
@@ -674,11 +681,17 @@ def new_game():
             message:
               type: string
     """
+    global games_store, active_game_id
+    
     data = request.json
     game_type = data.get("game_type", "301")
     player_data = data.get("players", [])
     double_out = data.get("double_out", False)
     reset_on_miss = data.get("reset_on_miss", False)
+
+    # Generate game_id if not provided
+    import uuid
+    game_id = f"game-{uuid.uuid4().hex[:8]}"
 
     # Convert player names to player objects with database IDs
     db_session = game_manager.db_service.db_manager.get_session()
@@ -724,8 +737,21 @@ def new_game():
             double_out=double_out,
             reset_on_miss=reset_on_miss,
         )
+        
+        # Store game metadata in games_store
+        from datetime import datetime
+        games_store[game_id] = {
+            "game_id": game_id,
+            "game_type": game_type,
+            "created_at": datetime.now().isoformat(),
+            "players": player_ids,
+            "double_out": double_out,
+            "reset_on_miss": reset_on_miss,
+        }
+        active_game_id = game_id
+        
         # Game state is automatically emitted by game_manager.new_game()
-        return jsonify({"status": "success", "message": "New game started"})
+        return jsonify({"status": "success", "message": "New game started", "game_id": game_id})
     except Exception:
         app.logger.exception("Error starting new game")
         # Don't expose internal error details to clients
@@ -3490,6 +3516,14 @@ def start_game():
               type: boolean
               description: Enable hard mode for round_the_clock (reset to 20 after 3 misses)
               default: false
+            show_throwout_advice:
+              type: boolean
+              description: Whether to show throw-out advice during the game
+              default: false
+            game_id:
+              type: string
+              description: Optional game ID (auto-generated if not provided)
+              default: null
     responses:
       200:
         description: Game started successfully
@@ -3502,6 +3536,9 @@ def start_game():
               type: string
             game:
               type: object
+            game_id:
+              type: string
+              description: The ID of the created game
       400:
         description: Invalid request or player not found
         schema:
@@ -3512,11 +3549,21 @@ def start_game():
             message:
               type: string
     """
+    global games_store, active_game_id
+    
     data = request.json
     game_type = data.get("game_type", "301")
     player_data = data.get("players", [])
     double_out = data.get("double_out", False)
     reset_on_miss = data.get("reset_on_miss", False)
+    show_throwout_advice = data.get("show_throwout_advice", False)
+    game_id = data.get("game_id")
+    
+    # Generate game_id if not provided
+    if not game_id:
+        import uuid
+        game_id = f"game-{uuid.uuid4().hex[:8]}"
+
 
     # Convert player names to player objects with database IDs
     db_session = game_manager.db_service.db_manager.get_session()
@@ -3562,6 +3609,23 @@ def start_game():
             double_out=double_out,
             reset_on_miss=reset_on_miss,
         )
+        
+        # Store game metadata in games_store
+        from datetime import datetime
+        games_store[game_id] = {
+            "game_id": game_id,
+            "game_type": game_type,
+            "created_at": datetime.now().isoformat(),
+            "players": player_ids,
+            "double_out": double_out,
+            "reset_on_miss": reset_on_miss,
+        }
+        active_game_id = game_id
+        
+        # Set throwout advice if requested
+        if show_throwout_advice:
+            game_manager.set_show_throwout_advice(True)
+        
         game_state = game_manager.get_game_state()
 
         return jsonify(
@@ -3569,6 +3633,7 @@ def start_game():
                 "success": True,
                 "message": "Game started successfully",
                 "game": game_state,
+                "game_id": game_id,
             },
         )
     except Exception:
@@ -3585,6 +3650,157 @@ def start_game():
         )
     finally:
         db_session.close()
+
+
+# ============================================================================
+# Multi-Game Management API Endpoints
+# ============================================================================
+
+
+@app.route("/api/games", methods=["GET"])
+@login_required
+def get_games_list():
+    """Get all games
+    ---
+    tags:
+      - Multi-Game
+    summary: List all games
+    description: Returns all active game sessions with their current state
+    responses:
+      200:
+        description: List of all games
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            games:
+              type: array
+              items:
+                type: object
+            active_game_id:
+              type: string
+              nullable: true
+    """
+    global games_store, active_game_id
+    
+    try:
+        games_list = []
+        for gid, game_data in games_store.items():
+            # If this is the active game, get its current state
+            if gid == active_game_id:
+                game_state = game_manager.get_game_state()
+                is_started = game_state.get("is_started", False)
+                players = game_state.get("players", [])
+                current_player = game_state.get("current_player")
+            else:
+                # For inactive games, use stored metadata
+                is_started = False
+                players = []
+                current_player = None
+            
+            games_list.append({
+                "game_id": gid,
+                "game_type": game_data.get("game_type"),
+                "is_started": is_started,
+                "is_active": gid == active_game_id,
+                "player_count": len(players),
+                "players": [p.get("name", f"Player {i+1}") if isinstance(p, dict) else p for i, p in enumerate(players)],
+                "current_player": current_player,
+            })
+        
+        return jsonify({
+            "status": "success",
+            "games": games_list,
+            "active_game_id": active_game_id,
+        })
+    except Exception as e:
+        app.logger.exception("Error getting games list")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/games/<game_id>/activate", methods=["POST"])
+@login_required
+def activate_game(game_id):
+    """Activate a specific game
+    ---
+    tags:
+      - Multi-Game
+    summary: Activate a game
+    description: Sets the specified game as the active game
+    parameters:
+      - in: path
+        name: game_id
+        type: string
+        required: true
+        description: Game ID to activate
+    responses:
+      200:
+        description: Game activated successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+      404:
+        description: Game not found
+    """
+    global games_store, active_game_id
+    
+    if game_id not in games_store:
+        return jsonify({"status": "error", "message": f"Game '{game_id}' not found"}), 404
+    
+    active_game_id = game_id
+    return jsonify({
+        "status": "success",
+        "message": f"Game '{game_id}' activated",
+        "game_id": game_id,
+    })
+
+
+@app.route("/api/games/<game_id>/state", methods=["GET"])
+@login_required
+def get_game_state_by_id(game_id):
+    """Get state of a specific game
+    ---
+    tags:
+      - Multi-Game
+    summary: Get game state
+    description: Returns the complete state of a specific game
+    parameters:
+      - in: path
+        name: game_id
+        type: string
+        required: true
+        description: Game ID
+    responses:
+      200:
+        description: Game state retrieved
+      404:
+        description: Game not found
+    """
+    global games_store, active_game_id
+    
+    if game_id not in games_store:
+        return jsonify({"status": "error", "message": f"Game '{game_id}' not found"}), 404
+    
+    # Only return state if this is the active game
+    if game_id == active_game_id:
+        return jsonify(game_manager.get_game_state())
+    else:
+        # Return stored metadata for non-active games
+        game_data = games_store.get(game_id, {})
+        return jsonify({
+            "game_id": game_id,
+            "game_type": game_data.get("game_type"),
+            "is_started": False,
+            "players": [],
+            "current_player": None,
+        })
 
 
 @app.route("/api/mobile/game/start-single-player", methods=["POST"])
@@ -3878,6 +4094,9 @@ def resume_game(game_session_id):
             message:
               type: string
               example: Starting new game with same settings
+            game_id:
+              type: string
+              description: The ID of the resumed game
             redirect_url:
               type: string
               example: /
@@ -3888,6 +4107,8 @@ def resume_game(game_session_id):
       500:
         description: Error resuming game
     """
+    global games_store, active_game_id
+    
     try:
         # Get the game data
         game_data = game_manager.db_service.get_game_replay_data(game_session_id)
@@ -3913,6 +4134,23 @@ def resume_game(game_session_id):
         if not success:
             return jsonify({"status": "error", "message": "Failed to resume game"}), 500
 
+        # Generate game_id for resumed game
+        import uuid
+        game_id = f"game-{uuid.uuid4().hex[:8]}"
+        
+        # Store game metadata in games_store
+        from datetime import datetime
+        games_store[game_id] = {
+            "game_id": game_id,
+            "game_type": game_data.get("game_type", "301"),
+            "created_at": datetime.now().isoformat(),
+            "players": game_data.get("players", []),
+            "double_out": game_data.get("double_out", False),
+            "reset_on_miss": game_data.get("reset_on_miss", False),
+            "resumed_from": game_session_id,
+        }
+        active_game_id = game_id
+
         # Emit game state to all clients
         socketio.emit("game_state", game_manager.get_game_state(), namespace="/")
 
@@ -3920,6 +4158,7 @@ def resume_game(game_session_id):
             {
                 "status": "success",
                 "message": f"Game resumed with {len(game_data['throws'])} throws replayed",
+                "game_id": game_id,
                 "redirect_url": "/",
             },
         )
