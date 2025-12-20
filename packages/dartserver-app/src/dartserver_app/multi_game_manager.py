@@ -121,16 +121,24 @@ class MultiGameManager:
                 
                 player_info.append(player_data)
             
-            games_list.append(
-                {
-                    "game_id": game_id,
-                    "game_type": state.get("game_type"),
-                    "is_started": state.get("is_started"),
-                    "is_active": game_id == self.active_game_id,
-                    "player_count": len(players),
-                    "players": player_info,
-                }
+            game_info = {
+                "game_id": game_id,
+                "game_type": state.get("game_type"),
+                "is_started": state.get("is_started"),
+                "is_active": game_id == self.active_game_id,
+                "player_count": len(players),
+                "players": player_info,
+            }
+            
+            # Debug logging
+            import logging
+            logging.getLogger(__name__).info(
+                f"Game {game_id}: players={len(players)}, "
+                f"is_active={game_id == self.active_game_id}, "
+                f"player_names={[p['name'] for p in players]}"
             )
+            
+            games_list.append(game_info)
         return games_list
 
     def get_active_game_id(self) -> Optional[str]:
