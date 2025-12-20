@@ -564,9 +564,9 @@ async function switchToGame(gameId) {
         const data = await response.json();
         
         if (data.status === 'success') {
-            showToast(`Switched to game: ${gameId}`, 'success');
-            loadGamesList();
-            loadCurrentGame();
+            // Reload the entire page to ensure clean state
+            // This works the same way as resuming a game from the dashboard
+            window.location.reload();
         } else {
             showToast(`Error switching game: ${data.message}`, 'error');
         }

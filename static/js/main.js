@@ -1185,18 +1185,17 @@ async function switchToGame(gameId) {
         
         if (data.status === 'success') {
             console.log(`Switched to game: ${gameId}`);
-            currentGameId = gameId;
             
-            // Reload game state immediately after switching
-            await loadCurrentGameState();
-            
-            // Reload games list to update active status
-            loadGamesList();
+            // Reload the entire page to ensure clean state
+            // This works the same way as resuming a game from the dashboard
+            window.location.reload();
         } else {
             console.error('Error switching game:', data.message);
+            alert('Failed to switch game: ' + (data.message || 'Unknown error'));
         }
     } catch (error) {
         console.error('Error switching game:', error);
+        alert('Error switching game. Please try again.');
     }
 }
 
