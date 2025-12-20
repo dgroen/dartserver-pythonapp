@@ -140,6 +140,8 @@ const audioCache = {};
 socket.on('connect', () => {
     console.log('Connected to server');
     loadCurrentUser();
+    // Load current game state on connect
+    loadCurrentGameState();
 });
 
 socket.on('disconnect', () => {
@@ -1076,6 +1078,9 @@ function initGamesSidebar() {
         });
     }
     
+    // Load initial game state
+    loadCurrentGameState();
+    
     // Load games list
     loadGamesList();
     
@@ -1163,14 +1168,34 @@ async function switchToGame(gameId) {
         if (data.status === 'success') {
             console.log(`Switched to game: ${gameId}`);
             currentGameId = gameId;
-            // Reload game state
+            
+            // Reload game state immediately after switching
+            await loadCurrentGameState();
+            
+            // Reload games list to update active status
             loadGamesList();
-            // The socket will receive game_state_update automatically
         } else {
             console.error('Error switching game:', data.message);
         }
     } catch (error) {
         console.error('Error switching game:', error);
+    }
+}
+
+// Load current game state from API
+async function loadCurrentGameState() {
+    try {
+        const response = await fetch('/api/game/state');
+        const state = await response.json();
+        
+        if (state && Object.keys(state).length > 0) {
+            console.log('Loaded game state:', state);
+            currentGame = state;
+            updateGameDisplay(state);
+            updateNextPlayerButton(state);
+        }
+    } catch (error) {
+        console.error('Error loading game state:', error);
     }
 }
 
