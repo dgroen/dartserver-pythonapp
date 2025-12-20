@@ -1098,6 +1098,7 @@ async function loadGamesList() {
         const data = await response.json();
         
         if (data.status === 'success') {
+            console.log('Games data received:', JSON.stringify(data.games, null, 2));
             displayGamesList(data.games, data.active_game_id);
         }
     } catch (error) {
@@ -1116,11 +1117,14 @@ function displayGamesList(games, activeGameId) {
     }
     
     currentGameId = activeGameId;
+    console.log('Active game ID:', activeGameId);
     
     gamesList.innerHTML = games.map(game => {
         const isActive = game.game_id === activeGameId;
         const statusClass = game.is_started ? 'started' : 'not-started';
         const statusText = game.is_started ? 'Active' : 'Not Started';
+        
+        console.log(`Game ${game.game_id}: ${game.player_count} players, is_active=${isActive}, players=`, game.players);
         
         // Format player info with scores
         let playersHtml = '';
@@ -1161,6 +1165,7 @@ function displayGamesList(games, activeGameId) {
     gamesList.querySelectorAll('.game-item').forEach(item => {
         item.addEventListener('click', function() {
             const gameId = this.dataset.gameId;
+            console.log('Switching to game:', gameId);
             switchToGame(gameId);
         });
     });
