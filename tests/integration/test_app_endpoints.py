@@ -6,11 +6,13 @@ from unittest.mock import patch
 import pytest
 from dartserver_core.database_service import DatabaseService
 
+from tests.conftest import game_manager
 
-@pytest.fixture()
+
+@pytest.fixture
 def db_service():
     """Create in-memory database service for testing."""
-    db = DatabaseService("sqlite:///:memory:")
+    db = DatabaseService("sqlite:///:memory:?check_same_thread=False")
     db.initialize_database()
 
     # Create test players
@@ -22,7 +24,7 @@ def db_service():
     return db
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_auth():
     """Mock authentication decorators."""
     # Mock validate_token to return valid claims
@@ -36,8 +38,8 @@ def mock_auth():
         yield mock_validate
 
 
-@pytest.fixture()
-def app(mock_auth, db_service):
+@pytest.fixture
+def app(mock_auth, db_service, flask_app):
     """Create Flask app for testing."""
     with (
         patch("src.app.app.start_rabbitmq_consumer"),
@@ -47,11 +49,12 @@ def app(mock_auth, db_service):
     ):
         mock_db_class.return_value = db_service
         flask_app.config["TESTING"] = True
-        game_manager.db_service = db_service
+        # Ensure the app's game_manager uses the test database service
+        flask_app.game_manager.db_service = db_service
         yield flask_app
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(app, db_service):
     """Create test client."""
     # Make sure game_manager uses the test database
@@ -230,7 +233,7 @@ class TestAppEndpoints:
     def test_delete_completed_game(self, client, db_service):
         """Test that completed games cannot be deleted."""
         # Create a completed game in the database
-        from datetime import datetime, timezone
+        from datetime import datetime, timezone  # noqa: PLC0415
 
         # Get test players
         alice = db_service.get_or_create_player("Alice", username="alice")
@@ -248,7 +251,7 @@ class TestAppEndpoints:
         # Complete the game by setting finished_at
         session = db_service.db_manager.get_session()
         try:
-            from dartserver_core import GameResult
+            from dartserver_core import GameResult  # noqa: PLC0415
 
             results = session.query(GameResult).filter_by(game_session_id=game_session_id).all()
             for result in results:
@@ -288,7 +291,7 @@ class TestAppEndpoints:
 
     def test_delete_old_incomplete_game(self, client, db_service):
         """Test that incomplete games older than 1 day can be deleted."""
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta, timezone  # noqa: PLC0415
 
         # Get test players
         alice = db_service.get_or_create_player("Alice", username="alice")
@@ -306,7 +309,7 @@ class TestAppEndpoints:
         # Modify the game to be older than 1 day
         session = db_service.db_manager.get_session()
         try:
-            from dartserver_core import GameResult
+            from dartserver_core import GameResult  # noqa: PLC0415
 
             results = session.query(GameResult).filter_by(game_session_id=game_session_id).all()
             old_date = datetime.now(timezone.utc) - timedelta(days=2)
@@ -336,7 +339,7 @@ class TestAppEndpoints:
 
     def test_resume_completed_game(self, client, db_service):
         """Test that completed games cannot be resumed."""
-        from datetime import datetime, timezone
+        from datetime import datetime, timezone  # noqa: PLC0415
 
         # Create a completed game
         alice = db_service.get_or_create_player("Alice", username="alice")
@@ -353,7 +356,7 @@ class TestAppEndpoints:
         # Mark as completed
         session = db_service.db_manager.get_session()
         try:
-            from dartserver_core import GameResult
+            from dartserver_core import GameResult  # noqa: PLC0415
 
             results = session.query(GameResult).filter_by(game_session_id=game_session_id).all()
             for result in results:

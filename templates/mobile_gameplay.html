@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -10,6 +11,7 @@
     <title>Gameplay - Darts Mobile</title>
     <link rel="stylesheet" href="/static/css/mobile.css">
 </head>
+
 <body>
     <div class="mobile-app">
         <header class="mobile-header">
@@ -85,12 +87,14 @@
                 </div>
             </div>
 
-            <!-- Active Games Tab -->
+            <!-- Active Games Tab - Only for gamemaster and admin roles -->
+            {% if 'gamemaster' in user_roles or 'admin' in user_roles %}
             <div class="tab-content" id="active-games">
                 <div id="activeGamesList">
                     <p class="empty-state">Loading active games...</p>
                 </div>
             </div>
+            {% endif %}
         </main>
     </div>
 
@@ -132,4 +136,5 @@
         }
     </script>
 </body>
+
 </html>

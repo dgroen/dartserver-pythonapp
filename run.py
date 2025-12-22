@@ -18,6 +18,8 @@ if __name__ == "__main__":
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[logging.StreamHandler()],
     )
+    # Reduce request log noise from Werkzeug in dev
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
     logger = logging.getLogger(__name__)
 
     try:
