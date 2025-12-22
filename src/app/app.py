@@ -4140,8 +4140,9 @@ def resume_game(game_session_id):
                 403,
             )
 
-        # Generate game_id for resumed game and create a dedicated session
-        game_id = f"game-{uuid.uuid4().hex[:8]}"
+        # Use the existing persisted game_session_id as the multi-game session id
+        # so we load the exact saved game instead of creating a new DB session.
+        game_id = game_session_id
 
         new_game_manager = multi_game_manager.create_game(game_id)
 
@@ -4157,7 +4158,7 @@ def resume_game(game_session_id):
             "game_type": game_data.get("game_type", "301"),
             "created_at": datetime.now(timezone.utc).isoformat(),
             "players": game_data.get("players", []),
-            "double_out": game_data.get("double_out", False),
+            "double_out": game_data.get("double_out_enabled", game_data.get("double_out", False)),
             "reset_on_miss": game_data.get("reset_on_miss", False),
             "resumed_from": game_session_id,
         }
