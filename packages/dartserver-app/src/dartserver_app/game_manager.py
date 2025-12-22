@@ -378,7 +378,8 @@ class GameManager:
             self.is_paused = False
 
             print(
-                f"Game resumed: {len(all_throws)} throws replayed, current player: {self.current_player}",
+                f"Game resumed: {len(all_throws)} throws replayed, current player: \
+                    {self.current_player}",
             )
             return True
 
