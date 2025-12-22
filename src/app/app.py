@@ -4712,8 +4712,7 @@ def handle_new_game(data):
                     "error",
                     {
                         "message": (
-                            f"Player '{player_name}' not found. "
-                            "Only registered WSO2 users allowed."
+                            f"Player '{player_name}' not found. Only registered WSO2 users allowed."
                         ),
                     },
                     namespace="/",
@@ -4850,8 +4849,7 @@ def patch_eventlet_ssl_error_handling():
                     print("")
                     print("⚠️  SSL Protocol Mismatch Detected")
                     print(
-                        f"   {ssl_error_state['count']} HTTP request(s) "
-                        "to HTTPS server (rejected)",
+                        f"   {ssl_error_state['count']} HTTP request(s) to HTTPS server (rejected)",
                     )
                     print("   Clients must use HTTPS URLs to connect")
                     print("")
