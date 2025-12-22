@@ -16,6 +16,29 @@ class DartboardMappingError(Exception):
 class DartboardService:
     """Service for dartboard zone mapping and validation"""
 
+    # A sensible default set of available GPIO pins (ESP32 common pins)
+    AVAILABLE_GPIO_PINS: ClassVar[list[int]] = [
+        2,
+        4,
+        5,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        21,
+        22,
+        23,
+        25,
+        26,
+        27,
+        32,
+        33,
+    ]
+
     MULTIPLIER_MAP: ClassVar[dict[str, int]] = {
         "SINGLE": 1,
         "DOUBLE": 2,

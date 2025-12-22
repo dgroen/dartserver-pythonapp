@@ -1,9 +1,10 @@
 """Unit tests for MultiGameManager"""
 
-import pytest
 from unittest.mock import Mock
 
-from multi_game_manager import MultiGameManager
+import pytest
+
+from src.app.multi_game_manager import MultiGameManager
 
 
 class TestMultiGameManager:

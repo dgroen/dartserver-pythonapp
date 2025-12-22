@@ -102,9 +102,7 @@ def get_dynamic_redirect_uri() -> str:
         )
     else:
         logger.debug(
-            f"Dynamic redirect URI: {redirect_uri} "
-            f"(scheme={scheme}, host={host}, "
-            f"config_domain={Config.APP_DOMAIN})",
+            f"Dynamic redirect URI: {redirect_uri} (scheme={scheme}, host={host}, config_domain={Config.APP_DOMAIN})",
         )
     return redirect_uri
 
@@ -120,8 +118,7 @@ def get_dynamic_post_logout_redirect_uri() -> str:
     """
     if not request:
         logger.debug(
-            f"No active request, using default post-logout redirect URI: "
-            f"{WSO2_POST_LOGOUT_REDIRECT_URI_DEFAULT}",
+            f"No active request, using default post-logout redirect URI: {WSO2_POST_LOGOUT_REDIRECT_URI_DEFAULT}",
         )
         return WSO2_POST_LOGOUT_REDIRECT_URI_DEFAULT
 
@@ -138,8 +135,7 @@ def get_dynamic_post_logout_redirect_uri() -> str:
     is_localhost = "localhost" in host or "127.0.0.1" in host
     if is_localhost:
         logger.debug(
-            f"Localhost post-logout redirect URI: {post_logout_uri} "
-            f"(scheme={scheme}, host={host})",
+            f"Localhost post-logout redirect URI: {post_logout_uri} (scheme={scheme}, host={host})",
         )
     else:
         logger.debug(
@@ -231,8 +227,14 @@ if not WSO2_IS_VERIFY_SSL:
         pass
 
 
-# Authentication bypass configuration
-AUTH_DISABLED = os.getenv("AUTH_DISABLED", "False").lower() == "true"
+def is_auth_disabled() -> bool:
+    """Return whether authentication is disabled (read from environment at runtime).
+
+    Tests and fixtures may set the environment per-test, so reading the value
+    at runtime prevents the module-level constant from being stale.
+    """
+    return os.getenv("AUTH_DISABLED", "False").lower() == "true"
+
 
 # Initialize JWKS client
 jwks_client = None
@@ -324,8 +326,7 @@ def validate_token(token: str) -> dict[str, Any] | None:  # noqa: PLR0911
                 logger.warning(f"Token is not active: {result}")
                 return None
             logger.warning(
-                f"Token introspection failed: status={response.status_code}, "
-                f"falling back to local JWT validation",
+                f"Token introspection failed: status={response.status_code}, falling back to local JWT validation",
             )
             # Fall back to local JWT validation if introspection fails
             return _fallback_jwt_validation(token)
@@ -336,8 +337,7 @@ def validate_token(token: str) -> dict[str, Any] | None:  # noqa: PLR0911
             return _fallback_jwt_validation(token)
         except requests.ConnectionError as e:
             logger.warning(
-                f"Cannot reach WSO2 for introspection ({e}), "
-                f"falling back to local JWT validation",
+                f"Cannot reach WSO2 for introspection ({e}), falling back to local JWT validation",
             )
             return _fallback_jwt_validation(token)
         except Exception as e:
@@ -494,8 +494,8 @@ def login_required(f):
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Bypass authentication if disabled
-        if AUTH_DISABLED:
+        # Bypass authentication if disabled (check at runtime so tests can patch env)
+        if is_auth_disabled():
             # Set default user info for bypass mode
             request.user_claims = {"sub": "bypass_user", "username": "bypass_user"}  # type: ignore
             request.user_roles = ["admin"]  # type: ignore  # Grant admin role in bypass mode
@@ -530,8 +530,7 @@ def login_required(f):
         if "access_token" not in session:
             current_url = get_current_request_url()
             logger.info(
-                f"login_required: No access token, "
-                f"redirecting to login. Current URL: {current_url}",
+                f"login_required: No access token, redirecting to login. Current URL: {current_url}",
             )
             return _login_redirect(current_url)
 
@@ -545,8 +544,7 @@ def login_required(f):
             session.clear()
             current_url = get_current_request_url()
             logger.info(
-                f"login_required: Token validation failed, "
-                f"redirecting to login. Current URL: {current_url}",
+                f"login_required: Token validation failed, redirecting to login. Current URL: {current_url}",
             )
             return _login_redirect(current_url)
 
@@ -572,7 +570,7 @@ def role_required(*required_roles):
         @login_required
         def decorated_function(*args, **kwargs):
             # Bypass role check if authentication is disabled
-            if AUTH_DISABLED:
+            if is_auth_disabled():
                 logger.info(
                     f"Role check bypassed - AUTH_DISABLED is true (required: {required_roles})",
                 )
@@ -623,7 +621,7 @@ def permission_required(permission: str):
         @login_required
         def decorated_function(*args, **kwargs):
             # Bypass permission check if authentication is disabled
-            if AUTH_DISABLED:
+            if is_auth_disabled():
                 logger.info(
                     f"Permission check bypassed - AUTH_DISABLED is true (required: {permission})",
                 )
@@ -769,8 +767,7 @@ def get_user_groups_from_scim2(access_token: str) -> list[str]:
             return groups
 
         logger.warning(
-            f"Failed to get user groups from SCIM2: status={response.status_code}, "
-            f"response={response.text}",
+            f"Failed to get user groups from SCIM2: status={response.status_code}, response={response.text}",
         )
         return []
     except Exception as e:
@@ -797,10 +794,7 @@ def search_wso2_users(query: str, access_token: str | None = None) -> list[dict]
             auth = (WSO2_IS_INTROSPECT_USER, WSO2_IS_INTROSPECT_PASSWORD)
 
         # Build SCIM2 filter - search by username, email, or name
-        filter_param = (
-            f'(username co "{query}" or emails co "{query}" or name.familyName co "{query}" '
-            f'or name.givenName co "{query}")'
-        )
+        filter_param = f'(username co "{query}" or emails co "{query}" or name.familyName co "{query}" or name.givenName co "{query}")'
 
         scim_users_url = f"{WSO2_IS_INTERNAL_URL}/scim2/Users"
 

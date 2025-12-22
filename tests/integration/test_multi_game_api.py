@@ -1,9 +1,10 @@
 """Integration tests for multi-game functionality"""
 
-import pytest
 from unittest.mock import Mock
 
-from multi_game_manager import MultiGameManager
+import pytest
+
+from src.app.multi_game_manager import MultiGameManager
 
 
 class TestMultiGameIntegration:
@@ -17,11 +18,11 @@ class TestMultiGameIntegration:
         return mock
 
     @pytest.fixture
-    def multi_manager(self, socketio_mock):
+    def multi_manager(self, socketio_mock: Mock):
         """Create a MultiGameManager instance"""
         return MultiGameManager(socketio_mock)
 
-    def test_create_and_manage_multiple_games(self, multi_manager):
+    def test_create_and_manage_multiple_games(self, multi_manager: Any):
         """Test creating and managing multiple games"""
         # Create first game
         game1 = multi_manager.create_game("game-1")
@@ -43,7 +44,7 @@ class TestMultiGameIntegration:
         assert state2["game_type"] == "501"
         assert len(state2["players"]) == 3
 
-    def test_switch_between_games(self, multi_manager):
+    def test_switch_between_games(self, multi_manager: Any):
         """Test switching between different games"""
         # Create two games
         game1 = multi_manager.create_game("game-1")
@@ -69,7 +70,7 @@ class TestMultiGameIntegration:
         active_game = multi_manager.get_game()
         assert active_game == game1
 
-    def test_games_maintain_independent_state(self, multi_manager):
+    def test_games_maintain_independent_state(self, multi_manager: Any):
         """Test that games maintain independent state"""
         # Create two games
         game1 = multi_manager.create_game("game-1")
@@ -89,7 +90,7 @@ class TestMultiGameIntegration:
         state2 = game2.get_game_state()
         assert state2["current_throw"] == 1  # Should still be 1
 
-    def test_delete_game_and_switch_active(self, multi_manager):
+    def test_delete_game_and_switch_active(self, multi_manager: Any):
         """Test deleting a game and automatic active game switching"""
         # Create three games
         multi_manager.create_game("game-1")
@@ -106,13 +107,13 @@ class TestMultiGameIntegration:
         assert multi_manager.get_active_game_id() in ["game-2", "game-3"]
         assert len(multi_manager.list_games()) == 2
 
-    def test_list_games_with_details(self, multi_manager):
+    def test_list_games_with_details(self, multi_manager: Any):
         """Test listing games includes all relevant details"""
         # Create games with different states
         game1 = multi_manager.create_game("game-1")
         game1.new_game("301", ["Alice", "Bob"])
 
-        game2 = multi_manager.create_game("game-2")
+        multi_manager.create_game("game-2")
         # Leave game2 unstarted to test different game states in listing
 
         game3 = multi_manager.create_game("game-3")
@@ -145,7 +146,7 @@ class TestMultiGameIntegration:
         assert game3_info["player_count"] == 4
         assert game3_info["players"] == ["Charlie", "Dave", "Eve", "Frank"]
 
-    def test_concurrent_gameplay(self, multi_manager):
+    def test_concurrent_gameplay(self, multi_manager: Any):
         """Test that multiple games can have gameplay simultaneously"""
         # Create two games
         game1 = multi_manager.create_game("game-1")
@@ -176,4 +177,3 @@ class TestMultiGameIntegration:
         # Both games should have different throw counts
         assert state1["current_throw"] == 3
         assert state2["current_throw"] == 2
-

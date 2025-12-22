@@ -33,6 +33,20 @@ class MultiGameManager:
             raise ValueError(f"Game with id '{game_id}' already exists")
 
         game_manager = GameManager(self.socketio)
+
+        # If running inside a Flask request/app context, prefer the app's
+        # game_manager.db_service so tests and request-scoped DB overrides
+        # are respected. This avoids new GameManager instances using a
+        # different DatabaseService than the test fixture-provided one.
+        try:
+            from flask import current_app
+
+            app_gm = getattr(current_app, "game_manager", None)
+            if app_gm is not None and getattr(app_gm, "db_service", None) is not None:
+                game_manager.db_service = app_gm.db_service
+        except Exception:
+            # Not running in Flask app context — nothing to do
+            pass
         self.games[game_id] = game_manager
 
         # Set as active game if it's the first game
@@ -111,7 +125,7 @@ class MultiGameManager:
             # Extract player information with scores
             player_info = []
             for idx, player in enumerate(players):
-                player_data = {"name": player.get("name", f"Player {idx+1}")}
+                player_data = {"name": player.get("name", f"Player {idx + 1}")}
 
                 # Get score from game_data if available
                 if state.get("game_data") and state["game_data"].get("players"):
@@ -127,7 +141,8 @@ class MultiGameManager:
                 "is_started": state.get("is_started"),
                 "is_active": game_id == self.active_game_id,
                 "player_count": len(players),
-                "players": player_info,
+                # Return players as a simple list of names for compatibility with tests
+                "players": [p.get("name") for p in player_info],
             }
 
             # Debug logging (reduce noise in INFO logs)
