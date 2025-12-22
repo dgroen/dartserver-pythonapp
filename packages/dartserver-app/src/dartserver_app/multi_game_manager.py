@@ -107,20 +107,20 @@ class MultiGameManager:
         for game_id, game_manager in self.games.items():
             state = game_manager.get_game_state()
             players = state.get("players", [])
-            
+
             # Extract player information with scores
             player_info = []
             for idx, player in enumerate(players):
                 player_data = {"name": player.get("name", f"Player {idx+1}")}
-                
+
                 # Get score from game_data if available
                 if state.get("game_data") and state["game_data"].get("players"):
                     game_players = state["game_data"]["players"]
                     if idx < len(game_players):
                         player_data["score"] = game_players[idx].get("score", 0)
-                
+
                 player_info.append(player_data)
-            
+
             game_info = {
                 "game_id": game_id,
                 "game_type": state.get("game_type"),
@@ -129,15 +129,16 @@ class MultiGameManager:
                 "player_count": len(players),
                 "players": player_info,
             }
-            
-            # Debug logging
+
+            # Debug logging (reduce noise in INFO logs)
             import logging
-            logging.getLogger(__name__).info(
+
+            logging.getLogger(__name__).debug(
                 f"Game {game_id}: players={len(players)}, "
                 f"is_active={game_id == self.active_game_id}, "
                 f"player_names={[p['name'] for p in players]}"
             )
-            
+
             games_list.append(game_info)
         return games_list
 

@@ -7,33 +7,56 @@ Includes WSO2 IS authentication and role-based access control
 import logging
 import os
 import secrets
+import ssl
 import threading
+import time
+import uuid
+from datetime import datetime, timedelta, timezone
+from functools import wraps
 from pathlib import Path
 
+import requests
 from dotenv import load_dotenv
+from eventlet import wsgi
 from flasgger import Swagger
-from flask import Flask, jsonify, redirect, render_template, request, session, url_for
+from flask import (
+    Flask,
+    Response,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    session,
+    url_for,
+)
 from flask_cors import CORS
 from flask_socketio import SocketIO
+from sqlalchemy import func
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from src.app.game_manager import GameManager
 from src.app.mobile_service import MobileService
 from src.app.multi_game_manager import MultiGameManager
 from src.core.auth import (
     exchange_code_for_token,
     get_authorization_url,
+    get_user_groups_from_scim2,
     get_user_info,
+    get_user_roles,
+    get_wso2_user_info,
     login_required,
     logout_user,
     permission_required,
     role_required,
+    search_wso2_users,
+    validate_token,
 )
 from src.core.config import Config
 from src.core.dartboard_service import DartboardMappingError, DartboardService
-from src.core.database_models import Player
+from src.core.database_models import GameType, Player, TrainingScore, TrainingSession
 from src.core.database_service import get_session, set_database_service
 from src.core.rabbitmq_consumer import RabbitMQConsumer
+from src.core.tts_service import TTSService
 
 # Load environment variables
 load_dotenv()
@@ -180,8 +203,6 @@ def index():
 @app.route("/service-worker.js")
 def serve_service_worker():
     """Serve the service worker file (no authentication required for PWA)"""
-    from flask import send_from_directory
-
     return send_from_directory(str(_root_dir / "static"), "service-worker.js")
 
 
@@ -367,8 +388,6 @@ def _process_scim2_data(scim_data, username, email, name):
 def _fetch_scim2_user(access_token):
     """Fetch user data from SCIM2 /Me endpoint."""
     try:
-        import requests
-
         wso2_url = os.getenv("WSO2_IS_INTERNAL_URL", "https://wso2is:9443")
         verify_ssl = os.getenv("WSO2_IS_VERIFY_SSL", "false").lower() in ("true", "1", "yes")
         resp = requests.get(
@@ -507,8 +526,6 @@ def profile():
 @login_required
 def debug_auth():
     """Debug authentication information"""
-    from src.core.auth import get_user_groups_from_scim2, get_user_roles, validate_token
-
     access_token = session.get("access_token")
     user_info = session.get("user_info", {})
 
@@ -681,8 +698,10 @@ def new_game():
             message:
               type: string
     """
-    global games_store, active_game_id
-    
+    # global games_store
+    global active_game_id
+    global game_manager
+
     data = request.json
     game_type = data.get("game_type", "301")
     player_data = data.get("players", [])
@@ -690,7 +709,6 @@ def new_game():
     reset_on_miss = data.get("reset_on_miss", False)
 
     # Generate game_id if not provided
-    import uuid
     game_id = f"game-{uuid.uuid4().hex[:8]}"
 
     # Convert player names to player objects with database IDs
@@ -731,25 +749,30 @@ def new_game():
         if not player_ids:
             player_ids = [session.get("player_id")]
 
-        game_manager.new_game(
+        # Create a dedicated session and start the game there
+        new_game_manager = multi_game_manager.create_game(game_id)
+        new_game_manager.new_game(
             game_type,
             player_ids=player_ids,
             double_out=double_out,
             reset_on_miss=reset_on_miss,
         )
-        
+        # Set active and update global pointers so main area shows this game
+        multi_game_manager.set_active_game(game_id)
+        game_manager = new_game_manager
+        app.game_manager = game_manager
+
         # Store game metadata in games_store
-        from datetime import datetime
         games_store[game_id] = {
             "game_id": game_id,
             "game_type": game_type,
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now(tz=timezone.utc).isoformat(),
             "players": player_ids,
             "double_out": double_out,
             "reset_on_miss": reset_on_miss,
         }
         active_game_id = game_id
-        
+
         # Game state is automatically emitted by game_manager.new_game()
         return jsonify({"status": "success", "message": "New game started", "game_id": game_id})
     except Exception:
@@ -812,9 +835,17 @@ def list_games():
                       type: string
                     description: List of player names
     """
-    games = multi_game_manager.list_games()
-    active_game_id = multi_game_manager.get_active_game_id()
-    return jsonify({"status": "success", "games": games, "active_game_id": active_game_id})
+    try:
+        games = multi_game_manager.list_games()
+        # Hide legacy default session from UI
+        games = [g for g in games if g.get("game_id") != "default"]
+        active_id = multi_game_manager.get_active_game_id()
+        if active_id == "default":
+            active_id = None
+        return jsonify({"status": "success", "games": games, "active_game_id": active_id})
+    except Exception:
+        app.logger.exception("Error getting games list")
+        return jsonify({"status": "error", "message": "Failed to list games"}), 500
 
 
 @app.route("/api/games/create", methods=["POST"])
@@ -837,7 +868,8 @@ def create_new_game_session():
           properties:
             game_id:
               type: string
-              description: Unique identifier for the game (optional, will be auto-generated if not provided)
+              description: Unique identifier for the game (optional, will be auto-generated if not
+              provided)
               example: game-1
             game_type:
               type: string
@@ -885,8 +917,6 @@ def create_new_game_session():
 
     # Auto-generate game ID if not provided
     if not game_id:
-        import uuid
-
         game_id = f"game-{str(uuid.uuid4())[:8]}"
 
     # Check if game already exists
@@ -903,7 +933,7 @@ def create_new_game_session():
         if game_type and player_names:
             double_out = data.get("double_out", False)
             reset_on_miss = data.get("reset_on_miss", False)
-            
+
             # Convert player names to player objects with database IDs
             db_session = new_game_manager.db_service.db_manager.get_session()
             try:
@@ -1221,9 +1251,7 @@ def search_wso2_users_endpoint():
         if not query or len(query) < 1:
             return jsonify({"success": False, "error": "Search query too short"}), 400
 
-        from src.core.auth import search_wso2_users as wso2_search
-
-        users = wso2_search(query)
+        users = search_wso2_users(query)
         return jsonify({"success": True, "users": users})
     except Exception as e:
         logger.exception("Error searching WSO2 users")
@@ -1301,8 +1329,6 @@ def add_player():
             )
 
         # Lookup WSO2 user
-        from src.core.auth import get_wso2_user_info
-
         wso2_user = get_wso2_user_info(username)
         if not wso2_user:
             return (
@@ -2419,8 +2445,6 @@ def get_tts_languages():
             fr: French
             es: Spanish
     """
-    from src.core.tts_service import TTSService
-
     languages = TTSService.get_supported_languages()
     return jsonify(languages)
 
@@ -2528,8 +2552,6 @@ def generate_tts_audio():
               type: string
               example: Failed to generate audio
     """
-    from flask import Response
-
     data = request.json
     text = data.get("text")
     lang = data.get("lang", "en")
@@ -2775,7 +2797,6 @@ def get_mobile_service():
 
 def api_key_required(f):
     """Decorator to require API key authentication"""
-    from functools import wraps
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -3463,8 +3484,6 @@ def get_game_types():
                     description: Game type description
     """
     try:
-        from src.core.database_models import GameType
-
         session = game_manager.db_service.db_manager.get_session()
         try:
             game_types = session.query(GameType).order_by(GameType.name).all()
@@ -3549,8 +3568,10 @@ def start_game():
             message:
               type: string
     """
-    global games_store, active_game_id
-    
+    # global games_store
+    global active_game_id
+    global game_manager
+
     data = request.json
     game_type = data.get("game_type", "301")
     player_data = data.get("players", [])
@@ -3558,12 +3579,10 @@ def start_game():
     reset_on_miss = data.get("reset_on_miss", False)
     show_throwout_advice = data.get("show_throwout_advice", False)
     game_id = data.get("game_id")
-    
+
     # Generate game_id if not provided
     if not game_id:
-        import uuid
         game_id = f"game-{uuid.uuid4().hex[:8]}"
-
 
     # Convert player names to player objects with database IDs
     db_session = game_manager.db_service.db_manager.get_session()
@@ -3603,29 +3622,34 @@ def start_game():
         if not player_ids:
             player_ids = [session.get("player_id")]
 
-        game_manager.new_game(
+        # Create a dedicated session and start the game there
+        new_game_manager = multi_game_manager.create_game(game_id)
+        new_game_manager.new_game(
             game_type,
             player_ids=player_ids,
             double_out=double_out,
             reset_on_miss=reset_on_miss,
         )
-        
+        # Set active and update global pointers so main area shows this game
+        multi_game_manager.set_active_game(game_id)
+        game_manager = new_game_manager
+        app.game_manager = game_manager
+
         # Store game metadata in games_store
-        from datetime import datetime
         games_store[game_id] = {
             "game_id": game_id,
             "game_type": game_type,
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "players": player_ids,
             "double_out": double_out,
             "reset_on_miss": reset_on_miss,
         }
         active_game_id = game_id
-        
-        # Set throwout advice if requested
+
+        # Set throwout advice if requested on the newly active session
         if show_throwout_advice:
             game_manager.set_show_throwout_advice(True)
-        
+
         game_state = game_manager.get_game_state()
 
         return jsonify(
@@ -3683,41 +3707,26 @@ def get_games_list():
               type: string
               nullable: true
     """
-    global games_store, active_game_id
-    
     try:
-        games_list = []
-        for gid, game_data in games_store.items():
-            # If this is the active game, get its current state
-            if gid == active_game_id:
-                game_state = game_manager.get_game_state()
-                is_started = game_state.get("is_started", False)
-                players = game_state.get("players", [])
-                current_player = game_state.get("current_player")
-            else:
-                # For inactive games, use stored metadata
-                is_started = False
-                players = []
-                current_player = None
-            
-            games_list.append({
-                "game_id": gid,
-                "game_type": game_data.get("game_type"),
-                "is_started": is_started,
-                "is_active": gid == active_game_id,
-                "player_count": len(players),
-                "players": [p.get("name", f"Player {i+1}") if isinstance(p, dict) else p for i, p in enumerate(players)],
-                "current_player": current_player,
-            })
-        
-        return jsonify({
-            "status": "success",
-            "games": games_list,
-            "active_game_id": active_game_id,
-        })
-    except Exception as e:
+        # Use MultiGameManager to retrieve live state for all sessions
+        games = multi_game_manager.list_games()
+        # Filter out the legacy "default" session from UI
+        games = [g for g in games if g.get("game_id") != "default"]
+        active_id = multi_game_manager.get_active_game_id()
+        # If the active session is default, treat as no active selection
+        if active_id == "default":
+            active_id = None
+
+        return jsonify(
+            {
+                "status": "success",
+                "games": games,
+                "active_game_id": active_id,
+            },
+        )
+    except Exception:
         app.logger.exception("Error getting games list")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "Failed to list games"}), 500
 
 
 @app.route("/api/games/<game_id>/activate", methods=["POST"])
@@ -3749,17 +3758,23 @@ def activate_game(game_id):
       404:
         description: Game not found
     """
-    global games_store, active_game_id
-    
-    if game_id not in games_store:
+    # Ensure the session exists in MultiGameManager
+    if not multi_game_manager.has_game(game_id):
         return jsonify({"status": "error", "message": f"Game '{game_id}' not found"}), 404
-    
-    active_game_id = game_id
-    return jsonify({
-        "status": "success",
-        "message": f"Game '{game_id}' activated",
-        "game_id": game_id,
-    })
+
+    # Switch active session and update global game_manager reference
+    multi_game_manager.set_active_game(game_id)
+    global game_manager
+    game_manager = multi_game_manager.get_game(game_id)
+    app.game_manager = game_manager
+
+    return jsonify(
+        {
+            "status": "success",
+            "message": "Game activated",
+            "game_id": game_id,
+        },
+    )
 
 
 @app.route("/api/games/<game_id>/state", methods=["GET"])
@@ -3783,24 +3798,10 @@ def get_game_state_by_id(game_id):
       404:
         description: Game not found
     """
-    global games_store, active_game_id
-    
-    if game_id not in games_store:
+    game = multi_game_manager.get_game(game_id)
+    if not game:
         return jsonify({"status": "error", "message": f"Game '{game_id}' not found"}), 404
-    
-    # Only return state if this is the active game
-    if game_id == active_game_id:
-        return jsonify(game_manager.get_game_state())
-    else:
-        # Return stored metadata for non-active games
-        game_data = games_store.get(game_id, {})
-        return jsonify({
-            "game_id": game_id,
-            "game_type": game_data.get("game_type"),
-            "is_started": False,
-            "players": [],
-            "current_player": None,
-        })
+    return jsonify(game.get_game_state())
 
 
 @app.route("/api/mobile/game/start-single-player", methods=["POST"])
@@ -4024,8 +4025,6 @@ def delete_game(game_session_id):
             )
 
         # Check if game is older than 1 day
-        from datetime import datetime, timedelta, timezone
-
         started_at_str = game_data["started_at"]
         # Parse the ISO format datetime string
         if started_at_str.endswith("Z"):
@@ -4107,8 +4106,8 @@ def resume_game(game_session_id):
       500:
         description: Error resuming game
     """
-    global games_store, active_game_id
-    
+    global active_game_id, game_manager
+
     try:
         # Get the game data
         game_data = game_manager.db_service.get_game_replay_data(game_session_id)
@@ -4128,31 +4127,35 @@ def resume_game(game_session_id):
                 403,
             )
 
-        # Resume the game by replaying all throws to restore state
-        success = game_manager.resume_game_from_replay_data(game_data)
+        # Generate game_id for resumed game and create a dedicated session
+        game_id = f"game-{uuid.uuid4().hex[:8]}"
+
+        new_game_manager = multi_game_manager.create_game(game_id)
+
+        # Resume the game by replaying all throws to restore state in the new session
+        success = new_game_manager.resume_game_from_replay_data(game_data)
 
         if not success:
             return jsonify({"status": "error", "message": "Failed to resume game"}), 500
 
-        # Generate game_id for resumed game
-        import uuid
-        game_id = f"game-{uuid.uuid4().hex[:8]}"
-        
         # Store game metadata in games_store
-        from datetime import datetime
         games_store[game_id] = {
             "game_id": game_id,
             "game_type": game_data.get("game_type", "301"),
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "players": game_data.get("players", []),
             "double_out": game_data.get("double_out", False),
             "reset_on_miss": game_data.get("reset_on_miss", False),
             "resumed_from": game_session_id,
         }
+        # Set active and update global pointers so UI shows resumed session
+        multi_game_manager.set_active_game(game_id)
+        game_manager = new_game_manager
+        app.game_manager = game_manager
         active_game_id = game_id
 
         # Emit game state to all clients
-        socketio.emit("game_state", game_manager.get_game_state(), namespace="/")
+        socketio.emit("game_state", new_game_manager.get_game_state(), namespace="/")
 
         return jsonify(
             {
@@ -4396,15 +4399,9 @@ def start_training():
             return jsonify({"success": False, "error": "Player ID not available"}), 401
 
         # Start training session using database service
-        import uuid
-
-        from src.core.database_models import TrainingSession
-
         db_session = game_manager.db_service.db_manager.get_session()
 
         # Get or create game type
-        from src.core.database_models import GameType
-
         game_type_obj = db_session.query(GameType).filter(GameType.name == game_type).first()
         if not game_type_obj:
             game_type_obj = GameType(name=game_type, description=f"{game_type} game")
@@ -4484,10 +4481,6 @@ def end_training():
         if not training_session_id:
             return jsonify({"success": False, "error": "No active training session"}), 400
 
-        from datetime import datetime, timezone
-
-        from src.core.database_models import TrainingSession
-
         db_session = game_manager.db_service.db_manager.get_session()
         training_session = (
             db_session.query(TrainingSession)
@@ -4551,8 +4544,6 @@ def get_training_history():
         if not player_id:
             return jsonify({"success": False, "error": "Player ID not available"}), 401
 
-        from src.core.database_models import GameType, TrainingSession
-
         db_session = game_manager.db_service.db_manager.get_session()
         training_sessions = (
             db_session.query(TrainingSession)
@@ -4614,10 +4605,6 @@ def get_training_statistics():
         player_id = session.get("player_id")
         if not player_id:
             return jsonify({"success": False, "error": "Player ID not available"}), 401
-
-        from sqlalchemy import func
-
-        from src.core.database_models import TrainingScore, TrainingSession
 
         db_session = game_manager.db_service.db_manager.get_session()
 
@@ -4841,11 +4828,6 @@ def patch_eventlet_ssl_error_handling():
     to connect using HTTP to an HTTPS server. Instead, it logs a concise,
     user-friendly message with rate limiting.
     """
-    import ssl
-    import time
-
-    from eventlet import wsgi
-
     # Store original handler
     original_handle = wsgi.HttpProtocol.handle
 

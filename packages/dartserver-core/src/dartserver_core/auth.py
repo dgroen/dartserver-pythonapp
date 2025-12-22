@@ -6,6 +6,7 @@ Implements role-based access control (RBAC)
 
 import logging
 import os
+import warnings
 from functools import wraps
 from importlib import import_module
 from typing import Any
@@ -13,9 +14,13 @@ from urllib.parse import urlencode
 
 import jwt
 import requests
+
+# NEW: suppress HTTPS warnings in dev
+import urllib3
 from dartserver_core.config import Config
 from flask import current_app, has_request_context, jsonify, redirect, request, session
 from flask import url_for as flask_url_for
+from urllib3.exceptions import InsecureRequestWarning
 from werkzeug.routing import BuildError
 
 logger = logging.getLogger(__name__)
@@ -88,7 +93,7 @@ def get_dynamic_redirect_uri() -> str:
     # Enhanced logging for localhost debugging
     is_localhost = "localhost" in host or "127.0.0.1" in host
     if is_localhost:
-        logger.info(
+        logger.debug(
             f"Localhost redirect URI: {redirect_uri} "
             f"(scheme={scheme}, host={host}, "
             f"config_domain={Config.APP_DOMAIN}, "
@@ -132,7 +137,7 @@ def get_dynamic_post_logout_redirect_uri() -> str:
     # Enhanced logging for localhost debugging
     is_localhost = "localhost" in host or "127.0.0.1" in host
     if is_localhost:
-        logger.info(
+        logger.debug(
             f"Localhost post-logout redirect URI: {post_logout_uri} "
             f"(scheme={scheme}, host={host})",
         )
@@ -214,6 +219,18 @@ JWT_VALIDATION_MODE = os.getenv("JWT_VALIDATION_MODE", "introspection")
 # SSL verification configuration
 WSO2_IS_VERIFY_SSL = os.getenv("WSO2_IS_VERIFY_SSL", "False").lower() == "true"
 
+# Suppress urllib3 InsecureRequestWarning when verify=False (dev/local)
+if not WSO2_IS_VERIFY_SSL:
+    try:
+        # Disable at urllib3 level and silence Python warnings module
+        urllib3.disable_warnings(InsecureRequestWarning)
+        warnings.simplefilter("ignore", InsecureRequestWarning)
+        warnings.filterwarnings("ignore", message="Unverified HTTPS request")
+    except Exception:
+        # Be resilient: never fail app startup due to warning suppression
+        pass
+
+
 # Authentication bypass configuration
 AUTH_DISABLED = os.getenv("AUTH_DISABLED", "False").lower() == "true"
 
@@ -278,7 +295,7 @@ def validate_token(token: str) -> dict[str, Any] | None:  # noqa: PLR0911
                 algorithms=["RS256"],
                 options={"verify_exp": True},
             )
-            logger.info(f"Token validated for user: {decoded.get('sub', 'unknown')}")
+            logger.debug("Token validated for user: %s", decoded.get("sub", "unknown"))
             return decoded  # type: ignore
         except jwt.ExpiredSignatureError:
             logger.warning("Token has expired")
@@ -301,10 +318,8 @@ def validate_token(token: str) -> dict[str, Any] | None:  # noqa: PLR0911
             if response.status_code == 200:
                 result = response.json()
                 if result.get("active"):
-                    logger.info(
-                        f"Token validated via introspection for user: \
-                        {result.get('username', 'unknown')}",
-                    )
+                    username = str(result.get("username", "unknown")).strip()
+                    logger.debug("Token validated via introspection for user: %s", username)
                     return result  # type: ignore
                 logger.warning(f"Token is not active: {result}")
                 return None
@@ -344,17 +359,12 @@ def _fallback_jwt_validation(token: str) -> dict[str, Any] | None:
     This prevents session loss during temporary WSO2 connectivity issues
     """
     try:
-        # Decode without verification to check structure and expiration
-        # We skip verification because we can't access JWKS during connectivity issues
         decoded = jwt.decode(
             token,
             options={"verify_signature": False, "verify_exp": True},
         )
-
-        logger.info(
-            f"Token passed local JWT validation (fallback mode) for user: "
-            f"{decoded.get('preferred_username', decoded.get('sub', 'unknown'))}",
-        )
+        user = decoded.get("preferred_username", decoded.get("sub", "unknown"))
+        logger.debug("Token passed local JWT validation (fallback) for user: %s", user)
         return decoded  # type: ignore
     except jwt.ExpiredSignatureError:
         logger.warning("Token has expired (detected in fallback validation)")
@@ -410,11 +420,11 @@ def get_user_roles(token_claims: dict, access_token: str | None = None) -> list[
 
     # If no roles found in token claims and we have an access token, try userinfo endpoint
     if not roles and access_token:
-        logger.info("No roles in token claims, trying userinfo endpoint")
+        logger.debug("No roles in token claims, trying userinfo endpoint")
         try:
             userinfo = get_user_info(access_token)
             if userinfo:
-                logger.info(f"UserInfo response: {userinfo}")
+                logger.debug("UserInfo response: %s", userinfo)
 
                 # Check for roles in userinfo using the same claim names
                 for claim_name in possible_role_claims:
@@ -437,12 +447,12 @@ def get_user_roles(token_claims: dict, access_token: str | None = None) -> list[
 
     # If still no roles found, try SCIM2 /Me endpoint as last resort
     if not roles and access_token:
-        logger.info("No roles in userinfo, trying SCIM2 /Me endpoint")
+        logger.debug("No roles in userinfo, trying SCIM2 /Me endpoint")
         try:
             scim_groups = get_user_groups_from_scim2(access_token)
             if scim_groups:
                 roles.extend(scim_groups)
-                logger.info(f"SCIM2 returned groups: {scim_groups}")
+                logger.debug("SCIM2 returned groups: %s", scim_groups)
         except Exception as e:
             logger.warning(f"Failed to fetch roles from SCIM2: {e}")
 
@@ -453,7 +463,7 @@ def get_user_roles(token_claims: dict, access_token: str | None = None) -> list[
         normalized_role = role.split("/")[-1] if "/" in role else role
         normalized_roles.append(normalized_role.lower())
 
-    logger.info(f"Extracted and normalized roles: {normalized_roles}")
+    logger.debug("Extracted and normalized roles: %s", normalized_roles)
     return normalized_roles
 
 
@@ -571,7 +581,9 @@ def role_required(*required_roles):
             user_roles = getattr(request, "user_roles", [])
 
             # Debug: Log role check
-            logger.info(f"Role check - User roles: {user_roles}, Required roles: {required_roles}")
+            logger.debug(
+                "Role check - User roles: %s, Required roles: %s", user_roles, required_roles
+            )
 
             # Check if user has any of the required roles
             if not any(role in user_roles for role in required_roles):
@@ -655,14 +667,14 @@ def get_authorization_url(state: str | None = None) -> str:
         params["state"] = state
 
     # Debug logging
-    logger.info(f"Generating authorization URL with params: {params}")
-    logger.info(f"WSO2_CLIENT_ID value: '{WSO2_CLIENT_ID}'")
-    logger.info(f"Dynamic redirect_uri value: '{redirect_uri}'")
+    logger.debug(f"Generating authorization URL with params: {params}")
+    logger.debug(f"WSO2_CLIENT_ID value: '{WSO2_CLIENT_ID}'")
+    logger.debug(f"Dynamic redirect_uri value: '{redirect_uri}'")
 
     query_string = urlencode(params)
     auth_url = f"{WSO2_IS_AUTHORIZE_URL}?{query_string}"
 
-    logger.info(f"Generated authorization URL: {auth_url}")
+    logger.debug(f"Generated authorization URL: {auth_url}")
 
     return auth_url
 
@@ -728,7 +740,7 @@ def get_user_groups_from_scim2(access_token: str) -> list[str]:
     This is a fallback when groups are not included in the token or userinfo
     """
     try:
-        logger.info("Fetching user groups from SCIM2 /Me endpoint")
+        logger.debug("Fetching user groups from SCIM2 /Me endpoint")
 
         response = requests.get(
             WSO2_IS_SCIM2_ME_URL,
@@ -739,7 +751,7 @@ def get_user_groups_from_scim2(access_token: str) -> list[str]:
 
         if response.status_code == 200:
             scim_data = response.json()
-            logger.info(f"SCIM2 /Me response: {scim_data}")
+            logger.debug(f"SCIM2 /Me response: {scim_data}")
 
             groups = []
             # SCIM2 groups are in the 'groups' array
@@ -753,7 +765,7 @@ def get_user_groups_from_scim2(access_token: str) -> list[str]:
                     elif isinstance(group, str):
                         groups.append(group)
 
-            logger.info(f"Extracted groups from SCIM2: {groups}")
+            logger.debug(f"Extracted groups from SCIM2: {groups}")
             return groups
 
         logger.warning(
