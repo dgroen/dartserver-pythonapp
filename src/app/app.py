@@ -56,7 +56,6 @@ from src.core.dartboard_service import DartboardMappingError, DartboardService
 from src.core.database_models import GameType, Player, TrainingScore, TrainingSession
 from src.core.database_service import get_session, set_database_service
 from src.core.rabbitmq_consumer import RabbitMQConsumer
-from src.core.tts_service import TTSService
 
 # Load environment variables
 load_dotenv()
@@ -2445,6 +2444,8 @@ def get_tts_languages():
             fr: French
             es: Spanish
     """
+    from dartserver_services.tts_service import TTSService  # noqa: PLC0415
+
     languages = TTSService.get_supported_languages()
     return jsonify(languages)
 
