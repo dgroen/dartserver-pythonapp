@@ -22,6 +22,7 @@ from flasgger import Swagger
 from flask import (
     Flask,
     Response,
+    current_app,
     jsonify,
     redirect,
     render_template,
@@ -711,9 +712,20 @@ def new_game():
     game_id = f"game-{uuid.uuid4().hex[:8]}"
 
     # Convert player names to player objects with database IDs
-    db_session = game_manager.db_service.db_manager.get_session()
+    # Use the request-bound app's game_manager to ensure tests' patched
+    # DatabaseService is respected (avoid stale module-level globals).
+    db_session = current_app.game_manager.db_service.db_manager.get_session()
     try:
         player_ids = []
+        # Debug: log players currently in DB for troubleshooting tests
+        try:
+            all_players = db_session.query(Player).all()
+            app.logger.debug(
+                "Players in DB at request: %s",
+                [f"{p.name}<{p.username}>" for p in all_players],
+            )
+        except Exception:
+            app.logger.debug("Could not enumerate players in DB for debug")
 
         for player_name in player_data:
             # Try to find player by name or username
