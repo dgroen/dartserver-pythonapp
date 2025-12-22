@@ -1,0 +1,2320 @@
+openapi: 3.0.3
+info:
+  title: Darts Game API
+  description: 'REST API for the Darts Game System with comprehensive dartboard, game
+    management, and mobile support.
+
+
+    ## Authentication
+
+    OAuth2 via WSO2 Identity Server. Include access token: `Authorization: Bearer
+    <token>`
+
+
+    ## Features
+
+    - Game Management (301, 501, Cricket, Round the Clock)
+
+    - Dual Score Formats (legacy + GPIO pin mapping)
+
+    - Player Management with WSO2
+
+    - Dartboard Zone Configuration
+
+    - TTS Integration
+
+    - Mobile API
+
+    - History & Statistics
+
+    '
+  version: 2.0.0
+  contact:
+    url: https://test.letsplaydarts.eu
+servers:
+- url: https://test.letsplaydarts.eu
+  description: Test server
+- url: http://localhost:5000
+  description: Local development
+tags:
+- name: Health
+- name: Game Management
+- name: Scores
+- name: Players
+- name: Dartboard
+- name: Admin
+- name: TTS
+- name: Mobile
+- name: History
+paths:
+  /health:
+    get:
+      tags:
+      - Health
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+  /api/game/state:
+    get:
+      tags:
+      - Game Management
+      summary: Get current game state
+      responses:
+        '200':
+          description: Current game state
+  /api/game/new:
+    post:
+      tags:
+      - Game Management
+      summary: Create new game
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - game_type
+              - players
+              properties:
+                game_type:
+                  type: string
+                  enum:
+                  - '301'
+                  - '401'
+                  - '501'
+                  - cricket
+                  - round_the_clock
+                players:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      username:
+                        type: string
+                      name:
+                        type: string
+                double_out:
+                  type: boolean
+      responses:
+        '200':
+          description: Game created
+  /api/game/start:
+    post:
+      tags:
+      - Game Management
+      - Mobile
+      summary: Start game (mobile)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                game_type:
+                  type: string
+                players:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Game started
+  /api/game/end:
+    post:
+      tags:
+      - Game Management
+      - Mobile
+      summary: End current game
+      responses:
+        '200':
+          description: Game ended
+  /api/game/current:
+    get:
+      tags:
+      - Game Management
+      - Mobile
+      summary: Get current game
+      responses:
+        '200':
+          description: Current game info
+  /api/game/types:
+    get:
+      tags:
+      - Game Management
+      - Mobile
+      summary: List game types
+      responses:
+        '200':
+          description: Available game types
+  /api/game/results:
+    get:
+      tags:
+      - Game Management
+      - Mobile
+      summary: Get game results
+      responses:
+        '200':
+          description: Game results
+  /api/game/current/session_id:
+    get:
+      tags:
+      - Game Management
+      summary: Get session ID
+      responses:
+        '200':
+          description: Current session ID
+  /api/games:
+    get:
+      tags:
+      - Game Management
+      - Multi-Game
+      summary: List all game sessions
+      description: Returns all active tracked game sessions and the current active_game_id
+      responses:
+        '200':
+          description: List of game sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  games:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        game_id:
+                          type: string
+                        game_type:
+                          type: string
+                        is_started:
+                          type: boolean
+                        is_active:
+                          type: boolean
+                        player_count:
+                          type: integer
+                        players:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              db_id:
+                                type: integer
+                              name:
+                                type: string
+                  active_game_id:
+                    type: string
+                    nullable: true
+  /api/games/create:
+    post:
+      tags:
+      - Game Management
+      - Multi-Game
+      summary: Create a new game session
+      description: Creates a new multi-game session (optionally starts a game in it)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                game_id:
+                  type: string
+                  description: Optional session id; auto-generated when omitted
+                game_type:
+                  type: string
+                  description: Type of game to start
+                  enum:
+                  - '301'
+                  - '401'
+                  - '501'
+                  - cricket
+                  - round_the_clock
+                  - round_the_clock_double
+                players:
+                  type: array
+                  items:
+                    type: string
+                  description: List of player names or usernames
+                double_out:
+                  type: boolean
+                reset_on_miss:
+                  type: boolean
+                set_as_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Game session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                  game_id:
+                    type: string
+  /api/games/{game_id}/activate:
+    post:
+      tags:
+      - Game Management
+      - Multi-Game
+      summary: Activate a game session
+      parameters:
+      - name: game_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Game activated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                  game_id:
+                    type: string
+        '404':
+          description: Game not found
+  /api/games/{game_id}:
+    delete:
+      tags:
+      - Game Management
+      - Multi-Game
+      summary: Delete a game session
+      parameters:
+      - name: game_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Game deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+        '400':
+          description: Cannot delete default game or invalid request
+        '404':
+          description: Game not found
+  /api/games/{game_id}/state:
+    get:
+      tags:
+      - Game Management
+      - Multi-Game
+      summary: Get state of a specific game session
+      parameters:
+      - name: game_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Game state retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+        '404':
+          description: Game not found
+  /:
+    get:
+      description: Renders the main game board interface for displaying the darts
+        game
+      responses:
+        '200':
+          content:
+            text/html:
+              schema:
+                type: string
+          description: HTML page rendered successfully
+      summary: Main game board page
+      tags:
+      - UI
+  /admin/dartboard-testing:
+    get:
+      description: Renders the admin page for dartboard calibration and testing (admin
+        only).
+      responses:
+        '200':
+          description: HTML page rendered
+        '403':
+          description: Forbidden - admin required
+      summary: Admin page for dartboard testing and calibration
+      tags:
+      - Admin
+      - Dartboard
+  /api/Throw/zone:
+    post:
+      description: 'Submits a dart throw using GPIO pin combination and dartboard
+        type.
+
+        The server looks up the zone information based on the dartboard type and pin
+        combination.
+
+        This is the preferred format for new dartboards.
+
+        '
+      parameters:
+      - description: Pin-based score information
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            boardType:
+              description: Dartboard type identifier (e.g., 'carromco', 'winmau')
+              example: carromco
+              type: string
+            masterPin:
+              description: Master (row) GPIO pin number
+              example: 4
+              type: integer
+            slavePin:
+              description: Slave (column) GPIO pin number
+              example: 13
+              type: integer
+            user:
+              description: Optional player identifier
+              example: dgroen
+              type: string
+          required:
+          - masterPin
+          - slavePin
+          - boardType
+          type: object
+      responses:
+        '200':
+          description: Score submitted successfully
+          schema:
+            properties:
+              message:
+                example: Score submitted
+                type: string
+              status:
+                example: success
+                type: string
+              zone_info:
+                properties:
+                  base_value:
+                    example: 20
+                    type: integer
+                  multiplier_type:
+                    example: TRIPLE
+                    type: string
+                  score:
+                    example: 60
+                    type: integer
+                  zone_number:
+                    example: 20
+                    type: integer
+                type: object
+            type: object
+        '400':
+          description: Invalid request or zone not found
+          schema:
+            properties:
+              message:
+                type: string
+              status:
+                example: error
+                type: string
+            type: object
+      summary: Submit a score via dartboard zone mapping (New generic format)
+      tags:
+      - Score
+  /api/active-games:
+    get:
+      description: Returns all currently active games with their current state and
+        player scores
+      responses:
+        '200':
+          description: List of active games
+          schema:
+            properties:
+              games:
+                items:
+                  type: object
+                type: array
+              success:
+                type: boolean
+            type: object
+      summary: Get active games with current state
+      tags:
+      - Game
+  /api/admin/dartboard/available-pins:
+    get:
+      description: Returns a list of common ESP32 GPIO pins that can be used for dartboard
+        matrices
+      responses:
+        '200':
+          description: List of available pins
+          schema:
+            properties:
+              pins:
+                example:
+                - 2
+                - 4
+                - 5
+                - 12
+                - 13
+                - 14
+                - 15
+                - 16
+                - 17
+                - 18
+                - 19
+                - 21
+                - 22
+                - 23
+                - 25
+                - 26
+                - 27
+                - 32
+                - 33
+                items:
+                  type: integer
+                type: array
+              status:
+                example: success
+                type: string
+            type: object
+      summary: Get list of available GPIO pins for dartboard configuration
+      tags:
+      - Admin/Dartboard
+  /api/admin/dartboard/import:
+    post:
+      description: Import multiple zone mappings at once
+      parameters:
+      - in: body
+        name: body
+        schema:
+          properties:
+            boardType:
+              example: carromco
+              type: string
+            mappings:
+              items:
+                properties:
+                  baseValue:
+                    type: integer
+                  masterPin:
+                    type: integer
+                  multiplierType:
+                    type: string
+                  slavePin:
+                    type: integer
+                  zoneNumber:
+                    type: integer
+                required:
+                - masterPin
+                - slavePin
+                - zoneNumber
+                - multiplierType
+                - baseValue
+                type: object
+              type: array
+          required:
+          - boardType
+          - mappings
+          type: object
+      responses:
+        '200':
+          description: Mappings imported successfully
+          schema:
+            properties:
+              created:
+                type: integer
+              status:
+                example: success
+                type: string
+              updated:
+                type: integer
+            type: object
+        '400':
+          description: Invalid request or import error
+      summary: Bulk import dartboard mappings from CSV
+      tags:
+      - Admin/Dartboard
+  /api/admin/dartboard/mapping:
+    post:
+      description: Update an existing zone mapping or create a new one
+      parameters:
+      - in: body
+        name: body
+        schema:
+          properties:
+            baseValue:
+              example: 20
+              type: integer
+            boardType:
+              example: carromco
+              type: string
+            masterPin:
+              example: 4
+              type: integer
+            multiplierType:
+              enum:
+              - SINGLE
+              - DOUBLE
+              - TRIPLE
+              - BULL
+              - DBLBULL
+              example: TRIPLE
+              type: string
+            slavePin:
+              example: 13
+              type: integer
+            zoneNumber:
+              example: 20
+              type: integer
+          required:
+          - boardType
+          - masterPin
+          - slavePin
+          - zoneNumber
+          - multiplierType
+          - baseValue
+          type: object
+      responses:
+        '200':
+          description: Mapping updated successfully
+          schema:
+            properties:
+              message:
+                type: string
+              status:
+                example: success
+                type: string
+            type: object
+        '400':
+          description: Invalid request or validation error
+      summary: Update or create a dartboard zone mapping
+      tags:
+      - Admin/Dartboard
+  /api/admin/dartboard/matrix/{board_type}:
+    get:
+      description: Returns the GPIO pin matrix for a dartboard type with current mappings
+      parameters:
+      - description: Dartboard type name (e.g., 'carromco')
+        in: path
+        name: board_type
+        type: string
+      responses:
+        '200':
+          description: Matrix visualization data
+          schema:
+            properties:
+              dartboard_type:
+                type: object
+              master_pins:
+                items:
+                  type: integer
+                type: array
+              matrix:
+                type: array
+              slave_pins:
+                items:
+                  type: integer
+                type: array
+              status:
+                example: success
+                type: string
+            type: object
+        '404':
+          description: Dartboard type not found
+      summary: Get matrix visualization for a dartboard type
+      tags:
+      - Admin/Dartboard
+  /api/admin/dartboard/type:
+    post:
+      description: Register a new dartboard type that can then be configured with
+        zone mappings
+      parameters:
+      - in: body
+        name: body
+        schema:
+          properties:
+            brand:
+              description: Brand name of the dartboard
+              example: Gran Board
+              type: string
+            description:
+              description: Description of the dartboard (optional)
+              example: Electronic dartboard with Bluetooth connectivity
+              type: string
+            masterPins:
+              description: List of GPIO pins for master (row) lines
+              example:
+              - 2
+              - 4
+              - 5
+              - 16
+              - 17
+              - 18
+              - 19
+              items:
+                type: integer
+              type: array
+            model:
+              description: Model name or number (optional)
+              example: Gran Board 3
+              type: string
+            name:
+              description: Unique identifier for the dartboard type (lowercase, no
+                spaces)
+              example: granboard
+              type: string
+            slavePins:
+              description: List of GPIO pins for slave (column) lines
+              example:
+              - 12
+              - 13
+              - 14
+              - 25
+              - 26
+              - 27
+              - 32
+              - 33
+              items:
+                type: integer
+              type: array
+          required:
+          - name
+          - brand
+          type: object
+      responses:
+        '201':
+          description: Dartboard type created successfully
+          schema:
+            properties:
+              dartboard_type:
+                properties:
+                  brand:
+                    type: string
+                  description:
+                    type: string
+                  id:
+                    type: integer
+                  master_pins:
+                    items:
+                      type: integer
+                    type: array
+                  model:
+                    type: string
+                  name:
+                    type: string
+                  slave_pins:
+                    items:
+                      type: integer
+                    type: array
+                type: object
+              message:
+                type: string
+              status:
+                example: success
+                type: string
+            type: object
+        '400':
+          description: Invalid request or dartboard type already exists
+      summary: Create a new dartboard type
+      tags:
+      - Admin/Dartboard
+  /api/admin/dartboard/type/{board_type}/pins:
+    put:
+      description: Update the master and slave GPIO pin configuration for an existing
+        dartboard type
+      parameters:
+      - description: Dartboard type name
+        in: path
+        name: board_type
+        required: true
+        type: string
+      - in: body
+        name: body
+        schema:
+          properties:
+            masterPins:
+              description: List of GPIO pins for master (row) lines
+              example:
+              - 2
+              - 4
+              - 5
+              - 16
+              - 17
+              - 18
+              - 19
+              items:
+                type: integer
+              type: array
+            slavePins:
+              description: List of GPIO pins for slave (column) lines
+              example:
+              - 12
+              - 13
+              - 14
+              - 25
+              - 26
+              - 27
+              - 32
+              - 33
+              items:
+                type: integer
+              type: array
+          type: object
+      responses:
+        '200':
+          description: Pins updated successfully
+        '400':
+          description: Invalid request
+        '404':
+          description: Dartboard type not found
+      summary: Update GPIO pin configuration for a dartboard type
+      tags:
+      - Admin/Dartboard
+  /api/admin/tts/player:
+    get:
+      description: Interactive HTML page for testing TTS with built-in audio player
+        (admin only)
+      parameters:
+      - description: Text to generate audio for
+        example: Hello, this is a test
+        in: query
+        name: text
+        required: false
+        type: string
+      responses:
+        '200':
+          content:
+            text/html:
+              schema:
+                type: string
+          description: HTML page with audio player
+        '403':
+          description: Forbidden - admin role required
+      summary: TTS player UI for testing
+      tags:
+      - TTS
+  /api/dartboard/connect:
+    post:
+      description: Called by dartboard when it connects (requires API key)
+      parameters:
+      - description: API key for authentication
+        in: header
+        name: X-API-Key
+        required: true
+        type: string
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            dartboard_id:
+              description: Dartboard identifier
+              type: string
+          type: object
+      responses:
+        '200':
+          description: Connection acknowledged
+          schema:
+            properties:
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+      summary: Dartboard connection endpoint
+      tags:
+      - Mobile
+  /api/dartboard/score:
+    post:
+      description: Called by dartboard to submit scores (requires API key)
+      parameters:
+      - description: API key for authentication
+        in: header
+        name: X-API-Key
+        required: true
+        type: string
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            multiplier:
+              description: Multiplier type
+              type: string
+            score:
+              description: Base score value
+              type: integer
+          type: object
+      responses:
+        '200':
+          description: Score submitted
+          schema:
+            properties:
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+      summary: Dartboard score submission endpoint
+      tags:
+      - Mobile
+  /api/dartboard/types:
+    get:
+      description: Returns all registered and active dartboard types
+      responses:
+        '200':
+          description: List of dartboard types
+          schema:
+            properties:
+              status:
+                example: success
+                type: string
+              types:
+                items:
+                  properties:
+                    brand:
+                      type: string
+                    description:
+                      type: string
+                    id:
+                      type: integer
+                    model:
+                      type: string
+                    name:
+                      type: string
+                  type: object
+                type: array
+            type: object
+      summary: Get all registered dartboard types
+      tags:
+      - Dartboard
+  /api/dartboard/types/{board_type}/mappings:
+    get:
+      description: Returns all zone mappings for a specific dartboard type
+      parameters:
+      - description: Dartboard type name (e.g., 'carromco')
+        in: path
+        name: board_type
+        required: true
+        type: string
+      responses:
+        '200':
+          description: List of zone mappings
+          schema:
+            properties:
+              board_type:
+                type: string
+              mappings:
+                items:
+                  properties:
+                    base_value:
+                      type: integer
+                    master_pin:
+                      type: integer
+                    multiplier_type:
+                      type: string
+                    slave_pin:
+                      type: integer
+                    zone_number:
+                      type: integer
+                  type: object
+                type: array
+              status:
+                example: success
+                type: string
+            type: object
+        '404':
+          description: Dartboard type not found
+      summary: Get zone mappings for a dartboard type
+      tags:
+      - Dartboard
+  /api/debug/session:
+    get:
+      description: Returns current Flask session keys and simple auth flags for debugging.
+      responses:
+        '200':
+          description: Session information
+      summary: Debug endpoint - returns session and player info
+      tags:
+      - Debug
+  /api/game/history:
+    get:
+      description: 'Returns a list of recent games. Regular users see only their games,
+        admins can filter by user.
+
+        '
+      parameters:
+      - default: 10
+        description: Maximum number of games to return
+        example: 10
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by username (admin only)
+        example: john_doe
+        in: query
+        name: user
+        type: string
+      responses:
+        '200':
+          description: List of recent games
+          schema:
+            properties:
+              games:
+                items:
+                  properties:
+                    finished_at:
+                      description: Game finish timestamp
+                      type: string
+                    game_session_id:
+                      description: Unique game session ID
+                      type: string
+                    game_type:
+                      description: Type of game
+                      type: string
+                    player_count:
+                      description: Number of players
+                      type: integer
+                    started_at:
+                      description: Game start timestamp
+                      type: string
+                    winner:
+                      description: Winner name
+                      type: string
+                  type: object
+                type: array
+              status:
+                example: success
+                type: string
+            type: object
+      summary: Get recent game history
+      tags:
+      - Game
+  /api/game/replay/{game_session_id}:
+    get:
+      description: Returns all data needed to replay a specific game including all
+        throws in sequence
+      parameters:
+      - description: Game session ID
+        in: path
+        name: game_session_id
+        required: true
+        type: string
+      responses:
+        '200':
+          description: Complete game replay data
+          schema:
+            properties:
+              game_data:
+                properties:
+                  double_out_enabled:
+                    description: Whether double-out was enabled
+                    type: boolean
+                  finished_at:
+                    description: Game finish timestamp
+                    type: string
+                  game_session_id:
+                    description: Game session ID
+                    type: string
+                  game_type:
+                    description: Type of game
+                    type: string
+                  players:
+                    description: Player information
+                    type: array
+                  started_at:
+                    description: Game start timestamp
+                    type: string
+                  throws:
+                    description: All throws in chronological order
+                    type: array
+                type: object
+              status:
+                example: success
+                type: string
+            type: object
+        '404':
+          description: Game not found
+      summary: Get game replay data
+      tags:
+      - Game
+  /api/game/resume/{game_session_id}:
+    post:
+      description: 'Starts a new game with the same settings as the incomplete game.
+        The original incomplete game data is preserved in the database. Redirects
+        to the game board to continue playing.
+
+        '
+      parameters:
+      - description: The game session ID to resume
+        in: path
+        name: game_session_id
+        required: true
+        type: string
+      responses:
+        '200':
+          description: Game setup for resumption
+          schema:
+            properties:
+              game_id:
+                description: The ID of the resumed game
+                type: string
+              message:
+                example: Starting new game with same settings
+                type: string
+              redirect_url:
+                example: /
+                type: string
+              status:
+                example: success
+                type: string
+            type: object
+        '403':
+          description: Game cannot be resumed (already completed)
+        '404':
+          description: Game not found
+        '500':
+          description: Error resuming game
+      summary: Resume an incomplete game - requires game:create permission
+      tags:
+      - Game
+  /api/game/{game_session_id}:
+    delete:
+      description: 'Deletes a game and all associated data (game results and scores).
+        Only incomplete games older than 1 day can be deleted.
+
+        '
+      parameters:
+      - description: The game session ID to delete
+        in: path
+        name: game_session_id
+        required: true
+        type: string
+      responses:
+        '200':
+          description: Game deleted successfully
+          schema:
+            properties:
+              message:
+                example: Game deleted successfully
+                type: string
+              status:
+                example: success
+                type: string
+            type: object
+        '403':
+          description: Game cannot be deleted (too recent or already completed)
+        '404':
+          description: Game not found
+        '500':
+          description: Error deleting game
+      summary: Delete a game - requires game:create permission
+      tags:
+      - Game
+  /api/mobile/apikeys:
+    get:
+      description: Returns all API keys for the authenticated user
+      responses:
+        '200':
+          description: List of API keys
+          schema:
+            properties:
+              api_keys:
+                items:
+                  type: object
+                type: array
+              success:
+                type: boolean
+            type: object
+      summary: Get user's API keys
+      tags:
+      - Mobile
+    post:
+      description: Creates a new API key for the authenticated user
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            key_name:
+              description: Friendly name for the API key
+              type: string
+          type: object
+      responses:
+        '200':
+          description: API key created
+          schema:
+            properties:
+              api_key:
+                type: object
+              success:
+                type: boolean
+            type: object
+      summary: Create new API key
+      tags:
+      - Mobile
+  /api/mobile/apikeys/{key_id}:
+    delete:
+      description: Revokes (deactivates) an API key
+      parameters:
+      - in: path
+        name: key_id
+        required: true
+        type: integer
+      responses:
+        '200':
+          description: API key revoked
+          schema:
+            properties:
+              success:
+                type: boolean
+            type: object
+      summary: Revoke API key
+      tags:
+      - Mobile
+  /api/mobile/dartboards:
+    get:
+      description: Returns all dartboards for the authenticated user
+      responses:
+        '200':
+          description: List of dartboards
+          schema:
+            properties:
+              dartboards:
+                items:
+                  type: object
+                type: array
+              success:
+                type: boolean
+            type: object
+      summary: Get user's dartboards
+      tags:
+      - Mobile
+    post:
+      description: Registers a new dartboard for the authenticated user
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            dartboard_id:
+              description: Unique dartboard identifier
+              type: string
+            name:
+              description: Friendly name for the dartboard
+              type: string
+            wpa_key:
+              description: WPA key for hotspot connection
+              type: string
+          type: object
+      responses:
+        '200':
+          description: Dartboard registered
+          schema:
+            properties:
+              dartboard:
+                type: object
+              success:
+                type: boolean
+            type: object
+      summary: Register new dartboard
+      tags:
+      - Mobile
+  /api/mobile/dartboards/{dartboard_id}:
+    delete:
+      description: Deletes a dartboard
+      parameters:
+      - in: path
+        name: dartboard_id
+        required: true
+        type: integer
+      responses:
+        '200':
+          description: Dartboard deleted
+          schema:
+            properties:
+              success:
+                type: boolean
+            type: object
+      summary: Delete dartboard
+      tags:
+      - Mobile
+  /api/mobile/game/start-single-player:
+    post:
+      description: 'Starts a new single-player game with the currently logged-in user
+        as the only player.
+
+        Any authenticated user can start a single-player game.
+
+        Training modes (bull_practice) require gamemaster or admin role.
+
+        '
+      parameters:
+      - description: Game configuration
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            double_out:
+              default: false
+              description: Whether to require double-out to finish (only for 170/301/401/501)
+              type: boolean
+            game_type:
+              default: '301'
+              description: Type of game to start
+              enum:
+              - '170'
+              - '301'
+              - '401'
+              - '501'
+              - cricket
+              - round_the_clock
+              - round_the_clock_double
+              - bull_practice
+              type: string
+            reset_on_miss:
+              default: false
+              description: Enable hard mode for round_the_clock (reset after 3 misses)
+              type: boolean
+          type: object
+      responses:
+        '200':
+          description: Game started successfully
+          schema:
+            properties:
+              game:
+                type: object
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+        '401':
+          description: Player ID not available
+        '403':
+          description: Training mode requires gamemaster or admin role
+        '500':
+          description: Failed to start game
+      summary: Start a new single-player game with the current user
+      tags:
+      - Mobile
+  /api/mobile/hotspot:
+    get:
+      description: Returns all hotspot configurations for the authenticated user
+      responses:
+        '200':
+          description: List of hotspot configurations
+          schema:
+            properties:
+              configs:
+                items:
+                  type: object
+                type: array
+              success:
+                type: boolean
+            type: object
+      summary: Get hotspot configurations
+      tags:
+      - Mobile
+    post:
+      description: Creates or updates hotspot configuration for a dartboard
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            dartboard_id:
+              description: Dartboard database ID
+              type: integer
+            password:
+              description: Hotspot password
+              type: string
+            ssid:
+              description: Hotspot SSID
+              type: string
+          type: object
+      responses:
+        '200':
+          description: Hotspot configuration created
+          schema:
+            properties:
+              config:
+                type: object
+              success:
+                type: boolean
+            type: object
+      summary: Create hotspot configuration
+      tags:
+      - Mobile
+  /api/mobile/hotspot/{config_id}/toggle:
+    post:
+      description: Enables or disables a hotspot configuration
+      parameters:
+      - in: path
+        name: config_id
+        required: true
+        type: integer
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            enabled:
+              description: True to enable, False to disable
+              type: boolean
+          type: object
+      responses:
+        '200':
+          description: Hotspot toggled
+          schema:
+            properties:
+              is_enabled:
+                type: boolean
+              success:
+                type: boolean
+            type: object
+      summary: Toggle hotspot on/off
+      tags:
+      - Mobile
+  /api/player/history:
+    get:
+      description: Returns the logged-in player's game history with statistics
+      parameters:
+      - description: Filter by game type (301, 401, 501, cricket)
+        in: query
+        name: game_type
+        type: string
+      - default: 50
+        description: Maximum number of games to return
+        in: query
+        name: limit
+        type: integer
+      responses:
+        '200':
+          description: Player game history
+          schema:
+            properties:
+              games:
+                items:
+                  type: object
+                type: array
+              success:
+                type: boolean
+            type: object
+        '401':
+          description: Unauthorized - player ID not available
+      summary: Get current player's game history
+      tags:
+      - Player
+  /api/player/statistics:
+    get:
+      description: Returns the logged-in player's overall statistics
+      responses:
+        '200':
+          description: Player statistics
+          schema:
+            properties:
+              statistics:
+                type: object
+              success:
+                type: boolean
+            type: object
+        '401':
+          description: Unauthorized - player ID not available
+      summary: Get current player's statistics
+      tags:
+      - Player
+  /api/players:
+    get:
+      description: Returns a list of all players in the current game or all database
+        players
+      parameters:
+      - default: game
+        description: Source of players ('game' for current game, 'database' for all
+          users)
+        enum:
+        - game
+        - database
+        in: query
+        name: source
+        type: string
+      responses:
+        '200':
+          description: List of players or status with players
+          schema:
+            properties:
+              players:
+                items:
+                  properties:
+                    email:
+                      description: Player email (for database source)
+                      type: string
+                    id:
+                      description: Player ID
+                      type: integer
+                    name:
+                      description: Player name
+                      type: string
+                    username:
+                      description: Player username (for database source)
+                      type: string
+                  type: object
+                type: array
+              status:
+                example: success
+                type: string
+            type: object
+      summary: Get all players - all authenticated users
+      tags:
+      - Players
+    post:
+      description: 'Adds a new WSO2-authenticated player to the current game.
+
+        IMPORTANT: Only players registered in WSO2 can be added.
+
+        Exception: bypass_user for local development/testing.
+
+        '
+      parameters:
+      - description: Player information
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            username:
+              description: WSO2 username (REQUIRED)
+              example: charlie
+              type: string
+          type: object
+      responses:
+        '200':
+          description: Player added successfully
+          schema:
+            properties:
+              message:
+                example: Player added
+                type: string
+              player:
+                properties:
+                  email:
+                    type: string
+                  name:
+                    type: string
+                  player_id:
+                    type: integer
+                type: object
+              status:
+                example: success
+                type: string
+            type: object
+        '400':
+          description: Invalid input - username required or WSO2 user not found
+        '500':
+          description: Server error
+      summary: Add a new player - requires player:add permission
+      tags:
+      - Players
+  /api/players/{player_id}:
+    delete:
+      description: Removes a player from the current game by player ID
+      parameters:
+      - description: ID of the player to remove
+        example: 1
+        in: path
+        name: player_id
+        required: true
+        type: integer
+      responses:
+        '200':
+          description: Player removed successfully
+          schema:
+            properties:
+              message:
+                example: Player removed
+                type: string
+              status:
+                example: success
+                type: string
+            type: object
+      summary: Remove a player - requires player:remove permission
+      tags:
+      - Players
+  /api/training/end:
+    post:
+      description: Ends the current training session and saves results
+      responses:
+        '200':
+          description: Training session ended successfully
+          schema:
+            properties:
+              message:
+                type: string
+              success:
+                type: boolean
+            type: object
+      summary: End the current training session
+      tags:
+      - Training
+  /api/training/history:
+    get:
+      description: Returns the training session history for the logged-in player
+      responses:
+        '200':
+          description: Training history retrieved successfully
+          schema:
+            properties:
+              sessions:
+                items:
+                  type: object
+                type: array
+              success:
+                type: boolean
+            type: object
+      summary: Get training session history for current player
+      tags:
+      - Training
+  /api/training/start:
+    post:
+      description: Initializes a new single-player training session
+      parameters:
+      - description: Training configuration
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            double_out:
+              default: false
+              description: Whether to require double-out to finish
+              type: boolean
+            game_type:
+              default: '301'
+              description: Type of game to practice
+              enum:
+              - '170'
+              - '301'
+              - '401'
+              - '501'
+              - cricket
+              - round_the_clock
+              - round_the_clock_double
+              - bull_practice
+              type: string
+          type: object
+      responses:
+        '200':
+          description: Training session started successfully
+          schema:
+            properties:
+              message:
+                type: string
+              session_id:
+                type: string
+              success:
+                type: boolean
+            type: object
+      summary: Start a new training session
+      tags:
+      - Training
+  /api/training/statistics:
+    get:
+      description: Returns aggregated training statistics for the logged-in player
+      responses:
+        '200':
+          description: Training statistics retrieved successfully
+          schema:
+            properties:
+              statistics:
+                type: object
+              success:
+                type: boolean
+            type: object
+      summary: Get training statistics for current player
+      tags:
+      - Training
+  /api/tts/config:
+    get:
+      description: Returns the current TTS configuration including speed, voice, and
+        enabled status
+      responses:
+        '200':
+          description: TTS configuration
+          schema:
+            properties:
+              enabled:
+                description: Whether TTS is enabled
+                type: boolean
+              engine:
+                description: TTS engine name
+                type: string
+              speed:
+                description: Speech speed (words per minute)
+                type: integer
+              voice:
+                description: Current voice type
+                type: string
+              volume:
+                description: Volume level (0.0 to 1.0)
+                type: number
+            type: object
+      summary: Get TTS configuration
+      tags:
+      - TTS
+    post:
+      description: Updates TTS settings such as speed, voice, and enabled status
+      parameters:
+      - description: TTS configuration
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            enabled:
+              description: Enable or disable TTS
+              example: true
+              type: boolean
+            speed:
+              description: Speech speed (words per minute, typically 100-200)
+              example: 150
+              type: integer
+            voice:
+              description: Voice type identifier
+              example: default
+              type: string
+            volume:
+              description: Volume level (0.0 to 1.0)
+              example: 1.0
+              type: number
+          type: object
+      responses:
+        '200':
+          description: Configuration updated successfully
+          schema:
+            properties:
+              message:
+                example: TTS configuration updated
+                type: string
+              status:
+                example: success
+                type: string
+            type: object
+      summary: Update TTS configuration
+      tags:
+      - TTS
+  /api/tts/generate:
+    post:
+      description: Generates audio data for the provided text using the current TTS
+        configuration
+      parameters:
+      - description: Text to convert to speech
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            lang:
+              default: en
+              description: Language code (for gTTS)
+              example: en
+              type: string
+            text:
+              description: Text to convert to speech
+              example: Hello, this is a test
+              type: string
+          required:
+          - text
+          type: object
+      responses:
+        '200':
+          content:
+            audio/mpeg:
+              schema:
+                format: binary
+                type: string
+          description: Audio data generated successfully
+        '400':
+          description: Bad request
+          schema:
+            properties:
+              message:
+                example: Text is required
+                type: string
+              status:
+                example: error
+                type: string
+            type: object
+        '500':
+          description: TTS generation failed
+          schema:
+            properties:
+              message:
+                example: Failed to generate audio
+                type: string
+              status:
+                example: error
+                type: string
+            type: object
+      summary: Generate TTS audio data
+      tags:
+      - TTS
+  /api/tts/languages:
+    get:
+      description: Returns a list of all supported languages for TTS
+      responses:
+        '200':
+          description: Dictionary of supported languages
+          schema:
+            additionalProperties:
+              type: string
+            example:
+              de: German
+              en: English
+              es: Spanish
+              fr: French
+              nl: Dutch
+            type: object
+      summary: Get supported TTS languages
+      tags:
+      - TTS
+  /api/tts/test:
+    post:
+      description: Speaks the provided text using the current TTS configuration
+      parameters:
+      - description: Text to speak
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            text:
+              description: Text to speak
+              example: Hello, this is a test
+              type: string
+          required:
+          - text
+          type: object
+      responses:
+        '200':
+          description: TTS test completed
+          schema:
+            properties:
+              message:
+                example: TTS test completed
+                type: string
+              status:
+                example: success
+                type: string
+            type: object
+      summary: Test TTS with custom text
+      tags:
+      - TTS
+  /api/tts/voices:
+    get:
+      description: Returns a list of available voices for the current TTS engine
+      responses:
+        '200':
+          description: List of available voices
+          schema:
+            items:
+              properties:
+                gender:
+                  description: Voice gender
+                  type: string
+                id:
+                  description: Voice ID
+                  type: string
+                languages:
+                  description: Supported languages
+                  items:
+                    type: string
+                  type: array
+                name:
+                  description: Voice name
+                  type: string
+              type: object
+            type: array
+      summary: Get available TTS voices
+      tags:
+      - TTS
+  /api/user/current:
+    get:
+      description: Returns the current authenticated user's username, roles, and player
+        ID
+      responses:
+        '200':
+          description: Current user information
+          schema:
+            properties:
+              player_id:
+                description: User's player database ID
+                type: integer
+              roles:
+                description: User's roles (admin, gamemaster, player, etc.)
+                items:
+                  type: string
+                type: array
+              success:
+                type: boolean
+              username:
+                description: User's username
+                type: string
+            type: object
+      summary: Get current user information
+      tags:
+      - User
+  /api/wso2/users/search:
+    get:
+      description: Search for users in WSO2 by username, email, or name
+      parameters:
+      - description: Search query (username, email, or name)
+        in: query
+        name: q
+        required: true
+        type: string
+      responses:
+        '200':
+          description: List of matching users
+          schema:
+            properties:
+              success:
+                type: boolean
+              users:
+                items:
+                  properties:
+                    email:
+                      type: string
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    username:
+                      type: string
+                  type: object
+                type: array
+            type: object
+      summary: Search for WSO2 users (autocomplete)
+      tags:
+      - WSO2
+  /callback:
+    get:
+      description: Handles authorization code exchange and sets session tokens/user
+        info.
+      responses:
+        '302':
+          description: Redirects to original requested page after login
+        '400':
+          description: Invalid state or token exchange failed
+      summary: OAuth2 callback endpoint
+      tags:
+      - UI
+  /control:
+    get:
+      description: Renders the control panel interface for managing the game
+      responses:
+        '200':
+          description: HTML page rendered successfully
+      summary: Game control panel - requires admin or gamemaster role
+      tags:
+      - UI
+  /dashboard:
+    get:
+      description: Renders the dashboard with game history, statistics, and game details
+      responses:
+        '200':
+          description: HTML page rendered successfully
+      summary: Game dashboard page with game history
+      tags:
+      - UI
+  /debug/auth:
+    get:
+      description: Returns token claims, extracted roles, and SCIM2 groups for debugging.
+      responses:
+        '200':
+          description: Debug authentication data
+      summary: Debug authentication information
+      tags:
+      - Debug
+  /game/create:
+    get:
+      description: Renders the game creation interface for starting new games
+      responses:
+        '200':
+          description: HTML page rendered successfully
+      summary: Game creation page - requires game:create permission
+      tags:
+      - UI
+  /history:
+    get:
+      description: Renders the user's game history with statistics
+      responses:
+        '200':
+          description: HTML page rendered successfully
+      summary: User game history page
+      tags:
+      - UI
+  /login:
+    get:
+      description: Redirects user to OAuth provider to authenticate and stores state
+        in session.
+      responses:
+        '200':
+          description: Login page rendered
+        '302':
+          description: Redirect to OAuth provider
+      summary: Login page
+      tags:
+      - UI
+  /logout:
+    get:
+      description: Clears session and redirects to WSO2 logout endpoint.
+      responses:
+        '302':
+          description: Redirect to upstream logout URL
+      summary: Logout endpoint
+      tags:
+      - UI
+  /mobile:
+    get:
+      description: Mobile-optimized PWA interface for dartboard management
+      responses:
+        '200':
+          description: Mobile app HTML page
+      summary: Mobile app main page
+      tags:
+      - UI
+  /mobile/account:
+    get:
+      description: Mobile interface for account settings, API keys, and dartboards
+      responses:
+        '200':
+          description: Mobile account management HTML page
+      summary: Mobile account management page
+      tags:
+      - UI
+  /mobile/dartboard-setup:
+    get:
+      description: Mobile interface for dartboard configuration
+      responses:
+        '200':
+          description: Mobile dartboard setup HTML page
+      summary: Mobile dartboard setup page
+      tags:
+      - UI
+  /mobile/gamemaster:
+    get:
+      description: Mobile interface for game master controls
+      responses:
+        '200':
+          description: Mobile game master HTML page
+      summary: Mobile game master control page
+      tags:
+      - UI
+  /mobile/gameplay:
+    get:
+      description: Mobile interface for active gameplay
+      responses:
+        '200':
+          description: Mobile gameplay HTML page
+      summary: Mobile gameplay page
+      tags:
+      - UI
+  /mobile/hotspot:
+    get:
+      description: Mobile interface for managing dartboard hotspot connections
+      responses:
+        '200':
+          description: Mobile hotspot control HTML page
+      summary: Mobile hotspot control page
+      tags:
+      - UI
+  /mobile/results:
+    get:
+      description: Mobile interface for viewing game history
+      responses:
+        '200':
+          description: Mobile game results HTML page
+      summary: Mobile game results page
+      tags:
+      - UI
+  /profile:
+    get:
+      description: Returns user information stored in session including roles and
+        claims.
+      responses:
+        '200':
+          description: User profile JSON
+      summary: User profile page
+      tags:
+      - User
+  /service-worker.js:
+    get:
+      description: Returns the PWA service worker JavaScript file
+      responses:
+        '200':
+          content:
+            application/javascript:
+              schema:
+                type: string
+          description: Service worker JS served successfully
+      summary: Serve the service worker file (no authentication required for PWA)
+      tags:
+      - UI
+  /test-refresh:
+    get:
+      description: Test page for verifying automatic refresh functionality
+      responses:
+        '200':
+          description: HTML page rendered successfully
+      summary: Test page for automatic refresh functionality
+      tags:
+      - UI
+  /training:
+    get:
+      description: Renders the training mode interface for single-player practice
+      responses:
+        '200':
+          description: HTML page rendered successfully
+      summary: Training mode page for single-player practice
+      tags:
+      - UI
+  /training/dashboard:
+    get:
+      description: Renders the training statistics and history dashboard
+      responses:
+        '200':
+          description: HTML page rendered successfully
+      summary: Training statistics dashboard
+      tags:
+      - UI
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://localhost:9443/oauth2/authorize
+          tokenUrl: https://localhost:9443/oauth2/token
+          scopes:
+            openid: OpenID Connect
+            profile: User profile
+            game:create: Create games
+            game:manage: Manage games
+            player:manage: Manage players
+            admin: Admin access
+security:
+- oauth2: []
+/api/v1/scores:
+  post:
+    tags:
+    - Scores
+    summary: Submit score (gateway)
+    description: Submits score via the API Gateway (validates token and publishes
+      message to RabbitMQ).
+    security:
+    - oauth2:
+      - score:write
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - score
+            - multiplier
+            properties:
+              score:
+                type: integer
+                minimum: 0
+                maximum: 60
+              multiplier:
+                type: string
+                enum:
+                - SINGLE
+                - DOUBLE
+                - TRIPLE
+              player_id:
+                type: integer
+              game_id:
+                type: string
+    responses:
+      '201':
+        description: Score accepted and published
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  example: success
+                message:
+                  type: string
+                  example: Score submitted successfully
+                data:
+                  type: object
+                  properties:
+                    score:
+                      type: integer
+                    multiplier:
+                      type: string
+                    player_id:
+                      type: integer
+                    game_id:
+                      type: string
+                    user:
+                      type: string
+                      description: User identifier from token claims
+                    timestamp:
+                      type: string
+                      format: date-time
+/api/v1/games:
+  post:
+    tags:
+    - Game Management
+    summary: Create game (gateway)
+    description: Create a new game via API Gateway (publishes to RabbitMQ).
+    security:
+    - oauth2:
+      - game:write
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - game_type
+            - players
+            properties:
+              game_type:
+                type: string
+              players:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    username:
+                      type: string
+                    name:
+                      type: string
+                description: List of player objects (username/name). May also accept
+                  plain strings in some clients.
+    responses:
+      '201':
+        description: Game created and published
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  example: success
+                message:
+                  type: string
+                  example: Game created successfully
+                data:
+                  type: object
+                  properties:
+                    action:
+                      type: string
+                      example: new_game
+                    game_type:
+                      type: string
+                    players:
+                      type: array
+                      items:
+                        type: object
+                    double_out:
+                      type: boolean
+                    created_by:
+                      type: string
+                    timestamp:
+                      type: string
+                      format: date-time
+/api/v1/players:
+  post:
+    tags:
+    - Players
+    summary: Add player (gateway)
+    description: Adds a player via the API Gateway (publishes to RabbitMQ).
+    security:
+    - oauth2:
+      - player:write
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - name
+            properties:
+              name:
+                type: string
+              username:
+                type: string
+              email:
+                type: string
+    responses:
+      '201':
+        description: Player added and published
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  example: success
+                message:
+                  type: string
+                  example: Player added successfully
+                data:
+                  type: object
+                  properties:
+                    action:
+                      type: string
+                      example: add_player
+                    name:
+                      type: string
+                    added_by:
+                      type: string
+                    timestamp:
+                      type: string
+                      format: date-time

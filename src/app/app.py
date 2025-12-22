@@ -16,6 +16,7 @@ from functools import wraps
 from pathlib import Path
 
 import requests
+import yaml
 from dotenv import load_dotenv
 from eventlet import wsgi
 from flasgger import Swagger
@@ -125,30 +126,164 @@ swagger_config = {
     "specs_route": "/api/docs/",
 }
 
-swagger_template = {
-    "swagger": "2.0",
-    "info": {
-        "title": "Darts Game API",
-        "description": "API for managing darts games (301, 401, 501, Cricket, Round the Clock) \
-        with real-time score tracking",
-        "version": "1.0.0",
-        "contact": {
-            "name": "Darts Game Server",
+swagger_template = None
+try:
+    # Prefer the centralized OpenAPI spec in docs if available so Swagger UI
+    # reflects the full API surface instead of relying solely on docstrings.
+    spec_path = _root_dir / "docs" / "api-spec.yaml"
+    if spec_path.exists():
+        with Path.open(spec_path) as fh:
+            swagger_template = yaml.safe_load(fh)
+        # flasgger expects 'swagger' 2.0 style when using template. If the
+        # loaded YAML is an OpenAPI 3 spec it will contain an 'openapi'
+        # top-level key. Flasgger may merge in a `swagger: "2.0"` field,
+        # producing a spec that contains both 'swagger' and 'openapi' —
+        # which breaks the Swagger UI. Remove the top-level 'openapi'
+        # key to avoid that conflict while keeping the rest of the
+        # spec (paths/components) available to the UI.
+        if isinstance(swagger_template, dict) and "openapi" in swagger_template:
+            logger.info(
+                "Loaded OpenAPI 3 spec; removing top-level 'openapi' to avoid Flasgger conflict.",
+            )
+            swagger_template.pop("openapi", None)
+            # Convert OpenAPI3 'components' -> Swagger 2.0 compatible fields
+            comps = swagger_template.get("components") or {}
+            schemas = comps.get("schemas")
+            if schemas:
+                logger.info(
+                    "Converting components.schemas -> definitions for Swagger UI compatibility.",
+                )
+                swagger_template["definitions"] = schemas
+            sec = comps.get("securitySchemes")
+            if sec:
+                logger.info("Converting components.securitySchemes -> securityDefinitions.")
+                swagger_template["securityDefinitions"] = sec
+            # Remove components to avoid mixed OpenAPI3 keys
+            if "components" in swagger_template:
+                swagger_template.pop("components", None)
+            # Ensure top-level swagger field exists
+            swagger_template.setdefault("swagger", "2.0")
+
+            # Convert requestBody/content to Swagger 2.0 compatible parameters and
+            # replace any component $ref references with definitions refs.
+            def _replace_refs(obj):
+                if isinstance(obj, dict):
+                    for k, v in list(obj.items()):
+                        if isinstance(v, str) and v.startswith("#/components/schemas/"):
+                            obj[k] = v.replace("#/components/schemas/", "#/definitions/")
+                        else:
+                            _replace_refs(v)
+                elif isinstance(obj, list):
+                    for item in obj:
+                        _replace_refs(item)
+
+            paths = swagger_template.get("paths") or {}
+            for _path, methods in list(paths.items()):
+                if not isinstance(methods, dict):
+                    continue
+                for _method, op in list(methods.items()):
+                    if not isinstance(op, dict):
+                        continue
+                    # requestBody -> parameters (body)
+                    rb = op.pop("requestBody", None)
+                    if rb:
+                        required = rb.get("required", False)
+                        content = rb.get("content", {}) or {}
+                        schema = None
+                        for _media, media_val in content.items():
+                            if isinstance(media_val, dict) and "schema" in media_val:
+                                schema = media_val["schema"]
+                                break
+                        if schema is not None:
+                            params = op.get("parameters", [])
+                            params.append(
+                                {
+                                    "in": "body",
+                                    "name": "body",
+                                    "required": required,
+                                    "schema": schema,
+                                },
+                            )
+                            op["parameters"] = params
+                    # responses: move content -> schema
+                    responses = op.get("responses", {})
+                    for code, resp in list(responses.items()):
+                        if isinstance(resp, dict):
+                            content = resp.pop("content", None)
+                            if content and isinstance(content, dict):
+                                for _media, media_val in content.items():
+                                    if isinstance(media_val, dict) and "schema" in media_val:
+                                        resp["schema"] = media_val["schema"]
+                                        break
+                                responses[code] = resp
+                    # Replace refs within operation
+                    _replace_refs(op)
+            # Replace refs in whole template as a final pass
+            _replace_refs(swagger_template)
+except Exception:
+    swagger_template = None
+
+if not swagger_template:
+    swagger_template = {
+        "swagger": "2.0",
+        "info": {
+            "title": "Darts Game API",
+            "description": "API for managing darts games (301, 401, 501, Cricket, Round the Clock) \
+              with real-time score tracking",
+            "version": "1.0.0",
+            "contact": {
+                "name": "Darts Game Server",
+            },
         },
-    },
-    "host": Config.SWAGGER_HOST,
-    "basePath": "/",
-    "schemes": ["http", "https"] if not Config.is_production() else ["https"],
-    "tags": [
-        {"name": "Game", "description": "Game management endpoints"},
-        {"name": "Players", "description": "Player management endpoints"},
-        {"name": "Score", "description": "Score submission endpoints"},
-        {"name": "TTS", "description": "Text-to-Speech configuration endpoints"},
-        {"name": "UI", "description": "User interface endpoints"},
-    ],
-}
+        "host": Config.SWAGGER_HOST,
+        "basePath": "/",
+        "schemes": ["http", "https"] if not Config.is_production() else ["https"],
+        "tags": [
+            {"name": "Game Management", "description": "Game management endpoints"},
+            {"name": "Multi-Game", "description": "Multi-game session management"},
+            {"name": "Players", "description": "Player management endpoints"},
+            {"name": "Score", "description": "Score submission endpoints"},
+            {"name": "Dartboard", "description": "Dartboard configuration and mappings"},
+            {"name": "Admin", "description": "Administrative endpoints"},
+            {"name": "TTS", "description": "Text-to-Speech configuration endpoints"},
+            {"name": "Mobile", "description": "Mobile app API endpoints"},
+            {"name": "Training", "description": "Training session endpoints"},
+            {"name": "UI", "description": "User interface endpoints"},
+            {"name": "History", "description": "History and replay endpoints"},
+            {"name": "Debug", "description": "Debugging endpoints (no auth)"},
+            {"name": "WSO2", "description": "WSO2 user and auth helpers"},
+        ],
+    }
 
 swagger = Swagger(app, config=swagger_config, template=swagger_template)
+
+
+# Remove any Python None values from the template to avoid rendering 'None' in
+# the generated Swagger UI HTML/JS which causes client-side errors.
+def _prune_none(obj):
+    if isinstance(obj, dict):
+        for k in list(obj.keys()):
+            v = obj.get(k)
+            if v is None:
+                obj.pop(k, None)
+            else:
+                _prune_none(v)
+    elif isinstance(obj, list):
+        # Remove None entries from lists and recurse into remaining items
+        i = 0
+        while i < len(obj):
+            if obj[i] is None:
+                obj.pop(i)
+            else:
+                _prune_none(obj[i])
+                i += 1
+
+
+try:  # noqa: SIM105
+    _prune_none(swagger_template)
+except Exception:  # noqa: S110
+    # If pruning fails, continue without raising; avoid breaking app startup
+    pass
 
 # Initialize SocketIO
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
@@ -202,7 +337,20 @@ def index():
 
 @app.route("/service-worker.js")
 def serve_service_worker():
-    """Serve the service worker file (no authentication required for PWA)"""
+    """Serve the service worker file (no authentication required for PWA)
+    ---
+    tags:
+      - UI
+    summary: Serve service worker file
+    description: Returns the PWA service worker JavaScript file
+    responses:
+      200:
+        description: Service worker JS served successfully
+        content:
+          application/javascript:
+            schema:
+              type: string
+    """
     return send_from_directory(str(_root_dir / "static"), "service-worker.js")
 
 
@@ -342,7 +490,17 @@ def training_dashboard():
 
 
 def _verify_callback_state():
-    """Verify state parameter to prevent CSRF."""
+    """Verify state parameter to prevent CSRF.
+    ---
+    tags:
+      - UI
+    summary: Verify OAuth callback state
+    description: Checks the `state` query parameter against the session-stored \
+      oauth_state to prevent CSRF attacks.
+    responses:
+      200:
+        description: State valid (returns True/False internally)
+    """
     state = request.args.get("state")
     stored_state = session.get("oauth_state")
     app.logger.info(f"Callback state check: {state}")
@@ -419,7 +577,18 @@ def _ensure_player_exists(username, email, name):
 
 @app.route("/login")
 def login():
-    """Login page"""
+    """Login page
+    ---
+    tags:
+      - UI
+    summary: Login page (initiates OAuth2 flow)
+    description: Redirects user to OAuth provider to authenticate and stores state in session.
+    responses:
+      200:
+        description: Login page rendered
+      302:
+        description: Redirect to OAuth provider
+    """
     # Generate state for CSRF protection
     state = secrets.token_urlsafe(32)
     session["oauth_state"] = state
@@ -453,7 +622,18 @@ def login():
 
 @app.route("/callback")
 def callback():
-    """OAuth2 callback endpoint"""
+    """OAuth2 callback endpoint
+    ---
+    tags:
+      - UI
+    summary: OAuth2 callback
+    description: Handles authorization code exchange and sets session tokens/user info.
+    responses:
+      302:
+        description: Redirects to original requested page after login
+      400:
+        description: Invalid state or token exchange failed
+    """
     app.logger.info(f"Callback - Session ID: {session.get('_id', 'No session ID')}")
 
     if not _verify_callback_state():
@@ -494,7 +674,16 @@ def callback():
 
 @app.route("/logout")
 def logout():
-    """Logout endpoint"""
+    """Logout endpoint
+    ---
+    tags:
+      - UI
+    summary: Logout user
+    description: Clears session and redirects to WSO2 logout endpoint.
+    responses:
+      302:
+        description: Redirect to upstream logout URL
+    """
     id_token = session.get("id_token")
 
     # Clear session
@@ -508,7 +697,16 @@ def logout():
 @app.route("/profile")
 @login_required
 def profile():
-    """User profile page"""
+    """User profile page
+    ---
+    tags:
+      - User
+    summary: Get current user profile
+    description: Returns user information stored in session including roles and claims.
+    responses:
+      200:
+        description: User profile JSON
+    """
     user_info = session.get("user_info", {})
     user_roles = getattr(request, "user_roles", [])
     user_claims = getattr(request, "user_claims", {})
@@ -525,7 +723,16 @@ def profile():
 @app.route("/debug/auth")
 @login_required
 def debug_auth():
-    """Debug authentication information"""
+    """Debug authentication information
+    ---
+    tags:
+      - Debug
+    summary: Debug auth
+    description: Returns token claims, extracted roles, and SCIM2 groups for debugging.
+    responses:
+      200:
+        description: Debug authentication data
+    """
     access_token = session.get("access_token")
     user_info = session.get("user_info", {})
 
@@ -879,13 +1086,14 @@ def create_new_game_session():
           properties:
             game_id:
               type: string
-              description: Unique identifier for the game (optional, will be auto-generated if not
-              provided)
+              description: Unique identifier for the game (optional, \
+                will be auto-generated if not provided)
               example: game-1
             game_type:
               type: string
               description: Type of game to start
-              enum: ['301', '401', '501', 'cricket', 'round_the_clock', 'round_the_clock_double']
+              enum: ['301', '401', '501', 'cricket', 'round_the_clock', \
+                'round_the_clock_double']
               example: '301'
             players:
               type: array
@@ -1723,7 +1931,19 @@ def get_dartboard_mappings(board_type):
 @login_required
 @role_required("admin")
 def admin_dartboard_testing():
-    """Admin page for dartboard testing and calibration"""
+    """Admin page for dartboard testing and calibration
+    ---
+    tags:
+      - Admin
+      - Dartboard
+    summary: Admin dartboard testing UI
+    description: Renders the admin page for dartboard calibration and testing (admin only).
+    responses:
+      200:
+        description: HTML page rendered
+      403:
+        description: Forbidden - admin required
+    """
     return render_template("admin_dartboard_testing.html")
 
 
@@ -4352,7 +4572,16 @@ def get_active_games():
 
 @app.route("/api/debug/session", methods=["GET"])
 def debug_session():
-    """Debug endpoint - returns session and player info"""
+    """Debug endpoint - returns session and player info
+    ---
+    tags:
+      - Debug
+    summary: Session debug
+    description: Returns current Flask session keys and simple auth flags for debugging.
+    responses:
+      200:
+        description: Session information
+    """
     return jsonify(
         {
             "player_id": session.get("player_id"),
@@ -4675,7 +4904,16 @@ def get_training_statistics():
 
 @socketio.on("connect", namespace="/")
 def handle_connect():
-    """Handle client connection"""
+    """Handle client connection
+    ---
+    tags:
+      - UI
+    summary: WebSocket connect
+    description: Emits the current `game_state` to the connecting client on socket connect.
+    responses:
+      200:
+        description: Connection accepted (socket event)
+    """
     print("Client connected")
     # Use socketio.emit to ensure the message reaches the test client
     socketio.emit(
