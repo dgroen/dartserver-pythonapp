@@ -631,3 +631,159 @@ header h1 {
         font-size: 1.8em;
     }
 }
+
+/* Games Sidebar Styles */
+.app-container {
+    display: flex;
+    gap: 20px;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.games-sidebar {
+    width: 280px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 10px;
+    padding: 15px;
+    height: fit-content;
+    position: sticky;
+    top: 20px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-header h3 {
+    font-size: 1.1em;
+    margin: 0;
+}
+
+.btn-new-game {
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-new-game:hover {
+    background: #218838;
+    transform: scale(1.1);
+}
+
+.games-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.game-item {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 2px solid transparent;
+}
+
+.game-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(5px);
+}
+
+.game-item.active {
+    background: rgba(0, 212, 255, 0.2);
+    border-color: rgba(0, 212, 255, 0.5);
+}
+
+.game-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.game-item-id {
+    font-weight: bold;
+    font-size: 0.95em;
+}
+
+.game-item-status {
+    font-size: 0.75em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.game-item-status.started {
+    background: #28a745;
+}
+
+.game-item-status.not-started {
+    background: #6c757d;
+}
+
+.game-item-info {
+    font-size: 0.85em;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.game-item-type {
+    font-weight: bold;
+    color: #ffc107;
+}
+
+.game-item-players {
+    margin-top: 5px;
+    font-size: 0.8em;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.loading-games, .no-games {
+    text-align: center;
+    padding: 20px;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+    .app-container {
+        flex-direction: column;
+    }
+    
+    .games-sidebar {
+        width: 100%;
+        position: static;
+        max-height: none;
+    }
+}
+
+/* Button styles for game creation */
+.btn-large {
+    font-size: 1.2em;
+    padding: 15px 30px;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}

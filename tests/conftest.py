@@ -3,6 +3,7 @@
 import builtins
 import importlib
 import importlib.util
+import logging
 import os
 import sys
 from pathlib import Path
@@ -12,35 +13,29 @@ import dartserver_core.auth as core_auth
 import pytest
 from dartserver_app import create_app
 
-# Eagerly create a single test app/socketio/game_manager for fixtures that
-# reference these names as globals (many tests import flask_app directly).
-flask_app, socketio = create_app(debug=True)
-flask_app.config["TESTING"] = True
-game_manager = flask_app.game_manager
-
 # Expose frequently used auth helpers as builtins for tests that reference
-# them directly without importing.
+# them directly without importing. These reference the implementation
+# in `packages/dartserver-core/src/dartserver_core/auth.py` but tests
+# patch `src.core.auth` during collection; keep references aligned.
 builtins.get_user_roles = core_auth.get_user_roles
 builtins.has_permission = core_auth.has_permission
 builtins.search_wso2_users = core_auth.search_wso2_users
-builtins.flask_app = flask_app
-builtins.app = flask_app
-builtins.socketio = socketio
-builtins.game_manager = game_manager
 
-os.environ["ENVIRONMENT"] = "test"
-os.environ["APP_DOMAIN"] = "test.letsplaydarts.eu"
-os.environ["APP_SCHEME"] = "https"
-os.environ["SECRET_KEY"] = "test-secret-key-for-automated-testing"
-os.environ["RABBITMQ_EXCHANGE"] = "darts_exchange_test"
-os.environ["WSO2_IS_URL"] = "https://test.letsplaydarts.eu/auth"
-
-# Disable TTS during tests to avoid timing issues
-os.environ["TTS_ENABLED"] = "false"
-# Use in-memory SQLite for tests
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"
-# Enable authentication for tests to verify auth decorators work correctly
-os.environ["AUTH_DISABLED"] = "false"
+# Default test environment values. These will be set again inside the
+# `flask_app` fixture prior to creating the app so the app reads them
+# correctly at creation time.
+DEFAULT_TEST_ENV = {
+    "ENVIRONMENT": "test",
+    "APP_DOMAIN": "test.letsplaydarts.eu",
+    "APP_SCHEME": "https",
+    "SECRET_KEY": "test-secret-key-for-automated-testing",
+    "RABBITMQ_EXCHANGE": "darts_exchange_test",
+    "WSO2_IS_URL": "https://test.letsplaydarts.eu/auth",
+    "TTS_ENABLED": "false",
+    # Use a file-based sqlite by default (will be created in the fixture)
+    "DATABASE_URL": None,
+    "AUTH_DISABLED": "false",
+}
 
 
 # Add project root and package sources to path
@@ -91,8 +86,26 @@ dart_core_auth.get_user_roles = core_auth.get_user_roles
 dart_core_auth.has_permission = core_auth.has_permission
 dart_core_auth.search_wso2_users = core_auth.search_wso2_users
 
+# Create a module-global app for tests that reference `flask_app` at import time.
+# Some older tests expect a global `flask_app` variable; create a lightweight
+# app here using a predictable file-based SQLite DB under /tmp so tests that
+# access the global app before fixtures run will not fail.
+try:
+    # Only create once
+    if not getattr(builtins, "flask_app", None):
+        os.environ.update({k: v for k, v in DEFAULT_TEST_ENV.items() if v is not None})
+        os.environ.setdefault("DATABASE_URL", "sqlite:////tmp/dartserver_test_sqlite.db")
+        _app_instance, _socketio_instance = create_app(debug=True)
+        builtins.flask_app = _app_instance
+        builtins.app = _app_instance
+        builtins.socketio = _socketio_instance
+        builtins.game_manager = _app_instance.game_manager
+except Exception:
+    # Best-effort — if early creation fails, the session fixture will create the app.
+    logging.exception("Failed to create early app instance: %s")
 
-@pytest.fixture()
+
+@pytest.fixture
 def mock_socketio():
     """Mock SocketIO instance."""
     mock = MagicMock()
@@ -100,7 +113,44 @@ def mock_socketio():
     return mock
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
+def flask_app(tmp_path_factory):
+    """Create a single Flask app/socketio for the test session.
+
+    This fixture sets up a temporary file-based SQLite database to avoid
+    the per-connection isolation issues of in-memory SQLite, and exposes
+    `flask_app`, `app`, `socketio` and `game_manager` on the builtins for
+    legacy tests that import them directly.
+    """
+    # Create a temp DB file
+    db_file = tmp_path_factory.mktemp("test_db") / "test_sqlite.db"
+
+    # Set environment values BEFORE creating the app so create_app reads them
+    for k, v in DEFAULT_TEST_ENV.items():
+        if v is not None:
+            os.environ[k] = v
+    os.environ["DATABASE_URL"] = f"sqlite:///{db_file}"
+
+    app_instance, socketio_instance = create_app(debug=True)
+    app_instance.config["TESTING"] = True
+
+    # Expose builtins for tests that rely on global names
+    builtins.flask_app = app_instance
+    builtins.app = app_instance
+    builtins.socketio = socketio_instance
+    builtins.game_manager = app_instance.game_manager
+
+    yield app_instance
+
+    # Teardown: remove DB file if present
+    try:
+        if db_file.exists():
+            db_file.unlink()
+    except Exception:  # noqa: S110
+        pass
+
+
+@pytest.fixture
 def sample_players():
     """Sample player data for testing."""
     return [
@@ -109,7 +159,7 @@ def sample_players():
     ]
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_players_four():
     """Sample player data with four players."""
     return [
@@ -120,7 +170,7 @@ def sample_players_four():
     ]
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_score_data():
     """Sample score data for testing."""
     return {
@@ -130,38 +180,32 @@ def sample_score_data():
     }
 
 
-@pytest.fixture()
-def app():
+@pytest.fixture
+def app(flask_app):
     """Flask app fixture for pytest-flask and tests."""
     return flask_app
 
 
-@pytest.fixture()
-def flask_app(app):
-    """Alias fixture to satisfy tests expecting flask_app."""
-    return app
-
-
-@pytest.fixture()
-def socketio(app):
+@pytest.fixture
+def socketio(flask_app):
     """Provide SocketIO instance from the created app."""
-    return socketio
+    return builtins.socketio
 
 
-@pytest.fixture()
-def game_manager(app):
+@pytest.fixture
+def game_manager(flask_app):
     """Expose GameManager for tests that reference game_manager directly."""
-    return game_manager
+    return builtins.game_manager
 
 
-@pytest.fixture()
-def app_client():
+@pytest.fixture
+def app_client(flask_app):
     """Flask test client."""
     with flask_app.test_client() as client:
         yield client
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_rabbitmq_config():
     """Mock RabbitMQ configuration."""
     return {
@@ -175,7 +219,7 @@ def mock_rabbitmq_config():
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_database_service():
     """Mock DatabaseService for testing."""
     with patch("dartserver_app.game_manager.DatabaseService") as mock_db:
@@ -191,17 +235,17 @@ def mock_database_service():
         yield mock_instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def in_memory_db():
     """Create an in-memory database for testing."""
-    from dartserver_core.database_service import DatabaseService
+    from dartserver_core.database_service import DatabaseService  # noqa: PLC0415
 
     db_service = DatabaseService("sqlite:///:memory:")
     db_service.initialize_database()
     return db_service
 
 
-@pytest.fixture()
+@pytest.fixture
 def player_ids_with_db():
     """Helper to create player dicts with database IDs."""
 

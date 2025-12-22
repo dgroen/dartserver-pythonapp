@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -131,6 +132,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="mobile-app">
         <header class="mobile-header">
@@ -140,7 +142,9 @@
 
         <main class="mobile-content">
             <!-- Debug Info (hidden by default) -->
-            <div id="debugInfo" style="display: none; background: rgba(255, 0, 0, 0.2); padding: 1rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.8rem; color: #ff6b6b; white-space: pre-wrap; word-break: break-all; font-family: monospace;"></div>
+            <div id="debugInfo"
+                style="display: none; background: rgba(255, 0, 0, 0.2); padding: 1rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.8rem; color: #ff6b6b; white-space: pre-wrap; word-break: break-all; font-family: monospace;">
+            </div>
 
             <!-- Tab Buttons -->
             <div class="tab-container">
@@ -175,12 +179,14 @@
                 </div>
             </div>
 
-            <!-- Active Games Tab -->
+            <!-- Active Games Tab - Only for gamemaster and admin roles -->
+            {% if 'gamemaster' in user_roles or 'admin' in user_roles %}
             <div id="active" class="tab-content">
                 <div id="activeGamesList" class="results-list">
                     <div class="loading">Loading active games...</div>
                 </div>
             </div>
+            {% endif %}
         </main>
     </div>
 
@@ -188,7 +194,7 @@
     <script src="/static/js/mobile_results.js"></script>
     <script>
         // Load game types when page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const gameTypeFilter = document.getElementById('gameTypeFilter');
             if (gameTypeFilter && typeof loadGameTypes === 'function') {
                 loadGameTypes(gameTypeFilter, true).then(() => {
@@ -199,4 +205,5 @@
         });
     </script>
 </body>
+
 </html>

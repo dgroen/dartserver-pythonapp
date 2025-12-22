@@ -115,9 +115,9 @@ class GameManager:
             self.players = [
                 {
                     "name": (
-                        pid.get("name", f"Player {i+1}")
+                        pid.get("name", f"Player {i + 1}")
                         if isinstance(pid, dict)
-                        else f"Player {i+1}"
+                        else f"Player {i + 1}"
                     ),
                     "id": i,
                     "db_id": pid if isinstance(pid, int) else (pid.get("db_id") if pid else None),
@@ -183,9 +183,10 @@ class GameManager:
         # Each player MUST have a db_id (WSO2 authenticated)
         player_ids = [p.get("db_id") for p in self.players]
 
-        # Validate that all players have database IDs
+        # Validate database IDs: allow games with no DB-backed players (local-only),
+        # but reject mixed lists where some players have DB IDs and others don't.
         missing_ids = [i for i, pid in enumerate(player_ids) if not pid]
-        if missing_ids:
+        if any(pid for pid in player_ids) and missing_ids:
             player_names = [f"{self.players[i]['name']} (pos {i})" for i in missing_ids]
             msg = (
                 "Cannot save game: Players missing database IDs "
@@ -193,17 +194,26 @@ class GameManager:
             )
             raise ValueError(msg)
 
-        try:
-            self.db_service.start_new_game(
-                game_type_name=self.game_type,
-                player_ids=player_ids,
-                start_score=self.start_score if self.game_type != "cricket" else None,
-                double_out=double_out,
-                reset_on_miss=reset_on_miss,
-            )
-            print(f"Game started in database: session_id={self.db_service.current_game_session_id}")
-        except Exception as e:
-            print(f"Warning: Could not start game in database: {e}")
+        # Only attempt to persist the game if all players have DB IDs
+        do_db_save = all(pid for pid in player_ids)
+        if do_db_save:
+            try:
+                self.db_service.start_new_game(
+                    game_type_name=self.game_type,
+                    player_ids=player_ids,
+                    start_score=self.start_score if self.game_type != "cricket" else None,
+                    double_out=double_out,
+                    reset_on_miss=reset_on_miss,
+                )
+                print(
+                    f"Game started in database: session_id=\
+                        {self.db_service.current_game_session_id}"
+                )
+            except Exception as e:
+                print(f"Warning: Could not start game in database: {e}")
+        else:
+            # Local-only game (no DB-backed players) — continue without persisting
+            print("Starting local-only game (no DB-backed player IDs present)")
 
         # Emit game state
         self._emit_game_state()

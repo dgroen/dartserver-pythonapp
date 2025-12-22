@@ -8,6 +8,7 @@ A Python web application for managing darts games (301 and Cricket) with RabbitM
 
 - **Multiple Game Modes**: 301, 401, 501, and Cricket
 - **Single & Multi-Player Support**: Support for 1-6 players (Cricket max 4)
+- **🆕 Multi-Game Management**: Create and manage multiple concurrent games with different players
 - **RabbitMQ Integration**: Receives dart scores through RabbitMQ topic subscription
 - **Real-time Updates**: WebSocket-based real-time game state updates
 - **Automatic UI Refresh**: All connected clients automatically refresh when scores are sent/received
@@ -264,6 +265,7 @@ The application listens for messages on the configured RabbitMQ exchange and top
 
 ### REST API
 
+#### Single Game Endpoints (Active Game)
 - `GET /api/game/state` - Get current game state
 - `POST /api/game/new` - Start a new game
 
@@ -294,6 +296,15 @@ The application listens for messages on the configured RabbitMQ exchange and top
   ```
 
 - `DELETE /api/players/<player_id>` - Remove a player
+
+#### 🆕 Multi-Game Management Endpoints
+- `GET /api/games` - List all active games
+- `POST /api/games/create` - Create a new game session
+- `POST /api/games/<game_id>/activate` - Switch to a different game
+- `DELETE /api/games/<game_id>` - Delete a game session
+- `GET /api/games/<game_id>/state` - Get state of a specific game
+
+**📖 See [Multi-Game Management Documentation](docs/MULTI_GAME_MANAGEMENT.md) for detailed usage examples.**
 
 **Note**: All API endpoints that modify game state automatically trigger UI refresh for all connected clients via WebSocket.
 
