@@ -73,7 +73,7 @@ def get_game_state():
               description: Game-specific data
     """
     game_manager = current_app.game_manager
-    return jsonify(game_manager.get_game_state())
+    return jsonify(current_app.game_manager.get_game_state())
 
 
 @games_bp.route("/api/game/new", methods=["POST"])
@@ -160,7 +160,7 @@ def new_game():
     # Convert player names to player objects with database IDs
     # Use the request-bound app's game_manager to ensure tests' patched
     # DatabaseService is respected (avoid stale module-level globals).
-    db_session = current_app.game_manager.db_service.db_manager.get_session()
+    db_session = current_app.current_app.game_manager.db_service.db_manager.get_session()
     try:
         player_ids = []
         # Debug: log players currently in DB for troubleshooting tests
@@ -230,7 +230,7 @@ def new_game():
         }
         current_app.active_game_id = game_id
 
-        # Game state is automatically emitted by game_manager.new_game()
+        # Game state is automatically emitted by current_app.game_manager.new_game()
         return jsonify({"status": "success", "message": "New game started", "game_id": game_id})
     except Exception:
         current_app.logger.exception("Error starting new game")
@@ -635,7 +635,7 @@ def get_current_game():
               type: object
               description: Current game state
     """
-    game_state = game_manager.get_game_state()
+    game_state = current_app.game_manager.get_game_state()
     return jsonify({"success": True, "game": game_state})
 
 
@@ -672,7 +672,7 @@ def get_game_types():
                     description: Game type description
     """
     try:
-        session = game_manager.db_service.db_manager.get_session()
+        session = current_app.game_manager.db_service.db_manager.get_session()
         try:
             game_types = session.query(GameType).order_by(GameType.name).all()
             game_types_list = [
@@ -774,7 +774,7 @@ def start_game():
         game_id = f"game-{uuid.uuid4().hex[:8]}"
 
     # Convert player names to player objects with database IDs
-    db_session = game_manager.db_service.db_manager.get_session()
+    db_session = current_app.game_manager.db_service.db_manager.get_session()
     try:
         player_ids = []
 
@@ -837,9 +837,9 @@ def start_game():
 
         # Set throwout advice if requested on the newly active session
         if show_throwout_advice:
-            game_manager.set_show_throwout_advice(True)
+            current_app.game_manager.set_show_throwout_advice(True)
 
-        game_state = game_manager.get_game_state()
+        game_state = current_app.game_manager.get_game_state()
 
         return jsonify(
             {
@@ -961,14 +961,14 @@ def start_single_player_game():
         # Start single-player game with current user
         player_ids = [{"db_id": player_id, "name": player_name}]
 
-        game_manager.new_game(
+        current_app.game_manager.new_game(
             game_type=game_type,
             player_ids=player_ids,
             double_out=double_out,
             reset_on_miss=reset_on_miss,
         )
 
-        game_state = game_manager.get_game_state()
+        game_state = current_app.game_manager.get_game_state()
 
         return jsonify(
             {
@@ -1019,7 +1019,7 @@ def end_game():
     """
 
     # Reset the game state
-    game_manager.reset_game()
+    current_app.game_manager.reset_game()
 
     return jsonify(
         {
@@ -1069,7 +1069,7 @@ def delete_game(game_session_id):
     game_manager = current_app.game_manager
     try:
         # Get the game to check if it can be deleted
-        game_data = game_manager.db_service.get_game_replay_data(game_session_id)
+        game_data = current_app.game_manager.db_service.get_game_replay_data(game_session_id)
 
         if not game_data:
             return jsonify({"status": "error", "message": "Game not found"}), 404
@@ -1112,7 +1112,7 @@ def delete_game(game_session_id):
             )
 
         # Delete the game
-        success = game_manager.db_service.delete_game(game_session_id)
+        success = current_app.game_manager.db_service.delete_game(game_session_id)
 
         if success:
             return jsonify({"status": "success", "message": "Game deleted successfully"})
@@ -1175,7 +1175,7 @@ def resume_game(game_session_id):
 
     try:
         # Get the game data
-        game_data = game_manager.db_service.get_game_replay_data(game_session_id)
+        game_data = current_app.game_manager.db_service.get_game_replay_data(game_session_id)
 
         if not game_data:
             return jsonify({"status": "error", "message": "Game not found"}), 404
@@ -1261,7 +1261,7 @@ def get_active_games():
     """
     game_manager = current_app.game_manager
     try:
-        games = game_manager.db_service.get_active_games()
+        games = current_app.game_manager.db_service.get_active_games()
         return jsonify({"success": True, "games": games})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

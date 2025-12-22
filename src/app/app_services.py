@@ -44,7 +44,7 @@ def api_key_required(f):
 def get_mobile_service():
     """Get or create MobileService instance"""
     if not hasattr(current_app, 'mobile_service'):
-        current_app.mobile_service = MobileService(current_app.game_manager.db_service)
+        current_app.mobile_service = MobileService(current_app.current_app.game_manager.db_service)
     return current_app.mobile_service
 
 
@@ -187,7 +187,7 @@ def submit_score_zone():
 
             # Process the score using the zone information
             # Pass the base_value and multiplier_type - game logic handles the calculation
-            game_manager.process_score(
+            current_app.game_manager.process_score(
                 {
                     "score": zone_info["base_value"],
                     "multiplier": zone_info["multiplier_type"],
@@ -952,12 +952,12 @@ def get_tts_config():
     """
     return jsonify(
         {
-            "enabled": game_manager.tts.is_enabled(),
-            "engine": game_manager.tts.engine_name,
-            "speed": game_manager.tts.speed,
-            "volume": game_manager.tts.volume,
-            "voice": game_manager.tts.voice_type,
-            "language": game_manager.tts.language,
+            "enabled": current_app.game_manager.tts.is_enabled(),
+            "engine": current_app.game_manager.tts.engine_name,
+            "speed": current_app.game_manager.tts.speed,
+            "volume": current_app.game_manager.tts.volume,
+            "voice": current_app.game_manager.tts.voice_type,
+            "language": current_app.game_manager.tts.language,
         },
     )
 
@@ -1012,21 +1012,21 @@ def update_tts_config():
 
     if "enabled" in data:
         if data["enabled"]:
-            game_manager.tts.enable()
+            current_app.game_manager.tts.enable()
         else:
-            game_manager.tts.disable()
+            current_app.game_manager.tts.disable()
 
     if "speed" in data:
-        game_manager.tts.set_speed(int(data["speed"]))
+        current_app.game_manager.tts.set_speed(int(data["speed"]))
 
     if "volume" in data:
-        game_manager.tts.set_volume(float(data["volume"]))
+        current_app.game_manager.tts.set_volume(float(data["volume"]))
 
     if "voice" in data:
-        game_manager.tts.set_voice(data["voice"])
+        current_app.game_manager.tts.set_voice(data["voice"])
 
     if "language" in data:
-        game_manager.tts.set_language(data["language"])
+        current_app.game_manager.tts.set_language(data["language"])
 
     return jsonify({"status": "success", "message": "TTS configuration updated"})
 
@@ -1063,7 +1063,7 @@ def get_tts_voices():
                 type: string
                 description: Voice gender
     """
-    voices = game_manager.tts.get_available_voices()
+    voices = current_app.game_manager.tts.get_available_voices()
     return jsonify(voices)
 
 
@@ -1135,7 +1135,7 @@ def test_tts():
     data = request.json
     text = data.get("text", "This is a test")
 
-    success = game_manager.tts.speak(text)
+    success = current_app.game_manager.tts.speak(text)
 
     if success:
         return jsonify({"status": "success", "message": "TTS test completed"})
@@ -1208,7 +1208,7 @@ def generate_tts_audio():
     if not text:
         return jsonify({"status": "error", "message": "Text is required"}), 400
 
-    audio_data = game_manager.tts.generate_audio_data(text, lang)
+    audio_data = current_app.game_manager.tts.generate_audio_data(text, lang)
 
     if audio_data:
         return Response(audio_data, mimetype="audio/mpeg")
@@ -1823,7 +1823,7 @@ def dartboard_submit_score():
     """
     data = request.json
     # Process score through game manager
-    game_manager.process_score(data)
+    current_app.game_manager.process_score(data)
     return jsonify({"success": True, "message": "Score submitted"})
 
 

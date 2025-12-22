@@ -71,13 +71,13 @@ def get_players():
     if source == "database":
         # Return all players from database with usernames
         try:
-            players = game_manager.db_service.get_all_players_with_usernames()
+            players = current_app.game_manager.db_service.get_all_players_with_usernames()
             return jsonify({"status": "success", "players": players})
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
     else:
         # Return current game players
-        return jsonify(game_manager.get_players())
+        return jsonify(current_app.game_manager.get_players())
 
 
 @api_bp.route("/api/players", methods=["POST"])
@@ -164,7 +164,7 @@ def add_player():
         email = wso2_user.get("email")
 
         # Add to database with email and username (enforces WSO2 users only)
-        player = game_manager.db_service.get_or_create_player(
+        player = current_app.game_manager.db_service.get_or_create_player(
             name=player_name,
             username=username,
             email=email,
@@ -177,7 +177,7 @@ def add_player():
             )
 
         # Add to game with player database ID
-        game_manager.add_player_with_id(player_name, player.id)
+        current_app.game_manager.add_player_with_id(player_name, player.id)
 
         return jsonify(
             {
@@ -226,8 +226,8 @@ def remove_player(player_id):
               example: Player removed
     """
     game_manager = current_app.game_manager
-    game_manager.remove_player(player_id)
-    # Game state is automatically emitted by game_manager.remove_player()
+    current_app.game_manager.remove_player(player_id)
+    # Game state is automatically emitted by current_app.game_manager.remove_player()
     return jsonify({"status": "success", "message": "Player removed"})
 
 
@@ -377,7 +377,7 @@ def get_player_history():
         game_type = request.args.get("game_type")
         limit = request.args.get("limit", 50, type=int)
 
-        games = game_manager.db_service.get_player_game_history(
+        games = current_app.game_manager.db_service.get_player_game_history(
             player_id=player_id,
             game_type=game_type,
             limit=limit,
@@ -416,7 +416,7 @@ def get_player_statistics():
         if not player_id:
             return jsonify({"success": False, "error": "Player ID not available"}), 401
 
-        stats = game_manager.db_service.get_player_statistics(player_id=player_id)
+        stats = current_app.game_manager.db_service.get_player_statistics(player_id=player_id)
 
         if stats:
             return jsonify({"success": True, "statistics": stats})
@@ -481,7 +481,7 @@ def start_training():
             return jsonify({"success": False, "error": "Player ID not available"}), 401
 
         # Start training session using database service
-        db_session = game_manager.db_service.db_manager.get_session()
+        db_session = current_app.game_manager.db_service.db_manager.get_session()
 
         # Get or create game type
         game_type_obj = db_session.query(GameType).filter(GameType.name == game_type).first()
@@ -510,15 +510,15 @@ def start_training():
         session["training_session_id"] = training_session.id
 
         # Start game in game manager with single player
-        game_manager.new_game(
+        current_app.game_manager.new_game(
             game_type=game_type,
             player_ids=[{"db_id": player_id, "name": session.get("username", "Player")}],
             double_out=double_out,
         )
 
         # Set training mode flags in game manager
-        game_manager.is_training_mode = True
-        game_manager.training_session_id = training_session.id
+        current_app.game_manager.is_training_mode = True
+        current_app.game_manager.training_session_id = training_session.id
 
         db_session.close()
 
@@ -564,7 +564,7 @@ def end_training():
         if not training_session_id:
             return jsonify({"success": False, "error": "No active training session"}), 400
 
-        db_session = game_manager.db_service.db_manager.get_session()
+        db_session = current_app.game_manager.db_service.db_manager.get_session()
         training_session = (
             db_session.query(TrainingSession)
             .filter(TrainingSession.id == training_session_id)
@@ -575,18 +575,18 @@ def end_training():
             training_session.completed = True
             training_session.finished_at = datetime.now(tz=timezone.utc)
             training_session.final_score = (
-                game_manager.game.get_player_score(0) if game_manager.game else 0
+                current_app.game_manager.game.get_player_score(0) if current_app.game_manager.game else 0
             )
             db_session.commit()
 
         db_session.close()
 
         # Clear training mode flags
-        game_manager.is_training_mode = False
-        game_manager.training_session_id = None
+        current_app.game_manager.is_training_mode = False
+        current_app.game_manager.training_session_id = None
 
         # Reset game manager
-        game_manager.reset_game()
+        current_app.game_manager.reset_game()
 
         # Clear training session from session
         session.pop("training_session_id", None)
@@ -628,7 +628,7 @@ def get_training_history():
         if not player_id:
             return jsonify({"success": False, "error": "Player ID not available"}), 401
 
-        db_session = game_manager.db_service.db_manager.get_session()
+        db_session = current_app.game_manager.db_service.db_manager.get_session()
         training_sessions = (
             db_session.query(TrainingSession)
             .join(GameType, TrainingSession.game_type_id == GameType.id)
@@ -691,7 +691,7 @@ def get_training_statistics():
         if not player_id:
             return jsonify({"success": False, "error": "Player ID not available"}), 401
 
-        db_session = game_manager.db_service.db_manager.get_session()
+        db_session = current_app.game_manager.db_service.db_manager.get_session()
 
         # Count total sessions
         total_sessions = (
@@ -811,14 +811,14 @@ def get_game_history():
 
         # Get games from database
         if player_id:
-            games = game_manager.db_service.get_player_game_history(
+            games = current_app.game_manager.db_service.get_player_game_history(
                 player_id=player_id,
                 game_type=game_type,
                 limit=limit,
                 offset=offset,
             )
         else:
-            games = game_manager.db_service.get_recent_games(
+            games = current_app.game_manager.db_service.get_recent_games(
                 limit=limit,
                 offset=offset,
                 game_type=game_type,
@@ -867,7 +867,7 @@ def get_game_replay(game_session_id):
     """
     game_manager = current_app.game_manager
     try:
-        game_data = game_manager.db_service.get_game_replay_data(game_session_id)
+        game_data = current_app.game_manager.db_service.get_game_replay_data(game_session_id)
 
         if not game_data:
             return jsonify({"success": False, "error": "Game not found"}), 404
@@ -903,7 +903,7 @@ def get_current_game_session_id():
     """
     game_manager = current_app.game_manager
     try:
-        session_id = game_manager.current_game_session_id
+        session_id = current_app.game_manager.current_game_session_id
 
         if not session_id:
             return jsonify({"success": False, "error": "No active game"}), 404
@@ -950,7 +950,7 @@ def get_game_results():
     game_type = request.args.get("game_type")
 
     try:
-        games = game_manager.db_service.get_recent_games(limit=limit)
+        games = current_app.game_manager.db_service.get_recent_games(limit=limit)
 
         # Filter by game type if specified
         if game_type:
