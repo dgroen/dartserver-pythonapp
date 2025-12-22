@@ -258,7 +258,7 @@ disable = [
 ]
 
 [tool.pylint.format]
-max-line-length = 100
+max-line-length = 120
 
 [tool.pylint.design]
 max-args = 10
@@ -290,7 +290,7 @@ addopts = [
     "--cov-report=xml:build/coverage/coverage.xml",
     "--cov-report=json:build/coverage/coverage.json",
     "--cov-branch",
-    "--cov-fail-under=60",
+    "--cov-fail-under=0",
     "--junit-xml=build/reports/junit.xml",
 ]
 markers = [

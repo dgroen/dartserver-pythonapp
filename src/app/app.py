@@ -7,30 +7,55 @@ Includes WSO2 IS authentication and role-based access control
 import logging
 import os
 import secrets
+import ssl
 import threading
+import time
+import uuid
+from datetime import datetime, timedelta, timezone
+from functools import wraps
 from pathlib import Path
 
+import requests
+import yaml
 from dotenv import load_dotenv
+from eventlet import wsgi
 from flasgger import Swagger
-from flask import Flask, jsonify, redirect, render_template, request, session, url_for
+from flask import (
+    Flask,
+    Response,
+    current_app,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    session,
+    url_for,
+)
 from flask_cors import CORS
 from flask_socketio import SocketIO
+from sqlalchemy import func
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from src.app.game_manager import GameManager
 from src.app.mobile_service import MobileService
+from src.app.multi_game_manager import MultiGameManager
 from src.core.auth import (
     exchange_code_for_token,
     get_authorization_url,
+    get_user_groups_from_scim2,
     get_user_info,
+    get_user_roles,
+    get_wso2_user_info,
     login_required,
     logout_user,
     permission_required,
     role_required,
+    search_wso2_users,
+    validate_token,
 )
 from src.core.config import Config
 from src.core.dartboard_service import DartboardMappingError, DartboardService
-from src.core.database_models import Player
+from src.core.database_models import GameType, Player, TrainingScore, TrainingSession
 from src.core.database_service import get_session, set_database_service
 from src.core.rabbitmq_consumer import RabbitMQConsumer
 
@@ -101,37 +126,179 @@ swagger_config = {
     "specs_route": "/api/docs/",
 }
 
-swagger_template = {
-    "swagger": "2.0",
-    "info": {
-        "title": "Darts Game API",
-        "description": "API for managing darts games (301, 401, 501, Cricket, Round the Clock) \
-        with real-time score tracking",
-        "version": "1.0.0",
-        "contact": {
-            "name": "Darts Game Server",
+swagger_template = None
+try:
+    # Prefer the centralized OpenAPI spec in docs if available so Swagger UI
+    # reflects the full API surface instead of relying solely on docstrings.
+    spec_path = _root_dir / "docs" / "api-spec.yaml"
+    if spec_path.exists():
+        with Path.open(spec_path) as fh:
+            swagger_template = yaml.safe_load(fh)
+        # flasgger expects 'swagger' 2.0 style when using template. If the
+        # loaded YAML is an OpenAPI 3 spec it will contain an 'openapi'
+        # top-level key. Flasgger may merge in a `swagger: "2.0"` field,
+        # producing a spec that contains both 'swagger' and 'openapi' —
+        # which breaks the Swagger UI. Remove the top-level 'openapi'
+        # key to avoid that conflict while keeping the rest of the
+        # spec (paths/components) available to the UI.
+        if isinstance(swagger_template, dict) and "openapi" in swagger_template:
+            logger.info(
+                "Loaded OpenAPI 3 spec; removing top-level 'openapi' to avoid Flasgger conflict.",
+            )
+            swagger_template.pop("openapi", None)
+            # Convert OpenAPI3 'components' -> Swagger 2.0 compatible fields
+            comps = swagger_template.get("components") or {}
+            schemas = comps.get("schemas")
+            if schemas:
+                logger.info(
+                    "Converting components.schemas -> definitions for Swagger UI compatibility.",
+                )
+                swagger_template["definitions"] = schemas
+            sec = comps.get("securitySchemes")
+            if sec:
+                logger.info("Converting components.securitySchemes -> securityDefinitions.")
+                swagger_template["securityDefinitions"] = sec
+            # Remove components to avoid mixed OpenAPI3 keys
+            if "components" in swagger_template:
+                swagger_template.pop("components", None)
+            # Ensure top-level swagger field exists
+            swagger_template.setdefault("swagger", "2.0")
+
+            # Convert requestBody/content to Swagger 2.0 compatible parameters and
+            # replace any component $ref references with definitions refs.
+            def _replace_refs(obj):
+                if isinstance(obj, dict):
+                    for k, v in list(obj.items()):
+                        if isinstance(v, str) and v.startswith("#/components/schemas/"):
+                            obj[k] = v.replace("#/components/schemas/", "#/definitions/")
+                        else:
+                            _replace_refs(v)
+                elif isinstance(obj, list):
+                    for item in obj:
+                        _replace_refs(item)
+
+            paths = swagger_template.get("paths") or {}
+            for _path, methods in list(paths.items()):
+                if not isinstance(methods, dict):
+                    continue
+                for _method, op in list(methods.items()):
+                    if not isinstance(op, dict):
+                        continue
+                    # requestBody -> parameters (body)
+                    rb = op.pop("requestBody", None)
+                    if rb:
+                        required = rb.get("required", False)
+                        content = rb.get("content", {}) or {}
+                        schema = None
+                        for _media, media_val in content.items():
+                            if isinstance(media_val, dict) and "schema" in media_val:
+                                schema = media_val["schema"]
+                                break
+                        if schema is not None:
+                            params = op.get("parameters", [])
+                            params.append(
+                                {
+                                    "in": "body",
+                                    "name": "body",
+                                    "required": required,
+                                    "schema": schema,
+                                },
+                            )
+                            op["parameters"] = params
+                    # responses: move content -> schema
+                    responses = op.get("responses", {})
+                    for code, resp in list(responses.items()):
+                        if isinstance(resp, dict):
+                            content = resp.pop("content", None)
+                            if content and isinstance(content, dict):
+                                for _media, media_val in content.items():
+                                    if isinstance(media_val, dict) and "schema" in media_val:
+                                        resp["schema"] = media_val["schema"]
+                                        break
+                                responses[code] = resp
+                    # Replace refs within operation
+                    _replace_refs(op)
+            # Replace refs in whole template as a final pass
+            _replace_refs(swagger_template)
+except Exception:
+    swagger_template = None
+
+if not swagger_template:
+    swagger_template = {
+        "swagger": "2.0",
+        "info": {
+            "title": "Darts Game API",
+            "description": "API for managing darts games (301, 401, 501, Cricket, Round the Clock) \
+              with real-time score tracking",
+            "version": "1.0.0",
+            "contact": {
+                "name": "Darts Game Server",
+            },
         },
-    },
-    "host": Config.SWAGGER_HOST,
-    "basePath": "/",
-    "schemes": ["http", "https"] if not Config.is_production() else ["https"],
-    "tags": [
-        {"name": "Game", "description": "Game management endpoints"},
-        {"name": "Players", "description": "Player management endpoints"},
-        {"name": "Score", "description": "Score submission endpoints"},
-        {"name": "TTS", "description": "Text-to-Speech configuration endpoints"},
-        {"name": "UI", "description": "User interface endpoints"},
-    ],
-}
+        "host": Config.SWAGGER_HOST,
+        "basePath": "/",
+        "schemes": ["http", "https"] if not Config.is_production() else ["https"],
+        "tags": [
+            {"name": "Game Management", "description": "Game management endpoints"},
+            {"name": "Multi-Game", "description": "Multi-game session management"},
+            {"name": "Players", "description": "Player management endpoints"},
+            {"name": "Score", "description": "Score submission endpoints"},
+            {"name": "Dartboard", "description": "Dartboard configuration and mappings"},
+            {"name": "Admin", "description": "Administrative endpoints"},
+            {"name": "TTS", "description": "Text-to-Speech configuration endpoints"},
+            {"name": "Mobile", "description": "Mobile app API endpoints"},
+            {"name": "Training", "description": "Training session endpoints"},
+            {"name": "UI", "description": "User interface endpoints"},
+            {"name": "History", "description": "History and replay endpoints"},
+            {"name": "Debug", "description": "Debugging endpoints (no auth)"},
+            {"name": "WSO2", "description": "WSO2 user and auth helpers"},
+        ],
+    }
 
 swagger = Swagger(app, config=swagger_config, template=swagger_template)
+
+
+# Remove any Python None values from the template to avoid rendering 'None' in
+# the generated Swagger UI HTML/JS which causes client-side errors.
+def _prune_none(obj):
+    if isinstance(obj, dict):
+        for k in list(obj.keys()):
+            v = obj.get(k)
+            if v is None:
+                obj.pop(k, None)
+            else:
+                _prune_none(v)
+    elif isinstance(obj, list):
+        # Remove None entries from lists and recurse into remaining items
+        i = 0
+        while i < len(obj):
+            if obj[i] is None:
+                obj.pop(i)
+            else:
+                _prune_none(obj[i])
+                i += 1
+
+
+try:  # noqa: SIM105
+    _prune_none(swagger_template)
+except Exception:  # noqa: S110
+    # If pruning fails, continue without raising; avoid breaking app startup
+    pass
 
 # Initialize SocketIO
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
-# Initialize Game Manager
-game_manager = GameManager(socketio)
+# Initialize Multi-Game Manager
+multi_game_manager = MultiGameManager(socketio)
+
+# Create a default game for backward compatibility
+default_game_manager = multi_game_manager.create_game("default")
+game_manager = default_game_manager  # Keep for backward compatibility with existing code
 app.game_manager = game_manager  # Attach to app for access in decorators
+
+# Multi-game management - track all active games
+games_store = {}  # Dict[str, dict] - stores game metadata
+active_game_id = None  # Current active game
 
 # Initialize global database service for dartboard endpoints
 set_database_service(game_manager.db_service)
@@ -170,9 +337,20 @@ def index():
 
 @app.route("/service-worker.js")
 def serve_service_worker():
-    """Serve the service worker file (no authentication required for PWA)"""
-    from flask import send_from_directory
-
+    """Serve the service worker file (no authentication required for PWA)
+    ---
+    tags:
+      - UI
+    summary: Serve service worker file
+    description: Returns the PWA service worker JavaScript file
+    responses:
+      200:
+        description: Service worker JS served successfully
+        content:
+          application/javascript:
+            schema:
+              type: string
+    """
     return send_from_directory(str(_root_dir / "static"), "service-worker.js")
 
 
@@ -214,6 +392,25 @@ def control():
     user_roles = getattr(request, "user_roles", [])
     user_claims = getattr(request, "user_claims", {})
     return render_template("control.html", user_roles=user_roles, user_claims=user_claims)
+
+
+@app.route("/game/create")
+@login_required
+@permission_required("game:create")
+def game_create():
+    """Game creation page - requires game:create permission
+    ---
+    tags:
+      - UI
+    summary: Game creation page
+    description: Renders the game creation interface for starting new games
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template("game_create.html", user_roles=user_roles, user_claims=user_claims)
 
 
 @app.route("/history")
@@ -293,7 +490,17 @@ def training_dashboard():
 
 
 def _verify_callback_state():
-    """Verify state parameter to prevent CSRF."""
+    """Verify state parameter to prevent CSRF.
+    ---
+    tags:
+      - UI
+    summary: Verify OAuth callback state
+    description: Checks the `state` query parameter against the session-stored \
+      oauth_state to prevent CSRF attacks.
+    responses:
+      200:
+        description: State valid (returns True/False internally)
+    """
     state = request.args.get("state")
     stored_state = session.get("oauth_state")
     app.logger.info(f"Callback state check: {state}")
@@ -339,8 +546,6 @@ def _process_scim2_data(scim_data, username, email, name):
 def _fetch_scim2_user(access_token):
     """Fetch user data from SCIM2 /Me endpoint."""
     try:
-        import requests
-
         wso2_url = os.getenv("WSO2_IS_INTERNAL_URL", "https://wso2is:9443")
         verify_ssl = os.getenv("WSO2_IS_VERIFY_SSL", "false").lower() in ("true", "1", "yes")
         resp = requests.get(
@@ -372,7 +577,18 @@ def _ensure_player_exists(username, email, name):
 
 @app.route("/login")
 def login():
-    """Login page"""
+    """Login page
+    ---
+    tags:
+      - UI
+    summary: Login page (initiates OAuth2 flow)
+    description: Redirects user to OAuth provider to authenticate and stores state in session.
+    responses:
+      200:
+        description: Login page rendered
+      302:
+        description: Redirect to OAuth provider
+    """
     # Generate state for CSRF protection
     state = secrets.token_urlsafe(32)
     session["oauth_state"] = state
@@ -406,7 +622,18 @@ def login():
 
 @app.route("/callback")
 def callback():
-    """OAuth2 callback endpoint"""
+    """OAuth2 callback endpoint
+    ---
+    tags:
+      - UI
+    summary: OAuth2 callback
+    description: Handles authorization code exchange and sets session tokens/user info.
+    responses:
+      302:
+        description: Redirects to original requested page after login
+      400:
+        description: Invalid state or token exchange failed
+    """
     app.logger.info(f"Callback - Session ID: {session.get('_id', 'No session ID')}")
 
     if not _verify_callback_state():
@@ -447,7 +674,16 @@ def callback():
 
 @app.route("/logout")
 def logout():
-    """Logout endpoint"""
+    """Logout endpoint
+    ---
+    tags:
+      - UI
+    summary: Logout user
+    description: Clears session and redirects to WSO2 logout endpoint.
+    responses:
+      302:
+        description: Redirect to upstream logout URL
+    """
     id_token = session.get("id_token")
 
     # Clear session
@@ -461,7 +697,16 @@ def logout():
 @app.route("/profile")
 @login_required
 def profile():
-    """User profile page"""
+    """User profile page
+    ---
+    tags:
+      - User
+    summary: Get current user profile
+    description: Returns user information stored in session including roles and claims.
+    responses:
+      200:
+        description: User profile JSON
+    """
     user_info = session.get("user_info", {})
     user_roles = getattr(request, "user_roles", [])
     user_claims = getattr(request, "user_claims", {})
@@ -478,9 +723,16 @@ def profile():
 @app.route("/debug/auth")
 @login_required
 def debug_auth():
-    """Debug authentication information"""
-    from src.core.auth import get_user_groups_from_scim2, get_user_roles, validate_token
-
+    """Debug authentication information
+    ---
+    tags:
+      - Debug
+    summary: Debug auth
+    description: Returns token claims, extracted roles, and SCIM2 groups for debugging.
+    responses:
+      200:
+        description: Debug authentication data
+    """
     access_token = session.get("access_token")
     user_info = session.get("user_info", {})
 
@@ -639,6 +891,9 @@ def new_game():
             message:
               type: string
               example: New game started
+            game_id:
+              type: string
+              description: The ID of the created game
       400:
         description: Invalid request or player not found
         schema:
@@ -650,16 +905,34 @@ def new_game():
             message:
               type: string
     """
+    # global games_store
+    global active_game_id
+    global game_manager
+
     data = request.json
     game_type = data.get("game_type", "301")
     player_data = data.get("players", [])
     double_out = data.get("double_out", False)
     reset_on_miss = data.get("reset_on_miss", False)
 
+    # Generate game_id if not provided
+    game_id = f"game-{uuid.uuid4().hex[:8]}"
+
     # Convert player names to player objects with database IDs
-    db_session = game_manager.db_service.db_manager.get_session()
+    # Use the request-bound app's game_manager to ensure tests' patched
+    # DatabaseService is respected (avoid stale module-level globals).
+    db_session = current_app.game_manager.db_service.db_manager.get_session()
     try:
         player_ids = []
+        # Debug: log players currently in DB for troubleshooting tests
+        try:
+            all_players = db_session.query(Player).all()
+            app.logger.debug(
+                "Players in DB at request: %s",
+                [f"{p.name}<{p.username}>" for p in all_players],
+            )
+        except Exception:
+            app.logger.debug("Could not enumerate players in DB for debug")
 
         for player_name in player_data:
             # Try to find player by name or username
@@ -694,14 +967,32 @@ def new_game():
         if not player_ids:
             player_ids = [session.get("player_id")]
 
-        game_manager.new_game(
+        # Create a dedicated session and start the game there
+        new_game_manager = multi_game_manager.create_game(game_id)
+        new_game_manager.new_game(
             game_type,
             player_ids=player_ids,
             double_out=double_out,
             reset_on_miss=reset_on_miss,
         )
+        # Set active and update global pointers so main area shows this game
+        multi_game_manager.set_active_game(game_id)
+        game_manager = new_game_manager
+        app.game_manager = game_manager
+
+        # Store game metadata in games_store
+        games_store[game_id] = {
+            "game_id": game_id,
+            "game_type": game_type,
+            "created_at": datetime.now(tz=timezone.utc).isoformat(),
+            "players": player_ids,
+            "double_out": double_out,
+            "reset_on_miss": reset_on_miss,
+        }
+        active_game_id = game_id
+
         # Game state is automatically emitted by game_manager.new_game()
-        return jsonify({"status": "success", "message": "New game started"})
+        return jsonify({"status": "success", "message": "New game started", "game_id": game_id})
     except Exception:
         app.logger.exception("Error starting new game")
         # Don't expose internal error details to clients
@@ -716,6 +1007,368 @@ def new_game():
         )
     finally:
         db_session.close()
+
+
+@app.route("/api/games", methods=["GET"])
+@login_required
+def list_games():
+    """List all active game sessions - all authenticated users
+    ---
+    tags:
+      - Game
+    summary: List all active games
+    description: Returns a list of all active game sessions with their basic information
+    responses:
+      200:
+        description: List of active games
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            games:
+              type: array
+              items:
+                type: object
+                properties:
+                  game_id:
+                    type: string
+                    description: Unique game identifier
+                  game_type:
+                    type: string
+                    description: Type of game
+                  is_started:
+                    type: boolean
+                    description: Whether the game has started
+                  is_active:
+                    type: boolean
+                    description: Whether this is the currently active game
+                  player_count:
+                    type: integer
+                    description: Number of players
+                  players:
+                    type: array
+                    items:
+                      type: string
+                    description: List of player names
+    """
+    try:
+        games = multi_game_manager.list_games()
+        # Hide legacy default session from UI
+        games = [g for g in games if g.get("game_id") != "default"]
+        active_id = multi_game_manager.get_active_game_id()
+        if active_id == "default":
+            active_id = None
+        return jsonify({"status": "success", "games": games, "active_game_id": active_id})
+    except Exception:
+        app.logger.exception("Error getting games list")
+        return jsonify({"status": "error", "message": "Failed to list games"}), 500
+
+
+@app.route("/api/games/create", methods=["POST"])
+@login_required
+@permission_required("game:create")
+def create_new_game_session():
+    """Create a new game session - requires game:create permission
+    ---
+    tags:
+      - Game
+    summary: Create a new game session
+    description: Creates a new game session with a unique ID and optionally starts a game
+    parameters:
+      - in: body
+        name: body
+        description: Game session configuration
+        required: true
+        schema:
+          type: object
+          properties:
+            game_id:
+              type: string
+              description: Unique identifier for the game (optional, \
+                will be auto-generated if not provided)
+              example: game-1
+            game_type:
+              type: string
+              description: Type of game to start
+              enum: ['301', '401', '501', 'cricket', 'round_the_clock', \
+                'round_the_clock_double']
+              example: '301'
+            players:
+              type: array
+              description: List of player names
+              items:
+                type: string
+              example: ['Alice', 'Bob']
+            double_out:
+              type: boolean
+              description: Whether to require double-out to finish
+              default: false
+            reset_on_miss:
+              type: boolean
+              description: Enable hard mode for round_the_clock
+              default: false
+            set_as_active:
+              type: boolean
+              description: Whether to set this as the active game
+              default: true
+    responses:
+      200:
+        description: Game session created successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: Game session created
+            game_id:
+              type: string
+              description: ID of the created game
+      400:
+        description: Bad request
+    """
+    data = request.json or {}
+    game_id = data.get("game_id")
+
+    # Auto-generate game ID if not provided
+    if not game_id:
+        game_id = f"game-{str(uuid.uuid4())[:8]}"
+
+    # Check if game already exists
+    if multi_game_manager.has_game(game_id):
+        return jsonify({"status": "error", "message": f"Game '{game_id}' already exists"}), 400
+
+    # Create the game session
+    try:
+        new_game_manager = multi_game_manager.create_game(game_id)
+
+        # Start the game if parameters provided
+        game_type = data.get("game_type")
+        player_names = data.get("players")
+        if game_type and player_names:
+            double_out = data.get("double_out", False)
+            reset_on_miss = data.get("reset_on_miss", False)
+
+            # Convert player names to player objects with database IDs
+            db_session = new_game_manager.db_service.db_manager.get_session()
+            try:
+                player_ids = []
+
+                for player_name in player_names:
+                    # Try to find player by name or username
+                    player = (
+                        db_session.query(Player)
+                        .filter(
+                            (Player.name == player_name) | (Player.username == player_name),
+                        )
+                        .first()
+                    )
+                    if player:
+                        player_ids.append({"db_id": player.id, "name": player.name})
+                    else:
+                        # If player not found in database, return an error response
+                        app.logger.warning(
+                            f"Player '{player_name}' not found in database. "
+                            "Only registered WSO2 users can play.",
+                        )
+                        return (
+                            jsonify(
+                                {
+                                    "status": "error",
+                                    "message": (
+                                        f"Player '{player_name}' not found. "
+                                        "Only registered WSO2 users allowed."
+                                    ),
+                                },
+                            ),
+                            400,
+                        )
+
+                if not player_ids:
+                    player_ids = [session.get("player_id")]
+
+                new_game_manager.new_game(
+                    game_type,
+                    player_ids=player_ids,
+                    double_out=double_out,
+                    reset_on_miss=reset_on_miss,
+                )
+            finally:
+                db_session.close()
+
+        # Set as active if requested (default: true)
+        if data.get("set_as_active", True):
+            multi_game_manager.set_active_game(game_id)
+            # Update global game_manager reference
+            global game_manager
+            game_manager = new_game_manager
+            app.game_manager = game_manager
+
+        return jsonify(
+            {
+                "status": "success",
+                "message": "Game session created",
+                "game_id": game_id,
+            },
+        )
+    except ValueError as e:
+        # ValueError is raised with a user-friendly message about duplicate game ID
+        return jsonify({"status": "error", "message": str(e)}), 400
+    except Exception:
+        app.logger.exception("Error creating game session")
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": "An error occurred while creating the game. Please try again.",
+                },
+            ),
+            500,
+        )
+
+
+@app.route("/api/games/<game_id>/activate", methods=["POST"])
+@login_required
+@permission_required("game:create")
+def activate_game_session(game_id):
+    """Set a game as the active game session - requires game:create permission
+    ---
+    tags:
+      - Game
+    summary: Activate a game session
+    description: Sets the specified game as the currently active game
+    parameters:
+      - in: path
+        name: game_id
+        type: string
+        required: true
+        description: ID of the game to activate
+    responses:
+      200:
+        description: Game activated successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: Game activated
+            game_id:
+              type: string
+              description: ID of the activated game
+      404:
+        description: Game not found
+    """
+    if not multi_game_manager.has_game(game_id):
+        return jsonify({"status": "error", "message": f"Game '{game_id}' not found"}), 404
+
+    multi_game_manager.set_active_game(game_id)
+
+    # Update global game_manager reference
+    global game_manager
+    game_manager = multi_game_manager.get_game(game_id)
+    app.game_manager = game_manager
+
+    return jsonify(
+        {
+            "status": "success",
+            "message": "Game activated",
+            "game_id": game_id,
+        },
+    )
+
+
+@app.route("/api/games/<game_id>", methods=["DELETE"])
+@login_required
+@permission_required("game:create")
+def delete_game_session(game_id):
+    """Delete a game session - requires game:create permission
+    ---
+    tags:
+      - Game
+    summary: Delete a game session
+    description: Deletes a game session by ID
+    parameters:
+      - in: path
+        name: game_id
+        type: string
+        required: true
+        description: ID of the game to delete
+    responses:
+      200:
+        description: Game deleted successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+              example: Game session deleted
+      404:
+        description: Game not found
+      400:
+        description: Cannot delete default game
+    """
+    # Prevent deletion of default game
+    if game_id == "default":
+        return jsonify({"status": "error", "message": "Cannot delete default game"}), 400
+
+    if not multi_game_manager.has_game(game_id):
+        return jsonify({"status": "error", "message": f"Game '{game_id}' not found"}), 404
+
+    multi_game_manager.delete_game(game_id)
+
+    # Update global game_manager reference if we deleted the active game
+    global game_manager
+    active_game = multi_game_manager.get_game()
+    if active_game:
+        game_manager = active_game
+        app.game_manager = game_manager
+
+    return jsonify(
+        {
+            "status": "success",
+            "message": "Game session deleted",
+        },
+    )
+
+
+@app.route("/api/games/<game_id>/state", methods=["GET"])
+@login_required
+def get_specific_game_state(game_id):
+    """Get state of a specific game - all authenticated users
+    ---
+    tags:
+      - Game
+    summary: Get specific game state
+    description: Returns the state of a specific game by ID
+    parameters:
+      - in: path
+        name: game_id
+        type: string
+        required: true
+        description: ID of the game
+    responses:
+      200:
+        description: Game state
+        schema:
+          type: object
+      404:
+        description: Game not found
+    """
+    game = multi_game_manager.get_game(game_id)
+    if not game:
+        return jsonify({"status": "error", "message": f"Game '{game_id}' not found"}), 404
+
+    return jsonify(game.get_game_state())
 
 
 @app.route("/api/players", methods=["GET"])
@@ -817,9 +1470,7 @@ def search_wso2_users_endpoint():
         if not query or len(query) < 1:
             return jsonify({"success": False, "error": "Search query too short"}), 400
 
-        from src.core.auth import search_wso2_users as wso2_search
-
-        users = wso2_search(query)
+        users = search_wso2_users(query)
         return jsonify({"success": True, "users": users})
     except Exception as e:
         logger.exception("Error searching WSO2 users")
@@ -897,8 +1548,6 @@ def add_player():
             )
 
         # Lookup WSO2 user
-        from src.core.auth import get_wso2_user_info
-
         wso2_user = get_wso2_user_info(username)
         if not wso2_user:
             return (
@@ -1282,7 +1931,19 @@ def get_dartboard_mappings(board_type):
 @login_required
 @role_required("admin")
 def admin_dartboard_testing():
-    """Admin page for dartboard testing and calibration"""
+    """Admin page for dartboard testing and calibration
+    ---
+    tags:
+      - Admin
+      - Dartboard
+    summary: Admin dartboard testing UI
+    description: Renders the admin page for dartboard calibration and testing (admin only).
+    responses:
+      200:
+        description: HTML page rendered
+      403:
+        description: Forbidden - admin required
+    """
     return render_template("admin_dartboard_testing.html")
 
 
@@ -2015,7 +2676,7 @@ def get_tts_languages():
             fr: French
             es: Spanish
     """
-    from src.core.tts_service import TTSService
+    from dartserver_services.tts_service import TTSService  # noqa: PLC0415
 
     languages = TTSService.get_supported_languages()
     return jsonify(languages)
@@ -2124,8 +2785,6 @@ def generate_tts_audio():
               type: string
               example: Failed to generate audio
     """
-    from flask import Response
-
     data = request.json
     text = data.get("text")
     lang = data.get("lang", "en")
@@ -2371,7 +3030,6 @@ def get_mobile_service():
 
 def api_key_required(f):
     """Decorator to require API key authentication"""
-    from functools import wraps
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -3059,8 +3717,6 @@ def get_game_types():
                     description: Game type description
     """
     try:
-        from src.core.database_models import GameType
-
         session = game_manager.db_service.db_manager.get_session()
         try:
             game_types = session.query(GameType).order_by(GameType.name).all()
@@ -3112,6 +3768,14 @@ def start_game():
               type: boolean
               description: Enable hard mode for round_the_clock (reset to 20 after 3 misses)
               default: false
+            show_throwout_advice:
+              type: boolean
+              description: Whether to show throw-out advice during the game
+              default: false
+            game_id:
+              type: string
+              description: Optional game ID (auto-generated if not provided)
+              default: null
     responses:
       200:
         description: Game started successfully
@@ -3124,6 +3788,9 @@ def start_game():
               type: string
             game:
               type: object
+            game_id:
+              type: string
+              description: The ID of the created game
       400:
         description: Invalid request or player not found
         schema:
@@ -3134,11 +3801,21 @@ def start_game():
             message:
               type: string
     """
+    # global games_store
+    global active_game_id
+    global game_manager
+
     data = request.json
     game_type = data.get("game_type", "301")
     player_data = data.get("players", [])
     double_out = data.get("double_out", False)
     reset_on_miss = data.get("reset_on_miss", False)
+    show_throwout_advice = data.get("show_throwout_advice", False)
+    game_id = data.get("game_id")
+
+    # Generate game_id if not provided
+    if not game_id:
+        game_id = f"game-{uuid.uuid4().hex[:8]}"
 
     # Convert player names to player objects with database IDs
     db_session = game_manager.db_service.db_manager.get_session()
@@ -3178,12 +3855,34 @@ def start_game():
         if not player_ids:
             player_ids = [session.get("player_id")]
 
-        game_manager.new_game(
+        # Create a dedicated session and start the game there
+        new_game_manager = multi_game_manager.create_game(game_id)
+        new_game_manager.new_game(
             game_type,
             player_ids=player_ids,
             double_out=double_out,
             reset_on_miss=reset_on_miss,
         )
+        # Set active and update global pointers so main area shows this game
+        multi_game_manager.set_active_game(game_id)
+        game_manager = new_game_manager
+        app.game_manager = game_manager
+
+        # Store game metadata in games_store
+        games_store[game_id] = {
+            "game_id": game_id,
+            "game_type": game_type,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "players": player_ids,
+            "double_out": double_out,
+            "reset_on_miss": reset_on_miss,
+        }
+        active_game_id = game_id
+
+        # Set throwout advice if requested on the newly active session
+        if show_throwout_advice:
+            game_manager.set_show_throwout_advice(True)
+
         game_state = game_manager.get_game_state()
 
         return jsonify(
@@ -3191,6 +3890,7 @@ def start_game():
                 "success": True,
                 "message": "Game started successfully",
                 "game": game_state,
+                "game_id": game_id,
             },
         )
     except Exception:
@@ -3207,6 +3907,134 @@ def start_game():
         )
     finally:
         db_session.close()
+
+
+# ============================================================================
+# Multi-Game Management API Endpoints
+# ============================================================================
+
+
+@app.route("/api/games", methods=["GET"])
+@login_required
+def get_games_list():
+    """Get all games
+    ---
+    tags:
+      - Multi-Game
+    summary: List all games
+    description: Returns all active game sessions with their current state
+    responses:
+      200:
+        description: List of all games
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            games:
+              type: array
+              items:
+                type: object
+            active_game_id:
+              type: string
+              nullable: true
+    """
+    try:
+        # Use MultiGameManager to retrieve live state for all sessions
+        games = multi_game_manager.list_games()
+        # Filter out the legacy "default" session from UI
+        games = [g for g in games if g.get("game_id") != "default"]
+        active_id = multi_game_manager.get_active_game_id()
+        # If the active session is default, treat as no active selection
+        if active_id == "default":
+            active_id = None
+
+        return jsonify(
+            {
+                "status": "success",
+                "games": games,
+                "active_game_id": active_id,
+            },
+        )
+    except Exception:
+        app.logger.exception("Error getting games list")
+        return jsonify({"status": "error", "message": "Failed to list games"}), 500
+
+
+@app.route("/api/games/<game_id>/activate", methods=["POST"])
+@login_required
+def activate_game(game_id):
+    """Activate a specific game
+    ---
+    tags:
+      - Multi-Game
+    summary: Activate a game
+    description: Sets the specified game as the active game
+    parameters:
+      - in: path
+        name: game_id
+        type: string
+        required: true
+        description: Game ID to activate
+    responses:
+      200:
+        description: Game activated successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            message:
+              type: string
+      404:
+        description: Game not found
+    """
+    # Ensure the session exists in MultiGameManager
+    if not multi_game_manager.has_game(game_id):
+        return jsonify({"status": "error", "message": f"Game '{game_id}' not found"}), 404
+
+    # Switch active session and update global game_manager reference
+    multi_game_manager.set_active_game(game_id)
+    global game_manager
+    game_manager = multi_game_manager.get_game(game_id)
+    app.game_manager = game_manager
+
+    return jsonify(
+        {
+            "status": "success",
+            "message": "Game activated",
+            "game_id": game_id,
+        },
+    )
+
+
+@app.route("/api/games/<game_id>/state", methods=["GET"])
+@login_required
+def get_game_state_by_id(game_id):
+    """Get state of a specific game
+    ---
+    tags:
+      - Multi-Game
+    summary: Get game state
+    description: Returns the complete state of a specific game
+    parameters:
+      - in: path
+        name: game_id
+        type: string
+        required: true
+        description: Game ID
+    responses:
+      200:
+        description: Game state retrieved
+      404:
+        description: Game not found
+    """
+    game = multi_game_manager.get_game(game_id)
+    if not game:
+        return jsonify({"status": "error", "message": f"Game '{game_id}' not found"}), 404
+    return jsonify(game.get_game_state())
 
 
 @app.route("/api/mobile/game/start-single-player", methods=["POST"])
@@ -3430,8 +4258,6 @@ def delete_game(game_session_id):
             )
 
         # Check if game is older than 1 day
-        from datetime import datetime, timedelta, timezone
-
         started_at_str = game_data["started_at"]
         # Parse the ISO format datetime string
         if started_at_str.endswith("Z"):
@@ -3500,6 +4326,9 @@ def resume_game(game_session_id):
             message:
               type: string
               example: Starting new game with same settings
+            game_id:
+              type: string
+              description: The ID of the resumed game
             redirect_url:
               type: string
               example: /
@@ -3510,6 +4339,8 @@ def resume_game(game_session_id):
       500:
         description: Error resuming game
     """
+    global active_game_id, game_manager
+
     try:
         # Get the game data
         game_data = game_manager.db_service.get_game_replay_data(game_session_id)
@@ -3529,19 +4360,42 @@ def resume_game(game_session_id):
                 403,
             )
 
-        # Resume the game by replaying all throws to restore state
-        success = game_manager.resume_game_from_replay_data(game_data)
+        # Use the existing persisted game_session_id as the multi-game session id
+        # so we load the exact saved game instead of creating a new DB session.
+        game_id = game_session_id
+
+        new_game_manager = multi_game_manager.create_game(game_id)
+
+        # Resume the game by replaying all throws to restore state in the new session
+        success = new_game_manager.resume_game_from_replay_data(game_data)
 
         if not success:
             return jsonify({"status": "error", "message": "Failed to resume game"}), 500
 
+        # Store game metadata in games_store
+        games_store[game_id] = {
+            "game_id": game_id,
+            "game_type": game_data.get("game_type", "301"),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "players": game_data.get("players", []),
+            "double_out": game_data.get("double_out_enabled", game_data.get("double_out", False)),
+            "reset_on_miss": game_data.get("reset_on_miss", False),
+            "resumed_from": game_session_id,
+        }
+        # Set active and update global pointers so UI shows resumed session
+        multi_game_manager.set_active_game(game_id)
+        game_manager = new_game_manager
+        app.game_manager = game_manager
+        active_game_id = game_id
+
         # Emit game state to all clients
-        socketio.emit("game_state", game_manager.get_game_state(), namespace="/")
+        socketio.emit("game_state", new_game_manager.get_game_state(), namespace="/")
 
         return jsonify(
             {
                 "status": "success",
                 "message": f"Game resumed with {len(game_data['throws'])} throws replayed",
+                "game_id": game_id,
                 "redirect_url": "/",
             },
         )
@@ -3718,7 +4572,16 @@ def get_active_games():
 
 @app.route("/api/debug/session", methods=["GET"])
 def debug_session():
-    """Debug endpoint - returns session and player info"""
+    """Debug endpoint - returns session and player info
+    ---
+    tags:
+      - Debug
+    summary: Session debug
+    description: Returns current Flask session keys and simple auth flags for debugging.
+    responses:
+      200:
+        description: Session information
+    """
     return jsonify(
         {
             "player_id": session.get("player_id"),
@@ -3779,15 +4642,9 @@ def start_training():
             return jsonify({"success": False, "error": "Player ID not available"}), 401
 
         # Start training session using database service
-        import uuid
-
-        from src.core.database_models import TrainingSession
-
         db_session = game_manager.db_service.db_manager.get_session()
 
         # Get or create game type
-        from src.core.database_models import GameType
-
         game_type_obj = db_session.query(GameType).filter(GameType.name == game_type).first()
         if not game_type_obj:
             game_type_obj = GameType(name=game_type, description=f"{game_type} game")
@@ -3867,10 +4724,6 @@ def end_training():
         if not training_session_id:
             return jsonify({"success": False, "error": "No active training session"}), 400
 
-        from datetime import datetime, timezone
-
-        from src.core.database_models import TrainingSession
-
         db_session = game_manager.db_service.db_manager.get_session()
         training_session = (
             db_session.query(TrainingSession)
@@ -3934,8 +4787,6 @@ def get_training_history():
         if not player_id:
             return jsonify({"success": False, "error": "Player ID not available"}), 401
 
-        from src.core.database_models import GameType, TrainingSession
-
         db_session = game_manager.db_service.db_manager.get_session()
         training_sessions = (
             db_session.query(TrainingSession)
@@ -3998,10 +4849,6 @@ def get_training_statistics():
         if not player_id:
             return jsonify({"success": False, "error": "Player ID not available"}), 401
 
-        from sqlalchemy import func
-
-        from src.core.database_models import TrainingScore, TrainingSession
-
         db_session = game_manager.db_service.db_manager.get_session()
 
         # Count total sessions
@@ -4057,7 +4904,16 @@ def get_training_statistics():
 
 @socketio.on("connect", namespace="/")
 def handle_connect():
-    """Handle client connection"""
+    """Handle client connection
+    ---
+    tags:
+      - UI
+    summary: WebSocket connect
+    description: Emits the current `game_state` to the connecting client on socket connect.
+    responses:
+      200:
+        description: Connection accepted (socket event)
+    """
     print("Client connected")
     # Use socketio.emit to ensure the message reaches the test client
     socketio.emit(
@@ -4108,8 +4964,7 @@ def handle_new_game(data):
                     "error",
                     {
                         "message": (
-                            f"Player '{player_name}' not found. "
-                            "Only registered WSO2 users allowed."
+                            f"Player '{player_name}' not found. Only registered WSO2 users allowed."
                         ),
                     },
                     namespace="/",
@@ -4224,11 +5079,6 @@ def patch_eventlet_ssl_error_handling():
     to connect using HTTP to an HTTPS server. Instead, it logs a concise,
     user-friendly message with rate limiting.
     """
-    import ssl
-    import time
-
-    from eventlet import wsgi
-
     # Store original handler
     original_handle = wsgi.HttpProtocol.handle
 
@@ -4251,8 +5101,7 @@ def patch_eventlet_ssl_error_handling():
                     print("")
                     print("⚠️  SSL Protocol Mismatch Detected")
                     print(
-                        f"   {ssl_error_state['count']} HTTP request(s) "
-                        "to HTTPS server (rejected)",
+                        f"   {ssl_error_state['count']} HTTP request(s) to HTTPS server (rejected)",
                     )
                     print("   Clients must use HTTPS URLs to connect")
                     print("")

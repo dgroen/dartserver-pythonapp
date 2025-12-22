@@ -115,9 +115,9 @@ class GameManager:
             self.players = [
                 {
                     "name": (
-                        pid.get("name", f"Player {i+1}")
+                        pid.get("name", f"Player {i + 1}")
                         if isinstance(pid, dict)
-                        else f"Player {i+1}"
+                        else f"Player {i + 1}"
                     ),
                     "id": i,
                     "db_id": pid if isinstance(pid, int) else (pid.get("db_id") if pid else None),
@@ -183,9 +183,10 @@ class GameManager:
         # Each player MUST have a db_id (WSO2 authenticated)
         player_ids = [p.get("db_id") for p in self.players]
 
-        # Validate that all players have database IDs
+        # Validate database IDs: allow games with no DB-backed players (local-only),
+        # but reject mixed lists where some players have DB IDs and others don't.
         missing_ids = [i for i, pid in enumerate(player_ids) if not pid]
-        if missing_ids:
+        if any(pid for pid in player_ids) and missing_ids:
             player_names = [f"{self.players[i]['name']} (pos {i})" for i in missing_ids]
             msg = (
                 "Cannot save game: Players missing database IDs "
@@ -193,17 +194,26 @@ class GameManager:
             )
             raise ValueError(msg)
 
-        try:
-            self.db_service.start_new_game(
-                game_type_name=self.game_type,
-                player_ids=player_ids,
-                start_score=self.start_score if self.game_type != "cricket" else None,
-                double_out=double_out,
-                reset_on_miss=reset_on_miss,
-            )
-            print(f"Game started in database: session_id={self.db_service.current_game_session_id}")
-        except Exception as e:
-            print(f"Warning: Could not start game in database: {e}")
+        # Only attempt to persist the game if all players have DB IDs
+        do_db_save = all(pid for pid in player_ids)
+        if do_db_save:
+            try:
+                self.db_service.start_new_game(
+                    game_type_name=self.game_type,
+                    player_ids=player_ids,
+                    start_score=self.start_score if self.game_type != "cricket" else None,
+                    double_out=double_out,
+                    reset_on_miss=reset_on_miss,
+                )
+                print(
+                    f"Game started in database: session_id=\
+                        {self.db_service.current_game_session_id}"
+                )
+            except Exception as e:
+                print(f"Warning: Could not start game in database: {e}")
+        else:
+            # Local-only game (no DB-backed players) — continue without persisting
+            print("Starting local-only game (no DB-backed player IDs present)")
 
         # Emit game state
         self._emit_game_state()
@@ -252,27 +262,63 @@ class GameManager:
                     },
                 )
 
-            # Start a new game with the same settings
-            self.new_game(
+            # Initialize local game state WITHOUT creating a new database session.
+            # This ensures we attach to the existing persisted game session instead
+            # of creating a new one.
+            self._init_local_game_state(
                 game_type=game_data["game_type"],
                 player_ids=player_ids,
-                double_out=game_data["double_out_enabled"],
-                reset_on_miss=game_data["reset_on_miss"],
+                double_out=game_data.get("double_out_enabled", False),
+                reset_on_miss=game_data.get("reset_on_miss", False),
             )
 
-            # Replay all throws to restore game state
-            throws_by_player = {}
-            for throw in game_data["throws"]:
-                player_order = throw["player_order"]
-                if player_order not in throws_by_player:
-                    throws_by_player[player_order] = []
-                throws_by_player[player_order].append(throw)
+            # Attach this GameManager's DatabaseService to the existing session
+            # and populate the internal mappings so future throws are recorded
+            # against the original game_session_id.
+            try:
+                db_session = self.db_service.db_manager.get_session()
+                try:
+                    game_session_id = game_data.get("game_session_id")
+                    if not game_session_id:
+                        raise ValueError("Missing game_session_id in replay data")
 
-            # Sort all throws by timestamp to replay in correct order
-            all_throws = sorted(game_data["throws"], key=lambda x: x["thrown_at"])
+                    # Set current session id
+                    self.db_service.current_game_session_id = game_session_id
 
-            # Replay throws without emitting events or recording to database
-            # We need to track which player's turn it is
+                    # Build mapping of player_order -> GameResult.id
+                    from dartserver_core.database_models import GameResult
+
+                    results = (
+                        db_session.query(GameResult)
+                        .filter_by(game_session_id=game_session_id)
+                        .all()
+                    )
+                    mapping = {}
+                    throw_counters = {}
+
+                    # Simpler approach for throw_counters: count Score rows per game_result
+                    from dartserver_core.database_models import Score
+
+                    for r in results:
+                        mapping[r.player_order] = r.id
+                        cnt = db_session.query(Score).filter_by(game_result_id=r.id).count()
+                        throw_counters[r.player_order] = cnt
+
+                    self.db_service.current_game_results = mapping
+                    self.db_service.throw_counters = throw_counters
+
+                finally:
+                    db_session.close()
+            except Exception as e:
+                print(f"Warning: Could not attach to existing DB session: {e}")
+
+            # Replay all throws to restore in-memory game state
+            all_throws = (
+                sorted(game_data["throws"], key=lambda x: x["thrown_at"])
+                if game_data.get("throws")
+                else []
+            )
+
             last_player_order = 0
             last_throw_in_turn = 0
 
@@ -286,14 +332,19 @@ class GameManager:
                     if throw_in_turn == 1:
                         self.current_throw = 1
 
-                # Process the throw in the game logic
+                # Process the throw in the game logic (in-memory only)
                 if self.game:
-                    self.game.process_throw(
-                        player_order,
-                        throw["base_score"],
-                        throw["multiplier_value"],
-                        throw["multiplier"],  # positional arg for multiplier_type
-                    )
+                    # Use process_throw if available else process_score adaptation
+                    try:
+                        self.game.process_throw(
+                            player_order,
+                            throw["base_score"],
+                            throw.get("multiplier_value", 1),
+                            throw.get("multiplier"),
+                        )
+                    except AttributeError:
+                        # Fallback to older API
+                        self.game.process_score(throw["base_score"], throw.get("multiplier"))
 
                 # Update throw counter
                 self.current_throw = throw_in_turn + 1
@@ -301,7 +352,6 @@ class GameManager:
                 last_throw_in_turn = throw_in_turn
 
             # Determine the current player based on last throw
-            # If last throw completed a turn (throw 3), move to next player
             if last_throw_in_turn >= 3:
                 self.current_player = (last_player_order + 1) % len(self.players)
                 self.current_throw = 1
@@ -328,8 +378,8 @@ class GameManager:
             self.is_paused = False
 
             print(
-                f"Game resumed: {len(all_throws)} throws replayed, \
-                    current player: {self.current_player}",
+                f"Game resumed: {len(all_throws)} throws replayed, current player: \
+                    {self.current_player}",
             )
             return True
 
@@ -339,6 +389,73 @@ class GameManager:
 
             traceback.print_exc()
             return False
+
+    def _init_local_game_state(
+        self, game_type="301", player_ids=None, double_out=False, reset_on_miss=False
+    ):
+        """
+        Initialize the in-memory game state without creating a new database session.
+        This mirrors the behaviour of `new_game` but skips calls that persist to DB.
+        """
+        self.game_type = game_type.lower()
+        self.double_out = double_out
+
+        # Initialize players
+        if player_ids:
+            self.players = [
+                {
+                    "name": (
+                        pid.get("name", f"Player {i + 1}")
+                        if isinstance(pid, dict)
+                        else f"Player {i + 1}"
+                    ),
+                    "id": i,
+                    "db_id": pid if isinstance(pid, int) else (pid.get("db_id") if pid else None),
+                }
+                for i, pid in enumerate(player_ids)
+                if pid is not None
+            ]
+
+        if not self.players:
+            # Default players
+            self.players = [{"name": "Player 1", "id": 0}, {"name": "Player 2", "id": 1}]
+
+        # Create appropriate game instance
+        if self.game_type == "cricket":
+            self.game = GameCricket(self.players)
+            self.start_score = 0
+        elif self.game_type == "round_the_clock":
+            self.game = GameRoundTheClock(self.players, reset_on_miss=reset_on_miss)
+            self.start_score = 0
+        elif self.game_type == "round_the_clock_double":
+            self.game = GameRoundTheClockDouble(self.players)
+            self.start_score = 0
+        elif self.game_type == "bull_practice":
+            self.game = GameBullPractice(self.players)
+            self.start_score = 0
+        else:
+            start_score = 301
+            if self.game_type == "170":
+                start_score = 170
+            elif self.game_type == "401":
+                start_score = 401
+            elif self.game_type == "501":
+                start_score = 501
+            self.start_score = start_score
+            self.game = Game301(self.players, start_score, double_out)
+
+        # Reset game state
+        self.current_player = 0
+        self.is_started = True
+        self.is_paused = False
+        self.current_throw = 1
+        self.is_winner = False
+
+        # Reset turn tracking
+        self.turn_throws = []
+        self.turn_start_state = None
+        self.turn_number = dict.fromkeys(range(len(self.players)), 1)
+        self._save_turn_start_state()
 
     def add_player(self, name=None):
         """Add a new player"""

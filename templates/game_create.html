@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create New Game - Darts</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/control.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="user-info-header">
+            <div class="user-info">
+                {% if user_claims %}
+                <span class="username">👤 {{ user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + ' ' + user_claims.get('family_name', '')).strip() or user_claims.get('username', user_claims.get('sub', 'User')) }}</span>
+                {% if user_roles %}
+                <span class="user-roles">
+                    {% for role in user_roles %}
+                    <span class="role-badge role-{{ role }}">{{ role }}</span>
+                    {% endfor %}
+                </span>
+                {% endif %}
+                <a href="/logout" class="logout-btn">Logout</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <header>
+            <h1>🎮 Create New Game</h1>
+            <div class="header-links">
+                <a href="/" class="header-link">🎯 Back to Game</a>
+                <a href="/history" class="header-link">📊 Game History</a>
+            </div>
+        </header>
+
+        <div class="control-sections">
+            <!-- Game Setup -->
+            <section class="control-section">
+                <h2>Game Setup</h2>
+                <div class="form-group">
+                    <label for="game-id">Game ID (optional):</label>
+                    <input type="text" id="game-id" placeholder="Leave empty for auto-generated ID">
+                </div>
+                <div class="form-group">
+                    <label for="game-type">Game Type:</label>
+                    <select id="game-type"></select>
+                </div>
+                <div class="form-group">
+                    <label for="double-out">
+                        <input type="checkbox" id="double-out" checked>
+                        Double Out (must finish with a double)
+                    </label>
+                </div>
+                <div class="form-group" id="hard-mode-container" style="display: none;">
+                    <label for="reset-on-miss">
+                        <input type="checkbox" id="reset-on-miss">
+                        Hard Mode (reset to 20 after 3 consecutive misses)
+                    </label>
+                </div>
+            </section>
+
+            <!-- Player Management -->
+            <section class="control-section">
+                <h2>Players</h2>
+                <div id="players-list">
+                    <!-- Players will be dynamically added here -->
+                </div>
+                <div class="player-controls">
+                    <div class="player-search-wrapper">
+                        <input type="text" id="player-name" placeholder="Search WSO2 users or enter manual name...">
+                        <div id="player-search-results">
+                            <!-- Search results will appear here -->
+                        </div>
+                    </div>
+                    <button id="add-player-btn" class="btn btn-success">Add Player</button>
+                </div>
+            </section>
+
+            <!-- Action Buttons -->
+            <section class="control-section">
+                <h2>Actions</h2>
+                <div class="button-group">
+                    <button id="create-game-btn" class="btn btn-primary btn-large">🚀 Create and Start Game</button>
+                    <button id="cancel-btn" class="btn btn-secondary" onclick="window.location.href='/'">Cancel</button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/game-create.js') }}"></script>
+</body>
+</html>
