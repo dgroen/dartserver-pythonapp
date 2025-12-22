@@ -1,63 +1,73 @@
 openapi: 3.0.3
 info:
   title: Darts Game API
-  description: |
-    REST API for the Darts Game System with comprehensive dartboard, game management, and mobile support.
+  description: 'REST API for the Darts Game System with comprehensive dartboard, game
+    management, and mobile support.
+
 
     ## Authentication
-    OAuth2 via WSO2 Identity Server. Include access token: `Authorization: Bearer <token>`
+
+    OAuth2 via WSO2 Identity Server. Include access token: `Authorization: Bearer
+    <token>`
+
 
     ## Features
+
     - Game Management (301, 501, Cricket, Round the Clock)
+
     - Dual Score Formats (legacy + GPIO pin mapping)
+
     - Player Management with WSO2
+
     - Dartboard Zone Configuration
+
     - TTS Integration
+
     - Mobile API
+
     - History & Statistics
 
+    '
   version: 2.0.0
   contact:
     url: https://test.letsplaydarts.eu
-
 servers:
-  - url: https://test.letsplaydarts.eu
-    description: Test server
-  - url: http://localhost:5000
-    description: Local development
-
+- url: https://test.letsplaydarts.eu
+  description: Test server
+- url: http://localhost:5000
+  description: Local development
 tags:
-  - name: Health
-  - name: Game Management
-  - name: Scores
-  - name: Players
-  - name: Dartboard
-  - name: Admin
-  - name: TTS
-  - name: Mobile
-  - name: History
-
+- name: Health
+- name: Game Management
+- name: Scores
+- name: Players
+- name: Dartboard
+- name: Admin
+- name: TTS
+- name: Mobile
+- name: History
 paths:
   /health:
     get:
-      tags: [Health]
+      tags:
+      - Health
       summary: Health check
       security: []
       responses:
-        "200":
+        '200':
           description: Service healthy
-
   /api/game/state:
     get:
-      tags: [Game Management]
+      tags:
+      - Game Management
       summary: Get current game state
       responses:
-        "200":
+        '200':
           description: Current game state
-
   /api/game/new:
     post:
-      tags: [Game Management]
+      tags:
+      - Game Management
       summary: Create new game
       requestBody:
         required: true
@@ -65,11 +75,18 @@ paths:
           application/json:
             schema:
               type: object
-              required: [game_type, players]
+              required:
+              - game_type
+              - players
               properties:
                 game_type:
                   type: string
-                  enum: ["301", "401", "501", "cricket", "round_the_clock"]
+                  enum:
+                  - '301'
+                  - '401'
+                  - '501'
+                  - cricket
+                  - round_the_clock
                 players:
                   type: array
                   items:
@@ -82,12 +99,13 @@ paths:
                 double_out:
                   type: boolean
       responses:
-        "200":
+        '200':
           description: Game created
-
   /api/game/start:
     post:
-      tags: [Game Management, Mobile]
+      tags:
+      - Game Management
+      - Mobile
       summary: Start game (mobile)
       requestBody:
         required: true
@@ -103,242 +121,239 @@ paths:
                   items:
                     type: string
       responses:
-        "200":
+        '200':
           description: Game started
-
   /api/game/end:
     post:
-      tags: [Game Management, Mobile]
+      tags:
+      - Game Management
+      - Mobile
       summary: End current game
       responses:
-        "200":
+        '200':
           description: Game ended
-
   /api/game/current:
     get:
-      tags: [Game Management, Mobile]
+      tags:
+      - Game Management
+      - Mobile
       summary: Get current game
       responses:
-        "200":
+        '200':
           description: Current game info
-
   /api/game/types:
     get:
-      tags: [Game Management, Mobile]
+      tags:
+      - Game Management
+      - Mobile
       summary: List game types
       responses:
-        "200":
+        '200':
           description: Available game types
-
   /api/game/results:
     get:
-      tags: [Game Management, Mobile]
+      tags:
+      - Game Management
+      - Mobile
       summary: Get game results
       responses:
-        "200":
+        '200':
           description: Game results
-
   /api/game/current/session_id:
     get:
-      tags: [Game Management]
+      tags:
+      - Game Management
       summary: Get session ID
       responses:
-        "200":
+        '200':
           description: Current session ID
-
-  /api/Throw:
-    post:
-      tags: [Scores]
-      summary: Submit score (legacy)
-      description: Legacy format for backward compatibility
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [score, multiplier]
-              properties:
-                score:
-                  type: integer
-                  minimum: 0
-                  maximum: 60
-                multiplier:
-                  type: string
-                  enum: [SINGLE, DOUBLE, TRIPLE]
-              description: |
-                Note: The legacy `POST /api/Throw` endpoint is kept for compatibility,
-                but the API Gateway (`/api/v1/scores`) validates scores up to 60 and
-                supports multipliers `SINGLE`, `DOUBLE`, and `TRIPLE`. Bull values
-                are typically represented by the dartboard zone endpoints.
-            examples:
-              triple20:
-                value:
-                  score: 60
-                  multiplier: TRIPLE
-      responses:
-        "200":
-          description: Score submitted
-
-  /api/Throw/zone:
-    post:
-      tags: [Scores]
-      summary: Submit score (GPIO mapping)
-      description: Modern format using GPIO pins and board type
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [masterPin, slavePin, boardType]
-              properties:
-                masterPin:
-                  type: integer
-                slavePin:
-                  type: integer
-                boardType:
-                  type: string
-                  enum: [carromco, crivit, winmau]
-            examples:
-              carromco:
-                value:
-                  masterPin: 4
-                  slavePin: 13
-                  boardType: carromco
-      responses:
-        "200":
-          description: Score submitted with zone info
-
-  /api/players:
+  /api/games:
     get:
-      tags: [Players]
-      summary: List players
+      tags:
+      - Game Management
+      - Multi-Game
+      summary: List all game sessions
+      description: Returns all active tracked game sessions and the current active_game_id
       responses:
-        "200":
-          description: Player list
+        '200':
+          description: List of game sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  games:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        game_id:
+                          type: string
+                        game_type:
+                          type: string
+                        is_started:
+                          type: boolean
+                        is_active:
+                          type: boolean
+                        player_count:
+                          type: integer
+                        players:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              db_id:
+                                type: integer
+                              name:
+                                type: string
+                  active_game_id:
+                    type: string
+                    nullable: true
+  /api/games/create:
     post:
-      tags: [Players]
-      summary: Add player
+      tags:
+      - Game Management
+      - Multi-Game
+      summary: Create a new game session
+      description: Creates a new multi-game session (optionally starts a game in it)
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [username]
               properties:
-                username:
+                game_id:
                   type: string
-                name:
+                  description: Optional session id; auto-generated when omitted
+                game_type:
                   type: string
+                  description: Type of game to start
+                  enum:
+                  - '301'
+                  - '401'
+                  - '501'
+                  - cricket
+                  - round_the_clock
+                  - round_the_clock_double
+                players:
+                  type: array
+                  items:
+                    type: string
+                  description: List of player names or usernames
+                double_out:
+                  type: boolean
+                reset_on_miss:
+                  type: boolean
+                set_as_active:
+                  type: boolean
       responses:
-        "200":
-          description: Player added
-
-  /api/players/{player_id}:
+        '200':
+          description: Game session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                  game_id:
+                    type: string
+  /api/games/{game_id}/activate:
+    post:
+      tags:
+      - Game Management
+      - Multi-Game
+      summary: Activate a game session
+      parameters:
+      - name: game_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Game activated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                  game_id:
+                    type: string
+        '404':
+          description: Game not found
+  /api/games/{game_id}:
     delete:
-      tags: [Players]
-      summary: Remove player
+      tags:
+      - Game Management
+      - Multi-Game
+      summary: Delete a game session
       parameters:
-        - name: player_id
-          in: path
-          required: true
-          schema:
-            type: integer
+      - name: game_id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
-        "200":
-          description: Player removed
-
-  /api/wso2/users/search:
+        '200':
+          description: Game deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+        '400':
+          description: Cannot delete default game or invalid request
+        '404':
+          description: Game not found
+  /api/games/{game_id}/state:
     get:
-      tags: [Players]
-      summary: Search WSO2 users
+      tags:
+      - Game Management
+      - Multi-Game
+      summary: Get state of a specific game session
       parameters:
-        - name: q
-          in: query
-          required: true
-          description: Search query (username, email or name). The server expects the parameter `q`.
-          schema:
-            type: string
+      - name: game_id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
-        "200":
-          description: Search results
-
-  /api/player/history:
-    get:
-      tags: [Players, History]
-      summary: Player history
-      responses:
-        "200":
-          description: Player game history
-
-  /api/player/statistics:
-    get:
-      tags: [Players, History]
-      summary: Player statistics
-      responses:
-        "200":
-          description: Player stats
-
-  /api/dartboard/types:
-    get:
-      tags: [Dartboard]
-      summary: List dartboard types
-      responses:
-        "200":
-          description: Dartboard types
-
-  /api/dartboard/types/{board_type}/mappings:
-    get:
-      tags: [Dartboard]
-      summary: Get zone mappings
-      parameters:
-        - name: board_type
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Zone mappings
-
-  /api/dartboard/connect:
+        '200':
+          description: Game state retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+        '404':
+          description: Game not found
+  /api/v1/scores:
     post:
-      tags: [Dartboard, Mobile]
-      summary: Connect dartboard
-      responses:
-        "200":
-          description: Dartboard connected
-
-  /api/dartboard/score:
-    post:
-      tags: [Dartboard, Mobile]
-      summary: Submit dartboard score
-      responses:
-        "200":
-          description: Score submitted
-
-  /api/admin/dartboard/matrix/{board_type}:
-    get:
-      tags: [Admin]
-      summary: Get GPIO matrix
-      parameters:
-        - name: board_type
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: GPIO matrix data
-
-  /api/admin/dartboard/mapping:
-    post:
-      tags: [Admin]
-      summary: Create zone mapping
+      tags:
+      - Scores
+      summary: Submit score (gateway)
+      description: Submits score via the API Gateway (validates token and publishes
+        message to RabbitMQ).
+      security:
+      - oauth2:
+        - score:write
       requestBody:
         required: true
         content:
@@ -346,216 +361,170 @@ paths:
             schema:
               type: object
               required:
-                [
-                  board_type,
-                  master_pin,
-                  slave_pin,
-                  zone_number,
-                  multiplier_type,
-                ]
+              - score
+              - multiplier
               properties:
-                board_type:
+                score:
+                  type: integer
+                  minimum: 0
+                  maximum: 60
+                multiplier:
                   type: string
-                master_pin:
+                  enum:
+                  - SINGLE
+                  - DOUBLE
+                  - TRIPLE
+                player_id:
                   type: integer
-                slave_pin:
-                  type: integer
-                zone_number:
-                  type: integer
-                multiplier_type:
+                game_id:
                   type: string
       responses:
-        "200":
-          description: Mapping created
-
-  /api/admin/dartboard/import:
+        '201':
+          description: Score accepted and published
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: Score submitted successfully
+                  data:
+                    type: object
+                    properties:
+                      score:
+                        type: integer
+                      multiplier:
+                        type: string
+                      player_id:
+                        type: integer
+                      game_id:
+                        type: string
+                      user:
+                        type: string
+                        description: User identifier from token claims
+                      timestamp:
+                        type: string
+                        format: date-time
+  /api/v1/games:
     post:
-      tags: [Admin]
-      summary: Bulk import mappings
+      tags:
+      - Game Management
+      summary: Create game (gateway)
+      description: Create a new game via API Gateway (publishes to RabbitMQ).
+      security:
+      - oauth2:
+        - game:write
       requestBody:
         required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
               type: object
+              required:
+              - game_type
+              - players
               properties:
-                file:
+                game_type:
                   type: string
-                  format: binary
+                players:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      username:
+                        type: string
+                      name:
+                        type: string
+                  description: List of player objects (username/name). May also accept
+                    plain strings in some clients.
       responses:
-        "200":
-          description: Import successful
-
-  /api/tts/config:
-    get:
-      tags: [TTS]
-      summary: Get TTS config
-      responses:
-        "200":
-          description: TTS configuration
+        '201':
+          description: Game created and published
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: Game created successfully
+                  data:
+                    type: object
+                    properties:
+                      action:
+                        type: string
+                        example: new_game
+                      game_type:
+                        type: string
+                      players:
+                        type: array
+                        items:
+                          type: object
+                      double_out:
+                        type: boolean
+                      created_by:
+                        type: string
+                      timestamp:
+                        type: string
+                        format: date-time
+  /api/v1/players:
     post:
-      tags: [TTS]
-      summary: Update TTS config
+      tags:
+      - Players
+      summary: Add player (gateway)
+      description: Adds a player via the API Gateway (publishes to RabbitMQ).
+      security:
+      - oauth2:
+        - player:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - name
+              properties:
+                name:
+                  type: string
+                username:
+                  type: string
+                email:
+                  type: string
       responses:
-        "200":
-          description: Config updated
-
-  /api/tts/voices:
-    get:
-      tags: [TTS]
-      summary: List TTS voices
-      responses:
-        "200":
-          description: Available voices
-
-  /api/tts/test:
-    post:
-      tags: [TTS]
-      summary: Test TTS
-      responses:
-        "200":
-          description: Test completed
-
-  /api/tts/generate:
-    post:
-      tags: [TTS]
-      summary: Generate TTS audio
-      responses:
-        "200":
-          description: Audio generated
-
-  /api/mobile/apikeys:
-    get:
-      tags: [Mobile]
-      summary: List API keys
-      responses:
-        "200":
-          description: API keys
-    post:
-      tags: [Mobile]
-      summary: Create API key
-      responses:
-        "200":
-          description: API key created
-
-  /api/mobile/apikeys/{key_id}:
-    delete:
-      tags: [Mobile]
-      summary: Delete API key
-      parameters:
-        - name: key_id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: API key deleted
-
-  /api/mobile/dartboards:
-    get:
-      tags: [Mobile]
-      summary: List dartboards
-      responses:
-        "200":
-          description: Dartboards
-    post:
-      tags: [Mobile]
-      summary: Register dartboard
-      responses:
-        "200":
-          description: Dartboard registered
-
-  /api/mobile/dartboards/{dartboard_id}:
-    delete:
-      tags: [Mobile]
-      summary: Delete dartboard
-      parameters:
-        - name: dartboard_id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Dartboard deleted
-
-  /api/mobile/hotspot:
-    get:
-      tags: [Mobile]
-      summary: Get hotspot config
-      responses:
-        "200":
-          description: Hotspot configuration
-    post:
-      tags: [Mobile]
-      summary: Update hotspot config
-      responses:
-        "200":
-          description: Config updated
-
-  /api/mobile/hotspot/{config_id}/toggle:
-    post:
-      tags: [Mobile]
-      summary: Toggle hotspot
-      parameters:
-        - name: config_id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Hotspot toggled
-
-  /api/game/history:
-    get:
-      tags: [History]
-      summary: Game history
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-        - name: per_page
-          in: query
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Game history
-
-  /api/game/replay/{game_session_id}:
-    get:
-      tags: [History]
-      summary: Replay game
-      parameters:
-        - name: game_session_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Game replay data
-
-  /api/active-games:
-    get:
-      tags: [Game Management]
-      summary: List active games
-      responses:
-        "200":
-          description: Active games
-
-  /api/debug/session:
-    get:
-      tags: [Debug]
-      summary: Debug session
-      security: []
-      responses:
-        "200":
-          description: Session info
-
+        '201':
+          description: Player added and published
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: Player added successfully
+                  data:
+                    type: object
+                    properties:
+                      action:
+                        type: string
+                        example: add_player
+                      name:
+                        type: string
+                      added_by:
+                        type: string
+                      timestamp:
+                        type: string
+                        format: date-time
 components:
   securitySchemes:
     oauth2:
@@ -571,177 +540,5 @@ components:
             game:manage: Manage games
             player:manage: Manage players
             admin: Admin access
-
 security:
-  - oauth2: []
-
-# API Gateway (v1) - proxy endpoints exposed by the API Gateway service
-# These endpoints are implemented by the API Gateway service (`src/api_gateway/app.py`).
-# They publish events to RabbitMQ and perform token validation.
-/api/v1/scores:
-  post:
-    tags: [Scores]
-    summary: Submit score (gateway)
-    description: Submits score via the API Gateway (validates token and publishes message to RabbitMQ).
-    security:
-      - oauth2: [score:write]
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [score, multiplier]
-            properties:
-              score:
-                type: integer
-                minimum: 0
-                maximum: 60
-              multiplier:
-                type: string
-                enum: [SINGLE, DOUBLE, TRIPLE]
-              player_id:
-                type: integer
-              game_id:
-                type: string
-    responses:
-      "201":
-        description: Score accepted and published
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                status:
-                  type: string
-                  example: success
-                message:
-                  type: string
-                  example: Score submitted successfully
-                data:
-                  type: object
-                  properties:
-                    score:
-                      type: integer
-                    multiplier:
-                      type: string
-                    player_id:
-                      type: integer
-                    game_id:
-                      type: string
-                    user:
-                      type: string
-                      description: User identifier from token claims
-                    timestamp:
-                      type: string
-                      format: date-time
-
-/api/v1/games:
-  post:
-    tags: [Game Management]
-    summary: Create game (gateway)
-    description: Create a new game via API Gateway (publishes to RabbitMQ).
-    security:
-      - oauth2: [game:write]
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [game_type, players]
-            properties:
-              game_type:
-                type: string
-              players:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    username:
-                      type: string
-                    name:
-                      type: string
-                description: List of player objects (username/name). May also accept plain strings in some clients.
-    responses:
-      "201":
-        description: Game created and published
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                status:
-                  type: string
-                  example: success
-                message:
-                  type: string
-                  example: Game created successfully
-                data:
-                  type: object
-                  properties:
-                    action:
-                      type: string
-                      example: new_game
-                    game_type:
-                      type: string
-                    players:
-                      type: array
-                      items:
-                        type: object
-                    double_out:
-                      type: boolean
-                    created_by:
-                      type: string
-                    timestamp:
-                      type: string
-                      format: date-time
-
-/api/v1/players:
-  post:
-    tags: [Players]
-    summary: Add player (gateway)
-    description: Adds a player via the API Gateway (publishes to RabbitMQ).
-    security:
-      - oauth2: [player:write]
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [name]
-            properties:
-              name:
-                type: string
-              username:
-                type: string
-              email:
-                type: string
-    responses:
-      "201":
-        description: Player added and published
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                status:
-                  type: string
-                  example: success
-                message:
-                  type: string
-                  example: Player added successfully
-                data:
-                  type: object
-                  properties:
-                    action:
-                      type: string
-                      example: add_player
-                    name:
-                      type: string
-                    added_by:
-                      type: string
-                    timestamp:
-                      type: string
-                      format: date-time
+- oauth2: []
