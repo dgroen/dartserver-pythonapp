@@ -293,10 +293,10 @@ def list_games():
                     description: List of player names
     """
     try:
-        games = multi_game_manager.list_games()
+        games = current_app.multi_game_manager.list_games()
         # Hide legacy default session from UI
         games = [g for g in games if g.get("game_id") != "default"]
-        active_id = multi_game_manager.get_active_game_id()
+        active_id = current_app.multi_game_manager.get_active_game_id()
         if active_id == "default":
             active_id = None
         return jsonify({"status": "success", "games": games, "active_game_id": active_id})
@@ -378,7 +378,7 @@ def create_new_game_session():
         game_id = f"game-{str(uuid.uuid4())[:8]}"
 
     # Check if game already exists
-    if multi_game_manager.has_game(game_id):
+    if current_app.multi_game_manager.has_game(game_id):
         return jsonify({"status": "error", "message": f"Game '{game_id}' already exists"}), 400
 
     # Create the game session
@@ -605,7 +605,7 @@ def get_specific_game_state(game_id):
       404:
         description: Game not found
     """
-    game = multi_game_manager.get_game(game_id)
+    game = current_app.multi_game_manager.get_game(game_id)
     if not game:
         return jsonify({"status": "error", "message": f"Game '{game_id}' not found"}), 404
 

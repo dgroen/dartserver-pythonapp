@@ -815,14 +815,19 @@ def get_game_history():
                 player_id=player_id,
                 game_type=game_type,
                 limit=limit,
-                offset=offset,
             )
         else:
             games = current_app.game_manager.db_service.get_recent_games(
                 limit=limit,
-                offset=offset,
-                game_type=game_type,
             )
+            
+            # Manual filtering for game_type if provided (since get_recent_games doesn't support it)
+            if game_type:
+                games = [g for g in games if g.get("game_type") == game_type]
+        
+        # Apply offset manually (since DB methods don't support it)
+        if offset > 0:
+            games = games[offset:]
 
         # Filter by status if requested
         if status == "completed":
