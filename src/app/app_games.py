@@ -1217,11 +1217,10 @@ def resume_game(game_session_id):
         # Set active and update global pointers so UI shows resumed session
         multi_game_manager.set_active_game(game_id)
         current_app.game_manager = new_game_manager
-        current_app.game_manager = game_manager
         current_app.active_game_id = game_id
 
         # Emit game state to all clients
-        socketio.emit("game_state", new_game_manager.get_game_state(), namespace="/")
+        current_app.socketio.emit("game_state", new_game_manager.get_game_state(), namespace="/")
 
         return jsonify(
             {

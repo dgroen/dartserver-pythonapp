@@ -300,10 +300,11 @@ app.game_manager = game_manager  # Attach to app for access in decorators
 games_store = {}  # Dict[str, dict] - stores game metadata
 active_game_id = None  # Current active game
 
-# Attach multi-game manager and games_store to app for blueprint access
+# Attach multi-game manager, games_store, and socketio to app for blueprint access
 app.multi_game_manager = multi_game_manager
 app.games_store = games_store
 app.active_game_id = None  # Track active game ID
+app.socketio = socketio  # Attach socketio for blueprint access
 
 # Initialize global database service for dartboard endpoints
 set_database_service(game_manager.db_service)
