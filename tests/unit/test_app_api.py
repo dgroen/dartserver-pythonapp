@@ -86,11 +86,11 @@ class TestPlayerManagement:
         data = json.loads(response.data)
         assert data["success"] is False
 
-    def test_add_player_with_wso2_lookup(self, client):
+    def test_add_player_with_wso2_lookup(self, client, flask_app):
         """Test adding player with WSO2 lookup."""
         with (
             patch("src.app.app_api.get_wso2_user_info") as mock_wso2,
-            patch("src.app.app_api.current_app") as mock_app,
+            patch.object(flask_app, "game_manager") as mock_game_manager,
         ):
             mock_wso2.return_value = {
                 "username": "charlie",
@@ -98,14 +98,12 @@ class TestPlayerManagement:
                 "email": "charlie@example.com",
             }
 
-            mock_game_manager = MagicMock()
             mock_db_service = MagicMock()
             mock_player = MagicMock()
             mock_player.id = 3
             mock_db_service.get_or_create_player.return_value = mock_player
             mock_game_manager.db_service = mock_db_service
             mock_game_manager.add_player_with_id = MagicMock()
-            mock_app.game_manager = mock_game_manager
 
             response = client.post(
                 "/api/players",
@@ -139,12 +137,10 @@ class TestPlayerManagement:
             response = client.delete("/api/players/1")
             assert response.status_code in [302, 401, 403]
 
-    def test_remove_player_success(self, client):
+    def test_remove_player_success(self, client, flask_app):
         """Test removing player successfully."""
-        with patch("src.app.app_api.current_app") as mock_app:
-            mock_game_manager = MagicMock()
+        with patch.object(flask_app, "game_manager") as mock_game_manager:
             mock_game_manager.remove_player = MagicMock()
-            mock_app.game_manager = mock_game_manager
 
             response = client.delete("/api/players/1")
 

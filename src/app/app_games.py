@@ -160,7 +160,7 @@ def new_game():
     # Convert player names to player objects with database IDs
     # Use the request-bound app's game_manager to ensure tests' patched
     # DatabaseService is respected (avoid stale module-level globals).
-    db_session = current_app.current_app.game_manager.db_service.db_manager.get_session()
+    db_session = current_app.game_manager.db_service.db_manager.get_session()
     try:
         player_ids = []
         # Debug: log players currently in DB for troubleshooting tests
