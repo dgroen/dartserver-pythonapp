@@ -45,7 +45,7 @@ def api_key_required(f):
 def get_mobile_service():
     """Get or create MobileService instance"""
     if not hasattr(current_app, 'mobile_service'):
-        current_app.mobile_service = MobileService(current_app.current_app.game_manager.db_service)
+        current_app.mobile_service = MobileService(current_app.game_manager.db_service)
     return current_app.mobile_service
 
 
