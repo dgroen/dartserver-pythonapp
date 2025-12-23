@@ -752,93 +752,98 @@ def get_training_statistics():
 @api_bp.route("/api/game/history", methods=["GET"])
 @login_required
 def get_game_history():
-    """Get game history for the current player or all games
+    """Get recent game history
     ---
     tags:
       - History
-    summary: Get game history
-    description: |
-      Returns game history. If player_id is provided, returns games for that player.
-      Otherwise returns recent games.
+    summary: Get recent game history
+    description: >
+      Returns a list of recent games. Regular users see only their games,
+      admins can filter by user.
     parameters:
-      - in: query
-        name: player_id
-        type: integer
-        description: Filter by player ID (optional)
       - in: query
         name: limit
         type: integer
         description: Maximum number of games to return
-        default: 50
+        default: 10
+        example: 10
       - in: query
-        name: offset
-        type: integer
-        description: Number of games to skip (for pagination)
-        default: 0
-      - in: query
-        name: game_type
+        name: user
         type: string
-        description: Filter by game type
-      - in: query
-        name: status
-        type: string
-        description: Filter by status (completed, incomplete, all)
-        default: all
-        enum: [completed, incomplete, all]
+        description: Filter by username (admin only)
+        example: john_doe
     responses:
       200:
-        description: Game history
+        description: List of recent games
         schema:
           type: object
           properties:
-            success:
-              type: boolean
+            status:
+              type: string
+              example: success
             games:
               type: array
               items:
                 type: object
-            total:
-              type: integer
-              description: Total number of games matching filter
+                properties:
+                  game_session_id:
+                    type: string
+                    description: Unique game session ID
+                  game_type:
+                    type: string
+                    description: Type of game
+                  player_count:
+                    type: integer
+                    description: Number of players
+                  winner:
+                    type: string
+                    description: Winner name
+                  started_at:
+                    type: string
+                    description: Game start timestamp
+                  finished_at:
+                    type: string
+                    description: Game finish timestamp
     """
-    game_manager = current_app.game_manager
+    limit = request.args.get("limit", 10, type=int)
+    filter_user = request.args.get("user")
+
+    # Get current user info
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+
+    # Log all available claims for debugging
+    logger.info(f"get_game_history: Available claims: {list(user_claims.keys())}")
+    logger.info(
+        f"get_game_history: username={user_claims.get('username')}, "
+        f"preferred_username={user_claims.get('preferred_username')}, sub={user_claims.get('sub')}",
+    )
+
+    current_username = (
+        user_claims.get("username")
+        or user_claims.get("preferred_username")
+        or user_claims.get("sub")
+    )
+
+    # Strip WSO2 tenant suffix (e.g., @carbon.super) from username if present
+    if current_username and "@" in current_username:
+        current_username = current_username.split("@")[0]
+
+    logger.info(f"get_game_history: current_username={current_username}, user_roles={user_roles}")
+
+    # Determine which username to filter by
+    # Admins can filter by specific user or see all games; regular users only see their own
+    username_filter = filter_user if "admin" in user_roles else current_username
+
+    logger.info(f"get_game_history: username_filter={username_filter}, limit={limit}")
+
     try:
-        player_id = request.args.get("player_id", type=int)
-        limit = request.args.get("limit", 50, type=int)
-        offset = request.args.get("offset", 0, type=int)
-        game_type = request.args.get("game_type")
-        status = request.args.get("status", "all")
-
-        # Get games from database
-        if player_id:
-            games = current_app.game_manager.db_service.get_player_game_history(
-                player_id=player_id,
-                game_type=game_type,
-                limit=limit,
-            )
-        else:
-            games = current_app.game_manager.db_service.get_recent_games(
-                limit=limit,
-            )
-            
-            # Manual filtering for game_type if provided (since get_recent_games doesn't support it)
-            if game_type:
-                games = [g for g in games if g.get("game_type") == game_type]
-        
-        # Apply offset manually (since DB methods don't support it)
-        if offset > 0:
-            games = games[offset:]
-
-        # Filter by status if requested
-        if status == "completed":
-            games = [g for g in games if g.get("finished_at")]
-        elif status == "incomplete":
-            games = [g for g in games if not g.get("finished_at")]
-
-        return jsonify({"success": True, "games": games, "total": len(games)})
+        games = current_app.game_manager.db_service.get_recent_games(limit=limit, username=username_filter)
+        logger.info(f"get_game_history: Found {len(games)} games")
+        return jsonify({"status": "success", "games": games})
     except Exception as e:
         logger.exception("Error getting game history")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @api_bp.route("/api/game/replay/<game_session_id>", methods=["GET"])
