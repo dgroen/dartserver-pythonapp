@@ -502,15 +502,14 @@ def activate_game_session(game_id):
       404:
         description: Game not found
     """
+    # Get references from current_app
+    multi_game_manager = current_app.multi_game_manager
+    
     if not multi_game_manager.has_game(game_id):
         return jsonify({"status": "error", "message": f"Game '{game_id}' not found"}), 404
 
     multi_game_manager.set_active_game(game_id)
-
-
-    # Get references from current_app
-    multi_game_manager = current_app.multi_game_manager
-    games_store = current_app.games_store
+    
     game_manager = multi_game_manager.get_game(game_id)
     current_app.game_manager = game_manager
 
