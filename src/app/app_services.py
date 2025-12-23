@@ -13,6 +13,7 @@ from flask import Blueprint, current_app, jsonify, render_template, request, sen
 
 from src.core.auth import login_required, permission_required, role_required
 from src.core.dartboard_service import DartboardMappingError, DartboardService
+from src.core.database_service import get_session
 from src.app.mobile_service import MobileService
 
 services_bp = Blueprint("services", __name__)
@@ -156,7 +157,7 @@ def submit_score_zone():
             )
 
             # Emit WebSocket event for admin dartboard testing page (even if zone not found)
-            socketio.emit(
+            current_app.socketio.emit(
                 "dartboard_test_received",
                 {
                     "masterPin": master_pin,
