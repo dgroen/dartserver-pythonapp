@@ -102,7 +102,9 @@ class TestAuthEndpoints:
             mock_app.game_manager = mock_game_manager
             mock_app.logger = MagicMock()
 
-            response = client.get("/callback?code=test-code&state=test-state", follow_redirects=False)
+            response = client.get(
+                "/callback?code=test-code&state=test-state", follow_redirects=False,
+            )
 
             assert response.status_code == 302  # Redirect
             assert response.location == "/"
@@ -147,7 +149,9 @@ class TestAuthEndpoints:
         # Mock failed token exchange
         mock_auth_fixtures["exchange"].return_value = None
 
-        response = client.get("/callback?code=test-code&state=test-state", follow_redirects=False)
+        response = client.get(
+                "/callback?code=test-code&state=test-state", follow_redirects=False,
+            )
 
         assert response.status_code == 302
         assert "/login" in response.location
@@ -169,7 +173,9 @@ class TestAuthEndpoints:
             mock_app.game_manager = mock_game_manager
             mock_app.logger = MagicMock()
 
-            response = client.get("/callback?code=test-code&state=test-state", follow_redirects=False)
+            response = client.get(
+                "/callback?code=test-code&state=test-state", follow_redirects=False,
+            )
 
             assert response.status_code == 302
             assert response.location == "/dashboard"
@@ -286,7 +292,9 @@ class TestAuthEndpoints:
             mock_app.game_manager = mock_game_manager
             mock_app.logger = MagicMock()
 
-            response = client.get("/callback?code=test-code&state=test-state", follow_redirects=False)
+            response = client.get(
+                "/callback?code=test-code&state=test-state", follow_redirects=False,
+            )
 
             assert response.status_code == 302
             mock_scim2.assert_called_once()
@@ -306,7 +314,9 @@ class TestAuthEndpoints:
             mock_app.game_manager = mock_game_manager
             mock_app.logger = MagicMock()
 
-            response = client.get("/callback?code=test-code&state=test-state", follow_redirects=False)
+            response = client.get(
+                "/callback?code=test-code&state=test-state", follow_redirects=False,
+            )
 
             assert response.status_code == 302
 

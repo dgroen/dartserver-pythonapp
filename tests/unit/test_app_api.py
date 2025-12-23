@@ -227,7 +227,6 @@ class TestTrainingEndpoints:
     def test_training_endpoints_placeholder(self, client):
         """Placeholder for training endpoint tests."""
         # Add specific tests based on actual training endpoints in app_api.py
-        pass
 
 
 class TestHistoryEndpoints:
@@ -236,4 +235,3 @@ class TestHistoryEndpoints:
     def test_history_endpoints_placeholder(self, client):
         """Placeholder for history endpoint tests."""
         # Add specific tests based on actual history endpoints in app_api.py
-        pass

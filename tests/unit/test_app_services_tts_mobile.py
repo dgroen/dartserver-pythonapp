@@ -141,7 +141,9 @@ class TestTTSConfigEndpoints:
 
     def test_get_tts_languages(self, client):
         """Test getting supported TTS languages."""
-        with patch("dartserver_services.tts_service.TTSService.get_supported_languages") as mock_langs:
+        with patch(
+            "dartserver_services.tts_service.TTSService.get_supported_languages",
+        ) as mock_langs:
             mock_langs.return_value = {
                 "en": "English",
                 "nl": "Dutch",

@@ -1,7 +1,6 @@
 """Unit tests for app.py module."""
 
-import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -72,31 +71,30 @@ class TestSocketIOHandlers:
 
     def test_socketio_connect_event(self, flask_app, mock_socketio):
         """Test SocketIO connect event emits game state."""
-        with flask_app.test_request_context():
-            with patch("src.app.app.socketio", mock_socketio):
-                # Import the handler after patching
-                from src.app.app import handle_connect
+        with flask_app.test_request_context(), patch("src.app.app.socketio", mock_socketio):
+            # Import the handler after patching
+            from src.app.app import handle_connect  # noqa: PLC0415
 
-                # Simulate connection
-                with patch("src.app.app.request") as mock_request:
-                    mock_request.sid = "test-session-id"
-                    handle_connect()
+            # Simulate connection
+            with patch("src.app.app.request") as mock_request:
+                mock_request.sid = "test-session-id"
+                handle_connect()
 
-                    # Verify game_state was emitted
-                    mock_socketio.emit.assert_called_once()
-                    call_args = mock_socketio.emit.call_args
-                    assert call_args[0][0] == "game_state"
+                # Verify game_state was emitted
+                mock_socketio.emit.assert_called_once()
+                call_args = mock_socketio.emit.call_args
+                assert call_args[0][0] == "game_state"
 
     def test_socketio_disconnect_event(self, flask_app):
         """Test SocketIO disconnect event."""
-        from src.app.app import handle_disconnect
+        from src.app.app import handle_disconnect  # noqa: PLC0415
 
         # Should not raise exception
         handle_disconnect()
 
     def test_socketio_manual_score_event(self, flask_app):
         """Test SocketIO manual score event."""
-        from src.app.app import handle_manual_score
+        from src.app.app import handle_manual_score  # noqa: PLC0415
 
         test_score = {"score": 20, "multiplier": "TRIPLE"}
 
@@ -106,7 +104,7 @@ class TestSocketIOHandlers:
 
     def test_socketio_next_player_event(self, flask_app):
         """Test SocketIO next player event."""
-        from src.app.app import handle_next_player
+        from src.app.app import handle_next_player  # noqa: PLC0415
 
         with patch.object(flask_app.game_manager, "next_player") as mock_next:
             handle_next_player()
@@ -114,7 +112,7 @@ class TestSocketIOHandlers:
 
     def test_socketio_end_turn_early_event(self, flask_app):
         """Test SocketIO end turn early event."""
-        from src.app.app import handle_end_turn_early
+        from src.app.app import handle_end_turn_early  # noqa: PLC0415
 
         with patch.object(flask_app.game_manager, "end_turn_early") as mock_end:
             handle_end_turn_early()
@@ -122,7 +120,7 @@ class TestSocketIOHandlers:
 
     def test_socketio_set_throwout_advice_event(self, flask_app):
         """Test SocketIO set throwout advice event."""
-        from src.app.app import handle_set_throwout_advice
+        from src.app.app import handle_set_throwout_advice  # noqa: PLC0415
 
         with patch.object(flask_app.game_manager, "set_show_throwout_advice") as mock_set:
             handle_set_throwout_advice({"enabled": True})
@@ -130,7 +128,7 @@ class TestSocketIOHandlers:
 
     def test_socketio_dartboard_test_message(self, flask_app, mock_socketio):
         """Test SocketIO dartboard test message broadcasts."""
-        from src.app.app import handle_dartboard_test_message
+        from src.app.app import handle_dartboard_test_message  # noqa: PLC0415
 
         test_data = {"masterPin": 4, "slavePin": 13, "boardType": "carromco"}
 

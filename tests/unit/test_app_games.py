@@ -2,9 +2,10 @@
 
 import json
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
+from dartserver_core import GameResult
 from dartserver_core.database_service import DatabaseService
 
 
@@ -393,7 +394,6 @@ class TestGameDeleteResumeEndpoints:
         # Mark as completed
         session = db_service.db_manager.get_session()
         try:
-            from dartserver_core import GameResult
 
             results = session.query(GameResult).filter_by(game_session_id=game_session_id).all()
             for result in results:
@@ -438,7 +438,6 @@ class TestGameDeleteResumeEndpoints:
         # Make game old
         session = db_service.db_manager.get_session()
         try:
-            from dartserver_core import GameResult
 
             results = session.query(GameResult).filter_by(game_session_id=game_session_id).all()
             old_date = datetime.now(timezone.utc) - timedelta(days=2)
@@ -472,7 +471,6 @@ class TestGameDeleteResumeEndpoints:
         # Mark as completed
         session = db_service.db_manager.get_session()
         try:
-            from dartserver_core import GameResult
 
             results = session.query(GameResult).filter_by(game_session_id=game_session_id).all()
             for result in results:
