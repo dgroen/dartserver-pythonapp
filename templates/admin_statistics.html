@@ -500,8 +500,15 @@
             const startDate = new Date();
             startDate.setDate(startDate.getDate() - 30);
             
-            document.getElementById('filterEndDate').valueAsDate = endDate;
-            document.getElementById('filterStartDate').valueAsDate = startDate;
+            const filterEndDateEl = document.getElementById('filterEndDate');
+            const filterStartDateEl = document.getElementById('filterStartDate');
+            
+            if (filterEndDateEl) {
+                filterEndDateEl.valueAsDate = endDate;
+            }
+            if (filterStartDateEl) {
+                filterStartDateEl.valueAsDate = startDate;
+            }
             
             // Load initial statistics
             loadStatistics();

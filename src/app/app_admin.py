@@ -6,10 +6,10 @@ import logging
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
-from sqlalchemy import func
+from sqlalchemy import Integer, func
 
 from src.core.auth import login_required, role_required
-from src.core.database_models import GameResult, Player, Score
+from src.core.database_models import GameResult, GameType, Player, Score
 from src.core.database_service import get_session
 
 logger = logging.getLogger(__name__)
