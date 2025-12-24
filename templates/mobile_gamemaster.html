@@ -35,6 +35,9 @@
                 <li><a href="/mobile/dartboard-setup" class="nav-item">🎯 Dartboard Setup</a></li>
                 <li><a href="/mobile/results" class="nav-item">📊 Game Results</a></li>
                 <li><a href="/mobile/account" class="nav-item">⚙️ Account</a></li>
+                {% if 'admin' in user_roles %}
+                <li><a href="/admin" class="nav-item">🔧 Admin</a></li>
+                {% endif %}
                 <li><a href="/logout" class="nav-item">🚪 Logout</a></li>
             </ul>
         </nav>

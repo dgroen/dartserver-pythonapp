@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - User Statistics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+        }
+
+        .back-link {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            color: #333;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .back-link:hover {
+            background: #e0e0e0;
+        }
+
+        .section {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section h2::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 2px;
+        }
+
+        .info-text {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 12px;
+            border-radius: 4px;
+            color: #1565c0;
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+        }
+
+        .alert.success {
+            background: #e8f5e9;
+            border-color: #4CAF50;
+            color: #2e7d32;
+        }
+
+        .alert.error {
+            background: #ffebee;
+            border-color: #f44336;
+            color: #c62828;
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #555;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .stats-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+
+        .stats-table th:hover {
+            background: #5568d3;
+        }
+
+        .stats-table th.sortable::after {
+            content: ' ⇅';
+            opacity: 0.5;
+        }
+
+        .stats-table th.sorted-asc::after {
+            content: ' ↑';
+            opacity: 1;
+        }
+
+        .stats-table th.sorted-desc::after {
+            content: ' ↓';
+            opacity: 1;
+        }
+
+        .stats-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+        }
+
+        .stats-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .stats-table tr:hover {
+            background: #f5f5f5;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .btn-primary {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-success {
+            padding: 12px 24px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .btn-success:hover {
+            background: #388E3C;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .win-rate-bar {
+            display: inline-block;
+            height: 8px;
+            background: #4CAF50;
+            border-radius: 4px;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 User Statistics</h1>
+            <a href="/admin" class="back-link">← Back to Admin</a>
+        </div>
+
+        <div id="alertsContainer"></div>
+
+        <div class="section">
+            <h2>Filters</h2>
+            <div class="info-text">
+                🔍 Filter statistics by date range to analyze user performance over time
+            </div>
+
+            <div class="filter-row">
+                <div class="form-group">
+                    <label for="filterStartDate">Start Date</label>
+                    <input type="date" id="filterStartDate">
+                </div>
+                <div class="form-group">
+                    <label for="filterEndDate">End Date</label>
+                    <input type="date" id="filterEndDate">
+                </div>
+                <div style="display: flex; align-items: flex-end; gap: 10px;">
+                    <button class="btn-primary" onclick="loadStatistics()">🔄 Apply Filters</button>
+                    <button class="btn-success" onclick="exportToCSV()">📥 Export CSV</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>User Performance Statistics</h2>
+            <div id="statisticsContainer">
+                <div class="empty-state">Click "Apply Filters" to load statistics</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStats = [];
+        let sortColumn = null;
+        let sortDirection = 'asc';
+
+        async function loadStatistics() {
+            const container = document.getElementById('statisticsContainer');
+            container.innerHTML = '<div class="loading"></div>';
+
+            const startDate = document.getElementById('filterStartDate').value;
+            const endDate = document.getElementById('filterEndDate').value;
+
+            let url = '/api/admin/statistics';
+            const params = new URLSearchParams();
+            
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+            
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    currentStats = data.statistics || [];
+                    renderStatistics(currentStats);
+                } else {
+                    showAlert(data.message || 'Failed to load statistics', 'error');
+                    container.innerHTML = '<div class="empty-state">Failed to load statistics</div>';
+                }
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+                showAlert('Failed to load statistics', 'error');
+                container.innerHTML = '<div class="empty-state">Error loading statistics</div>';
+            }
+        }
+
+        function renderStatistics(stats) {
+            const container = document.getElementById('statisticsContainer');
+
+            if (stats.length === 0) {
+                container.innerHTML = '<div class="empty-state">No statistics available for the selected period</div>';
+                return;
+            }
+
+            let html = `
+                <table class="stats-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="sortTable('username')">Username</th>
+                            <th class="sortable" onclick="sortTable('total_games')">Total Games</th>
+                            <th class="sortable" onclick="sortTable('games_won')">Games Won</th>
+                            <th class="sortable" onclick="sortTable('win_rate')">Win Rate</th>
+                            <th class="sortable" onclick="sortTable('avg_score')">Avg Score</th>
+                            <th class="sortable" onclick="sortTable('best_score')">Best Score</th>
+                            <th class="sortable" onclick="sortTable('total_throws')">Total Throws</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            stats.forEach(stat => {
+                const winRate = stat.win_rate || 0;
+                const winRateWidth = Math.min(winRate, 100);
+                
+                html += `
+                    <tr>
+                        <td><strong>${stat.username || 'Unknown'}</strong></td>
+                        <td>${stat.total_games || 0}</td>
+                        <td>${stat.games_won || 0}</td>
+                        <td>
+                            <span class="win-rate-bar" style="width: ${winRateWidth}px;"></span>
+                            ${winRate.toFixed(1)}%
+                        </td>
+                        <td>${stat.avg_score ? stat.avg_score.toFixed(1) : '-'}</td>
+                        <td><strong>${stat.best_score || '-'}</strong></td>
+                        <td>${stat.total_throws || 0}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function sortTable(column) {
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+
+            currentStats.sort((a, b) => {
+                let aVal = a[column];
+                let bVal = b[column];
+
+                // Handle null/undefined values
+                if (aVal === null || aVal === undefined) aVal = 0;
+                if (bVal === null || bVal === undefined) bVal = 0;
+
+                // Convert to numbers for numeric columns
+                if (typeof aVal === 'number' && typeof bVal === 'number') {
+                    return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+                }
+
+                // String comparison
+                const aStr = String(aVal).toLowerCase();
+                const bStr = String(bVal).toLowerCase();
+                
+                if (sortDirection === 'asc') {
+                    return aStr < bStr ? -1 : aStr > bStr ? 1 : 0;
+                } else {
+                    return bStr < aStr ? -1 : bStr > aStr ? 1 : 0;
+                }
+            });
+
+            renderStatistics(currentStats);
+            updateSortIndicators();
+        }
+
+        function updateSortIndicators() {
+            // Remove all sort classes
+            document.querySelectorAll('.stats-table th').forEach(th => {
+                th.classList.remove('sorted-asc', 'sorted-desc');
+            });
+
+            // Add sort class to current column
+            const headers = document.querySelectorAll('.stats-table th');
+            const columnIndex = ['username', 'total_games', 'games_won', 'win_rate', 'avg_score', 'best_score', 'total_throws'].indexOf(sortColumn);
+            
+            if (columnIndex >= 0 && headers[columnIndex]) {
+                headers[columnIndex].classList.add(sortDirection === 'asc' ? 'sorted-asc' : 'sorted-desc');
+            }
+        }
+
+        function exportToCSV() {
+            if (currentStats.length === 0) {
+                showAlert('No data to export', 'error');
+                return;
+            }
+
+            const headers = ['Username', 'Total Games', 'Games Won', 'Win Rate (%)', 'Avg Score', 'Best Score', 'Total Throws'];
+            const rows = currentStats.map(stat => [
+                stat.username || 'Unknown',
+                stat.total_games || 0,
+                stat.games_won || 0,
+                (stat.win_rate || 0).toFixed(1),
+                stat.avg_score ? stat.avg_score.toFixed(1) : '',
+                stat.best_score || '',
+                stat.total_throws || 0
+            ]);
+
+            let csv = headers.join(',') + '\n';
+            rows.forEach(row => {
+                csv += row.map(cell => {
+                    // Escape cells that contain commas or quotes
+                    if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"'))) {
+                        return '"' + cell.replace(/"/g, '""') + '"';
+                    }
+                    return cell;
+                }).join(',') + '\n';
+            });
+
+            // Create download link
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `user-statistics-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+
+            showAlert('✓ Statistics exported to CSV', 'success');
+        }
+
+        function showAlert(message, type = 'success') {
+            const container = document.getElementById('alertsContainer');
+            const alertId = 'alert-' + Date.now();
+            const alert = document.createElement('div');
+            alert.id = alertId;
+            alert.className = `alert ${type}`;
+            alert.textContent = message;
+            container.appendChild(alert);
+            
+            setTimeout(() => {
+                const elem = document.getElementById(alertId);
+                if (elem) elem.remove();
+            }, 5000);
+        }
+
+        // Load statistics on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set default date range (last 30 days)
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 30);
+            
+            const filterEndDateEl = document.getElementById('filterEndDate');
+            const filterStartDateEl = document.getElementById('filterStartDate');
+            
+            if (filterEndDateEl) {
+                filterEndDateEl.valueAsDate = endDate;
+            }
+            if (filterStartDateEl) {
+                filterStartDateEl.valueAsDate = startDate;
+            }
+            
+            // Load initial statistics
+            loadStatistics();
+        });
+    </script>
+</body>
+</html>

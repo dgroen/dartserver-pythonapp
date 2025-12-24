@@ -310,6 +310,7 @@ app.socketio = socketio  # Attach socketio for blueprint access
 set_database_service(game_manager.db_service)
 
 # Import and register blueprints
+from src.app.app_admin import admin_bp
 from src.app.app_api import api_bp
 from src.app.app_auth import auth_bp
 from src.app.app_games import games_bp
@@ -321,6 +322,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(games_bp)
 app.register_blueprint(api_bp)
 app.register_blueprint(services_bp)
+app.register_blueprint(admin_bp)
 
 # Initialize RabbitMQ Consumer
 rabbitmq_consumer = None
@@ -485,6 +487,22 @@ def handle_dartboard_test_message(data):
     """Handle raw dartboard test messages for admin calibration"""
     # Broadcast to all admin clients for real-time testing feedback
     socketio.emit("dartboard_test_received", data, namespace="/")
+
+
+@socketio.on("request_active_sessions", namespace="/")
+def handle_request_active_sessions():
+    """Handle request for active sessions (admin feature)"""
+    # In a real implementation, you would query your session store
+    # For now, return empty list as placeholder
+    # You can integrate with Redis, database, or Flask session backend
+    socketio.emit(
+        "active_sessions_update",
+        {
+            "sessions": [],
+            "message": "Session tracking integration pending",
+        },
+        namespace="/",
+    )
 
 
 def start_rabbitmq_consumer():
