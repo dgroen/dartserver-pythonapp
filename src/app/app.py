@@ -489,6 +489,22 @@ def handle_dartboard_test_message(data):
     socketio.emit("dartboard_test_received", data, namespace="/")
 
 
+@socketio.on("request_active_sessions", namespace="/")
+def handle_request_active_sessions():
+    """Handle request for active sessions (admin feature)"""
+    # In a real implementation, you would query your session store
+    # For now, return empty list as placeholder
+    # You can integrate with Redis, database, or Flask session backend
+    socketio.emit(
+        "active_sessions_update",
+        {
+            "sessions": [],
+            "message": "Session tracking integration pending",
+        },
+        namespace="/",
+    )
+
+
 def start_rabbitmq_consumer():
     """Start RabbitMQ consumer in a separate thread"""
     global rabbitmq_consumer

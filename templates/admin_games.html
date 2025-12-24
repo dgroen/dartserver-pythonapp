@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Game Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+        }
+
+        .back-link {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            color: #333;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .back-link:hover {
+            background: #e0e0e0;
+        }
+
+        .section {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section h2::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 2px;
+        }
+
+        .info-text {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 12px;
+            border-radius: 4px;
+            color: #1565c0;
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+        }
+
+        .alert.success {
+            background: #e8f5e9;
+            border-color: #4CAF50;
+            color: #2e7d32;
+        }
+
+        .alert.error {
+            background: #ffebee;
+            border-color: #f44336;
+            color: #c62828;
+        }
+
+        .games-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .games-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .games-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+        }
+
+        .games-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .games-table tr:hover {
+            background: #f5f5f5;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #555;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-primary {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-danger {
+            padding: 12px 24px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Game Management</h1>
+            <a href="/admin" class="back-link">← Back to Admin</a>
+        </div>
+
+        <div id="alertsContainer"></div>
+
+        <!-- Paused Games Section -->
+        <div class="section">
+            <h2>Paused Games</h2>
+            <div class="info-text">
+                🔍 View and manage games that haven't finished yet
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" onclick="loadPausedGames()">🔄 Refresh List</button>
+                <button class="btn-danger" onclick="confirmRemoveAllPaused()">🗑️ Remove All Paused Games</button>
+            </div>
+
+            <div id="pausedGamesContainer" style="margin-top: 20px;">
+                <div class="empty-state">Click "Refresh List" to load paused games</div>
+            </div>
+        </div>
+
+        <!-- Archive Games Section -->
+        <div class="section">
+            <h2>Archive Games</h2>
+            <div class="info-text">
+                📦 Archive games by user and date range for historical record keeping
+            </div>
+
+            <div class="form-group">
+                <label for="userSearch">User</label>
+                <input type="text" id="userSearch" placeholder="Search by username..." 
+                       onkeyup="searchUsers()">
+                <select id="userSelect" size="5" style="margin-top: 5px; height: 120px;">
+                    <option value="">-- Search for a user first --</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="startDate">Start Date</label>
+                    <input type="date" id="startDate">
+                </div>
+                <div class="form-group">
+                    <label for="endDate">End Date</label>
+                    <input type="date" id="endDate">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" onclick="archiveGames()">📦 Archive Games</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pausedGames = [];
+        let availableUsers = [];
+
+        async function loadPausedGames() {
+            const container = document.getElementById('pausedGamesContainer');
+            container.innerHTML = '<div class="loading"></div>';
+
+            try {
+                const response = await fetch('/api/admin/games/paused');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    pausedGames = data.games || [];
+                    renderPausedGames(pausedGames);
+                } else {
+                    showAlert(data.message || 'Failed to load paused games', 'error');
+                    container.innerHTML = '<div class="empty-state">Failed to load games</div>';
+                }
+            } catch (error) {
+                console.error('Error loading paused games:', error);
+                showAlert('Failed to load paused games', 'error');
+                container.innerHTML = '<div class="empty-state">Error loading games</div>';
+            }
+        }
+
+        function renderPausedGames(games) {
+            const container = document.getElementById('pausedGamesContainer');
+
+            if (games.length === 0) {
+                container.innerHTML = '<div class="empty-state">✓ No paused games found</div>';
+                return;
+            }
+
+            let html = `
+                <table class="games-table">
+                    <thead>
+                        <tr>
+                            <th>Game Session ID</th>
+                            <th>Game Type</th>
+                            <th>Player</th>
+                            <th>Started At</th>
+                            <th>Current Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            games.forEach(game => {
+                html += `
+                    <tr>
+                        <td><strong>${game.game_session_id || '-'}</strong></td>
+                        <td>${game.game_type || '-'}</td>
+                        <td>${game.player_name || '-'}</td>
+                        <td>${game.started_at ? new Date(game.started_at).toLocaleString() : '-'}</td>
+                        <td>${game.final_score !== null ? game.final_score : '-'}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        async function confirmRemoveAllPaused() {
+            if (!confirm('⚠️ Are you sure you want to remove ALL paused games? This action cannot be undone!')) {
+                return;
+            }
+
+            if (!confirm('🛑 This will permanently delete all paused games. Are you absolutely sure?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/games/paused', {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    showAlert(`✓ Successfully removed ${data.deleted_count || 0} paused games`, 'success');
+                    loadPausedGames();
+                } else {
+                    showAlert(data.message || 'Failed to remove paused games', 'error');
+                }
+            } catch (error) {
+                console.error('Error removing paused games:', error);
+                showAlert('Failed to remove paused games', 'error');
+            }
+        }
+
+        let searchTimeout = null;
+        async function searchUsers() {
+            const query = document.getElementById('userSearch').value.trim();
+            
+            clearTimeout(searchTimeout);
+            
+            if (!query) {
+                document.getElementById('userSelect').innerHTML = '<option value="">-- Search for a user first --</option>';
+                return;
+            }
+
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/api/admin/users/search?q=${encodeURIComponent(query)}`);
+                    const data = await response.json();
+
+                    if (data.status === 'success') {
+                        availableUsers = data.users || [];
+                        renderUserSelect(availableUsers);
+                    }
+                } catch (error) {
+                    console.error('Error searching users:', error);
+                }
+            }, 300);
+        }
+
+        function renderUserSelect(users) {
+            const select = document.getElementById('userSelect');
+            
+            if (users.length === 0) {
+                select.innerHTML = '<option value="">-- No users found --</option>';
+                return;
+            }
+
+            let html = '';
+            users.forEach(user => {
+                html += `<option value="${user.username}">${user.username} (${user.email || 'No email'})</option>`;
+            });
+            select.innerHTML = html;
+        }
+
+        async function archiveGames() {
+            const username = document.getElementById('userSelect').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            if (!username) {
+                showAlert('Please select a user', 'error');
+                return;
+            }
+
+            if (!startDate || !endDate) {
+                showAlert('Please select both start and end dates', 'error');
+                return;
+            }
+
+            if (!confirm(`Archive games for user "${username}" from ${startDate} to ${endDate}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/games/archive', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: username,
+                        start_date: startDate,
+                        end_date: endDate
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    showAlert(`✓ Successfully archived ${data.archived_count || 0} games`, 'success');
+                } else {
+                    showAlert(data.message || 'Failed to archive games', 'error');
+                }
+            } catch (error) {
+                console.error('Error archiving games:', error);
+                showAlert('Failed to archive games', 'error');
+            }
+        }
+
+        function showAlert(message, type = 'success') {
+            const container = document.getElementById('alertsContainer');
+            const alertId = 'alert-' + Date.now();
+            const alert = document.createElement('div');
+            alert.id = alertId;
+            alert.className = `alert ${type}`;
+            alert.textContent = message;
+            container.appendChild(alert);
+            
+            setTimeout(() => {
+                const elem = document.getElementById(alertId);
+                if (elem) elem.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

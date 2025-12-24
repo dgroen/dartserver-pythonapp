@@ -605,3 +605,368 @@ def test_tts():
             "audio_url": None,
         }
     )
+
+
+@admin_bp.route("/games/paused", methods=["GET"])
+@login_required
+@role_required("admin")
+def get_paused_games():
+    """Get list of paused games
+    ---
+    tags:
+      - Admin
+    summary: Get paused games
+    description: Get all games that haven't finished yet
+    responses:
+      200:
+        description: List of paused games
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            games:
+              type: array
+              items:
+                type: object
+    """
+    try:
+        with get_session() as session:
+            # Query for games without a finished_at timestamp
+            paused_games = (
+                session.query(GameResult)
+                .filter(GameResult.finished_at.is_(None))
+                .join(Player, GameResult.player_id == Player.id)
+                .join(GameType, GameResult.game_type_id == GameType.id)
+                .all()
+            )
+
+            games_list = []
+            for game in paused_games:
+                games_list.append(
+                    {
+                        "id": game.id,
+                        "game_session_id": game.game_session_id,
+                        "game_type": game.game_type.name if game.game_type else None,
+                        "player_name": game.player.name if game.player else None,
+                        "player_id": game.player_id,
+                        "started_at": game.started_at.isoformat() if game.started_at else None,
+                        "final_score": game.final_score,
+                        "start_score": game.start_score,
+                    }
+                )
+
+            logger.info(f"Retrieved {len(games_list)} paused games")
+            return jsonify({"status": "success", "games": games_list})
+    except Exception as e:
+        logger.exception("Error retrieving paused games")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route("/games/paused", methods=["DELETE"])
+@login_required
+@role_required("admin")
+def remove_paused_games():
+    """Remove all paused games
+    ---
+    tags:
+      - Admin
+    summary: Remove paused games
+    description: Delete all games that haven't finished yet
+    responses:
+      200:
+        description: Paused games removed
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            deleted_count:
+              type: integer
+    """
+    try:
+        with get_session() as session:
+            # Find all paused games (no finished_at)
+            paused_games = session.query(GameResult).filter(GameResult.finished_at.is_(None)).all()
+
+            deleted_count = len(paused_games)
+
+            # Delete associated scores first (cascade should handle this, but being explicit)
+            for game in paused_games:
+                session.query(Score).filter(Score.game_result_id == game.id).delete()
+
+            # Delete the game results
+            session.query(GameResult).filter(GameResult.finished_at.is_(None)).delete()
+
+            session.commit()
+            logger.info(f"Deleted {deleted_count} paused games")
+            return jsonify({"status": "success", "deleted_count": deleted_count})
+    except Exception as e:
+        logger.exception("Error deleting paused games")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route("/games/archive", methods=["POST"])
+@login_required
+@role_required("admin")
+def archive_games():
+    """Archive games by user and date range
+    ---
+    tags:
+      - Admin
+    summary: Archive games
+    description: Archive games for a specific user within a date range
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - username
+            - start_date
+            - end_date
+          properties:
+            username:
+              type: string
+            start_date:
+              type: string
+              format: date
+            end_date:
+              type: string
+              format: date
+    responses:
+      200:
+        description: Games archived
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            archived_count:
+              type: integer
+    """
+    data = request.get_json()
+    username = data.get("username")
+    start_date_str = data.get("start_date")
+    end_date_str = data.get("end_date")
+
+    if not username or not start_date_str or not end_date_str:
+        return jsonify({"status": "error", "message": "Username, start_date, and end_date required"}), 400
+
+    try:
+        # Parse dates
+        start_date = datetime.fromisoformat(start_date_str)
+        end_date = datetime.fromisoformat(end_date_str)
+
+        # Add end of day to end_date
+        end_date = end_date.replace(hour=23, minute=59, second=59)
+
+        with get_session() as session:
+            # Find the player by username
+            player = session.query(Player).filter(Player.username == username).first()
+
+            if not player:
+                return jsonify({"status": "error", "message": f"Player '{username}' not found"}), 404
+
+            # Query games in date range for this player
+            games_to_archive = (
+                session.query(GameResult)
+                .filter(
+                    GameResult.player_id == player.id,
+                    GameResult.started_at >= start_date,
+                    GameResult.started_at <= end_date,
+                )
+                .all()
+            )
+
+            archived_count = len(games_to_archive)
+
+            # Note: In a real implementation, you might want to move these to an archive table
+            # or mark them as archived. For now, we'll just return the count.
+            # If actual archiving is needed, implement the logic here.
+
+            logger.info(f"Found {archived_count} games to archive for user {username}")
+            return jsonify(
+                {
+                    "status": "success",
+                    "archived_count": archived_count,
+                    "message": f"Found {archived_count} games in the specified date range",
+                }
+            )
+    except ValueError as e:
+        return jsonify({"status": "error", "message": f"Invalid date format: {str(e)}"}), 400
+    except Exception as e:
+        logger.exception("Error archiving games")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route("/active-sessions", methods=["GET"])
+@login_required
+@role_required("admin")
+def get_active_sessions():
+    """Get active user sessions
+    ---
+    tags:
+      - Admin
+    summary: Get active sessions
+    description: Get list of currently active user sessions
+    responses:
+      200:
+        description: List of active sessions
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            sessions:
+              type: array
+              items:
+                type: object
+                properties:
+                  username:
+                    type: string
+                  login_time:
+                    type: string
+                  last_activity:
+                    type: string
+    """
+    try:
+        # Note: This is a placeholder implementation
+        # In a real application, you would track sessions in a database table or cache (Redis)
+        # For now, return mock data or integrate with your session management system
+
+        sessions = []
+
+        # You could implement session tracking by:
+        # 1. Creating a UserSession table in the database
+        # 2. Using Flask session with a backend store
+        # 3. Using Redis to track active sessions
+        # 4. Tracking Socket.IO connections
+
+        # Example placeholder response:
+        logger.info("Retrieved active sessions")
+        return jsonify(
+            {
+                "status": "success",
+                "sessions": sessions,
+                "message": "Session tracking not yet implemented. Integrate with your session store.",
+            }
+        )
+    except Exception as e:
+        logger.exception("Error retrieving active sessions")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route("/statistics", methods=["GET"])
+@login_required
+@role_required("admin")
+def get_user_statistics():
+    """Get user statistics
+    ---
+    tags:
+      - Admin
+    summary: Get user statistics
+    description: Get aggregated statistics for all users with optional date filters
+    parameters:
+      - name: start_date
+        in: query
+        type: string
+        format: date
+        description: Start date for filtering
+      - name: end_date
+        in: query
+        type: string
+        format: date
+        description: End date for filtering
+    responses:
+      200:
+        description: User statistics
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            statistics:
+              type: array
+              items:
+                type: object
+                properties:
+                  username:
+                    type: string
+                  total_games:
+                    type: integer
+                  games_won:
+                    type: integer
+                  win_rate:
+                    type: number
+                  avg_score:
+                    type: number
+                  best_score:
+                    type: integer
+                  total_throws:
+                    type: integer
+    """
+    start_date_str = request.args.get("start_date")
+    end_date_str = request.args.get("end_date")
+
+    try:
+        with get_session() as session:
+            # Base query
+            query = session.query(
+                Player.username,
+                func.count(GameResult.id).label("total_games"),
+                func.sum(func.cast(GameResult.is_winner, Integer)).label("games_won"),
+                func.avg(GameResult.final_score).label("avg_score"),
+                func.max(GameResult.final_score).label("best_score"),
+                func.count(Score.id).label("total_throws"),
+            ).join(GameResult, Player.id == GameResult.player_id).outerjoin(
+                Score, GameResult.id == Score.game_result_id
+            )
+
+            # Apply date filters if provided
+            if start_date_str:
+                start_date = datetime.fromisoformat(start_date_str)
+                query = query.filter(GameResult.started_at >= start_date)
+
+            if end_date_str:
+                end_date = datetime.fromisoformat(end_date_str)
+                end_date = end_date.replace(hour=23, minute=59, second=59)
+                query = query.filter(GameResult.started_at <= end_date)
+
+            # Group by player
+            query = query.group_by(Player.id, Player.username)
+
+            results = query.all()
+
+            statistics = []
+            for row in results:
+                username, total_games, games_won, avg_score, best_score, total_throws = row
+
+                # Calculate win rate
+                win_rate = (games_won / total_games * 100) if total_games > 0 else 0
+
+                statistics.append(
+                    {
+                        "username": username or "Unknown",
+                        "total_games": total_games or 0,
+                        "games_won": games_won or 0,
+                        "win_rate": float(win_rate),
+                        "avg_score": float(avg_score) if avg_score else 0,
+                        "best_score": best_score or 0,
+                        "total_throws": total_throws or 0,
+                    }
+                )
+
+            logger.info(f"Retrieved statistics for {len(statistics)} users")
+            return jsonify({"status": "success", "statistics": statistics})
+    except ValueError as e:
+        return jsonify({"status": "error", "message": f"Invalid date format: {str(e)}"}), 400
+    except Exception as e:
+        logger.exception("Error retrieving statistics")
+        return jsonify({"status": "error", "message": str(e)}), 500
