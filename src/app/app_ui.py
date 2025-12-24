@@ -206,6 +206,29 @@ def test_refresh():
     return render_template("test_refresh.html")
 
 
+@ui_bp.route("/admin")
+@login_required
+@role_required("admin")
+def admin_home():
+    """Admin home page - requires admin role
+    ---
+    tags:
+      - Admin
+    summary: Admin dashboard home
+    description: Renders the admin dashboard with navigation to all admin functions
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template(
+        "admin_home.html",
+        user_roles=user_roles,
+        user_claims=user_claims,
+    )
+
+
 @ui_bp.route("/admin/dartboard-testing")
 @login_required
 @role_required("admin", "gamemaster")
@@ -223,7 +246,122 @@ def admin_dartboard_testing():
     user_roles = getattr(request, "user_roles", [])
     user_claims = getattr(request, "user_claims", {})
     return render_template(
-        "dartboard_testing.html",
+        "admin_dartboard_testing.html",
+        user_roles=user_roles,
+        user_claims=user_claims,
+    )
+
+
+@ui_bp.route("/admin/tts-testing")
+@login_required
+@role_required("admin")
+def admin_tts_testing():
+    """Admin TTS testing page - requires admin role
+    ---
+    tags:
+      - Admin
+    summary: TTS testing interface
+    description: Renders the TTS testing and configuration interface
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template(
+        "admin_tts_testing.html",
+        user_roles=user_roles,
+        user_claims=user_claims,
+    )
+
+
+@ui_bp.route("/admin/users")
+@login_required
+@role_required("admin")
+def admin_users():
+    """Admin user management page - requires admin role
+    ---
+    tags:
+      - Admin
+    summary: User management interface
+    description: Renders the user management interface for creating, updating, and managing users
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template(
+        "admin_users.html",
+        user_roles=user_roles,
+        user_claims=user_claims,
+    )
+
+
+@ui_bp.route("/admin/games")
+@login_required
+@role_required("admin")
+def admin_games():
+    """Admin game management page - requires admin role
+    ---
+    tags:
+      - Admin
+    summary: Game management interface
+    description: Renders the game management interface for managing and archiving games
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template(
+        "admin_games.html",
+        user_roles=user_roles,
+        user_claims=user_claims,
+    )
+
+
+@ui_bp.route("/admin/active-users")
+@login_required
+@role_required("admin")
+def admin_active_users():
+    """Admin active users page - requires admin role
+    ---
+    tags:
+      - Admin
+    summary: Active users overview
+    description: Renders the active users overview showing logged-in users
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template(
+        "admin_active_users.html",
+        user_roles=user_roles,
+        user_claims=user_claims,
+    )
+
+
+@ui_bp.route("/admin/statistics")
+@login_required
+@role_required("admin")
+def admin_statistics():
+    """Admin statistics page - requires admin role
+    ---
+    tags:
+      - Admin
+    summary: User statistics interface
+    description: Renders the statistics interface showing user performance metrics
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template(
+        "admin_statistics.html",
         user_roles=user_roles,
         user_claims=user_claims,
     )
