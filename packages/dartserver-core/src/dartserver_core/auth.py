@@ -798,7 +798,7 @@ def search_wso2_users(query: str, access_token: str | None = None) -> list[dict]
             auth = (WSO2_IS_INTROSPECT_USER, WSO2_IS_INTROSPECT_PASSWORD)
 
         # Build SCIM2 filter - search by username, email, or name
-        filter_param = f'(username co "{query}" or emails co "{query}" or name.familyName co "{query}" or name.givenName co "{query}")'
+        filter_param = f'(userName co "{query}" or emails co "{query}" or name.familyName co "{query}" or name.givenName co "{query}")'
 
         scim_users_url = f"{WSO2_IS_INTERNAL_URL}/scim2/Users"
 
