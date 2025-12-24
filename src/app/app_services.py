@@ -2,20 +2,16 @@
 Service endpoints (Dartboard, TTS, Mobile services)
 """
 
-import json
 import logging
-import os
-import secrets
 from functools import wraps
 from pathlib import Path
 
 from flask import (
     Blueprint,
+    Response,
     jsonify,
     render_template,
     request,
-    Response,
-    send_from_directory,
     session,
 )
 from flask import current_app as _flask_current_app
@@ -30,10 +26,10 @@ def _app():
     return current_app if current_app is not None else _flask_current_app
 
 
-from src.core.auth import login_required, permission_required, role_required
+from src.app.mobile_service import MobileService
+from src.core.auth import login_required, role_required
 from src.core.dartboard_service import DartboardMappingError, DartboardService
 from src.core.database_service import get_session
-from src.app.mobile_service import MobileService
 
 services_bp = Blueprint("services", __name__)
 logger = logging.getLogger(__name__)

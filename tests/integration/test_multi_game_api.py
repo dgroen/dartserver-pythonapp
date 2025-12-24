@@ -1,7 +1,7 @@
 """Integration tests for multi-game functionality"""
 
-from unittest.mock import Mock
 from typing import Any
+from unittest.mock import Mock
 
 import pytest
 

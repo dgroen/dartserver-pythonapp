@@ -45,9 +45,9 @@ class TestTestEnvironmentConfiguration:
         # - dartsdbtest postgres (from .env.test)
         # - any postgres with 'dartsdb' (test database)
         # - SQLite (from conftest.py override)
-        assert "dartsdbtest" in db_url or "dartsdb" in db_url or "sqlite:///" in db_url, (
-            f"DATABASE_URL should use a test database, got: {db_url}"
-        )
+        assert (
+            "dartsdbtest" in db_url or "dartsdb" in db_url or "sqlite:///" in db_url
+        ), f"DATABASE_URL should use a test database, got: {db_url}"
 
     def test_app_scheme_is_https(self):
         """Test app scheme is HTTPS"""
@@ -148,9 +148,9 @@ class TestSetupScript:
         script_path = (
             Path(__file__).resolve().parent.parent.parent / "helpers" / "setup-test-environment.sh"
         )
-        assert os.access(script_path, os.X_OK) or script_path.stat().st_mode & 0o111, (
-            "Setup script should be executable"
-        )
+        assert (
+            os.access(script_path, os.X_OK) or script_path.stat().st_mode & 0o111
+        ), "Setup script should be executable"
 
 
 class TestDocumentation:

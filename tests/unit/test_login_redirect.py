@@ -9,7 +9,7 @@ import pytest
 from flask import session
 
 
-@pytest.fixture()
+@pytest.fixture
 def app_with_login(flask_app):
     """Create Flask app with login routes"""
 
@@ -21,7 +21,7 @@ def app_with_login(flask_app):
         yield flask_app
 
 
-@pytest.fixture()
+@pytest.fixture
 def client_with_login(app_with_login):
     """Create test client"""
     return app_with_login.test_client()

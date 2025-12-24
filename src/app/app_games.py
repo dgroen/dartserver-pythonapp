@@ -4,7 +4,7 @@ Game management endpoints (state, new, start, end, list, activate, delete, resum
 
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request, session
 from flask import current_app as _flask_current_app
@@ -194,7 +194,7 @@ def new_game():
             else:
                 # If player not found in database, return an error response
                 _app().logger.warning(
-                    f"Player '{player_name}' not found in database. Only registered WSO2 users can play."
+                    f"Player '{player_name}' not found in database. Only registered WSO2 users can play.",
                 )
                 return (
                     jsonify(
@@ -203,7 +203,7 @@ def new_game():
                             "message": (
                                 f"Player '{player_name}' not found. Only registered WSO2 users allowed."
                             ),
-                        }
+                        },
                     ),
                     400,
                 )
@@ -245,7 +245,7 @@ def new_game():
                 {
                     "status": "error",
                     "message": "An error occurred while starting the game. Please try again.",
-                }
+                },
             ),
             500,
         )
@@ -799,7 +799,10 @@ def start_game():
 
         new_game_manager = multi_game_manager.create_game(game_id)
         new_game_manager.new_game(
-            game_type, player_ids=player_ids, double_out=double_out, reset_on_miss=reset_on_miss
+            game_type,
+            player_ids=player_ids,
+            double_out=double_out,
+            reset_on_miss=reset_on_miss,
         )
         multi_game_manager.set_active_game(game_id)
         _app().game_manager = new_game_manager
@@ -824,7 +827,7 @@ def start_game():
                 "message": "Game started successfully",
                 "game": game_state,
                 "game_id": game_id,
-            }
+            },
         )
     except Exception:
         _app().logger.exception("Error starting game")
@@ -915,7 +918,7 @@ def start_single_player_game():
                     {
                         "success": False,
                         "error": f"Training mode '{game_type}' requires gamemaster or admin role",
-                    }
+                    },
                 ),
                 403,
             )
@@ -947,7 +950,7 @@ def start_single_player_game():
                 "success": True,
                 "message": f"Single-player {game_type} game started",
                 "game": game_state,
-            }
+            },
         )
     except Exception as e:
         _app().logger.exception("Failed to start single-player game")
@@ -1053,12 +1056,15 @@ def delete_game(game_session_id):
                     created_time = created_time.replace(tzinfo=timezone.utc)
                 now = datetime.now(timezone.utc)
                 if (now - created_time).total_seconds() < 24 * 60 * 60:  # Less than 1 day
-                    return jsonify(
-                        {
-                            "status": "error",
-                            "message": "Cannot delete game created within the last 24 hours",
-                        }
-                    ), 403
+                    return (
+                        jsonify(
+                            {
+                                "status": "error",
+                                "message": "Cannot delete game created within the last 24 hours",
+                            },
+                        ),
+                        403,
+                    )
             except (ValueError, TypeError):
                 # If we can't parse the date, allow deletion
                 pass
@@ -1163,7 +1169,7 @@ def resume_game(game_session_id):
                 "message": f"Game resumed with {len(game_data.get('throws', []))} throws replayed",
                 "game_id": game_id,
                 "redirect_url": "/",
-            }
+            },
         )
     except Exception as e:
         logger.exception(f"Error resuming game {game_session_id}")

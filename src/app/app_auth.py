@@ -14,6 +14,8 @@ from flask import (
     request,
     session,
     url_for,
+)
+from flask import (
     current_app as _flask_current_app,
 )
 

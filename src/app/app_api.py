@@ -7,11 +7,12 @@ import os
 import uuid
 from datetime import datetime, timezone
 
-from flask import Blueprint, current_app as _flask_current_app, jsonify, request, session
+from flask import Blueprint, jsonify, request, session
+from flask import current_app as _flask_current_app
 from sqlalchemy import func
 
 from src.core.auth import get_wso2_user_info, login_required, permission_required, search_wso2_users
-from src.core.database_models import GameType, Player, TrainingScore, TrainingSession
+from src.core.database_models import GameType, TrainingScore, TrainingSession
 
 api_bp = Blueprint("api", __name__)
 logger = logging.getLogger(__name__)
@@ -846,7 +847,8 @@ def get_game_history():
 
     try:
         games = _app().game_manager.db_service.get_recent_games(
-            limit=limit, username=username_filter
+            limit=limit,
+            username=username_filter,
         )
         logger.info(f"get_game_history: Found {len(games)} games")
         return jsonify({"status": "success", "games": games})

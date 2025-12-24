@@ -579,7 +579,9 @@ def role_required(*required_roles):
             user_roles = getattr(request, "user_roles", [])
 
             # Debug: Log role check
-            logger.debug("Role check - User roles: %s, Required roles: %s", user_roles, required_roles)
+            logger.debug(
+                "Role check - User roles: %s, Required roles: %s", user_roles, required_roles
+            )
 
             # Admin has access to all role-required endpoints
             if "admin" in user_roles:
@@ -826,7 +828,11 @@ def search_wso2_users(query: str, access_token: str | None = None) -> list[dict]
                     }
 
                     # Extract email
-                    if "emails" in user and isinstance(user["emails"], list) and len(user["emails"]) > 0:
+                    if (
+                        "emails" in user
+                        and isinstance(user["emails"], list)
+                        and len(user["emails"]) > 0
+                    ):
                         user_info["email"] = user["emails"][0].get("value")
 
                     # Extract name
@@ -898,7 +904,11 @@ def get_wso2_user_info(username: str, access_token: str | None = None) -> dict |
                     "name": None,
                 }
 
-                if "emails" in user and isinstance(user["emails"], list) and len(user["emails"]) > 0:
+                if (
+                    "emails" in user
+                    and isinstance(user["emails"], list)
+                    and len(user["emails"]) > 0
+                ):
                     email_item = user["emails"][0]
                     # Handle both string format and object format
                     if isinstance(email_item, str):

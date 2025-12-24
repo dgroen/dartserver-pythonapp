@@ -11,7 +11,7 @@ import pytest
 from dartserver_services import DartboardMappingError
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(flask_app):
     """Create test client"""
     flask_app.config["TESTING"] = True
@@ -19,7 +19,7 @@ def client(flask_app):
         yield client
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_game_manager():
     """Mock game manager"""
     mock_app = MagicMock()
@@ -28,7 +28,7 @@ def mock_game_manager():
         yield mock_app.game_manager
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_db_session():
     """Create mock database session"""
     with patch("src.app.app.get_session") as mock_get_session:
@@ -466,7 +466,7 @@ class TestEdgeCases:
 class TestCreateDartboardTypeEndpoint:
     """Test /api/admin/dartboard/type endpoint"""
 
-    @pytest.fixture()
+    @pytest.fixture
     def admin_client(self):
         """Create test client with admin authentication"""
         app.config["TESTING"] = True
@@ -753,7 +753,7 @@ class TestCreateDartboardTypeEndpoint:
 class TestUpdateDartboardPinsEndpoint:
     """Test /api/admin/dartboard/type/<board_type>/pins endpoint"""
 
-    @pytest.fixture()
+    @pytest.fixture
     def admin_client(self):
         """Create test client with admin authentication"""
         app.config["TESTING"] = True
@@ -882,7 +882,7 @@ class TestUpdateDartboardPinsEndpoint:
 class TestCreateDartboardTypeWithPins:
     """Test creating dartboard types with pin configuration"""
 
-    @pytest.fixture()
+    @pytest.fixture
     def admin_client(self):
         """Create test client with admin authentication"""
         app.config["TESTING"] = True
@@ -942,7 +942,7 @@ class TestCreateDartboardTypeWithPins:
 class TestGetAvailablePinsEndpoint:
     """Test /api/admin/dartboard/available-pins endpoint"""
 
-    @pytest.fixture()
+    @pytest.fixture
     def admin_client(self):
         """Create test client with admin authentication"""
         app.config["TESTING"] = True

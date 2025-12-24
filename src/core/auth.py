@@ -26,6 +26,6 @@ def __setattr__(name, value):  # noqa: N807
 # mirror it into the underlying implementation if absent.
 if not hasattr(_core_auth, "AUTH_DISABLED"):
     AUTH_DISABLED = False
-    setattr(_core_auth, "AUTH_DISABLED", AUTH_DISABLED)
+    _core_auth.AUTH_DISABLED = AUTH_DISABLED
 else:
-    AUTH_DISABLED = getattr(_core_auth, "AUTH_DISABLED")
+    AUTH_DISABLED = _core_auth.AUTH_DISABLED

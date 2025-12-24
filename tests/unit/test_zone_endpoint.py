@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(flask_app):
     """Create test client"""
     flask_app.config["TESTING"] = True
@@ -17,23 +17,23 @@ def client(flask_app):
         yield client
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_game_manager(flask_app):
     """Mock game manager"""
     mock = MagicMock()
     mock.process_score = MagicMock()
     flask_app.game_manager = mock
-    yield mock
+    return mock
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_dartboard_service():
     """Mock dartboard service"""
     with patch("src.app.app_services.DartboardService") as mock:
         yield mock
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_db_session():
     """Create mock database session"""
     with patch("src.app.app_services.get_session") as mock_get_session:
