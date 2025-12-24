@@ -85,6 +85,7 @@ dart_core_auth.validate_token = core_auth.validate_token
 dart_core_auth.get_user_roles = core_auth.get_user_roles
 dart_core_auth.has_permission = core_auth.has_permission
 dart_core_auth.search_wso2_users = core_auth.search_wso2_users
+dart_core_auth.get_wso2_user_info = core_auth.get_wso2_user_info
 
 # Create a module-global app for tests that reference `flask_app` at import time.
 # Some older tests expect a global `flask_app` variable; create a lightweight
@@ -195,7 +196,7 @@ def socketio(flask_app):
 @pytest.fixture
 def game_manager(flask_app):
     """Expose GameManager for tests that reference game_manager directly."""
-    return builtins.game_manager
+    return flask_app.game_manager
 
 
 @pytest.fixture

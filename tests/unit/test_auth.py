@@ -273,7 +273,7 @@ class TestLoginRequired:
         with app.test_client() as client:
             response = client.get("/protected")
             assert response.status_code == 302
-            assert "/login" in response.location
+            assert "login" in response.location
 
     def test_login_required_with_invalid_token(self):
         """Test login_required redirects with invalid token."""
@@ -296,7 +296,7 @@ class TestLoginRequired:
             with patch("src.core.auth.validate_token", return_value=None):
                 response = client.get("/protected")
                 assert response.status_code == 302
-                assert "/login" in response.location
+                assert "login" in response.location
 
 
 class TestRoleRequired:
@@ -466,8 +466,8 @@ class TestPermissionRequired:
 class TestAuthDisabled:
     """Test authentication bypass functionality."""
 
-    @patch("src.core.auth.AUTH_DISABLED", True)
-    def test_login_required_bypassed(self):
+    @patch("dartserver_core.auth.is_auth_disabled", return_value=True)
+    def test_login_required_bypassed(self, mock_auth_disabled):
         """Test login_required decorator bypassed when AUTH_DISABLED is True."""
         app = Flask(__name__)
         app.config["SECRET_KEY"] = "test-secret"
@@ -484,8 +484,8 @@ class TestAuthDisabled:
             data = json.loads(response.data)
             assert data["message"] == "success"
 
-    @patch("src.core.auth.AUTH_DISABLED", True)
-    def test_role_required_bypassed(self):
+    @patch("dartserver_core.auth.is_auth_disabled", return_value=True)
+    def test_role_required_bypassed(self, mock_auth_disabled):
         """Test role_required decorator bypassed when AUTH_DISABLED is True."""
         app = Flask(__name__)
         app.config["SECRET_KEY"] = "test-secret"
@@ -502,8 +502,8 @@ class TestAuthDisabled:
             data = json.loads(response.data)
             assert data["message"] == "admin access"
 
-    @patch("src.core.auth.AUTH_DISABLED", True)
-    def test_permission_required_bypassed(self):
+    @patch("dartserver_core.auth.is_auth_disabled", return_value=True)
+    def test_permission_required_bypassed(self, mock_auth_disabled):
         """Test permission_required decorator bypassed when AUTH_DISABLED is True."""
         app = Flask(__name__)
         app.config["SECRET_KEY"] = "test-secret"
@@ -520,8 +520,8 @@ class TestAuthDisabled:
             data = json.loads(response.data)
             assert data["message"] == "game created"
 
-    @patch("src.core.auth.AUTH_DISABLED", True)
-    def test_multiple_decorators_bypassed(self):
+    @patch("dartserver_core.auth.is_auth_disabled", return_value=True)
+    def test_multiple_decorators_bypassed(self, mock_auth_disabled):
         """Test multiple auth decorators bypassed when AUTH_DISABLED is True."""
         app = Flask(__name__)
         app.config["SECRET_KEY"] = "test-secret"
@@ -558,7 +558,7 @@ class TestAuthDisabled:
             # No session token, should redirect to login
             response = client.get("/protected")
             assert response.status_code == 302  # Redirect
-            assert "/login" in response.location
+            assert "login" in response.location
 
 
 class TestDynamicRedirectUri:

@@ -483,3 +483,40 @@ class DartboardService:
                 ) from e
 
         return created_count, updated_count
+
+    @staticmethod
+    def update_dartboard_pins(
+        session: Session,
+        dartboard_type_name: str,
+        master_pins: list[int] | None = None,
+        slave_pins: list[int] | None = None,
+    ) -> DartboardType:
+        """
+        Update GPIO pin configuration for a dartboard type
+
+        Args:
+            session: Database session
+            dartboard_type_name: Dartboard type name
+            master_pins: List of master (row) GPIO pins
+            slave_pins: List of slave (column) GPIO pins
+
+        Returns:
+            DartboardType instance
+
+        Raises:
+            DartboardMappingError: If dartboard type not found or invalid pins
+        """
+        dartboard_type = session.query(DartboardType).filter_by(name=dartboard_type_name).first()
+        if not dartboard_type:
+            raise DartboardMappingError(f"Dartboard type '{dartboard_type_name}' not found")
+
+        # Validate pins if provided
+        if master_pins is not None:
+            if not all(pin in DartboardService.AVAILABLE_GPIO_PINS for pin in master_pins):
+                raise DartboardMappingError(f"Invalid master pins: {master_pins}")
+        if slave_pins is not None:
+            if not all(pin in DartboardService.AVAILABLE_GPIO_PINS for pin in slave_pins):
+                raise DartboardMappingError(f"Invalid slave pins: {slave_pins}")
+
+        # Note: Pins are not stored in database, just validated
+        return dartboard_type

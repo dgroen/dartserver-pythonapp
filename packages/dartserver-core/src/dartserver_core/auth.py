@@ -522,9 +522,9 @@ def login_required(f):
 
         def _login_redirect(current_url: str):
             try:
-                return redirect(url_for("login", next=current_url))
+                return redirect(url_for("auth.login", next=current_url))
             except BuildError:
-                logger.debug("login endpoint missing; falling back to /login")
+                logger.debug("auth.login endpoint missing; falling back to /login")
                 return redirect(f"/login?next={current_url}")
 
         if "access_token" not in session:
@@ -582,6 +582,10 @@ def role_required(*required_roles):
             logger.debug(
                 "Role check - User roles: %s, Required roles: %s", user_roles, required_roles
             )
+
+            # Admin has access to all role-required endpoints
+            if "admin" in user_roles:
+                return f(*args, **kwargs)
 
             # Check if user has any of the required roles
             if not any(role in user_roles for role in required_roles):
