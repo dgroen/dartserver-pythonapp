@@ -96,6 +96,9 @@
                 <a href="/history" class="nav-link">📊 Game History</a>
                 <a href="/dashboard" class="nav-link">📊 View Dashboard</a>
                 <a href="/control" class="nav-link">⚙️ Control Panel</a>
+                {% if 'admin' in user_roles %}
+                <a href="/admin" class="nav-link">🔧 Admin</a>
+                {% endif %}
             </div>
         </div>
     </div>

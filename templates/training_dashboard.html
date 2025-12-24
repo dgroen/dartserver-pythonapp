@@ -29,6 +29,9 @@
                 <a href="/" class="header-link">🎮 Main Game</a>
                 <a href="/training" class="header-link">🎯 Training Mode</a>
                 <a href="/history" class="header-link">📜 Game History</a>
+                {% if 'admin' in user_roles %}
+                <a href="/admin" class="header-link">🔧 Admin</a>
+                {% endif %}
             </div>
         </header>
 
