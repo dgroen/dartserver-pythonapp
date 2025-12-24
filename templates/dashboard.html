@@ -29,6 +29,9 @@
             <div class="nav-links">
                 <a href="/" class="nav-link">Game Board</a>
                 <a href="/control" class="nav-link">Control Panel</a>
+                {% if 'admin' in user_roles %}
+                <a href="/admin" class="nav-link">🔧 Admin</a>
+                {% endif %}
             </div>
         </header>
 

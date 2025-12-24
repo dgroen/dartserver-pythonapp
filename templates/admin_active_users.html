@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Active Users</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+        }
+
+        .back-link {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            color: #333;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .back-link:hover {
+            background: #e0e0e0;
+        }
+
+        .section {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section h2::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 2px;
+        }
+
+        .info-text {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 12px;
+            border-radius: 4px;
+            color: #1565c0;
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-card .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .stat-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .users-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .users-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+        }
+
+        .users-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .users-table tr:hover {
+            background: #f5f5f5;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .status-online {
+            color: #4CAF50;
+            font-weight: 600;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4CAF50;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .btn-primary {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .connection-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #e8f5e9;
+            border: 1px solid #4CAF50;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #2e7d32;
+        }
+
+        .connection-status.disconnected {
+            background: #ffebee;
+            border-color: #f44336;
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🟢 Active Users</h1>
+            <a href="/admin" class="back-link">← Back to Admin</a>
+        </div>
+
+        <div class="section">
+            <h2>Real-Time Session Monitor</h2>
+            <div class="info-text">
+                📡 Live monitoring of currently logged-in users. Updates automatically via Socket.IO. 
+                <span id="connectionStatus" class="connection-status">
+                    <span class="status-indicator"></span>
+                    Connected
+                </span>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalSessions">0</div>
+                    <div class="stat-label">Active Sessions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="uniqueUsers">0</div>
+                    <div class="stat-label">Unique Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="lastUpdate">--:--</div>
+                    <div class="stat-label">Last Update</div>
+                </div>
+            </div>
+
+            <button class="btn-primary" onclick="refreshSessions()" style="margin-bottom: 20px;">
+                🔄 Refresh Now
+            </button>
+
+            <div id="activeUsersContainer">
+                <div class="empty-state">Loading active users...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        let activeSessions = [];
+
+        // Initialize Socket.IO connection
+        function initializeSocket() {
+            socket = io();
+
+            socket.on('connect', () => {
+                console.log('Socket.IO connected');
+                updateConnectionStatus(true);
+                // Request initial data
+                refreshSessions();
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Socket.IO disconnected');
+                updateConnectionStatus(false);
+            });
+
+            // Listen for active sessions updates
+            socket.on('active_sessions_update', (data) => {
+                console.log('Received active sessions update:', data);
+                if (data && data.sessions) {
+                    activeSessions = data.sessions;
+                    renderActiveSessions(activeSessions);
+                    updateStats();
+                }
+            });
+
+            socket.on('connect_error', (error) => {
+                console.error('Socket.IO connection error:', error);
+                updateConnectionStatus(false);
+            });
+        }
+
+        async function refreshSessions() {
+            try {
+                const response = await fetch('/api/admin/active-sessions');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    activeSessions = data.sessions || [];
+                    renderActiveSessions(activeSessions);
+                    updateStats();
+                } else {
+                    console.error('Failed to load sessions:', data.message);
+                    document.getElementById('activeUsersContainer').innerHTML = 
+                        '<div class="empty-state">Failed to load active sessions</div>';
+                }
+            } catch (error) {
+                console.error('Error loading sessions:', error);
+                document.getElementById('activeUsersContainer').innerHTML = 
+                    '<div class="empty-state">Error loading active sessions</div>';
+            }
+        }
+
+        function renderActiveSessions(sessions) {
+            const container = document.getElementById('activeUsersContainer');
+
+            if (!sessions || sessions.length === 0) {
+                container.innerHTML = '<div class="empty-state">No active user sessions</div>';
+                return;
+            }
+
+            let html = `
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Username</th>
+                            <th>Login Time</th>
+                            <th>Last Activity</th>
+                            <th>Duration</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            sessions.forEach(session => {
+                const loginTime = session.login_time ? new Date(session.login_time) : null;
+                const lastActivity = session.last_activity ? new Date(session.last_activity) : null;
+                const duration = loginTime ? formatDuration(Date.now() - loginTime.getTime()) : '-';
+
+                html += `
+                    <tr>
+                        <td><span class="status-online"><span class="status-indicator"></span>Online</span></td>
+                        <td><strong>${session.username || 'Unknown'}</strong></td>
+                        <td>${loginTime ? loginTime.toLocaleString() : '-'}</td>
+                        <td>${lastActivity ? lastActivity.toLocaleString() : '-'}</td>
+                        <td>${duration}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function updateStats() {
+            document.getElementById('totalSessions').textContent = activeSessions.length;
+            
+            // Count unique users
+            const uniqueUsers = new Set(activeSessions.map(s => s.username)).size;
+            document.getElementById('uniqueUsers').textContent = uniqueUsers;
+            
+            // Update last update time
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = 
+                now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            if (connected) {
+                statusElement.className = 'connection-status';
+                statusElement.innerHTML = '<span class="status-indicator"></span>Connected';
+            } else {
+                statusElement.className = 'connection-status disconnected';
+                statusElement.innerHTML = '<span class="status-indicator" style="background: #f44336;"></span>Disconnected';
+            }
+        }
+
+        function formatDuration(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            
+            if (hours > 0) {
+                return `${hours}h ${minutes % 60}m`;
+            } else if (minutes > 0) {
+                return `${minutes}m`;
+            } else {
+                return `${seconds}s`;
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeSocket();
+            
+            // Auto-refresh every 30 seconds
+            setInterval(refreshSessions, 30000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - User Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+        }
+
+        .back-link {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            color: #333;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .back-link:hover {
+            background: #e0e0e0;
+        }
+
+        .section {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section h2::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 2px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .search-box button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .search-box button:hover {
+            background: #5568d3;
+        }
+
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .users-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .users-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+        }
+
+        .users-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .users-table tr:hover {
+            background: #f5f5f5;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-edit {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #1976D2;
+        }
+
+        .btn-roles {
+            background: #FF9800;
+            color: white;
+        }
+
+        .btn-roles:hover {
+            background: #F57C00;
+        }
+
+        .btn-password {
+            background: #9C27B0;
+            color: white;
+        }
+
+        .btn-password:hover {
+            background: #7B1FA2;
+        }
+
+        .btn-deactivate {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-deactivate:hover {
+            background: #d32f2f;
+        }
+
+        .btn-activate {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-activate:hover {
+            background: #388E3C;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 15px;
+        }
+
+        .modal-header h3 {
+            color: #333;
+            font-size: 20px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #555;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-primary {
+            flex: 1;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            flex: 1;
+            padding: 12px;
+            background: #f0f0f0;
+            color: #333;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+        }
+
+        .alert.success {
+            background: #e8f5e9;
+            border-color: #4CAF50;
+            color: #2e7d32;
+        }
+
+        .alert.error {
+            background: #ffebee;
+            border-color: #f44336;
+            color: #c62828;
+        }
+
+        .alert.info {
+            background: #e3f2fd;
+            border-color: #2196F3;
+            color: #1565c0;
+        }
+
+        .info-text {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 12px;
+            border-radius: 4px;
+            color: #1565c0;
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+
+        .role-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .role-checkbox input[type="checkbox"] {
+            width: auto;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .create-user-btn {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+
+        .create-user-btn:hover {
+            background: #388E3C;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👥 User Management</h1>
+            <a href="/admin" class="back-link">← Back to Admin</a>
+        </div>
+
+        <div id="alertsContainer"></div>
+
+        <div class="section">
+            <h2>User Management</h2>
+            <div class="info-text">
+                🔐 Manage WSO2 users: create accounts, update details, manage roles, and set passwords
+            </div>
+
+            <button class="create-user-btn" onclick="openCreateUserModal()">
+                ➕ Create New User
+            </button>
+
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search by username, email, or name..." 
+                       onkeypress="if(event.key==='Enter') searchUsers()">
+                <button onclick="searchUsers()">🔍 Search</button>
+                <button onclick="loadAllUsers()" style="background: #9E9E9E;">📋 Load All</button>
+            </div>
+
+            <div id="usersTableContainer">
+                <div class="empty-state">
+                    Search for users or click "Load All" to see all users
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create/Edit User Modal -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Create New User</h3>
+                <button class="modal-close" onclick="closeUserModal()">×</button>
+            </div>
+            <form id="userForm" onsubmit="saveUser(event)">
+                <div class="form-group">
+                    <label for="username">Username *</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group" id="passwordGroup">
+                    <label for="password">Password *</label>
+                    <input type="password" id="password" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email">
+                </div>
+                <div class="form-group">
+                    <label for="givenName">First Name</label>
+                    <input type="text" id="givenName">
+                </div>
+                <div class="form-group">
+                    <label for="familyName">Last Name</label>
+                    <input type="text" id="familyName">
+                </div>
+                <div class="button-group">
+                    <button type="submit" class="btn-primary" id="saveUserBtn">Create User</button>
+                    <button type="button" class="btn-secondary" onclick="closeUserModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Set Password Modal -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Set Password</h3>
+                <button class="modal-close" onclick="closePasswordModal()">×</button>
+            </div>
+            <form id="passwordForm" onsubmit="setPassword(event)">
+                <div class="info-text">
+                    Setting password for: <strong id="passwordUsername"></strong>
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">New Password *</label>
+                    <input type="password" id="newPassword" required minlength="8" 
+                           pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$"
+                           title="Password must be at least 8 characters with at least one uppercase letter, one lowercase letter, and one number">
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password *</label>
+                    <input type="password" id="confirmPassword" required minlength="8">
+                </div>
+                <div class="button-group">
+                    <button type="submit" class="btn-primary">Set Password</button>
+                    <button type="button" class="btn-secondary" onclick="closePasswordModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Manage Roles Modal -->
+    <div id="rolesModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Manage Roles</h3>
+                <button class="modal-close" onclick="closeRolesModal()">×</button>
+            </div>
+            <div class="info-text">
+                Managing roles for: <strong id="rolesUsername"></strong>
+            </div>
+            <div id="rolesContainer">
+                <div class="loading"></div>
+            </div>
+            <div class="button-group">
+                <button class="btn-primary" onclick="saveRoles()">Save Changes</button>
+                <button class="btn-secondary" onclick="closeRolesModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUsers = [];
+        let currentUserId = null;
+        let currentUsername = null;
+        let isEditMode = false;
+        const availableRoles = ['admin', 'gamemaster', 'player'];
+
+        async function searchUsers() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) {
+                showAlert('Please enter a search term', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/users/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    currentUsers = data.users;
+                    renderUsersTable(data.users);
+                } else {
+                    showAlert(data.message || 'Search failed', 'error');
+                }
+            } catch (error) {
+                console.error('Error searching users:', error);
+                showAlert('Failed to search users', 'error');
+            }
+        }
+
+        async function loadAllUsers() {
+            try {
+                const response = await fetch('/api/admin/users');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    currentUsers = data.users;
+                    renderUsersTable(data.users);
+                } else {
+                    showAlert(data.message || 'Failed to load users', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+                showAlert('Failed to load users', 'error');
+            }
+        }
+
+        function renderUsersTable(users) {
+            const container = document.getElementById('usersTableContainer');
+            
+            if (users.length === 0) {
+                container.innerHTML = '<div class="empty-state">No users found</div>';
+                return;
+            }
+
+            let html = `
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            users.forEach(user => {
+                const isActive = user.active !== false;
+                html += `
+                    <tr>
+                        <td><strong>${user.username || '-'}</strong></td>
+                        <td>${user.email || '-'}</td>
+                        <td>${user.name || '-'}</td>
+                        <td>${isActive ? '🟢 Active' : '🔴 Inactive'}</td>
+                        <td>
+                            <div class="user-actions">
+                                <button class="btn-small btn-roles" onclick='manageRoles("${user.id}", "${user.username}")'>
+                                    Roles
+                                </button>
+                                <button class="btn-small btn-password" onclick='openPasswordModal("${user.username}")'>
+                                    Password
+                                </button>
+                                ${isActive ? 
+                                    `<button class="btn-small btn-deactivate" onclick='toggleUserStatus("${user.id}", "${user.username}", false)'>Deactivate</button>` :
+                                    `<button class="btn-small btn-activate" onclick='toggleUserStatus("${user.id}", "${user.username}", true)'>Activate</button>`
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function openCreateUserModal() {
+            isEditMode = false;
+            currentUserId = null;
+            document.getElementById('modalTitle').textContent = 'Create New User';
+            document.getElementById('userForm').reset();
+            document.getElementById('passwordGroup').style.display = 'block';
+            document.getElementById('password').required = true;
+            document.getElementById('saveUserBtn').textContent = 'Create User';
+            document.getElementById('userModal').classList.add('active');
+        }
+
+        function closeUserModal() {
+            document.getElementById('userModal').classList.remove('active');
+        }
+
+        async function saveUser(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const email = document.getElementById('email').value;
+            const givenName = document.getElementById('givenName').value;
+            const familyName = document.getElementById('familyName').value;
+
+            try {
+                const response = await fetch('/api/admin/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username,
+                        password,
+                        email,
+                        givenName,
+                        familyName
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    showAlert('✓ User created successfully', 'success');
+                    closeUserModal();
+                    loadAllUsers();
+                } else {
+                    showAlert(data.message || 'Failed to create user', 'error');
+                }
+            } catch (error) {
+                console.error('Error saving user:', error);
+                showAlert('Failed to save user', 'error');
+            }
+        }
+
+        function openPasswordModal(username) {
+            currentUsername = username;
+            document.getElementById('passwordUsername').textContent = username;
+            document.getElementById('passwordForm').reset();
+            document.getElementById('passwordModal').classList.add('active');
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordModal').classList.remove('active');
+        }
+
+        async function setPassword(event) {
+            event.preventDefault();
+
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (newPassword !== confirmPassword) {
+                showAlert('Passwords do not match', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/users/password', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: currentUsername,
+                        password: newPassword
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    showAlert('✓ Password updated successfully', 'success');
+                    closePasswordModal();
+                } else {
+                    showAlert(data.message || 'Failed to update password', 'error');
+                }
+            } catch (error) {
+                console.error('Error setting password:', error);
+                showAlert('Failed to set password', 'error');
+            }
+        }
+
+        async function manageRoles(userId, username) {
+            currentUserId = userId;
+            currentUsername = username;
+            document.getElementById('rolesUsername').textContent = username;
+            document.getElementById('rolesModal').classList.add('active');
+
+            try {
+                const response = await fetch(`/api/admin/users/${userId}/roles`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    renderRolesCheckboxes(data.roles || []);
+                } else {
+                    showAlert(data.message || 'Failed to load roles', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading roles:', error);
+                showAlert('Failed to load roles', 'error');
+            }
+        }
+
+        function renderRolesCheckboxes(userRoles) {
+            const container = document.getElementById('rolesContainer');
+            let html = '';
+
+            availableRoles.forEach(role => {
+                const checked = userRoles.includes(role);
+                html += `
+                    <div class="role-checkbox">
+                        <input type="checkbox" id="role-${role}" value="${role}" ${checked ? 'checked' : ''}>
+                        <label for="role-${role}">${role.charAt(0).toUpperCase() + role.slice(1)}</label>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function closeRolesModal() {
+            document.getElementById('rolesModal').classList.remove('active');
+        }
+
+        async function saveRoles() {
+            const selectedRoles = [];
+            availableRoles.forEach(role => {
+                const checkbox = document.getElementById(`role-${role}`);
+                if (checkbox && checkbox.checked) {
+                    selectedRoles.push(role);
+                }
+            });
+
+            try {
+                const response = await fetch(`/api/admin/users/${currentUserId}/roles`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ roles: selectedRoles })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    showAlert('✓ Roles updated successfully', 'success');
+                    closeRolesModal();
+                } else {
+                    showAlert(data.message || 'Failed to update roles', 'error');
+                }
+            } catch (error) {
+                console.error('Error saving roles:', error);
+                showAlert('Failed to save roles', 'error');
+            }
+        }
+
+        async function toggleUserStatus(userId, username, activate) {
+            const action = activate ? 'activate' : 'deactivate';
+            if (!confirm(`Are you sure you want to ${action} user "${username}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/users/${userId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ active: activate })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    showAlert(`✓ User ${action}d successfully`, 'success');
+                    loadAllUsers();
+                } else {
+                    showAlert(data.message || `Failed to ${action} user`, 'error');
+                }
+            } catch (error) {
+                console.error(`Error ${action}ing user:`, error);
+                showAlert(`Failed to ${action} user`, 'error');
+            }
+        }
+
+        function showAlert(message, type = 'success') {
+            const container = document.getElementById('alertsContainer');
+            const alertId = 'alert-' + Date.now();
+            const alert = document.createElement('div');
+            alert.id = alertId;
+            alert.className = `alert ${type}`;
+            alert.textContent = message;
+            container.appendChild(alert);
+            
+            setTimeout(() => {
+                const elem = document.getElementById(alertId);
+                if (elem) elem.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

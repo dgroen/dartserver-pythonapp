@@ -135,6 +135,9 @@
         <div class="control-link" style="margin-top: 20px; text-align: center;">
             <a href="/" style="margin: 0 10px;">Game Board</a>
             <a href="/dashboard" style="margin: 0 10px;">View Dashboard</a>
+            {% if 'admin' in user_roles %}
+            <a href="/admin" style="margin: 0 10px;">🔧 Admin</a>
+            {% endif %}
         </div>
     </div>
 

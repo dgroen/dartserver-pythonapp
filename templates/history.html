@@ -225,6 +225,9 @@
             <h1>📊 Game History</h1>
             <div class="game-info">
                 <a href="/" class="back-link">← Back to Game</a>
+                {% if 'admin' in user_roles %}
+                <a href="/admin" class="back-link" style="margin-left: 10px;">🔧 Admin</a>
+                {% endif %}
             </div>
         </header>
 
