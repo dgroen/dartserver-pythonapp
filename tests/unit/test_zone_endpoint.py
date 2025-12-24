@@ -10,32 +10,33 @@ import pytest
 
 
 @pytest.fixture()
-def client():
+def client(flask_app):
     """Create test client"""
-    app.config["TESTING"] = True
-    with app.test_client() as client:
+    flask_app.config["TESTING"] = True
+    with flask_app.test_client() as client:
         yield client
 
 
 @pytest.fixture()
-def mock_game_manager():
+def mock_game_manager(flask_app):
     """Mock game manager"""
-    with patch("src.app.app.game_manager") as mock:
-        mock.process_score = MagicMock()
-        yield mock
+    mock = MagicMock()
+    mock.process_score = MagicMock()
+    flask_app.game_manager = mock
+    yield mock
 
 
 @pytest.fixture()
 def mock_dartboard_service():
     """Mock dartboard service"""
-    with patch("src.app.app.DartboardService") as mock:
+    with patch("src.app.app_services.DartboardService") as mock:
         yield mock
 
 
 @pytest.fixture()
 def mock_db_session():
     """Create mock database session"""
-    with patch("src.app.app.get_session") as mock_get_session:
+    with patch("src.app.app_services.get_session") as mock_get_session:
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
         yield mock_session

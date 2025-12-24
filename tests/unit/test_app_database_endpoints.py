@@ -1,5 +1,6 @@
 """Unit tests for app.py database endpoints."""
 
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -16,17 +17,23 @@ class TestDatabaseEndpoints:
             yield client
 
     @pytest.fixture
-    def mock_game_manager(self):
+    def mock_game_manager(self, flask_app):
         """Mock game manager with database service."""
-        with patch("src.app.app.game_manager") as mock_gm:
+        with patch.object(flask_app, "game_manager") as mock_gm:
             mock_db_service = MagicMock()
             mock_gm.db_service = mock_db_service
+
+            # Mock the get_or_create_player method to return a proper player object
+            mock_player = MagicMock()
+            mock_player.id = 18  # Use a fixed integer ID
+            mock_db_service.get_or_create_player.return_value = mock_player
+
             yield mock_gm, mock_db_service
 
     @pytest.fixture
     def _mock_auth(self):
         """Mock authentication to bypass login_required."""
-        with patch("src.core.auth.AUTH_DISABLED", True):
+        with patch.dict(os.environ, {"AUTH_DISABLED": "true"}):
             yield
 
     @pytest.mark.usefixtures("_mock_auth")
@@ -96,6 +103,7 @@ class TestDatabaseEndpoints:
         data = response.get_json()
         assert data["status"] == "error"
 
+    @pytest.mark.usefixtures("_mock_auth")
     def test_get_game_replay_success(self, client, mock_game_manager):
         """Test getting game replay data successfully."""
         _mock_gm, mock_db = mock_game_manager
@@ -109,9 +117,10 @@ class TestDatabaseEndpoints:
         response = client.get("/api/game/replay/test-id")
         assert response.status_code == 200
         data = response.get_json()
-        assert data["status"] == "success"
-        assert "game_data" in data
+        assert data["success"] is True
+        assert "game" in data
 
+    @pytest.mark.usefixtures("_mock_auth")
     def test_get_game_replay_not_found(self, client, mock_game_manager):
         """Test getting replay data for nonexistent game."""
         _mock_gm, mock_db = mock_game_manager
@@ -120,8 +129,9 @@ class TestDatabaseEndpoints:
         response = client.get("/api/game/replay/nonexistent")
         assert response.status_code == 404
         data = response.get_json()
-        assert data["status"] == "error"
+        assert data["success"] is False
 
+    @pytest.mark.usefixtures("_mock_auth")
     def test_get_game_replay_error(self, client, mock_game_manager):
         """Test game replay endpoint when error occurs."""
         _mock_gm, mock_db = mock_game_manager
@@ -130,7 +140,7 @@ class TestDatabaseEndpoints:
         response = client.get("/api/game/replay/test-id")
         assert response.status_code == 500
         data = response.get_json()
-        assert data["status"] == "error"
+        assert data["success"] is False
 
 
 class TestTTSEndpoints:
@@ -144,9 +154,9 @@ class TestTTSEndpoints:
             yield client
 
     @pytest.fixture
-    def mock_game_manager(self):
+    def mock_game_manager(self, flask_app):
         """Mock game manager with TTS service."""
-        with patch("src.app.app.game_manager") as mock_gm:
+        with patch.object(flask_app, "game_manager") as mock_gm:
             mock_tts = MagicMock()
             mock_gm.tts = mock_tts
             yield mock_gm, mock_tts

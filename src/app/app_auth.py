@@ -6,7 +6,16 @@ import os
 import secrets
 
 import requests
-from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
+from flask import (
+    Blueprint,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+    current_app as _flask_current_app,
+)
 
 from src.core.auth import (
     exchange_code_for_token,
@@ -20,6 +29,13 @@ from src.core.auth import (
 )
 
 auth_bp = Blueprint("auth", __name__)
+
+# Module-level placeholder so tests can patch `src.app.app_auth.current_app`.
+current_app = None
+
+
+def _app():
+    return current_app if current_app is not None else _flask_current_app
 
 
 def _verify_callback_state():
@@ -36,11 +52,9 @@ def _verify_callback_state():
     """
     state = request.args.get("state")
     stored_state = session.get("oauth_state")
-    from flask import current_app
-
-    current_app.logger.info(f"Callback state check: {state}")
+    _app().logger.info(f"Callback state check: {state}")
     if state != stored_state:
-        current_app.logger.error(f"State mismatch! {state} vs {stored_state}")
+        _app().logger.error(f"State mismatch! {state} vs {stored_state}")
         return False
     return True
 
@@ -99,9 +113,7 @@ def _ensure_player_exists(username, email, name):
     if not username:
         return
     try:
-        from flask import current_app
-
-        player = current_app.game_manager.db_service.get_or_create_player(
+        player = _app().game_manager.db_service.get_or_create_player(
             username=username,
             email=email,
             name=name,
@@ -109,9 +121,7 @@ def _ensure_player_exists(username, email, name):
         if player:
             session["player_id"] = player.id
     except Exception as e:
-        from flask import current_app
-
-        current_app.logger.warning(f"Player creation failed: {e}")
+        _app().logger.warning(f"Player creation failed: {e}")
 
 
 @auth_bp.route("/login")
@@ -128,8 +138,7 @@ def login():
       302:
         description: Redirect to OAuth provider
     """
-    from flask import current_app
-
+    # use _app() for test-friendly current_app
     # Generate state for CSRF protection
     state = secrets.token_urlsafe(32)
     session["oauth_state"] = state
@@ -139,17 +148,17 @@ def login():
     next_url = request.args.get("next")
     if next_url:
         session["login_next_url"] = next_url
-        current_app.logger.info(f"Storing redirect URL in session: {next_url}")
+        _app().logger.info(f"Storing redirect URL in session: {next_url}")
     else:
-        current_app.logger.warning("No 'next' parameter found in login request")
+        _app().logger.warning("No 'next' parameter found in login request")
 
     # Ensure session changes are persisted
     session.modified = True
 
     # Debug logging
-    current_app.logger.info(f"Login - Generated state: {state}")
-    current_app.logger.info(f"Login - Session ID: {session.get('_id', 'No session ID')}")
-    current_app.logger.info(
+    _app().logger.info(f"Login - Generated state: {state}")
+    _app().logger.info(f"Login - Session ID: {session.get('_id', 'No session ID')}")
+    _app().logger.info(
         f"Login - Session data: oauth_state={session.get('oauth_state', 'MISSING')}, "
         f"login_next_url={session.get('login_next_url', 'MISSING')}",
     )
@@ -175,10 +184,7 @@ def callback():
       400:
         description: Invalid state or token exchange failed
     """
-    from flask import current_app
-
-    current_app.logger.info(f"Callback - Session ID: {session.get('_id', 'No session ID')}")
-
+    _app().logger.info(f"Callback - Session ID: {session.get('_id', 'No session ID')}")
     if not _verify_callback_state():
         return redirect(url_for("auth.login", error="Invalid state parameter"))
 
@@ -211,7 +217,7 @@ def callback():
     session.pop("oauth_state", None)
     next_url = session.pop("login_next_url", None) or "/"
     session.modified = True
-    current_app.logger.info(f"Callback redirecting to: {next_url}")
+    _app().logger.info(f"Callback redirecting to: {next_url}")
     return redirect(next_url)
 
 
@@ -276,8 +282,7 @@ def debug_auth():
       200:
         description: Debug authentication data
     """
-    from flask import current_app
-
+    # using _app() instead of local current_app import
     access_token = session.get("access_token")
     user_info = session.get("user_info", {})
 
@@ -293,7 +298,7 @@ def debug_auth():
         try:
             scim2_groups = get_user_groups_from_scim2(access_token)
         except Exception as e:
-            current_app.logger.warning(f"Failed to fetch SCIM2 groups in debug: {e}")
+            _app().logger.warning(f"Failed to fetch SCIM2 groups in debug: {e}")
 
     return jsonify(
         {

@@ -10,7 +10,7 @@ from flask import session
 
 
 @pytest.fixture()
-def app_with_login():
+def app_with_login(flask_app):
     """Create Flask app with login routes"""
 
     flask_app.config["TESTING"] = True
@@ -75,8 +75,8 @@ class TestLoginRedirectFlow:
             # State should be a URL-safe token
             assert len(state) > 20  # type: ignore
 
-    @patch("src.app.app.get_user_info")
-    @patch("src.app.app.exchange_code_for_token")
+    @patch("src.app.app_auth.get_user_info")
+    @patch("src.app.app_auth.exchange_code_for_token")
     def test_callback_redirect_to_next_url(
         self,
         mock_exchange,
@@ -113,8 +113,8 @@ class TestLoginRedirectFlow:
             assert response.status_code == 302
             assert response.location == "https://localhost:5000/history"
 
-    @patch("src.app.app.get_user_info")
-    @patch("src.app.app.exchange_code_for_token")
+    @patch("src.app.app_auth.get_user_info")
+    @patch("src.app.app_auth.exchange_code_for_token")
     def test_callback_redirects_to_home_without_next_url(
         self,
         mock_exchange,
@@ -149,8 +149,8 @@ class TestLoginRedirectFlow:
             assert response.status_code == 302
             assert response.location == "/"
 
-    @patch("src.app.app.get_user_info")
-    @patch("src.app.app.exchange_code_for_token")
+    @patch("src.app.app_auth.get_user_info")
+    @patch("src.app.app_auth.exchange_code_for_token")
     def test_callback_clears_login_next_url_from_session(
         self,
         mock_exchange,

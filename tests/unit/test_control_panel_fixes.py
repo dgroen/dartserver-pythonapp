@@ -10,6 +10,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.app.app import app as flask_app
+
 
 @pytest.fixture()
 def mock_auth():
@@ -51,7 +53,7 @@ def auth_headers():
 @pytest.fixture()
 def mock_db_service():
     """Mock database service."""
-    with patch("src.app.game_manager.DatabaseService") as mock_db:
+    with patch("dartserver_app.game_manager.DatabaseService") as mock_db:
         mock_instance = MagicMock()
         mock_instance.get_or_create_player = MagicMock()
         mock_db.return_value = mock_instance
@@ -61,9 +63,18 @@ def mock_db_service():
 class TestPlayerAdditionFix:
     """Test that player addition does not duplicate players."""
 
-    def test_player_addition_endpoint_succeeds(self, client, auth_headers):
+    def test_player_addition_endpoint_succeeds(self, client, auth_headers, mock_db_service):
         """Test that player addition endpoint returns success."""
-        with patch("src.core.auth.get_wso2_user_info") as mock_wso2:
+        # Mock the player returned by db_service
+        mock_player = MagicMock()
+        mock_player.id = 123
+        mock_db_service.get_or_create_player.return_value = mock_player
+
+        # Mock the game_manager.add_player_with_id
+        with (
+            patch.object(client.application.game_manager, "add_player_with_id"),
+            patch("src.app.app_api.get_wso2_user_info") as mock_wso2,
+        ):
             mock_wso2.return_value = {
                 "username": "testplayer",
                 "name": "TestPlayer",
@@ -84,9 +95,18 @@ class TestPlayerAdditionFix:
             assert "message" in data
             assert "added to game" in data["message"]
 
-    def test_player_addition_with_username(self, client, auth_headers):
+    def test_player_addition_with_username(self, client, auth_headers, mock_db_service):
         """Test adding a WSO2 user as a player via API."""
-        with patch("src.core.auth.get_wso2_user_info") as mock_wso2:
+        # Mock the player returned by db_service
+        mock_player = MagicMock()
+        mock_player.id = 456
+        mock_db_service.get_or_create_player.return_value = mock_player
+
+        # Mock the game_manager.add_player_with_id
+        with (
+            patch.object(client.application.game_manager, "add_player_with_id"),
+            patch("src.app.app_api.get_wso2_user_info") as mock_wso2,
+        ):
             mock_wso2.return_value = {
                 "username": "john_doe",
                 "name": "John Doe",
@@ -127,28 +147,30 @@ class TestHistoryRedirectFix:
             sess["access_token"] = "test_token"
             sess["id_token"] = "test_id_token"
 
-        with patch("src.app.app.exchange_code_for_token") as mock_exchange:
+        with (
+            patch("src.app.app_auth.exchange_code_for_token") as mock_exchange,
+            patch("src.core.auth.validate_token") as mock_validate,
+            patch("src.core.auth.get_user_roles") as mock_roles,
+        ):
             mock_exchange.return_value = {
                 "access_token": "test_token",
                 "id_token": "test_id_token",
                 "expires_in": 3600,
             }
 
-            with patch("src.core.auth.validate_token") as mock_validate:
-                mock_validate.return_value = {"sub": "test_user", "preferred_username": "testuser"}
+            mock_validate.return_value = {"sub": "test_user", "preferred_username": "testuser"}
 
-                with patch("src.core.auth.get_user_roles") as mock_roles:
-                    mock_roles.return_value = ["player"]
+            mock_roles.return_value = ["player"]
 
-                    # Simulate OAuth callback
-                    response = client.get(
-                        "/callback?code=auth_code&state=test_state",
-                        follow_redirects=False,
-                    )
+            # Simulate OAuth callback
+            response = client.get(
+                "/callback?code=auth_code&state=test_state",
+                follow_redirects=False,
+            )
 
-                    # Should redirect to /history (from session), not /
-                    assert response.status_code == 302
-                    assert "/history" in response.location or response.location.endswith("/history")
+            # Should redirect to /history (from session), not /
+            assert response.status_code == 302
+            assert "/history" in response.location or response.location.endswith("/history")
 
     def test_history_requires_login_unauthenticated(self, app):
         """Test that accessing /history without login redirects to login with next parameter."""
@@ -168,7 +190,7 @@ class TestControlPanelPlayerSearch:
 
     def test_player_search_endpoint(self, client, auth_headers):
         """Test that WSO2 user search endpoint works correctly."""
-        with patch("src.core.auth.search_wso2_users") as mock_search:
+        with patch("src.app.app_api.search_wso2_users") as mock_search:
             mock_search.return_value = [
                 {
                     "username": "alice",
@@ -227,7 +249,7 @@ class TestControlPanelPlayerSearch:
 
     def test_player_search_handles_backend_error(self, client, auth_headers):
         """Test that search endpoint handles backend errors gracefully."""
-        with patch("src.core.auth.search_wso2_users") as mock_search:
+        with patch("src.app.app_api.search_wso2_users") as mock_search:
             mock_search.side_effect = Exception("WSO2 connection failed")
 
             response = client.get(
@@ -242,7 +264,7 @@ class TestControlPanelPlayerSearch:
 
     def test_player_search_result_limit(self, client, auth_headers):
         """Test that search results are properly limited."""
-        with patch("src.core.auth.search_wso2_users") as mock_search:
+        with patch("src.app.app_api.search_wso2_users") as mock_search:
             # Mock a large number of results
             mock_results = [
                 {

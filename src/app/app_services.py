@@ -9,7 +9,26 @@ import secrets
 from functools import wraps
 from pathlib import Path
 
-from flask import Blueprint, current_app, jsonify, render_template, request, send_from_directory, session
+from flask import (
+    Blueprint,
+    jsonify,
+    render_template,
+    request,
+    Response,
+    send_from_directory,
+    session,
+)
+from flask import current_app as _flask_current_app
+
+# Module-level `current_app` placeholder so unit tests can patch
+# `src.app.app_services.current_app` without requiring an app context.
+current_app = None
+
+
+def _app():
+    """Return the test-patched app if present, otherwise Flask's current_app."""
+    return current_app if current_app is not None else _flask_current_app
+
 
 from src.core.auth import login_required, permission_required, role_required
 from src.core.dartboard_service import DartboardMappingError, DartboardService
@@ -27,26 +46,29 @@ _root_dir = _app_dir.parent.parent
 # API key authentication decorator
 def api_key_required(f):
     """Decorator to require API key authentication"""
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         api_key = request.headers.get("X-API-Key")
         if not api_key:
             return jsonify({"success": False, "error": "API key required"}), 401
-        
+
         # Verify API key
         mobile_service = get_mobile_service()
         if not mobile_service.verify_api_key(api_key):
             return jsonify({"success": False, "error": "Invalid API key"}), 403
-        
+
         return f(*args, **kwargs)
+
     return decorated_function
 
 
 def get_mobile_service():
     """Get or create MobileService instance"""
-    if not hasattr(current_app, 'mobile_service'):
-        current_app.mobile_service = MobileService(current_app.current_app.game_manager.db_service)
-    return current_app.mobile_service
+    if not hasattr(_app(), "mobile_service"):
+        _app().mobile_service = MobileService(_app().game_manager.db_service)
+
+    return _app().mobile_service
 
 
 @services_bp.route("/api/Throw/zone", methods=["POST"])
@@ -157,7 +179,7 @@ def submit_score_zone():
             )
 
             # Emit WebSocket event for admin dartboard testing page (even if zone not found)
-            current_app.socketio.emit(
+            _app().socketio.emit(
                 "dartboard_test_received",
                 {
                     "masterPin": master_pin,
@@ -188,7 +210,7 @@ def submit_score_zone():
 
             # Process the score using the zone information
             # Pass the base_value and multiplier_type - game logic handles the calculation
-            current_app.game_manager.process_score(
+            _app().game_manager.process_score(
                 {
                     "score": zone_info["base_value"],
                     "multiplier": zone_info["multiplier_type"],
@@ -208,7 +230,6 @@ def submit_score_zone():
     except Exception as e:
         logger.exception("Error submitting zone-based score")
         return jsonify({"status": "error", "message": str(e)}), 400
-
 
 
 @services_bp.route("/api/dartboard/types", methods=["GET"])
@@ -268,7 +289,6 @@ def get_dartboard_types():
     except Exception as e:
         logger.exception("Error getting dartboard types")
         return jsonify({"status": "error", "message": str(e)}), 400
-
 
 
 @services_bp.route("/api/dartboard/types/<board_type>/mappings", methods=["GET"])
@@ -352,7 +372,6 @@ def get_dartboard_mappings(board_type):
 # ==================== ADMIN DARTBOARD TESTING ENDPOINTS ====================
 
 
-
 @services_bp.route("/api/admin/dartboard/matrix/<board_type>", methods=["GET"])
 @login_required
 @role_required("admin")
@@ -420,7 +439,6 @@ def get_dartboard_matrix(board_type):
     except Exception as e:
         logger.exception("Error getting dartboard matrix")
         return jsonify({"status": "error", "message": str(e)}), 400
-
 
 
 @services_bp.route("/api/admin/dartboard/mapping", methods=["POST"])
@@ -526,7 +544,6 @@ def update_dartboard_mapping():
     except Exception as e:
         logger.exception("Error updating dartboard mapping")
         return jsonify({"status": "error", "message": str(e)}), 400
-
 
 
 @services_bp.route("/api/admin/dartboard/import", methods=["POST"])
@@ -638,7 +655,6 @@ def import_dartboard_mappings():
     except Exception as e:
         logger.exception("Error importing dartboard mappings")
         return jsonify({"status": "error", "message": str(e)}), 400
-
 
 
 @services_bp.route("/api/admin/dartboard/type", methods=["POST"])
@@ -793,7 +809,6 @@ def create_dartboard_type():
         return jsonify({"status": "error", "message": str(e)}), 400
 
 
-
 @services_bp.route("/api/admin/dartboard/type/<board_type>/pins", methods=["PUT"])
 @login_required
 @role_required("admin")
@@ -886,7 +901,6 @@ def update_dartboard_pins(board_type):
         return jsonify({"status": "error", "message": str(e)}), 400
 
 
-
 @services_bp.route("/api/admin/dartboard/available-pins", methods=["GET"])
 @login_required
 @role_required("admin")
@@ -918,7 +932,6 @@ def get_available_pins():
             "pins": DartboardService.AVAILABLE_GPIO_PINS,
         },
     )
-
 
 
 @services_bp.route("/api/tts/config", methods=["GET"])
@@ -953,15 +966,14 @@ def get_tts_config():
     """
     return jsonify(
         {
-            "enabled": current_app.game_manager.tts.is_enabled(),
-            "engine": current_app.game_manager.tts.engine_name,
-            "speed": current_app.game_manager.tts.speed,
-            "volume": current_app.game_manager.tts.volume,
-            "voice": current_app.game_manager.tts.voice_type,
-            "language": current_app.game_manager.tts.language,
+            "enabled": _app().game_manager.tts.is_enabled(),
+            "engine": _app().game_manager.tts.engine_name,
+            "speed": _app().game_manager.tts.speed,
+            "volume": _app().game_manager.tts.volume,
+            "voice": _app().game_manager.tts.voice_type,
+            "language": _app().game_manager.tts.language,
         },
     )
-
 
 
 @services_bp.route("/api/tts/config", methods=["POST"])
@@ -1013,24 +1025,23 @@ def update_tts_config():
 
     if "enabled" in data:
         if data["enabled"]:
-            current_app.game_manager.tts.enable()
+            _app().game_manager.tts.enable()
         else:
-            current_app.game_manager.tts.disable()
+            _app().game_manager.tts.disable()
 
     if "speed" in data:
-        current_app.game_manager.tts.set_speed(int(data["speed"]))
+        _app().game_manager.tts.set_speed(int(data["speed"]))
 
     if "volume" in data:
-        current_app.game_manager.tts.set_volume(float(data["volume"]))
+        _app().game_manager.tts.set_volume(float(data["volume"]))
 
     if "voice" in data:
-        current_app.game_manager.tts.set_voice(data["voice"])
+        _app().game_manager.tts.set_voice(data["voice"])
 
     if "language" in data:
-        current_app.game_manager.tts.set_language(data["language"])
+        _app().game_manager.tts.set_language(data["language"])
 
     return jsonify({"status": "success", "message": "TTS configuration updated"})
-
 
 
 @services_bp.route("/api/tts/voices", methods=["GET"])
@@ -1064,9 +1075,8 @@ def get_tts_voices():
                 type: string
                 description: Voice gender
     """
-    voices = current_app.game_manager.tts.get_available_voices()
+    voices = _app().game_manager.tts.get_available_voices()
     return jsonify(voices)
-
 
 
 @services_bp.route("/api/tts/languages", methods=["GET"])
@@ -1095,7 +1105,6 @@ def get_tts_languages():
 
     languages = TTSService.get_supported_languages()
     return jsonify(languages)
-
 
 
 @services_bp.route("/api/tts/test", methods=["POST"])
@@ -1136,12 +1145,11 @@ def test_tts():
     data = request.json
     text = data.get("text", "This is a test")
 
-    success = current_app.game_manager.tts.speak(text)
+    success = _app().game_manager.tts.speak(text)
 
     if success:
         return jsonify({"status": "success", "message": "TTS test completed"})
     return jsonify({"status": "error", "message": "TTS test failed"}), 500
-
 
 
 @services_bp.route("/api/tts/generate", methods=["POST"])
@@ -1209,12 +1217,11 @@ def generate_tts_audio():
     if not text:
         return jsonify({"status": "error", "message": "Text is required"}), 400
 
-    audio_data = current_app.game_manager.tts.generate_audio_data(text, lang)
+    audio_data = _app().game_manager.tts.generate_audio_data(text, lang)
 
     if audio_data:
         return Response(audio_data, mimetype="audio/mpeg")
     return jsonify({"status": "error", "message": "Failed to generate audio"}), 500
-
 
 
 @services_bp.route("/api/admin/tts/player", methods=["GET"])
@@ -1252,6 +1259,7 @@ def tts_player():
 
 # SocketIO Events
 
+
 @services_bp.route("/mobile")
 @login_required
 def mobile_app():
@@ -1268,7 +1276,6 @@ def mobile_app():
     return render_template("mobile.html")
 
 
-
 @services_bp.route("/mobile/gameplay")
 @login_required
 def mobile_gameplay():
@@ -1283,7 +1290,6 @@ def mobile_gameplay():
         description: Mobile gameplay HTML page
     """
     return render_template("mobile_gameplay.html")
-
 
 
 @services_bp.route("/mobile/gamemaster")
@@ -1303,7 +1309,6 @@ def mobile_gamemaster():
     return render_template("mobile_gamemaster.html")
 
 
-
 @services_bp.route("/mobile/dartboard-setup")
 @login_required
 def mobile_dartboard_setup():
@@ -1318,7 +1323,6 @@ def mobile_dartboard_setup():
         description: Mobile dartboard setup HTML page
     """
     return render_template("mobile_dartboard_setup.html")
-
 
 
 @services_bp.route("/mobile/results")
@@ -1337,7 +1341,6 @@ def mobile_results():
     return render_template("mobile_results.html")
 
 
-
 @services_bp.route("/mobile/account")
 @login_required
 def mobile_account():
@@ -1352,7 +1355,6 @@ def mobile_account():
         description: Mobile account management HTML page
     """
     return render_template("mobile_account.html")
-
 
 
 @services_bp.route("/mobile/hotspot")
@@ -1372,7 +1374,6 @@ def mobile_hotspot():
 
 
 # API Key Management Endpoints
-
 
 
 @services_bp.route("/api/mobile/apikeys", methods=["GET"])
@@ -1403,7 +1404,6 @@ def get_api_keys():
         return jsonify({"success": False, "error": "Player ID not available"}), 401
     api_keys = mobile_service.get_user_api_keys(player_id)
     return jsonify({"success": True, "api_keys": api_keys})
-
 
 
 @services_bp.route("/api/mobile/apikeys", methods=["POST"])
@@ -1447,7 +1447,6 @@ def create_api_key():
     return jsonify(result)
 
 
-
 @services_bp.route("/api/mobile/apikeys/<int:key_id>", methods=["DELETE"])
 @login_required
 def revoke_api_key(key_id):
@@ -1482,7 +1481,6 @@ def revoke_api_key(key_id):
 # Dartboard Management Endpoints
 
 
-
 @services_bp.route("/api/mobile/dartboards", methods=["GET"])
 @login_required
 def get_dartboards():
@@ -1511,7 +1509,6 @@ def get_dartboards():
         return jsonify({"success": False, "error": "Player ID not available"}), 401
     dartboards = mobile_service.get_user_dartboards(player_id)
     return jsonify({"success": True, "dartboards": dartboards})
-
 
 
 @services_bp.route("/api/mobile/dartboards", methods=["POST"])
@@ -1566,7 +1563,6 @@ def register_dartboard():
     return jsonify(result)
 
 
-
 @services_bp.route("/api/mobile/dartboards/<int:dartboard_id>", methods=["DELETE"])
 @login_required
 def delete_dartboard(dartboard_id):
@@ -1601,7 +1597,6 @@ def delete_dartboard(dartboard_id):
 # Hotspot Configuration Endpoints
 
 
-
 @services_bp.route("/api/mobile/hotspot", methods=["GET"])
 @login_required
 def get_hotspot_configs():
@@ -1630,7 +1625,6 @@ def get_hotspot_configs():
         return jsonify({"success": False, "error": "Player ID not available"}), 401
     configs = mobile_service.get_hotspot_configs(player_id)
     return jsonify({"success": True, "configs": configs})
-
 
 
 @services_bp.route("/api/mobile/hotspot", methods=["POST"])
@@ -1685,7 +1679,6 @@ def create_hotspot_config():
     return jsonify(result)
 
 
-
 @services_bp.route("/api/mobile/hotspot/<int:config_id>/toggle", methods=["POST"])
 @login_required
 def toggle_hotspot(config_id):
@@ -1732,7 +1725,6 @@ def toggle_hotspot(config_id):
 
 
 # Dartboard API Endpoints (authenticated with API key)
-
 
 
 @services_bp.route("/api/dartboard/connect", methods=["POST"])
@@ -1824,7 +1816,5 @@ def dartboard_submit_score():
     """
     data = request.json
     # Process score through game manager
-    current_app.game_manager.process_score(data)
+    _app().game_manager.process_score(data)
     return jsonify({"success": True, "message": "Score submitted"})
-
-

@@ -12,19 +12,20 @@ from dartserver_services import DartboardMappingError
 
 
 @pytest.fixture()
-def client():
+def client(flask_app):
     """Create test client"""
-    app.config["TESTING"] = True
-    with app.test_client() as client:
+    flask_app.config["TESTING"] = True
+    with flask_app.test_client() as client:
         yield client
 
 
 @pytest.fixture()
 def mock_game_manager():
     """Mock game manager"""
-    with patch("src.app.app.game_manager") as mock:
-        mock.process_score = MagicMock()
-        yield mock
+    mock_app = MagicMock()
+    mock_app.game_manager.process_score = MagicMock()
+    with patch("src.app.app_services._app", return_value=mock_app):
+        yield mock_app.game_manager
 
 
 @pytest.fixture()
@@ -39,7 +40,7 @@ def mock_db_session():
 class TestNewZoneThrowEndpoint:
     """Test new /api/Throw/zone endpoint (generic pin-based format)"""
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_submit_score_zone_triple_20(
         self,
         mock_service,
@@ -70,7 +71,7 @@ class TestNewZoneThrowEndpoint:
         assert data["zone_info"]["score"] == 60
         mock_game_manager.process_score.assert_called_once()
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_submit_score_zone_triple_4(
         self,
         mock_service,
@@ -97,7 +98,7 @@ class TestNewZoneThrowEndpoint:
         assert data["zone_info"]["zone_number"] == 4
         assert data["zone_info"]["score"] == 12
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_submit_score_zone_triple_13(
         self,
         mock_service,
@@ -124,7 +125,7 @@ class TestNewZoneThrowEndpoint:
         assert data["zone_info"]["zone_number"] == 13
         assert data["zone_info"]["score"] == 39
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_submit_score_zone_bull(self, mock_service, client, mock_game_manager, mock_db_session):
         """Test submitting bull score"""
         mock_service.get_zone_from_pins.return_value = {
@@ -144,7 +145,7 @@ class TestNewZoneThrowEndpoint:
         data = json.loads(response.data)
         assert data["zone_info"]["multiplier_type"] == "BULL"
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_submit_score_zone_dblbull(
         self,
         mock_service,
@@ -205,7 +206,7 @@ class TestNewZoneThrowEndpoint:
 
         assert response.status_code == 400
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_submit_score_zone_not_found(
         self,
         mock_service,
@@ -227,7 +228,7 @@ class TestNewZoneThrowEndpoint:
         assert data["status"] == "error"
         assert "Zone mapping not found" in data["message"]
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_submit_score_zone_exception_handling(
         self,
         mock_service,
@@ -248,7 +249,7 @@ class TestNewZoneThrowEndpoint:
         data = json.loads(response.data)
         assert data["status"] == "error"
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_submit_score_zone_with_user(
         self,
         mock_service,
@@ -277,7 +278,7 @@ class TestNewZoneThrowEndpoint:
 
         assert response.status_code == 200
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_submit_score_zone_case_insensitive_board_type(
         self,
         mock_service,
@@ -305,7 +306,7 @@ class TestNewZoneThrowEndpoint:
 class TestDartboardTypesEndpoint:
     """Test /api/dartboard/types endpoint"""
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_get_dartboard_types_empty(self, mock_service, client, mock_db_session):
         """Test getting dartboard types when none exist"""
         mock_service.list_dartboard_types.return_value = []
@@ -317,7 +318,7 @@ class TestDartboardTypesEndpoint:
         assert data["status"] == "success"
         assert len(data["types"]) == 0
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_get_dartboard_types_multiple(self, mock_service, client, mock_db_session):
         """Test getting multiple dartboard types"""
         mock_board1 = MagicMock()
@@ -345,7 +346,7 @@ class TestDartboardTypesEndpoint:
         assert data["types"][0]["name"] == "carromco"
         assert data["types"][1]["name"] == "winmau"
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_get_dartboard_types_exception(self, mock_service, client, mock_db_session):
         """Test exception handling in types endpoint"""
         mock_service.list_dartboard_types.side_effect = Exception("DB error")
@@ -360,7 +361,7 @@ class TestDartboardTypesEndpoint:
 class TestDartboardMappingsEndpoint:
     """Test /api/dartboard/types/<board_type>/mappings endpoint"""
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_get_mappings_for_type(self, mock_service, client, mock_db_session):
         """Test getting mappings for a dartboard type"""
         mock_mapping1 = MagicMock()
@@ -389,7 +390,7 @@ class TestDartboardMappingsEndpoint:
         assert data["mappings"][0]["master_pin"] == 4
         assert data["mappings"][0]["zone_number"] == 20
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_get_mappings_type_not_found(self, mock_service, client, mock_db_session):
         """Test getting mappings for non-existent type"""
         mock_service.get_dartboard_type_mappings.return_value = None
@@ -400,7 +401,7 @@ class TestDartboardMappingsEndpoint:
         data = json.loads(response.data)
         assert data["status"] == "error"
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_get_mappings_exception(self, mock_service, client, mock_db_session):
         """Test exception handling in mappings endpoint"""
         mock_service.get_dartboard_type_mappings.side_effect = Exception("DB error")
@@ -415,7 +416,7 @@ class TestDartboardMappingsEndpoint:
 class TestEdgeCases:
     """Test edge cases and boundary conditions"""
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_submit_negative_pins(self, mock_service, client, mock_game_manager, mock_db_session):
         """Test submitting negative GPIO pin numbers (should fail validation)"""
         response = client.post(
@@ -436,7 +437,7 @@ class TestEdgeCases:
 
         assert response.status_code == 400
 
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     def test_submit_large_pin_numbers(
         self,
         mock_service,
@@ -475,7 +476,7 @@ class TestCreateDartboardTypeEndpoint:
             yield client
 
     @patch("src.core.auth.validate_token")
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     @patch("src.app.app.get_session")
     def test_create_dartboard_type_success(
         self,
@@ -608,7 +609,7 @@ class TestCreateDartboardTypeEndpoint:
         assert "letters, numbers" in data["message"].lower()
 
     @patch("src.core.auth.validate_token")
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     @patch("src.app.app.get_session")
     def test_create_dartboard_type_duplicate(
         self,
@@ -671,7 +672,7 @@ class TestCreateDartboardTypeEndpoint:
         assert response.status_code in [302, 401]
 
     @patch("src.core.auth.validate_token")
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     @patch("src.app.app.get_session")
     def test_create_dartboard_type_with_hyphens_and_underscores(
         self,
@@ -709,7 +710,7 @@ class TestCreateDartboardTypeEndpoint:
         assert data["status"] == "success"
 
     @patch("src.core.auth.validate_token")
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     @patch("src.app.app.get_session")
     def test_create_dartboard_type_minimal(
         self,
@@ -762,7 +763,7 @@ class TestUpdateDartboardPinsEndpoint:
             yield client
 
     @patch("src.core.auth.validate_token")
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     @patch("src.app.app.get_session")
     def test_update_pins_success(
         self,
@@ -829,7 +830,7 @@ class TestUpdateDartboardPinsEndpoint:
         assert "array of integers" in data["message"]
 
     @patch("src.core.auth.validate_token")
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     @patch("src.app.app.get_session")
     def test_update_pins_not_found(
         self,
@@ -891,7 +892,7 @@ class TestCreateDartboardTypeWithPins:
             yield client
 
     @patch("src.core.auth.validate_token")
-    @patch("src.app.app.DartboardService")
+    @patch("src.app.app_services.DartboardService")
     @patch("src.app.app.get_session")
     def test_create_with_pins(
         self,
