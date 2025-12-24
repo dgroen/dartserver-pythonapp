@@ -18,8 +18,8 @@ def client(flask_app):
         with patch("src.core.auth.validate_token") as mock_validate:
             mock_validate.return_value = {
                 "sub": "test-user",
-                "groups": ["admin"],
-                "roles": ["admin"],
+                "groups": ["admin", "gamemaster"],
+                "roles": ["admin", "gamemaster"],
             }
             yield client
 

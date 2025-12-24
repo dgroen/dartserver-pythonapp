@@ -85,23 +85,21 @@ class TestAuthEndpoints:
             assert "oauth_state" in sess
             assert len(sess["oauth_state"]) > 20  # Should be a random token
 
-    def test_callback_success(self, client, mock_auth_fixtures):
+    def test_callback_success(self, client, flask_app, mock_auth_fixtures):
         """Test successful OAuth callback."""
         # Set up session state
         with client.session_transaction() as sess:
             sess["oauth_state"] = "test-state"
 
         # Mock database player creation
-        with patch("src.app.app_auth.current_app") as mock_app:
-            mock_game_manager = MagicMock()
-            mock_db_service = MagicMock()
-            mock_player = MagicMock()
-            mock_player.id = 123
-            mock_db_service.get_or_create_player.return_value = mock_player
-            mock_game_manager.db_service = mock_db_service
-            mock_app.game_manager = mock_game_manager
-            mock_app.logger = MagicMock()
-
+        mock_game_manager = MagicMock()
+        mock_db_service = MagicMock()
+        mock_player = MagicMock()
+        mock_player.id = 123
+        mock_db_service.get_or_create_player.return_value = mock_player
+        mock_game_manager.db_service = mock_db_service
+        
+        with patch.object(flask_app, "game_manager", mock_game_manager):
             response = client.get(
                 "/callback?code=test-code&state=test-state", follow_redirects=False,
             )
@@ -157,22 +155,20 @@ class TestAuthEndpoints:
         assert "/login" in response.location
         assert "error" in response.location
 
-    def test_callback_redirects_to_next_url(self, client, mock_auth_fixtures):
+    def test_callback_redirects_to_next_url(self, client, flask_app, mock_auth_fixtures):
         """Test callback redirects to stored next URL."""
         with client.session_transaction() as sess:
             sess["oauth_state"] = "test-state"
             sess["login_next_url"] = "/dashboard"
 
-        with patch("src.app.app_auth.current_app") as mock_app:
-            mock_game_manager = MagicMock()
-            mock_db_service = MagicMock()
-            mock_player = MagicMock()
-            mock_player.id = 123
-            mock_db_service.get_or_create_player.return_value = mock_player
-            mock_game_manager.db_service = mock_db_service
-            mock_app.game_manager = mock_game_manager
-            mock_app.logger = MagicMock()
+        mock_game_manager = MagicMock()
+        mock_db_service = MagicMock()
+        mock_player = MagicMock()
+        mock_player.id = 123
+        mock_db_service.get_or_create_player.return_value = mock_player
+        mock_game_manager.db_service = mock_db_service
 
+        with patch.object(flask_app, "game_manager", mock_game_manager):
             response = client.get(
                 "/callback?code=test-code&state=test-state", follow_redirects=False,
             )
@@ -260,7 +256,7 @@ class TestAuthEndpoints:
                 assert "token_claims" in data
                 assert "extracted_roles" in data
 
-    def test_callback_with_scim2_fallback(self, client, mock_auth_fixtures):
+    def test_callback_with_scim2_fallback(self, client, flask_app, mock_auth_fixtures):
         """Test callback uses SCIM2 when username has UUID format."""
         with client.session_transaction() as sess:
             sess["oauth_state"] = "test-state"
@@ -273,24 +269,22 @@ class TestAuthEndpoints:
             "name": None,
         }
 
+        mock_game_manager = MagicMock()
+        mock_db_service = MagicMock()
+        mock_player = MagicMock()
+        mock_player.id = 123
+        mock_db_service.get_or_create_player.return_value = mock_player
+        mock_game_manager.db_service = mock_db_service
+
         with (
             patch("src.app.app_auth._fetch_scim2_user") as mock_scim2,
-            patch("src.app.app_auth.current_app") as mock_app,
+            patch.object(flask_app, "game_manager", mock_game_manager),
         ):
             mock_scim2.return_value = {
                 "userName": "testuser",
                 "emails": [{"value": "test@example.com"}],
                 "name": {"givenName": "Test", "familyName": "User"},
             }
-
-            mock_game_manager = MagicMock()
-            mock_db_service = MagicMock()
-            mock_player = MagicMock()
-            mock_player.id = 123
-            mock_db_service.get_or_create_player.return_value = mock_player
-            mock_game_manager.db_service = mock_db_service
-            mock_app.game_manager = mock_game_manager
-            mock_app.logger = MagicMock()
 
             response = client.get(
                 "/callback?code=test-code&state=test-state", follow_redirects=False,
@@ -299,21 +293,19 @@ class TestAuthEndpoints:
             assert response.status_code == 302
             mock_scim2.assert_called_once()
 
-    def test_callback_creates_player(self, client, mock_auth_fixtures):
+    def test_callback_creates_player(self, client, flask_app, mock_auth_fixtures):
         """Test callback creates player in database."""
         with client.session_transaction() as sess:
             sess["oauth_state"] = "test-state"
 
-        with patch("src.app.app_auth.current_app") as mock_app:
-            mock_game_manager = MagicMock()
-            mock_db_service = MagicMock()
-            mock_player = MagicMock()
-            mock_player.id = 456
-            mock_db_service.get_or_create_player.return_value = mock_player
-            mock_game_manager.db_service = mock_db_service
-            mock_app.game_manager = mock_game_manager
-            mock_app.logger = MagicMock()
+        mock_game_manager = MagicMock()
+        mock_db_service = MagicMock()
+        mock_player = MagicMock()
+        mock_player.id = 456
+        mock_db_service.get_or_create_player.return_value = mock_player
+        mock_game_manager.db_service = mock_db_service
 
+        with patch.object(flask_app, "game_manager", mock_game_manager):
             response = client.get(
                 "/callback?code=test-code&state=test-state", follow_redirects=False,
             )
