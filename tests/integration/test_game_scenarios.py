@@ -34,7 +34,7 @@ def get_player_ids(names, db_service):
 
 
 class TestGame301Scenarios:
-    """Test complete 301 game scenarios."""
+    """Test complete 301 game scenarios."""rrent URL: http://localhost/api/game
 
     def test_complete_301_game(self, mock_socketio, db_service):
         """Test a complete 301 game from start to finish."""
