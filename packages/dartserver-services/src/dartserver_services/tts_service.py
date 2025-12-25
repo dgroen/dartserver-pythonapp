@@ -7,11 +7,6 @@ import io
 import logging
 from typing import Any
 
-try:  # Prefer the core shim so test patches on src.core.tts_service take effect
-    from src.core import tts_service as core_tts
-except Exception:  # pragma: no cover - fallback for environments without core shim
-    core_tts = None
-
 try:
     from gtts import gTTS as _gtts_impl
 
@@ -30,32 +25,44 @@ except ImportError:  # pragma: no cover - optional dependency
 
 
 def _get_gtts_available() -> bool:
-    if core_tts and hasattr(core_tts, "GTTS_AVAILABLE"):
-        return bool(getattr(core_tts, "GTTS_AVAILABLE"))
-    return _gtts_available_impl
+    # Check module-level attribute first (allows test patching), fallback to private
+    import sys
+
+    mod = sys.modules[__name__]
+    return getattr(mod, "GTTS_AVAILABLE", _gtts_available_impl)
 
 
 def _get_pyttsx3_available() -> bool:
-    if core_tts and hasattr(core_tts, "PYTTSX3_AVAILABLE"):
-        return bool(getattr(core_tts, "PYTTSX3_AVAILABLE"))
-    return _pyttsx3_available_impl
+    # Check module-level attribute first (allows test patching), fallback to private
+    import sys
+
+    mod = sys.modules[__name__]
+    return getattr(mod, "PYTTSX3_AVAILABLE", _pyttsx3_available_impl)
 
 
 def _get_gtts():
-    if core_tts and hasattr(core_tts, "gTTS"):
-        return getattr(core_tts, "gTTS")
-    return _gtts_impl
+    # Check module-level attribute first (allows test patching), fallback to private
+    import sys
+
+    mod = sys.modules[__name__]
+    return getattr(mod, "gTTS", _gtts_impl)
 
 
 def _get_pyttsx3():
-    if core_tts and hasattr(core_tts, "pyttsx3"):
-        return getattr(core_tts, "pyttsx3")
-    return _pyttsx3_impl
+    # Check module-level attribute first (allows test patching), fallback to private
+    import sys
+
+    mod = sys.modules[__name__]
+    return getattr(mod, "pyttsx3", _pyttsx3_impl)
 
 
 # Expose availability flags for logging and tests
 GTTS_AVAILABLE = _get_gtts_available()
 PYTTSX3_AVAILABLE = _get_pyttsx3_available()
+
+# Expose module references for testing purposes
+gTTS = _gtts_impl
+pyttsx3 = _pyttsx3_impl
 
 
 logger = logging.getLogger(__name__)

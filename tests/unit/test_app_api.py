@@ -31,7 +31,7 @@ def client(flask_app, db_service):
 
         flask_app.game_manager.db_service = db_service
 
-        with patch("src.core.auth.validate_token") as mock_validate:
+        with patch("dartserver_core.auth.validate_token") as mock_validate:
             mock_validate.return_value = {
                 "sub": "test-user",
                 "groups": ["admin"],

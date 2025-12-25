@@ -426,7 +426,7 @@
             </button>
 
             <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Search by username, email, or name..." 
+                <input type="text" id="searchInput" placeholder="Search by username, email, or name..."
                        onkeypress="if(event.key==='Enter') searchUsers()">
                 <button onclick="searchUsers()">🔍 Search</button>
                 <button onclick="loadAllUsers()" style="background: #9E9E9E;">📋 Load All</button>
@@ -489,7 +489,7 @@
                 </div>
                 <div class="form-group">
                     <label for="newPassword">New Password *</label>
-                    <input type="password" id="newPassword" required minlength="8" 
+                    <input type="password" id="newPassword" required minlength="8"
                            pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$"
                            title="Password must be at least 8 characters with at least one uppercase letter, one lowercase letter, and one number">
                 </div>
@@ -574,7 +574,7 @@
 
         function renderUsersTable(users) {
             const container = document.getElementById('usersTableContainer');
-            
+
             if (users.length === 0) {
                 container.innerHTML = '<div class="empty-state">No users found</div>';
                 return;
@@ -610,7 +610,7 @@
                                 <button class="btn-small btn-password" onclick='openPasswordModal("${user.username}")'>
                                     Password
                                 </button>
-                                ${isActive ? 
+                                ${isActive ?
                                     `<button class="btn-small btn-deactivate" onclick='toggleUserStatus("${user.id}", "${user.username}", false)'>Deactivate</button>` :
                                     `<button class="btn-small btn-activate" onclick='toggleUserStatus("${user.id}", "${user.username}", true)'>Activate</button>`
                                 }
@@ -829,7 +829,7 @@
             alert.className = `alert ${type}`;
             alert.textContent = message;
             container.appendChild(alert);
-            
+
             setTimeout(() => {
                 const elem = document.getElementById(alertId);
                 if (elem) elem.remove();

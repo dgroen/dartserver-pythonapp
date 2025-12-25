@@ -20,7 +20,7 @@ def authenticated_client(client):
         sess["access_token"] = "test-token"
         sess["user_info"] = {"username": "testuser", "sub": "test-user"}
 
-    with patch("src.core.auth.validate_token") as mock_validate:
+    with patch("dartserver_core.auth.validate_token") as mock_validate:
         mock_validate.return_value = {
             "sub": "test-user",
             "groups": ["admin"],
@@ -75,7 +75,7 @@ class TestUIEndpoints:
             sess["access_token"] = "test-token"
             sess["user_info"] = {"username": "testuser"}
 
-        with patch("src.core.auth.validate_token") as mock_validate:
+        with patch("dartserver_core.auth.validate_token") as mock_validate:
             mock_validate.return_value = {"sub": "test-user", "groups": []}
 
             response = client.get("/control")
@@ -99,7 +99,7 @@ class TestUIEndpoints:
             sess["access_token"] = "test-token"
             sess["user_info"] = {"username": "testuser"}
 
-        with patch("src.core.auth.validate_token") as mock_validate:
+        with patch("dartserver_core.auth.validate_token") as mock_validate:
             # Mock user without game:create permission
             mock_validate.return_value = {"sub": "test-user", "groups": []}
 
@@ -173,7 +173,7 @@ class TestUIEndpoints:
             sess["access_token"] = "test-token"
             sess["user_info"] = {"username": "testuser"}
 
-        with patch("src.core.auth.validate_token") as mock_validate:
+        with patch("dartserver_core.auth.validate_token") as mock_validate:
             mock_validate.return_value = {"sub": "test-user", "groups": []}
 
             response = client.get("/admin/dartboard-testing")
@@ -183,10 +183,8 @@ class TestUIEndpoints:
     def test_admin_dartboard_testing_renders_for_admin(self, authenticated_client):
         """Test admin dartboard testing renders for admin."""
         # Skipped because template file may not be present in test environment
-        pass
 
     @pytest.mark.skip(reason="Template file not present in test environment")
     def test_all_authenticated_pages_pass_user_info(self, authenticated_client):
         """Test all authenticated pages receive user roles and claims."""
         # Skipped because some template files may not be present in test environment
-        pass

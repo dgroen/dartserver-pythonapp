@@ -1077,13 +1077,13 @@ function initGamesSidebar() {
             window.location.href = '/game/create';
         });
     }
-    
+
     // Load initial game state
     loadCurrentGameState();
-    
+
     // Load games list
     loadGamesList();
-    
+
     // Refresh games list every 5 seconds
     if (gamesRefreshInterval) {
         clearInterval(gamesRefreshInterval);
@@ -1096,7 +1096,7 @@ async function loadGamesList() {
     try {
         const response = await fetch('/api/games');
         const data = await response.json();
-        
+
         if (data.status === 'success') {
             console.log('Games data received:', JSON.stringify(data.games, null, 2));
             displayGamesList(data.games, data.active_game_id);
@@ -1110,22 +1110,22 @@ async function loadGamesList() {
 function displayGamesList(games, activeGameId) {
     const gamesList = document.getElementById('games-list');
     if (!gamesList) return;
-    
+
     if (!games || games.length === 0) {
         gamesList.innerHTML = '<div class="no-games">No games available.<br>Click + to create one!</div>';
         return;
     }
-    
+
     currentGameId = activeGameId;
     console.log('Active game ID:', activeGameId);
-    
+
     gamesList.innerHTML = games.map(game => {
         const isActive = game.game_id === activeGameId;
         const statusClass = game.is_started ? 'started' : 'not-started';
         const statusText = game.is_started ? 'Active' : 'Not Started';
-        
+
         console.log(`Game ${game.game_id}: ${game.player_count} players, is_active=${isActive}, players=`, game.players);
-        
+
         // Format player info with scores
         let playersHtml = '';
         if (game.players && game.players.length > 0) {
@@ -1143,7 +1143,7 @@ function displayGamesList(games, activeGameId) {
                 playersHtml += '<br>...';
             }
         }
-        
+
         return `
             <div class="game-item ${isActive ? 'active' : ''}" data-game-id="${game.game_id}">
                 <div class="game-item-header">
@@ -1160,7 +1160,7 @@ function displayGamesList(games, activeGameId) {
             </div>
         `;
     }).join('');
-    
+
     // Add click handlers to game items
     gamesList.querySelectorAll('.game-item').forEach(item => {
         item.addEventListener('click', function() {
@@ -1177,7 +1177,7 @@ async function switchToGame(gameId) {
         console.log('Already viewing this game');
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/games/${gameId}/activate`, {
             method: 'POST',
@@ -1185,12 +1185,12 @@ async function switchToGame(gameId) {
                 'Content-Type': 'application/json'
             }
         });
-        
+
         const data = await response.json();
-        
+
         if (data.status === 'success') {
             console.log(`Switched to game: ${gameId}`);
-            
+
             // Reload the entire page to ensure clean state
             // This works the same way as resuming a game from the dashboard
             window.location.reload();
@@ -1209,7 +1209,7 @@ async function loadCurrentGameState() {
     try {
         const response = await fetch('/api/game/state');
         const state = await response.json();
-        
+
         if (state && Object.keys(state).length > 0) {
             console.log('Loaded game state:', state);
             currentGame = state;

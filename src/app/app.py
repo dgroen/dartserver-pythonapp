@@ -6,58 +6,25 @@ Includes WSO2 IS authentication and role-based access control
 
 import logging
 import os
-import secrets
 import ssl
 import threading
 import time
-import uuid
-from datetime import datetime, timedelta, timezone
-from functools import wraps
 from pathlib import Path
 
-import requests
 import yaml
+from dartserver_core.config import Config
+from dartserver_core.database_models import Player
+from dartserver_core.database_service import set_database_service
+from dartserver_services.rabbitmq import RabbitMQConsumer
 from dotenv import load_dotenv
 from eventlet import wsgi
 from flasgger import Swagger
-from flask import (
-    Flask,
-    Response,
-    current_app,
-    jsonify,
-    redirect,
-    render_template,
-    request,
-    send_from_directory,
-    session,
-    url_for,
-)
+from flask import Flask, request, session
 from flask_cors import CORS
 from flask_socketio import SocketIO
-from sqlalchemy import func
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from src.app.mobile_service import MobileService
 from src.app.multi_game_manager import MultiGameManager
-from src.core.auth import (
-    exchange_code_for_token,
-    get_authorization_url,
-    get_user_groups_from_scim2,
-    get_user_info,
-    get_user_roles,
-    get_wso2_user_info,
-    login_required,
-    logout_user,
-    permission_required,
-    role_required,
-    search_wso2_users,
-    validate_token,
-)
-from src.core.config import Config
-from src.core.dartboard_service import DartboardMappingError, DartboardService
-from src.core.database_models import GameType, Player, TrainingScore, TrainingSession
-from src.core.database_service import get_session, set_database_service
-from src.core.rabbitmq_consumer import RabbitMQConsumer
 
 # Load environment variables
 load_dotenv()
@@ -334,7 +301,6 @@ def on_score_received(score_data):
     app.game_manager.process_score(score_data)
 
 
-
 # ============================================================================
 # Routes have been moved to blueprint modules:
 # - app_ui.py: UI/page rendering endpoints
@@ -343,6 +309,7 @@ def on_score_received(score_data):
 # - app_api.py: General API endpoints (players, WSO2, training, history)
 # - app_services.py: Service endpoints (dartboard, TTS, mobile)
 # ============================================================================
+
 
 @socketio.on("connect", namespace="/")
 def handle_connect():

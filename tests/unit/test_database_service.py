@@ -33,7 +33,7 @@ class TestDatabaseManager:
 class TestDatabaseService:
     """Test DatabaseService class."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def db_service(self):
         """Create a test database service."""
         service = DatabaseService("sqlite:///:memory:")

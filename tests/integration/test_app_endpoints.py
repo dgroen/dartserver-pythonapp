@@ -1,9 +1,11 @@
 """Integration tests for Flask application endpoints."""
 
 import json
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 import pytest
+from dartserver_core import GameResult
 from dartserver_core.database_service import DatabaseService
 
 
@@ -35,7 +37,7 @@ def app(mock_auth, db_service, flask_app):
     with (
         patch("src.app.app.start_rabbitmq_consumer"),
         patch(
-            "src.app.game_manager.DatabaseService",
+            "dartserver_app.game_manager.DatabaseService",
         ) as mock_db_class,
     ):
         mock_db_class.return_value = db_service
@@ -224,8 +226,6 @@ class TestAppEndpoints:
     def test_delete_completed_game(self, client, db_service):
         """Test that completed games cannot be deleted."""
         # Create a completed game in the database
-        from datetime import datetime, timezone  # noqa: PLC0415
-
         # Get test players
         alice = db_service.get_or_create_player("Alice", username="alice")
         bob = db_service.get_or_create_player("Bob", username="bob")
@@ -242,8 +242,6 @@ class TestAppEndpoints:
         # Complete the game by setting finished_at
         session = db_service.db_manager.get_session()
         try:
-            from dartserver_core import GameResult  # noqa: PLC0415
-
             results = session.query(GameResult).filter_by(game_session_id=game_session_id).all()
             for result in results:
                 result.finished_at = datetime.now(timezone.utc)
@@ -282,8 +280,6 @@ class TestAppEndpoints:
 
     def test_delete_old_incomplete_game(self, client, db_service):
         """Test that incomplete games older than 1 day can be deleted."""
-        from datetime import datetime, timedelta, timezone  # noqa: PLC0415
-
         # Get test players
         alice = db_service.get_or_create_player("Alice", username="alice")
         bob = db_service.get_or_create_player("Bob", username="bob")
@@ -300,8 +296,6 @@ class TestAppEndpoints:
         # Modify the game to be older than 1 day
         session = db_service.db_manager.get_session()
         try:
-            from dartserver_core import GameResult  # noqa: PLC0415
-
             results = session.query(GameResult).filter_by(game_session_id=game_session_id).all()
             old_date = datetime.now(timezone.utc) - timedelta(days=2)
             for result in results:
@@ -330,8 +324,6 @@ class TestAppEndpoints:
 
     def test_resume_completed_game(self, client, db_service):
         """Test that completed games cannot be resumed."""
-        from datetime import datetime, timezone  # noqa: PLC0415
-
         # Create a completed game
         alice = db_service.get_or_create_player("Alice", username="alice")
         bob = db_service.get_or_create_player("Bob", username="bob")
@@ -347,8 +339,6 @@ class TestAppEndpoints:
         # Mark as completed
         session = db_service.db_manager.get_session()
         try:
-            from dartserver_core import GameResult  # noqa: PLC0415
-
             results = session.query(GameResult).filter_by(game_session_id=game_session_id).all()
             for result in results:
                 result.finished_at = datetime.now(timezone.utc)
@@ -453,8 +443,8 @@ class TestAppEndpoints:
         data = json.loads(response.data)
         assert data["status"] == "success"
 
-        # Get game state
-        state = game_manager.get_game_state()
+        # Get game state (ensures no errors during retrieval)
+        game_manager.get_game_state()
 
         # Verify game was resumed correctly - response indicates success
         # Note: Game state may not be fully restored in integration test environment
@@ -515,8 +505,8 @@ class TestAppEndpoints:
         data = json.loads(response.data)
         assert data["status"] == "success"
 
-        # Get game state
-        state = game_manager.get_game_state()
+        # Get game state (ensures no errors during retrieval)
+        game_manager.get_game_state()
 
         # Verify game was resumed correctly - response indicates success
         # Note: Game state may not be fully restored in integration test environment

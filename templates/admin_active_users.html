@@ -220,7 +220,7 @@
         <div class="section">
             <h2>Real-Time Session Monitor</h2>
             <div class="info-text">
-                📡 Live monitoring of currently logged-in users. Updates automatically via Socket.IO. 
+                📡 Live monitoring of currently logged-in users. Updates automatically via Socket.IO.
                 <span id="connectionStatus" class="connection-status">
                     <span class="status-indicator"></span>
                     Connected
@@ -299,12 +299,12 @@
                     updateStats();
                 } else {
                     console.error('Failed to load sessions:', data.message);
-                    document.getElementById('activeUsersContainer').innerHTML = 
+                    document.getElementById('activeUsersContainer').innerHTML =
                         '<div class="empty-state">Failed to load active sessions</div>';
                 }
             } catch (error) {
                 console.error('Error loading sessions:', error);
-                document.getElementById('activeUsersContainer').innerHTML = 
+                document.getElementById('activeUsersContainer').innerHTML =
                     '<div class="empty-state">Error loading active sessions</div>';
             }
         }
@@ -353,14 +353,14 @@
 
         function updateStats() {
             document.getElementById('totalSessions').textContent = activeSessions.length;
-            
+
             // Count unique users
             const uniqueUsers = new Set(activeSessions.map(s => s.username)).size;
             document.getElementById('uniqueUsers').textContent = uniqueUsers;
-            
+
             // Update last update time
             const now = new Date();
-            document.getElementById('lastUpdate').textContent = 
+            document.getElementById('lastUpdate').textContent =
                 now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
         }
 
@@ -379,7 +379,7 @@
             const seconds = Math.floor(ms / 1000);
             const minutes = Math.floor(seconds / 60);
             const hours = Math.floor(minutes / 60);
-            
+
             if (hours > 0) {
                 return `${hours}h ${minutes % 60}m`;
             } else if (minutes > 0) {
@@ -392,7 +392,7 @@
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
             initializeSocket();
-            
+
             // Auto-refresh every 30 seconds
             setInterval(refreshSessions, 30000);
         });

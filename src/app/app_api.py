@@ -8,24 +8,17 @@ import os
 import uuid
 from datetime import timezone
 
-from flask import (
-    Blueprint,
-)
-from flask import current_app as _flask_current_app
-from flask import (
-    jsonify,
-    request,
-    session,
-)
-from sqlalchemy import func
-
-from src.core.auth import (
+from dartserver_core.auth import (
     get_wso2_user_info,
     login_required,
     permission_required,
     search_wso2_users,
 )
-from src.core.database_models import GameType, TrainingScore, TrainingSession
+from dartserver_core.database_models import GameType, TrainingScore, TrainingSession
+from flask import Blueprint
+from flask import current_app as _flask_current_app
+from flask import jsonify, request, session
+from sqlalchemy import func
 
 api_bp = Blueprint("api", __name__)
 logger = logging.getLogger(__name__)

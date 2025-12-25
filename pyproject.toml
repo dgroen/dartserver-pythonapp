@@ -175,7 +175,7 @@ lint.ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101", "PLR2004", "ARG001", "ARG002", "S603", "S607", "PTH116", "PTH123", "F821"]
 "examples/*" = ["T201", "S105", "S106", "S113", "E402"]
-"test_*.py" = ["S101", "PLR2004", "ARG001", "ARG002", "S113", "S603", "S607", "PTH116", "PTH123", "F821"]
+"test_*.py" = ["S101", "PLR2004", "ARG001", "ARG002", "S113", "S603", "S607", "PTH116", "PTH123", "F821", "Q000", "SIM115", "E501", "PTH120"]
 "verify_installation.py" = ["T201", "S105", "S106"]
 "alembic/env.py" = ["E402"]
 "database_models.py" = ["A003"]
@@ -184,6 +184,11 @@ lint.ignore = [
 "test_ssl_error_handling.py" = []
 "fix_wso2_callback*.py" = ["S501", "S113"]
 "manage_user_roles.py" = ["S501", "S113"]
+"src/app/app.py" = ["E402"]
+"src/app/app_services.py" = ["E402", "RUF100"]
+"src/app/app_games.py" = ["E402", "E501", "F841"]
+"src/app/app_admin.py" = ["E501"]
+"src/app/multi_game_manager.py" = ["W191", "ERA001", "PTH100", "PTH118", "PTH120", "PTH112", "PTH113", "COM812"]
 [tool.mypy]
 python_version = "3.10"
 warn_return_any = true

@@ -36,7 +36,7 @@ def client(flask_app, db_service):
         # Patch game manager to use test database
         flask_app.game_manager.db_service = db_service
 
-        with patch("src.core.auth.validate_token") as mock_validate:
+        with patch("dartserver_core.auth.validate_token") as mock_validate:
             mock_validate.return_value = {
                 "sub": "test-user",
                 "groups": ["admin"],
@@ -116,12 +116,14 @@ class TestNewGameEndpoints:
         """Test starting game with double_out and reset_on_miss options."""
         response = client.post(
             "/api/game/new",
-            data=json.dumps({
-                "game_type": "301",
-                "players": ["Alice", "Bob"],
-                "double_out": True,
-                "reset_on_miss": True,
-            }),
+            data=json.dumps(
+                {
+                    "game_type": "301",
+                    "players": ["Alice", "Bob"],
+                    "double_out": True,
+                    "reset_on_miss": True,
+                },
+            ),
             content_type="application/json",
         )
         assert response.status_code == 200
@@ -311,10 +313,12 @@ class TestMobileGameEndpoints:
         """Test starting game via mobile endpoint."""
         response = client.post(
             "/api/game/start",
-            data=json.dumps({
-                "game_type": "301",
-                "players": ["Alice", "Bob"],
-            }),
+            data=json.dumps(
+                {
+                    "game_type": "301",
+                    "players": ["Alice", "Bob"],
+                },
+            ),
             content_type="application/json",
         )
         assert response.status_code == 200
@@ -343,7 +347,7 @@ class TestMobileGameEndpoints:
 
             flask_app.game_manager.db_service = db_service
 
-            with patch("src.core.auth.validate_token") as mock_validate:
+            with patch("dartserver_core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {"sub": "test-user", "groups": []}
 
                 response = client.post(

@@ -268,7 +268,7 @@
 
             <div class="form-group">
                 <label for="userSearch">User</label>
-                <input type="text" id="userSearch" placeholder="Search by username..." 
+                <input type="text" id="userSearch" placeholder="Search by username..."
                        onkeyup="searchUsers()">
                 <select id="userSelect" size="5" style="margin-top: 5px; height: 120px;">
                     <option value="">-- Search for a user first --</option>
@@ -387,9 +387,9 @@
         let searchTimeout = null;
         async function searchUsers() {
             const query = document.getElementById('userSearch').value.trim();
-            
+
             clearTimeout(searchTimeout);
-            
+
             if (!query) {
                 document.getElementById('userSelect').innerHTML = '<option value="">-- Search for a user first --</option>';
                 return;
@@ -412,7 +412,7 @@
 
         function renderUserSelect(users) {
             const select = document.getElementById('userSelect');
-            
+
             if (users.length === 0) {
                 select.innerHTML = '<option value="">-- No users found --</option>';
                 return;
@@ -476,7 +476,7 @@
             alert.className = `alert ${type}`;
             alert.textContent = message;
             container.appendChild(alert);
-            
+
             setTimeout(() => {
                 const elem = document.getElementById(alertId);
                 if (elem) elem.remove();

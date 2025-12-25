@@ -6,15 +6,9 @@ import logging
 from functools import wraps
 from pathlib import Path
 
-from flask import (
-    Blueprint,
-    Response,
-    jsonify,
-    render_template,
-    request,
-    session,
-)
+from flask import Blueprint, Response
 from flask import current_app as _flask_current_app
+from flask import jsonify, render_template, request, session
 
 # Module-level `current_app` placeholder so unit tests can patch
 # `src.app.app_services.current_app` without requiring an app context.
@@ -26,10 +20,11 @@ def _app():
     return current_app if current_app is not None else _flask_current_app
 
 
-from src.app.mobile_service import MobileService
-from src.core.auth import login_required, role_required
-from src.core.dartboard_service import DartboardMappingError, DartboardService
-from src.core.database_service import get_session
+from dartserver_core.auth import login_required, role_required
+from dartserver_core.database_service import get_session
+from dartserver_services.dartboard_service import DartboardMappingError, DartboardService
+from dartserver_services.mobile_service import MobileService
+from dartserver_services.tts_service import TTSService
 
 services_bp = Blueprint("services", __name__)
 logger = logging.getLogger(__name__)
@@ -1097,8 +1092,6 @@ def get_tts_languages():
             fr: French
             es: Spanish
     """
-    from dartserver_services.tts_service import TTSService  # noqa: PLC0415
-
     languages = TTSService.get_supported_languages()
     return jsonify(languages)
 

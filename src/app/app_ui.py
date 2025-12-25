@@ -4,9 +4,8 @@ UI and page rendering endpoints
 
 from pathlib import Path
 
+from dartserver_core.auth import login_required, permission_required, role_required
 from flask import Blueprint, jsonify, render_template, request, send_from_directory
-
-from src.core.auth import login_required, permission_required, role_required
 
 ui_bp = Blueprint("ui", __name__)
 

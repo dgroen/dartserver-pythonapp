@@ -766,7 +766,7 @@ header h1 {
     .app-container {
         flex-direction: column;
     }
-    
+
     .games-sidebar {
         width: 100%;
         position: static;

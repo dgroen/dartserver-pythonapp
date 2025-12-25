@@ -3,11 +3,12 @@
 import time
 from unittest.mock import patch
 
+import eventlet
 import pytest
 from dartserver_core.database_service import DatabaseService
 
 
-@pytest.fixture()
+@pytest.fixture
 def db_service():
     """Create in-memory database service for testing."""
     db = DatabaseService("sqlite:///:memory:")
@@ -22,13 +23,13 @@ def db_service():
     return db
 
 
-@pytest.fixture()
+@pytest.fixture
 def app(db_service):
     """Create Flask app for testing."""
     with (
         patch("src.app.app.start_rabbitmq_consumer"),
         patch(
-            "src.app.game_manager.DatabaseService",
+            "dartserver_app.game_manager.DatabaseService",
         ) as mock_db_class,
     ):
         mock_db_class.return_value = db_service
@@ -37,7 +38,7 @@ def app(db_service):
         yield flask_app
 
 
-@pytest.fixture()
+@pytest.fixture
 def socketio_client(app, db_service):
     """Create SocketIO test client."""
     # Make sure game_manager uses the test database
@@ -53,8 +54,6 @@ def socketio_client(app, db_service):
 
 def wait_for_events(client, timeout=1.0):
     """Wait for events to be received by the client."""
-    import eventlet
-
     # Give time for the server to process and emit events
     # Use eventlet.sleep to allow the eventlet greenthread to process
     eventlet.sleep(0.3)

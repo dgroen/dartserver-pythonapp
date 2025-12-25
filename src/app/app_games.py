@@ -2,12 +2,14 @@
 Game management endpoints (state, new, start, end, list, activate, delete, resume, types)
 """
 
+import builtins
 import logging
 import uuid
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint
 from flask import current_app as _flask_current_app
+from flask import jsonify, request, session
 
 # Module-level placeholder so tests can patch `src.app.app_games.current_app`.
 current_app = None
@@ -17,8 +19,8 @@ def _app():
     return current_app if current_app is not None else _flask_current_app
 
 
-from src.core.auth import login_required, permission_required
-from src.core.database_models import GameType, Player
+from dartserver_core.auth import login_required, permission_required
+from dartserver_core.database_models import GameType, Player
 
 games_bp = Blueprint("games", __name__)
 logger = logging.getLogger(__name__)
@@ -571,7 +573,6 @@ def delete_game_session(game_id):
 
     # Get references from current_app
     multi_game_manager = _app().multi_game_manager
-    games_store = _app().games_store
     active_game = multi_game_manager.get_game()
     if active_game:
         game_manager = active_game
@@ -1049,8 +1050,6 @@ def delete_game(game_session_id):
         created_at = game_data.get("started_at") or game_data.get("created_at")
         if created_at:
             try:
-                from datetime import datetime, timezone
-
                 created_time = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
                 if created_time.tzinfo is None:
                     created_time = created_time.replace(tzinfo=timezone.utc)
@@ -1157,8 +1156,6 @@ def resume_game(game_session_id):
         _app().active_game_id = game_id
 
         # Update builtins for test compatibility
-        import builtins
-
         builtins.game_manager = new_game_manager
 
         _app().socketio.emit("game_state", new_game_manager.get_game_state(), namespace="/")

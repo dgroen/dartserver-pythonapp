@@ -6,6 +6,7 @@ Uses DCR (Dynamic Client Registration) API to create/update the OAuth2 applicati
 
 import json
 import sys
+import traceback
 
 import requests
 import urllib3
@@ -108,8 +109,6 @@ def register_new_client():
 
     except Exception as e:
         print(f"❌ Error registering client: {e}")
-        import traceback
-
         traceback.print_exc()
         return False
 
@@ -156,8 +155,6 @@ def update_client(client_data):
 
     except Exception as e:
         print(f"❌ Error updating client: {e}")
-        import traceback
-
         traceback.print_exc()
         return False
 

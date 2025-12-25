@@ -98,10 +98,11 @@ class TestAuthEndpoints:
         mock_player.id = 123
         mock_db_service.get_or_create_player.return_value = mock_player
         mock_game_manager.db_service = mock_db_service
-        
+
         with patch.object(flask_app, "game_manager", mock_game_manager):
             response = client.get(
-                "/callback?code=test-code&state=test-state", follow_redirects=False,
+                "/callback?code=test-code&state=test-state",
+                follow_redirects=False,
             )
 
             assert response.status_code == 302  # Redirect
@@ -148,8 +149,9 @@ class TestAuthEndpoints:
         mock_auth_fixtures["exchange"].return_value = None
 
         response = client.get(
-                "/callback?code=test-code&state=test-state", follow_redirects=False,
-            )
+            "/callback?code=test-code&state=test-state",
+            follow_redirects=False,
+        )
 
         assert response.status_code == 302
         assert "/login" in response.location
@@ -170,7 +172,8 @@ class TestAuthEndpoints:
 
         with patch.object(flask_app, "game_manager", mock_game_manager):
             response = client.get(
-                "/callback?code=test-code&state=test-state", follow_redirects=False,
+                "/callback?code=test-code&state=test-state",
+                follow_redirects=False,
             )
 
             assert response.status_code == 302
@@ -217,7 +220,7 @@ class TestAuthEndpoints:
                 "email": "test@example.com",
             }
 
-        with patch("src.core.auth.validate_token") as mock_validate:
+        with patch("dartserver_core.auth.validate_token") as mock_validate:
             mock_validate.return_value = {"sub": "test-user", "groups": ["admin"]}
 
             response = client.get("/profile")
@@ -240,7 +243,7 @@ class TestAuthEndpoints:
             sess["access_token"] = "test-token"
             sess["user_info"] = {"sub": "test-user", "username": "testuser"}
 
-        with patch("src.core.auth.validate_token") as mock_validate:
+        with patch("dartserver_core.auth.validate_token") as mock_validate:
             mock_validate.return_value = {
                 "sub": "test-user",
                 "groups": ["admin"],
@@ -287,7 +290,8 @@ class TestAuthEndpoints:
             }
 
             response = client.get(
-                "/callback?code=test-code&state=test-state", follow_redirects=False,
+                "/callback?code=test-code&state=test-state",
+                follow_redirects=False,
             )
 
             assert response.status_code == 302
@@ -307,7 +311,8 @@ class TestAuthEndpoints:
 
         with patch.object(flask_app, "game_manager", mock_game_manager):
             response = client.get(
-                "/callback?code=test-code&state=test-state", follow_redirects=False,
+                "/callback?code=test-code&state=test-state",
+                follow_redirects=False,
             )
 
             assert response.status_code == 302

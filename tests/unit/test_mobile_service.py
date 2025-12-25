@@ -11,12 +11,12 @@ from dartserver_services import MobileService
 class TestMobileService:
     """Test MobileService class."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def mock_db_session(self):
         """Create a mock database session."""
         return MagicMock()
 
-    @pytest.fixture()
+    @pytest.fixture
     def mobile_service(self, mock_db_session):
         """Create a mobile service instance with mock session."""
         return MobileService(mock_db_session)

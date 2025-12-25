@@ -16,7 +16,7 @@ from src.app.app import app as flask_app
 @pytest.fixture
 def mock_auth():
     """Mock authentication decorators."""
-    with patch("src.core.auth.validate_token") as mock_validate:
+    with patch("dartserver_core.auth.validate_token") as mock_validate:
         mock_validate.return_value = {
             "sub": "test-user",
             "username": "testuser",
@@ -149,8 +149,8 @@ class TestHistoryRedirectFix:
 
         with (
             patch("src.app.app_auth.exchange_code_for_token") as mock_exchange,
-            patch("src.core.auth.validate_token") as mock_validate,
-            patch("src.core.auth.get_user_roles") as mock_roles,
+            patch("dartserver_core.auth.validate_token") as mock_validate,
+            patch("dartserver_core.auth.get_user_roles") as mock_roles,
         ):
             mock_exchange.return_value = {
                 "access_token": "test_token",
