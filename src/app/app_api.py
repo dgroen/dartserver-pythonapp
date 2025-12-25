@@ -7,11 +7,17 @@ import os
 import uuid
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint
 from flask import current_app as _flask_current_app
+from flask import jsonify, request, session
 from sqlalchemy import func
 
-from src.core.auth import get_wso2_user_info, login_required, permission_required, search_wso2_users
+from src.core.auth import (
+    get_wso2_user_info,
+    login_required,
+    permission_required,
+    search_wso2_users,
+)
 from src.core.database_models import GameType, TrainingScore, TrainingSession
 
 api_bp = Blueprint("api", __name__)
@@ -73,7 +79,6 @@ def get_players():
                     type: string
                     description: Player email (for database source)
     """
-    game_manager = _app().game_manager
     source = request.args.get("source", "game")
 
     if source == "database":
@@ -139,7 +144,6 @@ def add_player():
       500:
         description: Server error
     """
-    game_manager = _app().game_manager
     try:
         data = request.json or {}
         username = data.get("username", "").strip()
@@ -233,7 +237,6 @@ def remove_player(player_id):
               type: string
               example: Player removed
     """
-    game_manager = _app().game_manager
     _app().game_manager.remove_player(player_id)
     # Game state is automatically emitted by _app().game_manager.remove_player()
     return jsonify({"status": "success", "message": "Player removed"})
@@ -376,7 +379,6 @@ def get_player_history():
       401:
         description: Unauthorized - player ID not available
     """
-    game_manager = _app().game_manager
     try:
         player_id = session.get("player_id")
         if not player_id:
@@ -418,7 +420,6 @@ def get_player_statistics():
       401:
         description: Unauthorized - player ID not available
     """
-    game_manager = _app().game_manager
     try:
         player_id = session.get("player_id")
         if not player_id:
@@ -478,7 +479,6 @@ def start_training():
             session_id:
               type: string
     """
-    game_manager = _app().game_manager
     try:
         data = request.json
         game_type = data.get("game_type", "301")
@@ -566,7 +566,6 @@ def end_training():
             message:
               type: string
     """
-    game_manager = _app().game_manager
     try:
         training_session_id = session.get("training_session_id")
         if not training_session_id:
@@ -630,7 +629,6 @@ def get_training_history():
               items:
                 type: object
     """
-    game_manager = _app().game_manager
     try:
         player_id = session.get("player_id")
         if not player_id:
@@ -693,7 +691,6 @@ def get_training_statistics():
             statistics:
               type: object
     """
-    game_manager = _app().game_manager
     try:
         player_id = session.get("player_id")
         if not player_id:
@@ -878,25 +875,25 @@ def get_game_replay(game_session_id):
         schema:
           type: object
           properties:
-            success:
-              type: boolean
-            game:
+            status:
+              type: string
+              example: success
+            game_data:
               type: object
               description: Complete game data with throws
       404:
         description: Game not found
     """
-    game_manager = _app().game_manager
     try:
         game_data = _app().game_manager.db_service.get_game_replay_data(game_session_id)
 
         if not game_data:
-            return jsonify({"success": False, "error": "Game not found"}), 404
+            return jsonify({"status": "error", "message": "Game not found"}), 404
 
-        return jsonify({"success": True, "game": game_data})
+        return jsonify({"status": "success", "game_data": game_data})
     except Exception as e:
         logger.exception(f"Error getting game replay for {game_session_id}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @api_bp.route("/api/game/current/session_id", methods=["GET"])
@@ -965,7 +962,6 @@ def get_game_results():
               items:
                 type: object
     """
-    game_manager = _app().game_manager
     limit = request.args.get("limit", 10, type=int)
     game_type = request.args.get("game_type")
 

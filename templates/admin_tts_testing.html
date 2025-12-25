@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -245,11 +246,17 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -265,10 +272,11 @@
             <div class="info-text">
                 🎙️ Test Text-to-Speech functionality with different voices and settings
             </div>
-            
+
             <div class="form-group">
                 <label for="ttsText">Text to Speak:</label>
-                <textarea id="ttsText" placeholder="Enter text to convert to speech...">Welcome to the Darts Game! Player one scored triple twenty.</textarea>
+                <textarea id="ttsText"
+                    placeholder="Enter text to convert to speech...">Welcome to the Darts Game! Player one scored triple twenty.</textarea>
             </div>
 
             <div class="form-group">
@@ -318,10 +326,11 @@
             <div class="info-text">
                 🖥️ Test server-side TTS generation (if configured)
             </div>
-            
+
             <div class="form-group">
                 <label for="serverText">Text to Generate:</label>
-                <textarea id="serverText" placeholder="Enter text for server-side TTS...">Testing server-side text to speech generation.</textarea>
+                <textarea id="serverText"
+                    placeholder="Enter text for server-side TTS...">Testing server-side text to speech generation.</textarea>
             </div>
 
             <div class="button-group">
@@ -339,37 +348,53 @@
         let currentUtterance = null;
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             loadVoices();
-            
+
             // Update rate/pitch display
-            document.getElementById('rateInput').addEventListener('input', function(e) {
+            document.getElementById('rateInput').addEventListener('input', function (e) {
                 document.getElementById('rateValue').textContent = e.target.value;
             });
-            
-            document.getElementById('pitchInput').addEventListener('input', function(e) {
+
+            document.getElementById('pitchInput').addEventListener('input', function (e) {
                 document.getElementById('pitchValue').textContent = e.target.value;
             });
         });
 
         function loadVoices() {
-            voices = speechSynthesis.getVoices();
-            
-            if (voices.length === 0) {
-                // Voices not loaded yet, wait for them
-                speechSynthesis.onvoiceschanged = () => {
-                    voices = speechSynthesis.getVoices();
+            // Some browsers (Chrome) populate voices asynchronously. Try now and also
+            // retry a few times if we get an empty list and onvoiceschanged does not fire.
+            const tryPopulate = (attempt = 0) => {
+                voices = speechSynthesis.getVoices();
+                if (voices.length > 0) {
                     populateVoiceSelect();
-                };
-            } else {
+                    return true;
+                }
+                // Give up after a handful of retries to avoid spinning forever
+                if (attempt < 5) {
+                    setTimeout(() => tryPopulate(attempt + 1), 300);
+                } else {
+                    // Show a friendly message if voices are still unavailable
+                    const select = document.getElementById('voiceSelect');
+                    select.innerHTML = '<option value="">No voices available (check browser permissions)</option>';
+                }
+                return false;
+            };
+
+            // Register event listener as primary signal
+            speechSynthesis.onvoiceschanged = () => {
+                voices = speechSynthesis.getVoices();
                 populateVoiceSelect();
-            }
+            };
+
+            // Kick off initial attempt immediately
+            tryPopulate();
         }
 
         function populateVoiceSelect() {
             const select = document.getElementById('voiceSelect');
             select.innerHTML = '';
-            
+
             voices.forEach((voice, index) => {
                 const option = document.createElement('option');
                 option.value = index;
@@ -451,7 +476,7 @@
 
                 if (data.status === 'success' && data.audio_url) {
                     showAlert('✓ Audio generated successfully', 'success');
-                    
+
                     // Create audio player
                     const audioContainer = document.getElementById('audioContainer');
                     audioContainer.innerHTML = `
@@ -483,7 +508,7 @@
                 <button onclick="document.getElementById('${alertId}').remove()">✕</button>
             `;
             container.appendChild(alert);
-            
+
             setTimeout(() => {
                 const elem = document.getElementById(alertId);
                 if (elem) elem.remove();
@@ -491,4 +516,5 @@
         }
     </script>
 </body>
+
 </html>
