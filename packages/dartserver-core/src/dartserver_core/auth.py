@@ -579,9 +579,7 @@ def role_required(*required_roles):
             user_roles = getattr(request, "user_roles", [])
 
             # Debug: Log role check
-            logger.debug(
-                "Role check - User roles: %s, Required roles: %s", user_roles, required_roles
-            )
+            logger.debug("Role check - User roles: %s, Required roles: %s", user_roles, required_roles)
 
             # Admin has access to all role-required endpoints
             if "admin" in user_roles:
@@ -798,7 +796,7 @@ def search_wso2_users(query: str, access_token: str | None = None) -> list[dict]
             auth = (WSO2_IS_INTROSPECT_USER, WSO2_IS_INTROSPECT_PASSWORD)
 
         # Build SCIM2 filter - search by username, email, or name
-        filter_param = f'(userName co "{query}" or emails co "{query}" or name.familyName co "{query}" or name.givenName co "{query}")'
+        filter_param = f'(userName co "{query}" or emails.value co "{query}" or name.familyName co "{query}" or name.givenName co "{query}")'
 
         scim_users_url = f"{WSO2_IS_INTERNAL_URL}/scim2/Users"
 
@@ -828,11 +826,7 @@ def search_wso2_users(query: str, access_token: str | None = None) -> list[dict]
                     }
 
                     # Extract email
-                    if (
-                        "emails" in user
-                        and isinstance(user["emails"], list)
-                        and len(user["emails"]) > 0
-                    ):
+                    if "emails" in user and isinstance(user["emails"], list) and len(user["emails"]) > 0:
                         user_info["email"] = user["emails"][0].get("value")
 
                     # Extract name
@@ -904,11 +898,7 @@ def get_wso2_user_info(username: str, access_token: str | None = None) -> dict |
                     "name": None,
                 }
 
-                if (
-                    "emails" in user
-                    and isinstance(user["emails"], list)
-                    and len(user["emails"]) > 0
-                ):
+                if "emails" in user and isinstance(user["emails"], list) and len(user["emails"]) > 0:
                     email_item = user["emails"][0]
                     # Handle both string format and object format
                     if isinstance(email_item, str):
