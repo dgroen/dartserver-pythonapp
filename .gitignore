@@ -64,20 +64,17 @@ docs/source/*
 dartserver-pythonapp.code-workspace
 .env_bu
 .zencoder/rules/repo.md
-<<<<<<< HEAD
 helpers/docker-backups/
 wso2is-7-config
 node_modules/.cache
-=======
 docker-backups
+wso2is-7-config
 wso2is-7-config/deployment.prod.example.toml
 wso2is-7-config/deployment.dev.example.toml
 node_modules/.cache
-docker-backups
 .env____
 .venv-test/
 wso2is-7-config
->>>>>>> 49fe593a5d0f672d19c90766cc88afbdffee1665
 
 # Security and credentials
 # Security scanning outputs

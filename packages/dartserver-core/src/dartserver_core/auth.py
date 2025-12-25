@@ -785,7 +785,7 @@ def search_wso2_users(query: str, access_token: str | None = None) -> list[dict]
     Returns list of users matching the query with username and email.
 
     Args:
-        query: Search term (username, email, or name)
+        query: Search term (username). If empty, returns all users.
         access_token: Access token for authentication (admin credentials used if not provided)
 
     Returns:
@@ -797,18 +797,23 @@ def search_wso2_users(query: str, access_token: str | None = None) -> list[dict]
         if not access_token:
             auth = (WSO2_IS_INTROSPECT_USER, WSO2_IS_INTROSPECT_PASSWORD)
 
-        # Build SCIM2 filter - search by username, email, or name
-        filter_param = f'(userName co "{query}" or emails co "{query}" or name.familyName co "{query}" or name.givenName co "{query}")'
-
         scim_users_url = f"{WSO2_IS_INTERNAL_URL}/scim2/Users"
+
+        # Build params - omit filter if query is empty (WSO2 can't handle empty filter)
+        params = {"count": "100"}
+        if query:
+            # Build SCIM2 filter - WSO2 doesn't support 'or' operator, so search by username only
+            # Using 'co' (contains) operator for substring matching on userName
+            params["filter"] = f'userName co "{query}"'
+
+        headers = {"Content-Type": "application/scim+json"}
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
 
         response = requests.get(
             scim_users_url,
-            params={"filter": filter_param, "count": "100"},
-            headers={
-                "Authorization": f"Bearer {access_token}" if access_token else None,
-                "Content-Type": "application/scim+json",
-            },
+            params=params,
+            headers=headers,
             auth=auth if not access_token else None,
             verify=WSO2_IS_VERIFY_SSL,
             timeout=10,
@@ -833,7 +838,12 @@ def search_wso2_users(query: str, access_token: str | None = None) -> list[dict]
                         and isinstance(user["emails"], list)
                         and len(user["emails"]) > 0
                     ):
-                        user_info["email"] = user["emails"][0].get("value")
+                        email_item = user["emails"][0]
+                        # Handle both string format and object format
+                        if isinstance(email_item, str):
+                            user_info["email"] = email_item
+                        elif isinstance(email_item, dict):
+                            user_info["email"] = email_item.get("value")
 
                     # Extract name
                     if "name" in user:
@@ -880,13 +890,14 @@ def get_wso2_user_info(username: str, access_token: str | None = None) -> dict |
 
         scim_users_url = f"{WSO2_IS_INTERNAL_URL}/scim2/Users"
 
+        headers = {"Content-Type": "application/scim+json"}
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+
         response = requests.get(
             scim_users_url,
             params={"filter": filter_param},
-            headers={
-                "Authorization": f"Bearer {access_token}" if access_token else None,
-                "Content-Type": "application/scim+json",
-            },
+            headers=headers,
             auth=auth if not access_token else None,
             verify=WSO2_IS_VERIFY_SSL,
             timeout=10,
