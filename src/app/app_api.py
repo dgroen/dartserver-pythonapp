@@ -2,14 +2,21 @@
 General API endpoints (players, WSO2, training, history, user info, debug)
 """
 
+import datetime
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import timezone
 
-from flask import Blueprint
+from flask import (
+    Blueprint,
+)
 from flask import current_app as _flask_current_app
-from flask import jsonify, request, session
+from flask import (
+    jsonify,
+    request,
+    session,
+)
 from sqlalchemy import func
 
 from src.core.auth import (
@@ -888,12 +895,23 @@ def get_game_replay(game_session_id):
         game_data = _app().game_manager.db_service.get_game_replay_data(game_session_id)
 
         if not game_data:
-            return jsonify({"status": "error", "message": "Game not found"}), 404
+            return (
+                jsonify({"success": False, "status": "error", "message": "Game not found"}),
+                404,
+            )
 
-        return jsonify({"status": "success", "game_data": game_data})
+        # Keep both "game" and "game_data" keys for compatibility with existing clients/tests.
+        return jsonify(
+            {
+                "success": True,
+                "status": "success",
+                "game": game_data,
+                "game_data": game_data,
+            },
+        )
     except Exception as e:
         logger.exception(f"Error getting game replay for {game_session_id}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"success": False, "status": "error", "message": str(e)}), 500
 
 
 @api_bp.route("/api/game/current/session_id", methods=["GET"])
