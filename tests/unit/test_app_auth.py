@@ -225,12 +225,9 @@ class TestAuthEndpoints:
 
             response = client.get("/profile")
 
-            if response.status_code == 200:
-                data = json.loads(response.data)
-                assert "user_info" in data
-                assert data["user_info"]["preferred_username"] == "testuser"
-                assert "roles" in data
-                assert "claims" in data
+            # Profile endpoint returns HTML, not JSON
+            assert response.status_code == 200
+            assert b"<!DOCTYPE html>" in response.data or b"<html" in response.data
 
     def test_debug_auth_requires_auth(self, client):
         """Test debug auth endpoint requires authentication."""
