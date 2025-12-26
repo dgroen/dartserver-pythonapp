@@ -136,6 +136,8 @@ socket.on('connect', () => {
     loadCurrentUser();
     // Load current game state on connect
     loadCurrentGameState();
+    // Ensure message section visibility is correct on connect
+    setTimeout(updateMessageSectionVisibility, 50);
 });
 
 socket.on('disconnect', () => {
@@ -192,6 +194,7 @@ socket.on('message', (data) => {
     console.log('Message:', data.text);
     if (alertMessage) {
         alertMessage.textContent = data.text;
+        updateMessageSectionVisibility();
     }
 });
 
@@ -205,10 +208,33 @@ socket.on('big_message', (data) => {
         setTimeout(() => {
             if (bigMessage.textContent === data.text) {
                 bigMessage.textContent = '';
+                updateMessageSectionVisibility();
             }
         }, 3000);
+        updateMessageSectionVisibility();
     }
 });
+
+// Toggle visibility of the outer section containing the message container.
+function updateMessageSectionVisibility() {
+    try {
+        const msgContainer = document.querySelector('.message-container');
+        if (!msgContainer) return;
+        const parentSection = msgContainer.closest('.section');
+        if (!parentSection) return;
+
+        const hasBig = bigMessage && bigMessage.textContent && bigMessage.textContent.trim().length > 0;
+        const hasAlert = alertMessage && alertMessage.textContent && alertMessage.textContent.trim().length > 0;
+
+        if (hasBig || hasAlert) {
+            parentSection.classList.remove('hidden-message-section');
+        } else {
+            parentSection.classList.add('hidden-message-section');
+        }
+    } catch (e) {
+        // ignore
+    }
+}
 
 function updateGameDisplay(state) {
     // Update game info (only if elements exist on this page)
