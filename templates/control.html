@@ -15,7 +15,7 @@
         <div class="user-info-header">
             <div class="user-info">
                 {% if user_claims %}
-                <span class="username">👤 {{ user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + ' ' + user_claims.get('family_name', '')).strip() or user_claims.get('username', user_claims.get('sub', 'User')) }}</span>
+                <a href="/profile" class="username username-link" title="View Profile">👤 {{ user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + ' ' + user_claims.get('family_name', '')).strip() or user_claims.get('username', user_claims.get('sub', 'User')) }}</a>
                 {% if user_roles %}
                 <span class="user-roles">
                     {% for role in user_roles %}
