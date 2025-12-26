@@ -6,10 +6,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a1a2e">
-    <link rel="manifest" href="/static/manifest.json">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <title>Profile - Darts Mobile</title>
-    <link rel="stylesheet" href="/static/css/mobile.css">
-    <link rel="stylesheet" href="/static/css/profile.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
 </head>
 <body>
     <div class="mobile-app">
@@ -95,6 +95,6 @@
         </main>
     </div>
 
-    <script src="/static/js/profile.js"></script>
+    <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
 </body>
 </html>
