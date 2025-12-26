@@ -2,155 +2,203 @@
 <html lang="en">
 
 <head>
-    <title>Darts Game Control Panel</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darts Game Control Panel - 2x2 Layout</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20251226">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}?v=20251226">
+    <style>
+        /* Force correct layout with !important */
+        .main-grid {
+            display: flex !important;
+            flex-direction: column !important;
+        }
 
-    @media (max-width: 768px) {
-    .container {
-    padding: 15px;
-    }
+        .main-grid .control-grid-row {
+            display: grid !important;
+            gap: 20px !important;
+            margin-bottom: 20px !important;
+            width: 100% !important;
+        }
 
-    header h1 {
-    font-size: 1.8em;
-    }
+        .main-grid .control-grid-row:nth-child(1) {
+            grid-template-columns: 1fr 1fr !important;
+            /* Row 1: Game Setup + Player Management */
+            order: 1 !important;
+        }
 
-    .control-sections {
-    grid-template-columns: 1fr;
-    }
+        .main-grid .control-grid-row:nth-child(2) {
+            grid-template-columns: 1fr 1fr !important;
+            /* Row 2: Manual Score + Game Settings */
+            order: 2 !important;
+        }
 
-    .player-controls {
-    flex-direction: column;
-    }
-    }
+        .main-grid .control-grid-row:nth-child(3) {
+            grid-template-columns: 1fr !important;
+            /* Row 3: Game State full width */
+            order: 3 !important;
+        }
+
+        .control-grid-row .section {
+            height: 300px !important;
+            overflow-y: auto !important;
+            flex-shrink: 0 !important;
+        }
+
+        .control-grid-row:nth-child(3) .section {
+            height: auto !important;
+            min-height: 300px !important;
+        }
     </style>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 
 <body>
-
     <div class="container">
         {% include '_user_header.html' %}
-        <header>
-            <h1>🎯 Darts Game Control Panel</h1>
-            <div class="header-links">
-                <a href="/" class="header-link">🎮 Main Game</a>
-                <a href="/history" class="header-link">📊 Game History</a>
+
+        <div class="header">
+            <div>
+                <h1>⚙️ Darts Game Control Panel</h1>
+                <p style="color: #999; margin-top: 5px; font-size: 14px;">Manage games, players, and settings</p>
             </div>
-        </header>
+        </div>
 
-        <div class="control-sections">
-            <!-- Game Setup -->
-            <section class="control-section">
-                <h2>Game Setup</h2>
-                <div class="form-group">
-                    <label for="game-type">Game Type:</label>
-                    <select id="game-type"></select>
-                </div>
-                <div class="form-group">
-                    <label for="double-out">
-                        <input type="checkbox" id="double-out" checked>
-                        Double Out (must finish with a double)
-                    </label>
-                </div>
-                <div class="form-group" id="hard-mode-container" style="display: none;">
-                    <label for="reset-on-miss">
-                        <input type="checkbox" id="reset-on-miss">
-                        Hard Mode (reset to 20 after 3 consecutive misses)
-                    </label>
-                </div>
-                <button id="new-game-btn" class="btn btn-primary">Start New Game</button>
-            </section>
+        <!-- Alerts Container -->
+        <div id="alerts-container"></div>
 
-            <!-- Player Management -->
-            <section class="control-section">
-                <h2>Players</h2>
-                <div id="players-list">
-                    <!-- Players will be dynamically added here -->
+        <div class="main-grid">
+            <!-- Row 1: Game Setup and Player Management -->
+            <div class="control-grid-row" style="grid-template-columns: 1fr 1fr;">
+                <!-- Game Setup -->
+                <div class="section">
+                    <h2>🎯 Game Setup</h2>
+                    <div class="form-group">
+                        <label for="game-type-select">Game Type:</label>
+                        <select id="game-type-select"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="double-out">
+                            Double Out (must finish with a double) <input type="checkbox" id="double-out" checked>
+                        </label>
+                    </div>
+                    <div class="form-group" id="hard-mode-container" style="display: none;">
+                        <label for="reset-on-miss">
+                            Hard Mode (reset to 20 after 3 consecutive misses) <input type="checkbox"
+                                id="reset-on-miss">
+                        </label>
+                    </div>
+                    <button id="new-game-btn" class="btn btn-primary btn-auto-width">Start New Game</button>
                 </div>
-                <div class="player-controls">
-                    <div class="player-search-wrapper">
-                        <input type="text" id="player-name" placeholder="Search WSO2 users or enter manual name...">
-                        <div id="player-search-results">
+
+                <!-- Player Management -->
+                <div class="section">
+                    <h2>👥 Player Management</h2>
+
+                    <!-- Current Players List -->
+                    <div class="current-players-section" style="margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 10px; color: #333; font-size: 16px;">Current Players</h3>
+                        <div id="players-list" class="players-list-container">
+                            <!-- Players will be dynamically added here -->
+                            <div class="empty-players">No players added yet</div>
+                        </div>
+                    </div>
+
+                    <!-- Add Player Section -->
+                    <div class="add-player-section">
+                        <h3 style="margin-bottom: 15px; color: #333; font-size: 16px;">Add New Player</h3>
+
+                        <div class="search-box">
+                            <input type="text" id="player-name" placeholder="Search WSO2 users or enter manual name...">
+                            <button id="add-player-btn" class="btn btn-success btn-auto-width">➕ Add Player</button>
+                        </div>
+
+                        <div id="player-search-results" class="search-results-container">
                             <!-- Search results will appear here -->
                         </div>
                     </div>
-                    <button id="add-player-btn" class="btn btn-success">Add Player</button>
                 </div>
-            </section>
+            </div>
 
-            <!-- Game Controls -->
-            <section class="control-section">
-                <h2>Game Controls</h2>
-                <button id="next-player-btn" class="btn btn-secondary">Next Player</button>
-                <button id="pause-btn" class="btn btn-warning">Pause/Resume</button>
-            </section>
+            <!-- Row 2: Manual Score Entry and Game Settings -->
+            <div class="control-grid-row" style="grid-template-columns: 1fr 1fr;">
+                <!-- Manual Score Entry -->
+                <div class="section">
+                    <h2>🎯 Manual Score Entry</h2>
+                    <div class="form-group">
+                        <label for="score-value">Score:</label>
+                        <input type="number" id="score-value" min="0" max="25" value="20">
+                    </div>
+                    <div class="form-group">
+                        <label for="multiplier">Multiplier:</label>
+                        <select id="multiplier">
+                            <option value="SINGLE">Single</option>
+                            <option value="DOUBLE">Double</option>
+                            <option value="TRIPLE">Triple</option>
+                            <option value="BULL">Bull</option>
+                            <option value="DBLBULL">Double Bull</option>
+                        </select>
+                    </div>
+                    <button id="submit-score-btn" class="btn btn-primary btn-auto-width">Submit Score</button>
+                </div>
 
-            <!-- Display Settings -->
-            <section class="control-section">
-                <h2>Display Settings</h2>
-                <div class="form-group">
-                    <label for="show-throwout-advice">
-                        <input type="checkbox" id="show-throwout-advice">
-                        Show Throw-out Advice
-                    </label>
+                <!-- Game Settings -->
+                <div class="section">
+                    <h2>⚙️ Game Settings</h2>
+                    <div class="form-group">
+                        <label for="show-throwout-advice">
+                            Show Throw-out Advice <input type="checkbox" id="show-throwout-advice" checked />
+                        </label>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <h3 style="margin-bottom: 10px; color: #333; font-size: 16px;">🎮 Game Controls</h3>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button id="next-player-btn" class="btn btn-secondary">Next Player</button>
+                            <button id="pause-btn" class="btn btn-warning">Pause/Resume</button>
+                        </div>
+                    </div>
                 </div>
-            </section>
+            </div>
 
-            <!-- Throwout Advice Display -->
-            <section class="control-section">
-                <h2>💡 Finishing Tip</h2>
-                <div id="throwout-advice-display"
-                    style="min-height: 2rem; padding: 1rem; background: rgba(0, 212, 255, 0.1); border-radius: 4px; border: 1px solid rgba(0, 212, 255, 0.3);">
-                    <div id="throwout-advice-content" style="color: #00d4ff; font-weight: 500;">No active game</div>
+            <!-- Row 3: Game State (full width) -->
+            <div class="control-grid-row" style="grid-template-columns: 1fr;">
+                <div class="section">
+                    <h2>📊 Game State</h2>
+                    <div id="game-state-display">
+                        <pre id="game-state-json"></pre>
+                    </div>
                 </div>
-            </section>
-
-            <!-- Manual Score Entry -->
-            <section class="control-section">
-                <h2>Manual Score Entry</h2>
-                <div class="form-group">
-                    <label for="score-value">Score:</label>
-                    <input type="number" id="score-value" min="0" max="60" value="20">
-                </div>
-                <div class="form-group">
-                    <label for="multiplier">Multiplier:</label>
-                    <select id="multiplier">
-                        <option value="SINGLE">Single</option>
-                        <option value="DOUBLE">Double</option>
-                        <option value="TRIPLE">Triple</option>
-                        <option value="BULL">Bull</option>
-                        <option value="DBLBULL">Double Bull</option>
-                    </select>
-                </div>
-                <button id="submit-score-btn" class="btn btn-primary">Submit Score</button>
-            </section>
-
-            <!-- Game State Display -->
-            <section class="control-section">
-                <h2>Game State</h2>
-                <div id="game-state-display">
-                    <pre id="game-state-json"></pre>
-                </div>
-            </section>
+            </div>
         </div>
 
-        <!-- Navigation Links -->
-        <div class="control-link" style="margin-top: 20px; text-align: center;">
-            <a href="/" style="margin: 0 10px;">Game Board</a>
-            <a href="/dashboard" style="margin: 0 10px;">View Dashboard</a>
-            {% if 'admin' in user_roles %}
-            <a href="/admin" style="margin: 0 10px;">🔧 Admin</a>
-            {% endif %}
+        <!-- navigation / action area -->
+        <div class="section full-width" style="margin-top: 10px;">
+            <div class="nav-links" style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+                <a href="/" class="nav-link">🎮 Main Game</a>
+                <a href="/training" class="nav-link">🎯 Training Mode</a>
+                <a href="/history" class="nav-link">📊 Game History</a>
+                <a href="/dashboard" class="nav-link">📊 View Dashboard</a>
+                {% if 'admin' in user_roles %}
+                <a href="/admin" class="nav-link">🔧 Admin</a>
+                {% endif %}
+            </div>
         </div>
     </div>
+    </div>
 
+    </div>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/control.js') }}"></script>
     <script>
         // Load game types when page loads
         document.addEventListener('DOMContentLoaded', async function () {
-            const gameTypeSelect = document.getElementById('game-type');
+            // Set default checkbox states
+            const showThrowoutAdviceCheckbox = document.getElementById('show-throwout-advice');
+            if (showThrowoutAdviceCheckbox) {
+                showThrowoutAdviceCheckbox.checked = true;
+            }
+
+            const gameTypeSelect = document.getElementById('game-type-select');
             if (gameTypeSelect) {
                 // Observer to detect and fix if something clears the select
                 let lastChildCount = 0;
