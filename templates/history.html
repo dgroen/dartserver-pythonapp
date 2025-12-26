@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game History - Darts</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
         .history-container {
@@ -204,23 +206,10 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
-                <div class="user-info-header">
-            <div class="user-info">
-                {% if user_claims %}
-                <a href="/profile" class="username username-link" title="View Profile">👤 {{ user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + ' ' + user_claims.get('family_name', '')).strip() or user_claims.get('username', user_claims.get('sub', 'User')) }}</a>
-                {% if user_roles %}
-                <span class="user-roles">
-                    {% for role in user_roles %}
-                    <span class="role-badge role-{{ role }}">{{ role }}</span>
-                    {% endfor %}
-                </span>
-                {% endif %}
-                <a href="/logout" class="logout-btn">Logout</a>
-                {% endif %}
-            </div>
-        </div>
+        {% include '_user_header.html' %}
         <header>
             <h1>📊 Game History</h1>
             <div class="game-info">
@@ -470,4 +459,5 @@
     </script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
+
 </html>

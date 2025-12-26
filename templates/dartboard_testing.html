@@ -4,11 +4,15 @@
 <head>
     <meta charset="utf-8">
     <title>Dartboard Testing</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
 </head>
 
 <body>
-    <h1>Dartboard Testing Page (test stub)</h1>
-    <p>This is a minimal template used by unit tests.</p>
+    <div class="container">
+        {% include '_user_header.html' %}
+        <h1>Dartboard Testing Page (test stub)</h1>
+        <p>This is a minimal template used by unit tests.</p>
+    </div>
 </body>
 
 </html>

@@ -1,0 +1,800 @@
+/* Central admin/theme stylesheet extracted from admin_dartboard_testing.html */
+/* Base resets and layout */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+}
+
+.container {
+    max-width: 1600px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    padding: 30px;
+}
+
+/* Header and status */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    border-bottom: 3px solid #667eea;
+    padding-bottom: 20px;
+}
+
+.header h1 {
+    color: #333;
+    font-size: 28px;
+}
+
+.header .status {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 20px;
+    background: #f0f0f0;
+    border-radius: 6px;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ccc;
+}
+
+.status-dot.active {
+    background: #4CAF50;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Grid & sections */
+.main-grid {
+    display: grid;
+    /* left column is flexible, right column reserved for sidebar/actions */
+    grid-template-columns: 1fr auto;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.section {
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.section h2 {
+    color: #333;
+    font-size: 18px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section h2::before {
+    content: '';
+    width: 4px;
+    height: 20px;
+    background: #667eea;
+    border-radius: 2px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    color: #555;
+    font-weight: 600;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.form-group select,
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.form-group select:focus,
+.form-group input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #5568d3;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.btn-secondary:hover {
+    background: #e0e0e0;
+}
+
+.btn-success {
+    background: #4CAF50;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #45a049;
+}
+
+.btn-danger {
+    background: #f44336;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #da190b;
+}
+
+/* Matrix, logs and helpers */
+.matrix-container {
+    background: white;
+    border-radius: 6px;
+    padding: 15px;
+    overflow-x: auto;
+}
+
+.matrix {
+    display: inline-block;
+    background: white;
+}
+
+.matrix-header {
+    display: flex;
+    margin-left: 50px;
+    margin-bottom: 0;
+    gap: 0;
+}
+
+.matrix-col-header {
+    width: 60px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #667eea;
+    font-size: 12px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.matrix-row {
+    display: flex;
+    gap: 0;
+    margin-bottom: 0;
+}
+
+.matrix-row-header {
+    width: 50px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #667eea;
+    font-size: 12px;
+    border-right: 2px solid #e0e0e0;
+}
+
+.matrix-cell {
+    width: 60px;
+    height: 60px;
+    border: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: white;
+    font-size: 11px;
+    text-align: center;
+    padding: 2px;
+}
+
+.matrix-cell:hover {
+    background: #f5f5f5;
+    border-color: #667eea;
+}
+
+.matrix-cell.mapped {
+    background: #e3f2fd;
+    border-color: #667eea;
+    font-weight: 600;
+}
+
+.matrix-cell.selected {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+.cell-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.cell-zone {
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.cell-mult {
+    font-size: 9px;
+    opacity: 0.7;
+}
+
+.message-log {
+    background: #1e1e1e;
+    color: #00ff00;
+    border-radius: 6px;
+    padding: 15px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    height: 250px;
+    overflow-y: auto;
+    border: 1px solid #333;
+}
+
+.log-entry {
+    margin-bottom: 8px;
+    padding: 8px;
+    background: rgba(0, 255, 0, 0.05);
+    border-left: 3px solid #00ff00;
+    border-radius: 2px;
+}
+
+.log-timestamp {
+    color: #888;
+    margin-right: 10px;
+}
+
+.log-raw {
+    color: #00ff00;
+}
+
+.log-mapping {
+    color: #ffff00;
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid #444;
+}
+
+/* Mapping form layout */
+.mapping-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.mapping-form .form-group {
+    margin-bottom: 0;
+}
+
+.mapping-form.full-width {
+    grid-column: 1 / -1;
+}
+
+.csv-upload {
+    border: 2px dashed #667eea;
+    border-radius: 6px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.csv-upload:hover {
+    background: rgba(102, 126, 234, 0.1);
+    border-color: #5568d3;
+}
+
+.csv-upload input[type="file"] {
+    display: none;
+}
+
+.csv-upload .upload-icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+}
+
+.csv-upload .upload-text {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.csv-upload .upload-subtext {
+    color: #999;
+    font-size: 12px;
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    border-left: 4px solid;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.alert.success {
+    background: #e8f5e9;
+    border-color: #4CAF50;
+    color: #2e7d32;
+}
+
+.alert.error {
+    background: #ffebee;
+    border-color: #f44336;
+    color: #c62828;
+}
+
+.alert.info {
+    background: #e3f2fd;
+    border-color: #2196F3;
+    color: #1565c0;
+}
+
+.alert button {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0;
+    width: auto;
+}
+
+.full-width {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 1200px) {
+    .main-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mapping-form {
+        grid-template-columns: 1fr;
+    }
+}
+
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.info-text {
+    background: #e3f2fd;
+    border-left: 4px solid #2196F3;
+    padding: 12px;
+    border-radius: 4px;
+    color: #1565c0;
+    font-size: 13px;
+    margin-bottom: 15px;
+}
+
+.cell-highlight-animation {
+    animation: cellFlash 0.6s ease-out;
+}
+
+@keyframes cellFlash {
+    0% {
+        background: #ffeb3b;
+        transform: scale(1.05);
+    }
+
+    100% {
+        background: inherit;
+        transform: scale(1);
+    }
+}
+
+.pin-selection {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.pin-selection h4 {
+    color: #333;
+    font-size: 14px;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.pin-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pin-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 13px;
+}
+
+.pin-checkbox:hover {
+    background: #e3f2fd;
+    border-color: #667eea;
+}
+
+.pin-checkbox input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.pin-checkbox input[type="checkbox"]:checked+span {
+    color: #667eea;
+    font-weight: 600;
+}
+
+.pin-checkbox.selected {
+    background: #e3f2fd;
+    border-color: #667eea;
+}
+
+/* User header (shared) */
+.user-info-header {
+    text-align: center;
+    margin-bottom: 10px;
+    padding: 20px;
+    position: relative;
+}
+
+.user-info {
+    position: absolute;
+    top: 5px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9em;
+}
+
+.username {
+    padding: 5px 12px;
+}
+
+.username-link {
+    text-decoration: none;
+    color: #222 !important;
+    transition: background 0.3s, transform 0.2s;
+    display: inline-block;
+}
+
+.username-link:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+    cursor: pointer;
+}
+
+.user-roles {
+    display: flex;
+    gap: 5px;
+}
+
+.role-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.role-admin {
+    background: #dc3545;
+    color: white;
+}
+
+.role-gamemaster {
+    background: #ffc107;
+    color: #333;
+}
+
+.role-player {
+    background: #28a745;
+    color: white;
+}
+
+.logout-btn {
+    padding: 6px 15px;
+    background: rgba(220, 53, 69, 0.8);
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    transition: background 0.3s;
+}
+
+.logout-btn:hover {
+    background: rgba(220, 53, 69, 1);
+}
+
+/* Player card overrides for improved contrast and layout */
+.player-card {
+    background: #ffffff;
+    color: #222;
+    border-radius: 10px;
+    padding: 20px;
+    transition: all 0.25s ease;
+    border: 3px solid transparent;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.player-card.active {
+    border-color: #1565c0;
+    background: linear-gradient(135deg, #1e88e5, #1565c0);
+    color: #fff;
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 10px 30px rgba(21, 101, 192, 0.25);
+}
+
+.player-card.winner {
+    border-color: #b8860b;
+    background: linear-gradient(135deg, #ffd54f, #ffb300);
+    color: #222;
+    animation: pulse 1.2s infinite;
+}
+
+.player-name {
+    color: inherit;
+}
+
+.player-score {
+    color: inherit;
+    text-shadow: none;
+}
+
+/* Players container responsive placement rules by player count */
+.players-container {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    width: 100%;
+}
+
+/* Ensure the left column stacks and stretches its children */
+.main-grid>div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Reserve width for a populated right column, but allow it to collapse when empty */
+.main-grid>div:last-child {
+    width: 100%;
+}
+
+.message-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.players-container.players-count-1 {
+    grid-template-columns: 1fr;
+}
+
+.players-container.players-count-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.players-container.players-count-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.players-container.players-count-4 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.nav-links a.nav-link {
+    padding: 10px 14px;
+    background: #f5f5f5;
+    color: #333;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.nav-links a.nav-link:hover {
+    background: #eef2ff;
+}
+
+/* Games sidebar styling to match .section */
+.games-sidebar {
+    width: 320px;
+    margin-right: 20px;
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.games-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.game-item {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 10px;
+    border: 1px solid #e6e6e6;
+    color: #222;
+    cursor: pointer;
+}
+
+.game-item .game-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.game-item .game-item-type {
+    font-weight: 700;
+    color: #333;
+}
+
+.game-item .game-item-players {
+    font-size: 0.9em;
+    color: #555;
+}
+
+.game-item.active {
+    background: linear-gradient(135deg, #1e88e5, #1565c0);
+    color: #fff;
+    border-color: rgba(21, 101, 192, 0.4);
+    box-shadow: 0 8px 24px rgba(21, 101, 192, 0.12);
+}
+
+.game-item.active .game-item-type,
+.game-item.active .game-item-players {
+    color: #fff;
+}
+
+/* Per-card throw advice */
+.card-throw-advice {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 6px;
+    font-size: 0.95em;
+    color: inherit;
+}
+
+/* per-card throw info and button */
+.card-throw-info {
+    font-size: 0.95em;
+    color: inherit;
+    opacity: 0.9;
+    margin-top: 8px;
+}
+
+.card-button-container {
+    margin-top: 12px;
+}
+
+.btn-card-next {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-weight: 700;
+}
+
+/* Small utilities */
+.info-text small {
+    color: #666;
+}
+
+/* small responsive tweaks reused from admin template */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+
+    .header h1 {
+        font-size: 1.8em;
+    }
+
+    .main-grid {
+        grid-template-columns: 1fr;
+    }
+}

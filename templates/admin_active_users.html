@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Active Users</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
     <style>
         * {
             margin: 0;
@@ -221,6 +222,7 @@
 
 <body>
     <div class="container">
+        {% include '_user_header.html' %}
         <div class="header">
             <h1>🟢 Active Users</h1>
             <a href="/admin" class="back-link">← Back to Admin</a>

@@ -1,29 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Training Mode - Darts Game</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/control.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
+
 <body>
     <div class="container">
-        <div class="user-info-header">
-            <div class="user-info">
-                {% if user_claims %}
-                <a href="/profile" class="username username-link" title="View Profile">👤 {{ user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + ' ' + user_claims.get('family_name', '')).strip() or user_claims.get('username', user_claims.get('sub', 'User')) }}</a>
-                {% if user_roles %}
-                <span class="user-roles">
-                    {% for role in user_roles %}
-                    <span class="role-badge role-{{ role }}">{{ role }}</span>
-                    {% endfor %}
-                </span>
-                {% endif %}
-                <a href="/logout" class="logout-btn">Logout</a>
-                {% endif %}
-            </div>
-        </div>
+        {% include '_user_header.html' %}
         <header>
             <h1>🎯 Training Mode</h1>
             <div class="header-links">
@@ -122,11 +110,11 @@
             if (!socket) {
                 socket = io();
 
-                socket.on('game_state', function(data) {
+                socket.on('game_state', function (data) {
                     updateGameDisplay(data);
                 });
 
-                socket.on('connect', function() {
+                socket.on('connect', function () {
                     console.log('Socket connected');
                 });
             }
@@ -168,7 +156,7 @@
         }
 
         // Start training session
-        document.getElementById('start-training-btn').addEventListener('click', async function() {
+        document.getElementById('start-training-btn').addEventListener('click', async function () {
             const gameType = document.getElementById('training-game-type').value;
             const doubleOut = document.getElementById('training-double-out').checked;
 
@@ -209,7 +197,7 @@
         });
 
         // End training session
-        document.getElementById('end-training-btn').addEventListener('click', async function() {
+        document.getElementById('end-training-btn').addEventListener('click', async function () {
             if (!confirm('Are you sure you want to end this training session?')) {
                 return;
             }
@@ -244,4 +232,5 @@
         });
     </script>
 </body>
+
 </html>

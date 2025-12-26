@@ -498,26 +498,42 @@ header h1 {
 
 .message-container {
     text-align: center;
-    padding: 20px;
-    background: rgba(0, 0, 0, 0.3);
+    background: white;
     border-radius: 10px;
+    overflow: hidden;
+    display: none;
+    /* fully hidden when empty */
+}
+
+/* Show a small visible box when either message has content */
+.message-container:has(.big-message:not(:empty)),
+.message-container:has(.alert-message:not(:empty)) {
+    display: block;
+    padding: 20px;
+    max-height: 240px;
+    opacity: 1;
 }
 
 .big-message {
     font-size: 2.5em;
     font-weight: bold;
     margin-bottom: 10px;
-    min-height: 60px;
+    min-height: 0;
+    /* allow sizing to content */
     display: flex;
     align-items: center;
     justify-content: center;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    text-shadow: 2px 2px 4px rgba(248, 248, 248, 0.5);
+    color: #222;
+    /* dark text to remain readable on white box */
 }
 
 .alert-message {
     font-size: 1.5em;
-    color: #FFD700;
-    min-height: 40px;
+    color: #b8860b;
+    /* darker gold for readability */
+    min-height: 0;
+    /* allow sizing to content */
 }
 
 /* Throwout Advice */
@@ -670,7 +686,7 @@ header h1 {
 
 .games-sidebar {
     width: 280px;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgb(255, 254, 254);
     border-radius: 10px;
     padding: 15px;
     height: fit-content;

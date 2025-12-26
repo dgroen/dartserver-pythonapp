@@ -353,33 +353,12 @@ function handleGameState(data) {
     // Update current game state
     currentGame = data;
 
-    // Handle game state updates which may include throwout advice
-    if (data.throwout_advice) {
-        displayThrowoutAdvice(data.throwout_advice);
-    } else {
-        hideThrowoutAdvice();
-    }
-
+    // Handle game state updates
     // Update button visibility
     updateNextPlayerButton(data);
 }
 
-function displayThrowoutAdvice(advice) {
-    const adviceElement = document.getElementById('throwoutAdvice');
-    const adviceDisplay = document.getElementById('adviceDisplay');
-
-    if (Array.isArray(advice) && advice.length > 0) {
-        adviceDisplay.textContent = advice.join(' or ');
-        adviceElement.style.display = 'block';
-    } else {
-        adviceElement.style.display = 'none';
-    }
-}
-
-function hideThrowoutAdvice() {
-    const adviceElement = document.getElementById('throwoutAdvice');
-    adviceElement.style.display = 'none';
-}
+// throwout advice is shown per-player in each player card now
 
 function handleGameEnd(data) {
     console.log('Game ended');

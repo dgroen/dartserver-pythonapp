@@ -1,28 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Training Dashboard - Darts Game</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/control.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
 </head>
+
 <body>
     <div class="container">
-        <div class="user-info-header">
-            <div class="user-info">
-                {% if user_claims %}
-                <a href="/profile" class="username username-link" title="View Profile">👤 {{ user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + ' ' + user_claims.get('family_name', '')).strip() or user_claims.get('username', user_claims.get('sub', 'User')) }}</a>
-                {% if user_roles %}
-                <span class="user-roles">
-                    {% for role in user_roles %}
-                    <span class="role-badge role-{{ role }}">{{ role }}</span>
-                    {% endfor %}
-                </span>
-                {% endif %}
-                <a href="/logout" class="logout-btn">Logout</a>
-                {% endif %}
-            </div>
-        </div>
+        {% include '_user_header.html' %}
         <header>
             <h1>📊 Training Dashboard</h1>
             <div class="header-links">
@@ -39,20 +27,25 @@
             <!-- Statistics Summary -->
             <section class="control-section">
                 <h2>Training Statistics</h2>
-                <div id="stats-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                    <div class="stat-card" style="background: rgba(0, 212, 255, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(0, 212, 255, 0.3);">
+                <div id="stats-summary"
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                    <div class="stat-card"
+                        style="background: rgba(0, 212, 255, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(0, 212, 255, 0.3);">
                         <div style="color: #888; font-size: 0.875rem;">Total Sessions</div>
                         <div id="total-sessions" style="font-size: 2rem; font-weight: bold; color: #00d4ff;">-</div>
                     </div>
-                    <div class="stat-card" style="background: rgba(0, 255, 0, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(0, 255, 0, 0.3);">
+                    <div class="stat-card"
+                        style="background: rgba(0, 255, 0, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(0, 255, 0, 0.3);">
                         <div style="color: #888; font-size: 0.875rem;">Completed</div>
                         <div id="completed-sessions" style="font-size: 2rem; font-weight: bold; color: #00ff00;">-</div>
                     </div>
-                    <div class="stat-card" style="background: rgba(255, 165, 0, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255, 165, 0, 0.3);">
+                    <div class="stat-card"
+                        style="background: rgba(255, 165, 0, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255, 165, 0, 0.3);">
                         <div style="color: #888; font-size: 0.875rem;">Avg Score/Throw</div>
                         <div id="avg-score" style="font-size: 2rem; font-weight: bold; color: #ffa500;">-</div>
                     </div>
-                    <div class="stat-card" style="background: rgba(255, 0, 255, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255, 0, 255, 0.3);">
+                    <div class="stat-card"
+                        style="background: rgba(255, 0, 255, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255, 0, 255, 0.3);">
                         <div style="color: #888; font-size: 0.875rem;">Total Throws</div>
                         <div id="total-throws" style="font-size: 2rem; font-weight: bold; color: #ff00ff;">-</div>
                     </div>
@@ -74,13 +67,13 @@
 
     <script>
         // Load statistics and history on page load
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             loadStatistics();
             loadHistory();
         });
 
         // Refresh button handler
-        document.getElementById('refresh-btn').addEventListener('click', function() {
+        document.getElementById('refresh-btn').addEventListener('click', function () {
             loadStatistics();
             loadHistory();
         });
@@ -141,7 +134,7 @@
                 html += '<div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">';
                 html += '<strong style="color: #00d4ff;">' + session.game_type.toUpperCase() + '</strong>';
                 html += '<span style="color: ' + (session.completed ? '#00ff00' : '#ffa500') + ';">' +
-                        (session.completed ? '✓ Completed' : '⏸ Incomplete') + '</span>';
+                    (session.completed ? '✓ Completed' : '⏸ Incomplete') + '</span>';
                 html += '</div>';
 
                 html += '<div style="font-size: 0.875rem; color: #888; display: grid; gap: 0.25rem;">';
@@ -174,4 +167,5 @@
         }
     </script>
 </body>
+
 </html>
