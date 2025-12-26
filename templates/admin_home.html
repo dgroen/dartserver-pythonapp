@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,7 +14,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -138,8 +139,27 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
+        <div class="user-info-header">
+            <div class="user-info">
+                {% if user_claims %}
+                <a href="/profile" class="username username-link" title="View Profile">👤 {{
+                    user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + '
+                    ' + user_claims.get('family_name', '')).strip() or user_claims.get('username',
+                    user_claims.get('sub', 'User')) }}</a>
+                {% if user_roles %}
+                <span class="user-roles">
+                    {% for role in user_roles %}
+                    <span class="role-badge role-{{ role }}">{{ role }}</span>
+                    {% endfor %}
+                </span>
+                {% endif %}
+                <a href="/logout" class="logout-btn">Logout</a>
+                {% endif %}
+            </div>
+        </div>
         <div class="header">
             <h1>🎯 Admin Dashboard</h1>
             <div class="user-info">
@@ -158,7 +178,8 @@
                 <span class="nav-card-icon">🎯</span>
                 <div class="nav-card-title">Dartboard Testing</div>
                 <div class="nav-card-description">
-                    Test and calibrate dartboard GPIO pin mappings. Configure dartboard types and troubleshoot hardware connections.
+                    Test and calibrate dartboard GPIO pin mappings. Configure dartboard types and troubleshoot hardware
+                    connections.
                 </div>
             </a>
 
@@ -167,7 +188,8 @@
                 <span class="nav-card-icon">🔊</span>
                 <div class="nav-card-title">TTS Testing</div>
                 <div class="nav-card-description">
-                    Test Text-to-Speech functionality. Preview different voices, test audio playback, and configure TTS settings.
+                    Test Text-to-Speech functionality. Preview different voices, test audio playback, and configure TTS
+                    settings.
                 </div>
             </a>
 
@@ -176,7 +198,8 @@
                 <span class="nav-card-icon">👥</span>
                 <div class="nav-card-title">User Management</div>
                 <div class="nav-card-description">
-                    Create new users, deactivate accounts, set passwords, and manage user roles. Full WSO2 user administration.
+                    Create new users, deactivate accounts, set passwords, and manage user roles. Full WSO2 user
+                    administration.
                 </div>
             </a>
 
@@ -203,7 +226,8 @@
                 <span class="nav-card-icon">📊</span>
                 <div class="nav-card-title">User Statistics</div>
                 <div class="nav-card-description">
-                    View comprehensive statistics for all users including game counts, win rates, rankings, and performance metrics.
+                    View comprehensive statistics for all users including game counts, win rates, rankings, and
+                    performance metrics.
                 </div>
             </a>
         </div>
@@ -215,4 +239,5 @@
         </div>
     </div>
 </body>
+
 </html>

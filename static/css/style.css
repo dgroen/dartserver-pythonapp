@@ -21,8 +21,6 @@ body {
     text-align: center;
     margin-bottom: 10px;
     padding: 20px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 10px;
     position: relative;
 }
 
@@ -66,8 +64,6 @@ header h1 {
 
 .username {
     padding: 5px 12px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 20px;
 }
 
 .username-link {
@@ -159,8 +155,15 @@ header h1 {
 }
 
 @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
 }
 
 .player-name {
@@ -296,10 +299,13 @@ header h1 {
 }
 
 @keyframes rtc-blink {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 1;
         box-shadow: 0 0 20px rgba(0, 212, 255, 0.8);
     }
+
     50% {
         opacity: 0.4;
         box-shadow: 0 0 40px rgba(0, 212, 255, 1);
@@ -425,10 +431,13 @@ header h1 {
 }
 
 @keyframes rtc-segment-pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 1;
         filter: drop-shadow(0 0 5px rgba(0, 206, 209, 0.8));
     }
+
     50% {
         opacity: 0.7;
         filter: drop-shadow(0 0 15px rgba(0, 206, 209, 1));
@@ -440,9 +449,12 @@ header h1 {
 }
 
 @keyframes rtc-number-pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         font-size: 18px;
     }
+
     50% {
         font-size: 20px;
     }
@@ -453,9 +465,12 @@ header h1 {
 }
 
 @keyframes rtc-bull-pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 1;
     }
+
     50% {
         opacity: 0.7;
     }
@@ -767,7 +782,8 @@ header h1 {
     color: rgba(255, 255, 255, 0.7);
 }
 
-.loading-games, .no-games {
+.loading-games,
+.no-games {
     text-align: center;
     padding: 20px;
     color: rgba(255, 255, 255, 0.6);

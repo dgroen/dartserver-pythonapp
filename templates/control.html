@@ -5,7 +5,418 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Darts Game Control Panel</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/control.css') }}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+        }
+
+        .user-info-header {
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 20px;
+            position: relative;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #1e3c72;
+            position: relative;
+        }
+
+        header h1 {
+            color: #333;
+            font-size: 2.5em;
+        }
+
+        .user-info {
+            position: absolute;
+            top: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9em;
+        }
+
+        .username {
+            padding: 5px 12px;
+            color: #1e3c72;
+            font-weight: 500;
+        }
+
+        .username-link {
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.3s, transform 0.2s;
+            display: inline-block;
+        }
+
+        .username-link:hover {
+            background: rgba(30, 60, 114, 0.2);
+            transform: scale(1.05);
+            cursor: pointer;
+        }
+
+        .user-roles {
+            display: flex;
+            gap: 5px;
+        }
+
+        .role-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .role-admin {
+            background: #dc3545;
+            color: white;
+        }
+
+        .role-gamemaster {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .role-player {
+            background: #28a745;
+            color: white;
+        }
+
+        .logout-btn {
+            padding: 6px 15px;
+            background: rgba(220, 53, 69, 0.8);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(220, 53, 69, 1);
+        }
+
+        .header-links {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .header-link {
+            color: #1e3c72;
+            text-decoration: none;
+            padding: 8px 16px;
+            background: rgba(30, 60, 114, 0.1);
+            border: 1px solid rgba(30, 60, 114, 0.3);
+            border-radius: 6px;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+        }
+
+        .header-link:hover {
+            background: rgba(30, 60, 114, 0.2);
+            border-color: rgba(30, 60, 114, 0.6);
+        }
+
+        .control-sections {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
+        .control-section {
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #1e3c72;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .control-section h2 {
+            color: #1e3c72;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-section h2::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #1e3c72;
+            border-radius: 2px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+            font-size: 0.95em;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #1e3c72;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: #1e3c72;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #2a5298;
+        }
+
+        .btn-success {
+            background: #4CAF50;
+            color: #fff;
+        }
+
+        .btn-success:hover {
+            background: #45a049;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: #fff;
+            padding: 5px 10px;
+            font-size: 0.9em;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        #players-list {
+            margin-bottom: 15px;
+        }
+
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #fff;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            transition: all 0.3s;
+        }
+
+        .player-item:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .player-item.active {
+            border-color: #4CAF50;
+            background: #e8f5e9;
+        }
+
+        .player-info {
+            flex: 1;
+        }
+
+        .player-info strong {
+            color: #1e3c72;
+        }
+
+        .player-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .player-search-wrapper {
+            position: relative;
+            flex: 1;
+        }
+
+        .player-controls input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        /* WSO2 User Search Autocomplete Styles */
+        #player-search-results {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #1e3c72;
+            border-top: none;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            border-radius: 0 0 5px 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-result-item {
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(30, 60, 114, 0.1);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .search-result-item:hover,
+        .search-result-item.selected {
+            background: rgba(30, 60, 114, 0.1);
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-name {
+            font-weight: 500;
+            color: #1e3c72;
+            margin-bottom: 0.25rem;
+        }
+
+        .search-result-email {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        #game-state-display {
+            background: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+        }
+
+        #game-state-json {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .control-link {
+            margin-top: 20px;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .control-link a {
+            margin: 0 10px;
+            color: #1e3c72;
+            text-decoration: none;
+            padding: 8px 16px;
+            background: rgba(30, 60, 114, 0.1);
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+
+        .control-link a:hover {
+            background: rgba(30, 60, 114, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .control-sections {
+                grid-template-columns: 1fr;
+            }
+
+            .player-controls {
+                flex-direction: column;
+            }
+        }
+    </style>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 
@@ -15,7 +426,10 @@
         <div class="user-info-header">
             <div class="user-info">
                 {% if user_claims %}
-                <a href="/profile" class="username username-link" title="View Profile">👤 {{ user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + ' ' + user_claims.get('family_name', '')).strip() or user_claims.get('username', user_claims.get('sub', 'User')) }}</a>
+                <a href="/profile" class="username username-link" title="View Profile">👤 {{
+                    user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + '
+                    ' + user_claims.get('family_name', '')).strip() or user_claims.get('username',
+                    user_claims.get('sub', 'User')) }}</a>
                 {% if user_roles %}
                 <span class="user-roles">
                     {% for role in user_roles %}
@@ -28,7 +442,7 @@
             </div>
         </div>
         <header>
-        <h1>🎯 Darts Game Control Panel</h1>
+            <h1>🎯 Darts Game Control Panel</h1>
             <div class="header-links">
                 <a href="/" class="header-link">🎮 Main Game</a>
                 <a href="/history" class="header-link">📊 Game History</a>

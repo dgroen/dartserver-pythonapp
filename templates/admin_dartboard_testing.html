@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,7 +14,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -63,9 +64,17 @@
         }
 
         @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.6; }
-            100% { opacity: 1; }
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
+
+            100% {
+                opacity: 1;
+            }
         }
 
         .main-grid {
@@ -438,8 +447,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .info-text {
@@ -461,6 +475,7 @@
                 background: #ffeb3b;
                 transform: scale(1.05);
             }
+
             100% {
                 background: inherit;
                 transform: scale(1);
@@ -511,7 +526,7 @@
             cursor: pointer;
         }
 
-        .pin-checkbox input[type="checkbox"]:checked + span {
+        .pin-checkbox input[type="checkbox"]:checked+span {
             color: #667eea;
             font-weight: 600;
         }
@@ -520,15 +535,110 @@
             background: #e3f2fd;
             border-color: #667eea;
         }
+
+        .user-info-header {
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .user-info {
+            position: absolute;
+            top: 5px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9em;
+        }
+
+        .username {
+            padding: 5px 12px;
+        }
+
+        .username-link {
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.3s, transform 0.2s;
+            display: inline-block;
+        }
+
+        .username-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+            cursor: pointer;
+        }
+
+        .user-roles {
+            display: flex;
+            gap: 5px;
+        }
+
+        .role-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .role-admin {
+            background: #dc3545;
+            color: white;
+        }
+
+        .role-gamemaster {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .role-player {
+            background: #28a745;
+            color: white;
+        }
+
+        .logout-btn {
+            padding: 6px 15px;
+            background: rgba(220, 53, 69, 0.8);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(220, 53, 69, 1);
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
+        <div class="user-info-header">
+            <div class="user-info">
+                {% if user_claims %}
+                <a href="/profile" class="username username-link" title="View Profile">👤 {{
+                    user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + '
+                    ' + user_claims.get('family_name', '')).strip() or user_claims.get('username',
+                    user_claims.get('sub', 'User')) }}</a>
+                {% if user_roles %}
+                <span class="user-roles">
+                    {% for role in user_roles %}
+                    <span class="role-badge role-{{ role }}">{{ role }}</span>
+                    {% endfor %}
+                </span>
+                {% endif %}
+                <a href="/logout" class="logout-btn">Logout</a>
+                {% endif %}
+            </div>
+        </div>
         <!-- Header -->
         <div class="header">
             <div>
                 <h1>🎯 Dartboard Testing & Calibration</h1>
-                <p style="color: #999; margin-top: 5px; font-size: 14px;">Map physical dartboard presses to GPIO pin combinations</p>
+                <p style="color: #999; margin-top: 5px; font-size: 14px;">Map physical dartboard presses to GPIO pin
+                    combinations</p>
             </div>
             <div class="status">
                 <div class="status-dot active"></div>
@@ -553,9 +663,12 @@
                             <option value="__new__">➕ Add New Dartboard Type...</option>
                         </select>
                     </div>
-                    <div id="boardInfo" style="background: white; padding: 12px; border-radius: 4px; margin-top: 10px; display: none;">
-                        <p style="margin: 5px 0; font-size: 13px;"><strong>Brand:</strong> <span id="infoString">-</span></p>
-                        <p style="margin: 5px 0; font-size: 13px;"><strong>Total Mappings:</strong> <span id="infoCount">0</span></p>
+                    <div id="boardInfo"
+                        style="background: white; padding: 12px; border-radius: 4px; margin-top: 10px; display: none;">
+                        <p style="margin: 5px 0; font-size: 13px;"><strong>Brand:</strong> <span
+                                id="infoString">-</span></p>
+                        <p style="margin: 5px 0; font-size: 13px;"><strong>Total Mappings:</strong> <span
+                                id="infoCount">0</span></p>
                     </div>
                 </div>
 
@@ -574,7 +687,8 @@
                         <div class="pin-checkboxes" id="existingSlavePins"></div>
                     </div>
                     <div class="button-group" style="margin-top: 15px;">
-                        <button type="button" class="btn-primary" onclick="savePinConfiguration()">💾 Save Pin Configuration</button>
+                        <button type="button" class="btn-primary" onclick="savePinConfiguration()">💾 Save Pin
+                            Configuration</button>
                     </div>
                 </div>
 
@@ -588,7 +702,8 @@
                         <div class="mapping-form">
                             <div class="form-group">
                                 <label for="newBoardName">Board Type Name:</label>
-                                <input type="text" id="newBoardName" placeholder="e.g., granboard" pattern="[a-z0-9_-]+" title="Lowercase letters, numbers, hyphens and underscores only" required>
+                                <input type="text" id="newBoardName" placeholder="e.g., granboard" pattern="[a-z0-9_-]+"
+                                    title="Lowercase letters, numbers, hyphens and underscores only" required>
                             </div>
                             <div class="form-group">
                                 <label for="newBoardBrand">Brand:</label>
@@ -600,7 +715,8 @@
                             </div>
                             <div class="form-group">
                                 <label for="newBoardDescription">Description (optional):</label>
-                                <input type="text" id="newBoardDescription" placeholder="e.g., Electronic dartboard with Bluetooth">
+                                <input type="text" id="newBoardDescription"
+                                    placeholder="e.g., Electronic dartboard with Bluetooth">
                             </div>
                         </div>
                         <div class="pin-selection">
@@ -665,7 +781,8 @@
                 <div class="section" style="margin-top: 20px;">
                     <h2>Bulk Import</h2>
                     <div class="info-text">
-                        📋 Import multiple mappings from CSV. Format: master_pin, slave_pin, zone_number, multiplier_type, base_value
+                        📋 Import multiple mappings from CSV. Format: master_pin, slave_pin, zone_number,
+                        multiplier_type, base_value
                     </div>
                     <div class="csv-upload" onclick="document.getElementById('csvFile').click()">
                         <div class="upload-icon">📁</div>
@@ -685,7 +802,9 @@
                 <div class="section">
                     <h2>Dartboard Mapping Visual</h2>
                     <div class="info-text">
-                        🎯 Visual representation of mapped segments. <span style="color: #4CAF50;">Green</span> = mapped, <span style="color: #999;">Grey</span> = unmapped, <span style="color: #f44336;">Red</span> = faulty (duplicate mappings).
+                        🎯 Visual representation of mapped segments. <span style="color: #4CAF50;">Green</span> =
+                        mapped, <span style="color: #999;">Grey</span> = unmapped, <span
+                            style="color: #f44336;">Red</span> = faulty (duplicate mappings).
                     </div>
                     <div id="dartboardVisualContainer" style="display: flex; justify-content: center; padding: 20px;">
                         <p style="color: #999; text-align: center;">Select a dartboard type to see mapping status</p>
@@ -696,10 +815,12 @@
                 <div class="section" style="margin-top: 20px;">
                     <h2>GPIO Pin Matrix</h2>
                     <div class="info-text">
-                        Click a cell to map it. Green cells are already mapped. The cell shows zone/multiplier/base_value.
+                        Click a cell to map it. Green cells are already mapped. The cell shows
+                        zone/multiplier/base_value.
                     </div>
                     <div id="matrixContainer" class="matrix-container">
-                        <p style="color: #999; text-align: center; padding: 20px;">Select a dartboard type to load matrix</p>
+                        <p style="color: #999; text-align: center; padding: 20px;">Select a dartboard type to load
+                            matrix</p>
                     </div>
                 </div>
             </div>
@@ -708,12 +829,14 @@
             <div class="section full-width" style="margin-top: 20px;">
                 <h2>Raw Message Log</h2>
                 <div class="info-text">
-                    Real-time log of dartboard messages sent during testing. Each entry shows the raw GPIO pins and any existing mapping.
+                    Real-time log of dartboard messages sent during testing. Each entry shows the raw GPIO pins and any
+                    existing mapping.
                 </div>
                 <div class="message-log" id="messageLog">
                     <div class="log-entry" style="color: #999;">Waiting for dartboard messages...</div>
                 </div>
-                <button class="btn-secondary" style="width: 100%; margin-top: 10px;" onclick="clearMessageLog()">Clear Log</button>
+                <button class="btn-secondary" style="width: 100%; margin-top: 10px;" onclick="clearMessageLog()">Clear
+                    Log</button>
             </div>
         </div>
     </div>
@@ -728,7 +851,7 @@
         const AVAILABLE_PINS = [2, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33];
 
         // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             loadDartboardTypes();
             document.getElementById('boardType').addEventListener('change', loadMatrixForSelectedBoard);
             // Initialize pin checkboxes for new board form
@@ -1555,4 +1678,5 @@
         setInterval(loadDartboardTypes, 30000);
     </script>
 </body>
+
 </html>

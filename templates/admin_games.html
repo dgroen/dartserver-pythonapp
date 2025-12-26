@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,7 +14,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -228,11 +229,17 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -268,8 +275,7 @@
 
             <div class="form-group">
                 <label for="userSearch">User</label>
-                <input type="text" id="userSearch" placeholder="Search by username..."
-                       onkeyup="searchUsers()">
+                <input type="text" id="userSearch" placeholder="Search by username..." onkeyup="searchUsers()">
                 <select id="userSelect" size="5" style="margin-top: 5px; height: 120px;">
                     <option value="">-- Search for a user first --</option>
                 </select>
@@ -484,4 +490,5 @@
         }
     </script>
 </body>
+
 </html>
