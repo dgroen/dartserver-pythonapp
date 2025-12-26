@@ -1346,6 +1346,24 @@ def mobile_account():
     return render_template("mobile_account.html")
 
 
+@services_bp.route("/mobile/profile")
+@login_required
+def mobile_profile():
+    """Mobile user profile page
+    ---
+    tags:
+      - UI
+    summary: Mobile user profile interface
+    description: Mobile interface for viewing and editing user profile, statistics, and settings
+    responses:
+      200:
+        description: Mobile user profile HTML page
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template("mobile_profile.html", user_roles=user_roles, user_claims=user_claims)
+
+
 @services_bp.route("/mobile/hotspot")
 @login_required
 def mobile_hotspot():

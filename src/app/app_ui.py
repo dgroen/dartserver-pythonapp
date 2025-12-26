@@ -364,3 +364,21 @@ def admin_statistics():
         user_roles=user_roles,
         user_claims=user_claims,
     )
+
+
+@ui_bp.route("/profile")
+@login_required
+def profile():
+    """User profile page
+    ---
+    tags:
+      - UI
+    summary: User profile page
+    description: Renders the user profile page with personal information, statistics, and settings
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template("profile.html", user_roles=user_roles, user_claims=user_claims)

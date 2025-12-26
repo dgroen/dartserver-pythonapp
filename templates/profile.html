@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile - Darts Game</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="user-info-header">
+            <div class="user-info">
+                {% if user_claims %}
+                <span class="username">👤 {{ user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + ' ' + user_claims.get('family_name', '')).strip() or user_claims.get('username', user_claims.get('sub', 'User')) }}</span>
+                {% if user_roles %}
+                <span class="user-roles">
+                    {% for role in user_roles %}
+                    <span class="role-badge role-{{ role }}">{{ role }}</span>
+                    {% endfor %}
+                </span>
+                {% endif %}
+                <a href="/logout" class="logout-btn">Logout</a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <header>
+            <h1>👤 User Profile</h1>
+            <div class="nav-links">
+                <a href="/" class="nav-link">🎯 Game Board</a>
+                <a href="/dashboard" class="nav-link">📊 Dashboard</a>
+                <a href="/control" class="nav-link">⚙️ Control Panel</a>
+                {% if 'admin' in user_roles %}
+                <a href="/admin" class="nav-link">🔧 Admin</a>
+                {% endif %}
+            </div>
+        </header>
+
+        <div class="profile-content">
+            <!-- Personal Information Section -->
+            <section class="profile-section">
+                <h2>📋 Personal Information</h2>
+                <div id="loading-message" class="loading">Loading profile...</div>
+                <div id="error-message" class="error-message" style="display: none;"></div>
+                
+                <div id="profile-info" class="profile-info" style="display: none;">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Username:</label>
+                            <span id="display-username">-</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Email:</label>
+                            <span id="display-email">-</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Display Name:</label>
+                            <span id="display-name">-</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Roles:</label>
+                            <span id="display-roles">-</span>
+                        </div>
+                    </div>
+                    
+                    <p class="info-note">
+                        ℹ️ Profile information is managed through the WSO2 Identity Server. 
+                        Password changes should be done through the identity provider.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Game Statistics Section -->
+            <section class="profile-section">
+                <h2>📊 Game Statistics</h2>
+                <div id="stats-loading" class="loading">Loading statistics...</div>
+                <div id="stats-error" class="error-message" style="display: none;"></div>
+                
+                <div id="statistics" class="statistics-grid" style="display: none;">
+                    <div class="stat-card">
+                        <h3>Total Games</h3>
+                        <div class="stat-value" id="total-games">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Games Won</h3>
+                        <div class="stat-value" id="games-won">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Win Rate</h3>
+                        <div class="stat-value" id="win-rate">0%</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Average Score</h3>
+                        <div class="stat-value" id="avg-score">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Best Finish</h3>
+                        <div class="stat-value" id="best-finish">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Throws</h3>
+                        <div class="stat-value" id="total-throws">0</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Games Section -->
+            <section class="profile-section">
+                <h2>🎮 Recent Games</h2>
+                <div id="games-loading" class="loading">Loading games...</div>
+                <div id="games-error" class="error-message" style="display: none;"></div>
+                <div id="recent-games" class="recent-games"></div>
+            </section>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
+</body>
+</html>

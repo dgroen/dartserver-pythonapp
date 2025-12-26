@@ -70,6 +70,19 @@ header h1 {
     border-radius: 20px;
 }
 
+.username-link {
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.3s, transform 0.2s;
+    display: inline-block;
+}
+
+.username-link:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+    cursor: pointer;
+}
+
 .user-roles {
     display: flex;
     gap: 5px;
