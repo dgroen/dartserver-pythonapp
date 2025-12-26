@@ -3,14 +3,20 @@ Admin API endpoints
 """
 
 import logging
+import os
 from datetime import datetime
 
+import requests
+from dartserver_core.auth import (
+    get_wso2_user_info,
+    login_required,
+    role_required,
+    search_wso2_users,
+)
+from dartserver_core.database_models import GameResult, GameType, Player, Score
+from dartserver_core.database_service import get_session
 from flask import Blueprint, jsonify, request
 from sqlalchemy import Integer, func
-
-from src.core.auth import login_required, role_required
-from src.core.database_models import GameResult, GameType, Player, Score
-from src.core.database_service import get_session
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +62,6 @@ def search_users():
                   name:
                     type: string
     """
-    from src.core.auth import search_wso2_users
-
     query = request.args.get("q", "").strip()
     if not query:
         return jsonify({"status": "error", "message": "Query parameter required"}), 400
@@ -94,8 +98,6 @@ def list_all_users():
               items:
                 type: object
     """
-    from src.core.auth import search_wso2_users
-
     try:
         # Search with empty query returns all users
         users = search_wso2_users("")
@@ -143,10 +145,6 @@ def create_user():
       500:
         description: Server error
     """
-    import os
-
-    import requests
-
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
@@ -203,19 +201,18 @@ def create_user():
                         "id": user_data.get("id"),
                         "username": user_data.get("userName"),
                     },
-                }
+                },
             )
-        else:
-            logger.error(f"Failed to create user: {response.status_code} - {response.text}")
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": f"Failed to create user: {response.text}",
-                    }
-                ),
-                response.status_code,
-            )
+        logger.error(f"Failed to create user: {response.status_code} - {response.text}")
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": f"Failed to create user: {response.text}",
+                },
+            ),
+            response.status_code,
+        )
     except Exception as e:
         logger.exception("Error creating user")
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -253,10 +250,6 @@ def set_user_password():
       500:
         description: Server error
     """
-    import os
-
-    import requests
-
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
@@ -266,8 +259,6 @@ def set_user_password():
 
     try:
         # First, find the user ID
-        from src.core.auth import get_wso2_user_info
-
         user_info = get_wso2_user_info(username)
         if not user_info or not user_info.get("id"):
             return jsonify({"status": "error", "message": "User not found"}), 404
@@ -298,12 +289,13 @@ def set_user_password():
         if response.status_code in [200, 204]:
             logger.info(f"Password updated for user '{username}'")
             return jsonify({"status": "success", "message": "Password updated successfully"})
-        else:
-            logger.error(f"Failed to update password: {response.status_code} - {response.text}")
-            return (
-                jsonify({"status": "error", "message": f"Failed to update password: {response.text}"}),
-                response.status_code,
-            )
+        logger.error(f"Failed to update password: {response.status_code} - {response.text}")
+        return (
+            jsonify(
+                {"status": "error", "message": f"Failed to update password: {response.text}"},
+            ),
+            response.status_code,
+        )
     except Exception as e:
         logger.exception("Error setting password")
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -328,10 +320,6 @@ def get_user_roles(user_id):
       200:
         description: User roles retrieved
     """
-    import os
-
-    import requests
-
     try:
         wso2_url = os.getenv("WSO2_IS_INTERNAL_URL", "https://localhost:9443")
         scim_user_url = f"{wso2_url}/scim2/Users/{user_id}"
@@ -366,8 +354,12 @@ def get_user_roles(user_id):
                             roles.append(role_name)
 
             return jsonify({"status": "success", "roles": roles})
-        else:
-            return jsonify({"status": "error", "message": "Failed to get user roles"}), response.status_code
+        return (
+            jsonify(
+                {"status": "error", "message": "Failed to get user roles"},
+            ),
+            response.status_code,
+        )
     except Exception as e:
         logger.exception("Error getting user roles")
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -404,10 +396,6 @@ def update_user_roles(user_id):
       200:
         description: Roles updated successfully
     """
-    import os
-
-    import requests
-
     data = request.get_json()
     roles = data.get("roles", [])
 
@@ -427,7 +415,12 @@ def update_user_roles(user_id):
         )
 
         if response.status_code != 200:
-            return jsonify({"status": "error", "message": "Failed to fetch user"}), response.status_code
+            return (
+                jsonify(
+                    {"status": "error", "message": "Failed to fetch user"},
+                ),
+                response.status_code,
+            )
 
         # Get all available groups to map role names to group IDs
         scim_groups_url = f"{wso2_url}/scim2/Groups"
@@ -440,7 +433,12 @@ def update_user_roles(user_id):
         )
 
         if groups_response.status_code != 200:
-            return jsonify({"status": "error", "message": "Failed to fetch groups"}), groups_response.status_code
+            return (
+                jsonify(
+                    {"status": "error", "message": "Failed to fetch groups"},
+                ),
+                groups_response.status_code,
+            )
 
         groups_data = groups_response.json()
         role_to_group_id = {}
@@ -482,12 +480,18 @@ def update_user_roles(user_id):
         if update_response.status_code in [200, 204]:
             logger.info(f"Roles updated for user {user_id}")
             return jsonify({"status": "success", "message": "Roles updated successfully"})
-        else:
-            logger.error(f"Failed to update roles: {update_response.status_code} - {update_response.text}")
-            return (
-                jsonify({"status": "error", "message": f"Failed to update roles: {update_response.text}"}),
-                update_response.status_code,
-            )
+        logger.error(
+            f"Failed to update roles: {update_response.status_code} - {update_response.text}",
+        )
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": f"Failed to update roles: {update_response.text}",
+                },
+            ),
+            update_response.status_code,
+        )
     except Exception as e:
         logger.exception("Error updating user roles")
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -522,10 +526,6 @@ def update_user_status(user_id):
       200:
         description: Status updated successfully
     """
-    import os
-
-    import requests
-
     data = request.get_json()
     active = data.get("active", True)
 
@@ -554,12 +554,13 @@ def update_user_status(user_id):
             status_text = "activated" if active else "deactivated"
             logger.info(f"User {user_id} {status_text}")
             return jsonify({"status": "success", "message": f"User {status_text} successfully"})
-        else:
-            logger.error(f"Failed to update status: {response.status_code} - {response.text}")
-            return (
-                jsonify({"status": "error", "message": f"Failed to update status: {response.text}"}),
-                response.status_code,
-            )
+        logger.error(f"Failed to update status: {response.status_code} - {response.text}")
+        return (
+            jsonify(
+                {"status": "error", "message": f"Failed to update status: {response.text}"},
+            ),
+            response.status_code,
+        )
     except Exception as e:
         logger.exception("Error updating user status")
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -603,7 +604,7 @@ def test_tts():
             "status": "success",
             "message": "TTS testing endpoint - integration pending",
             "audio_url": None,
-        }
+        },
     )
 
 
@@ -654,7 +655,7 @@ def get_paused_games():
                         "started_at": game.started_at.isoformat() if game.started_at else None,
                         "final_score": game.final_score,
                         "start_score": game.start_score,
-                    }
+                    },
                 )
 
             logger.info(f"Retrieved {len(games_list)} paused games")
@@ -755,7 +756,12 @@ def archive_games():
     end_date_str = data.get("end_date")
 
     if not username or not start_date_str or not end_date_str:
-        return jsonify({"status": "error", "message": "Username, start_date, and end_date required"}), 400
+        return (
+            jsonify(
+                {"status": "error", "message": "Username, start_date, and end_date required"},
+            ),
+            400,
+        )
 
     try:
         # Parse dates
@@ -770,7 +776,12 @@ def archive_games():
             player = session.query(Player).filter(Player.username == username).first()
 
             if not player:
-                return jsonify({"status": "error", "message": f"Player '{username}' not found"}), 404
+                return (
+                    jsonify(
+                        {"status": "error", "message": f"Player '{username}' not found"},
+                    ),
+                    404,
+                )
 
             # Query games in date range for this player
             games_to_archive = (
@@ -795,10 +806,10 @@ def archive_games():
                     "status": "success",
                     "archived_count": archived_count,
                     "message": f"Found {archived_count} games in the specified date range",
-                }
+                },
             )
     except ValueError as e:
-        return jsonify({"status": "error", "message": f"Invalid date format: {str(e)}"}), 400
+        return jsonify({"status": "error", "message": f"Invalid date format: {e!s}"}), 400
     except Exception as e:
         logger.exception("Error archiving games")
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -855,7 +866,7 @@ def get_active_sessions():
                 "status": "success",
                 "sessions": sessions,
                 "message": "Session tracking not yet implemented. Integrate with your session store.",
-            }
+            },
         )
     except Exception as e:
         logger.exception("Error retrieving active sessions")
@@ -918,15 +929,17 @@ def get_user_statistics():
     try:
         with get_session() as session:
             # Base query
-            query = session.query(
-                Player.username,
-                func.count(GameResult.id).label("total_games"),
-                func.sum(func.cast(GameResult.is_winner, Integer)).label("games_won"),
-                func.avg(GameResult.final_score).label("avg_score"),
-                func.max(GameResult.final_score).label("best_score"),
-                func.count(Score.id).label("total_throws"),
-            ).join(GameResult, Player.id == GameResult.player_id).outerjoin(
-                Score, GameResult.id == Score.game_result_id
+            query = (
+                session.query(
+                    Player.username,
+                    func.count(GameResult.id).label("total_games"),
+                    func.sum(func.cast(GameResult.is_winner, Integer)).label("games_won"),
+                    func.avg(GameResult.final_score).label("avg_score"),
+                    func.max(GameResult.final_score).label("best_score"),
+                    func.count(Score.id).label("total_throws"),
+                )
+                .join(GameResult, Player.id == GameResult.player_id)
+                .outerjoin(Score, GameResult.id == Score.game_result_id)
             )
 
             # Apply date filters if provided
@@ -960,13 +973,13 @@ def get_user_statistics():
                         "avg_score": float(avg_score) if avg_score else 0,
                         "best_score": best_score or 0,
                         "total_throws": total_throws or 0,
-                    }
+                    },
                 )
 
             logger.info(f"Retrieved statistics for {len(statistics)} users")
             return jsonify({"status": "success", "statistics": statistics})
     except ValueError as e:
-        return jsonify({"status": "error", "message": f"Invalid date format: {str(e)}"}), 400
+        return jsonify({"status": "error", "message": f"Invalid date format: {e!s}"}), 400
     except Exception as e:
         logger.exception("Error retrieving statistics")
         return jsonify({"status": "error", "message": str(e)}), 500

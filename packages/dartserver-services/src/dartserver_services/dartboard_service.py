@@ -511,12 +511,15 @@ class DartboardService:
             raise DartboardMappingError(f"Dartboard type '{dartboard_type_name}' not found")
 
         # Validate pins if provided
-        if master_pins is not None:
-            if not all(pin in DartboardService.AVAILABLE_GPIO_PINS for pin in master_pins):
-                raise DartboardMappingError(f"Invalid master pins: {master_pins}")
-        if slave_pins is not None:
-            if not all(pin in DartboardService.AVAILABLE_GPIO_PINS for pin in slave_pins):
-                raise DartboardMappingError(f"Invalid slave pins: {slave_pins}")
+        if master_pins is not None and not all(
+            pin in DartboardService.AVAILABLE_GPIO_PINS for pin in master_pins
+        ):
+            raise DartboardMappingError(f"Invalid master pins: {master_pins}")
+
+        if slave_pins is not None and not all(
+            pin in DartboardService.AVAILABLE_GPIO_PINS for pin in slave_pins
+        ):
+            raise DartboardMappingError(f"Invalid slave pins: {slave_pins}")
 
         # Note: Pins are not stored in database, just validated
         return dartboard_type

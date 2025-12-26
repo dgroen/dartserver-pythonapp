@@ -6,20 +6,7 @@ import os
 import secrets
 
 import requests
-from flask import (
-    Blueprint,
-    jsonify,
-    redirect,
-    render_template,
-    request,
-    session,
-    url_for,
-)
-from flask import (
-    current_app as _flask_current_app,
-)
-
-from src.core.auth import (
+from dartserver_core.auth import (
     exchange_code_for_token,
     get_authorization_url,
     get_user_groups_from_scim2,
@@ -29,6 +16,9 @@ from src.core.auth import (
     logout_user,
     validate_token,
 )
+from flask import Blueprint
+from flask import current_app as _flask_current_app
+from flask import jsonify, redirect, render_template, request, session, url_for
 
 auth_bp = Blueprint("auth", __name__)
 

@@ -2,8 +2,12 @@
 """
 Installation verification script for Darts Game Application
 """
+
 import importlib.util
+import os
 import sys
+
+import pika
 
 
 def check_python_version():
@@ -35,8 +39,6 @@ def check_rabbitmq():
     """Check if RabbitMQ is accessible"""
     print("Checking RabbitMQ connection...", end=" ")
     try:
-        import pika
-
         credentials = pika.PlainCredentials("guest", "guest")
         parameters = pika.ConnectionParameters(
             host="localhost",
@@ -56,8 +58,6 @@ def check_rabbitmq():
 
 def check_file_structure():
     """Check if all required files exist"""
-    import os
-
     print("\nChecking file structure...")
 
     required_files = [
@@ -90,8 +90,6 @@ def check_file_structure():
 
 def check_env_file():
     """Check if .env file exists"""
-    import os
-
     print("\nChecking configuration...", end=" ")
     if os.path.exists(".env"):
         print("✓ .env file exists")

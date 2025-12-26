@@ -475,7 +475,7 @@ class TestCreateDartboardTypeEndpoint:
                 sess["access_token"] = "test-admin-token"
             yield client
 
-    @patch("src.core.auth.validate_token")
+    @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app_services.DartboardService")
     @patch("src.app.app.get_session")
     def test_create_dartboard_type_success(
@@ -521,7 +521,7 @@ class TestCreateDartboardTypeEndpoint:
         assert data["dartboard_type"]["name"] == "granboard"
         assert data["dartboard_type"]["brand"] == "Gran Board"
 
-    @patch("src.core.auth.validate_token")
+    @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app.get_session")
     def test_create_dartboard_type_missing_name(
         self,
@@ -550,7 +550,7 @@ class TestCreateDartboardTypeEndpoint:
         assert data["status"] == "error"
         assert "Name is required" in data["message"]
 
-    @patch("src.core.auth.validate_token")
+    @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app.get_session")
     def test_create_dartboard_type_missing_brand(
         self,
@@ -579,7 +579,7 @@ class TestCreateDartboardTypeEndpoint:
         assert data["status"] == "error"
         assert "Brand is required" in data["message"]
 
-    @patch("src.core.auth.validate_token")
+    @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app.get_session")
     def test_create_dartboard_type_invalid_name_format(
         self,
@@ -608,7 +608,7 @@ class TestCreateDartboardTypeEndpoint:
         assert data["status"] == "error"
         assert "letters, numbers" in data["message"].lower()
 
-    @patch("src.core.auth.validate_token")
+    @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app_services.DartboardService")
     @patch("src.app.app.get_session")
     def test_create_dartboard_type_duplicate(
@@ -643,7 +643,7 @@ class TestCreateDartboardTypeEndpoint:
         assert data["status"] == "error"
         assert "already exists" in data["message"]
 
-    @patch("src.core.auth.validate_token")
+    @patch("dartserver_core.auth.validate_token")
     def test_create_dartboard_type_non_admin(self, mock_validate, admin_client):
         """Test that non-admin users cannot create dartboard types"""
         mock_validate.return_value = {
@@ -671,7 +671,7 @@ class TestCreateDartboardTypeEndpoint:
         # Should redirect to login or return 401
         assert response.status_code in [302, 401]
 
-    @patch("src.core.auth.validate_token")
+    @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app_services.DartboardService")
     @patch("src.app.app.get_session")
     def test_create_dartboard_type_with_hyphens_and_underscores(
@@ -709,7 +709,7 @@ class TestCreateDartboardTypeEndpoint:
         data = json.loads(response.data)
         assert data["status"] == "success"
 
-    @patch("src.core.auth.validate_token")
+    @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app_services.DartboardService")
     @patch("src.app.app.get_session")
     def test_create_dartboard_type_minimal(
@@ -762,7 +762,7 @@ class TestUpdateDartboardPinsEndpoint:
                 sess["access_token"] = "test-admin-token"
             yield client
 
-    @patch("src.core.auth.validate_token")
+    @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app_services.DartboardService")
     @patch("src.app.app.get_session")
     def test_update_pins_success(
@@ -801,7 +801,7 @@ class TestUpdateDartboardPinsEndpoint:
         assert data["status"] == "success"
         mock_service.update_dartboard_pins.assert_called_once()
 
-    @patch("src.core.auth.validate_token")
+    @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app.get_session")
     def test_update_pins_invalid_master_pins(
         self,
@@ -829,7 +829,7 @@ class TestUpdateDartboardPinsEndpoint:
         data = json.loads(response.data)
         assert "array of integers" in data["message"]
 
-    @patch("src.core.auth.validate_token")
+    @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app_services.DartboardService")
     @patch("src.app.app.get_session")
     def test_update_pins_not_found(
@@ -861,7 +861,7 @@ class TestUpdateDartboardPinsEndpoint:
 
         assert response.status_code == 404
 
-    @patch("src.core.auth.validate_token")
+    @patch("dartserver_core.auth.validate_token")
     def test_update_pins_non_admin(self, mock_validate, admin_client):
         """Test that non-admin users cannot update pins"""
         mock_validate.return_value = {
@@ -891,7 +891,7 @@ class TestCreateDartboardTypeWithPins:
                 sess["access_token"] = "test-admin-token"
             yield client
 
-    @patch("src.core.auth.validate_token")
+    @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app_services.DartboardService")
     @patch("src.app.app.get_session")
     def test_create_with_pins(
@@ -951,7 +951,7 @@ class TestGetAvailablePinsEndpoint:
                 sess["access_token"] = "test-admin-token"
             yield client
 
-    @patch("src.core.auth.validate_token")
+    @patch("dartserver_core.auth.validate_token")
     def test_get_available_pins(self, mock_validate, admin_client):
         """Test getting list of available GPIO pins"""
         mock_validate.return_value = {

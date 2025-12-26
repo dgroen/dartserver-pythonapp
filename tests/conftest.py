@@ -12,11 +12,12 @@ from unittest.mock import MagicMock, patch
 import dartserver_core.auth as core_auth
 import pytest
 from dartserver_app import create_app
+from dartserver_core.database_service import DatabaseService
 
 # Expose frequently used auth helpers as builtins for tests that reference
 # them directly without importing. These reference the implementation
 # in `packages/dartserver-core/src/dartserver_core/auth.py` but tests
-# patch `src.core.auth` during collection; keep references aligned.
+# patch `dartserver_core.auth` during collection; keep references aligned.
 builtins.get_user_roles = core_auth.get_user_roles
 builtins.has_permission = core_auth.has_permission
 builtins.search_wso2_users = core_auth.search_wso2_users
@@ -79,7 +80,7 @@ _load_local_module(
 
 import dartserver_core.auth as dart_core_auth  # noqa: E402
 
-# Keep dartserver_core auth functions in sync with src.core.auth so test patches
+# Keep dartserver_core auth functions in sync with dartserver_core.auth so test patches
 # against the src.core path affect the implementation used by decorators.
 dart_core_auth.validate_token = core_auth.validate_token
 dart_core_auth.get_user_roles = core_auth.get_user_roles
@@ -239,8 +240,6 @@ def mock_database_service():
 @pytest.fixture
 def in_memory_db():
     """Create an in-memory database for testing."""
-    from dartserver_core.database_service import DatabaseService  # noqa: PLC0415
-
     db_service = DatabaseService("sqlite:///:memory:")
     db_service.initialize_database()
     return db_service

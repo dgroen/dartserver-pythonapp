@@ -227,12 +227,24 @@ if not WSO2_IS_VERIFY_SSL:
         pass
 
 
+# Module-level variable for test patching (deprecated - use is_auth_disabled() for runtime checks)
+AUTH_DISABLED = False
+
+
 def is_auth_disabled() -> bool:
     """Return whether authentication is disabled (read from environment at runtime).
 
     Tests and fixtures may set the environment per-test, so reading the value
     at runtime prevents the module-level constant from being stale.
+
+    Tests can also patch the module-level AUTH_DISABLED variable for compatibility.
     """
+    # Check module-level variable first (for test patches), then environment
+    import sys
+
+    mod = sys.modules[__name__]
+    if hasattr(mod, "AUTH_DISABLED") and getattr(mod, "AUTH_DISABLED", False):
+        return True
     return os.getenv("AUTH_DISABLED", "False").lower() == "true"
 
 

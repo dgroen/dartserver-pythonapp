@@ -5,6 +5,7 @@ This API allows updating OAuth2 client configuration
 """
 
 import sys
+import traceback
 
 import requests
 import urllib3
@@ -116,8 +117,6 @@ def update_client_redirects(client_data):
 
     except Exception as e:
         print(f"❌ Error updating client: {e}")
-        import traceback
-
         traceback.print_exc()
         return False
 

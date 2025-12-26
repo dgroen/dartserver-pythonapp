@@ -3,6 +3,7 @@ Unit tests for SSL configuration
 """
 
 import os
+import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
@@ -23,8 +24,6 @@ class TestSSLConfiguration:
 
     def test_ssl_certificate_validity(self):
         """Test that SSL certificate is valid"""
-        import subprocess
-
         ssl_dir = Path(__file__).parent.parent.parent / "ssl"
         cert_file = ssl_dir / "cert.pem"
 
@@ -41,8 +40,6 @@ class TestSSLConfiguration:
 
     def test_ssl_certificate_san(self):
         """Test that SSL certificate has correct Subject Alternative Names"""
-        import subprocess
-
         ssl_dir = Path(__file__).parent.parent.parent / "ssl"
         cert_file = ssl_dir / "cert.pem"
 
@@ -108,8 +105,6 @@ class TestSSLConfiguration:
 
     def test_ssl_certificate_key_match(self):
         """Test that certificate and key match"""
-        import subprocess
-
         ssl_dir = Path(__file__).parent.parent.parent / "ssl"
         cert_file = ssl_dir / "cert.pem"
         key_file = ssl_dir / "key.pem"

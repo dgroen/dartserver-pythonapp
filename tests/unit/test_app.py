@@ -19,7 +19,7 @@ def authenticated_client(client):
         sess["access_token"] = "test-token"
         sess["user_info"] = {"username": "testuser", "sub": "test-user"}
 
-    with patch("src.core.auth.validate_token") as mock_validate:
+    with patch("dartserver_core.auth.validate_token") as mock_validate:
         mock_validate.return_value = {
             "sub": "test-user",
             "groups": ["admin"],

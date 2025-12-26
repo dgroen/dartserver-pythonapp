@@ -26,7 +26,7 @@ def client(flask_app, db_service):
 
         flask_app.game_manager.db_service = db_service
 
-        with patch("src.core.auth.validate_token") as mock_validate:
+        with patch("dartserver_core.auth.validate_token") as mock_validate:
             mock_validate.return_value = {
                 "sub": "test-user",
                 "groups": ["admin"],
@@ -65,11 +65,13 @@ class TestScoreSubmission:
 
             response = client.post(
                 "/api/Throw/zone",
-                data=json.dumps({
-                    "masterPin": 4,
-                    "slavePin": 13,
-                    "boardType": "carromco",
-                }),
+                data=json.dumps(
+                    {
+                        "masterPin": 4,
+                        "slavePin": 13,
+                        "boardType": "carromco",
+                    },
+                ),
                 content_type="application/json",
             )
 
@@ -85,11 +87,13 @@ class TestScoreSubmission:
         """Test submitting score with invalid pin types."""
         response = client.post(
             "/api/Throw/zone",
-            data=json.dumps({
-                "masterPin": "invalid",
-                "slavePin": 13,
-                "boardType": "carromco",
-            }),
+            data=json.dumps(
+                {
+                    "masterPin": "invalid",
+                    "slavePin": 13,
+                    "boardType": "carromco",
+                },
+            ),
             content_type="application/json",
         )
 
@@ -101,10 +105,12 @@ class TestScoreSubmission:
         """Test submitting score without board type."""
         response = client.post(
             "/api/Throw/zone",
-            data=json.dumps({
-                "masterPin": 4,
-                "slavePin": 13,
-            }),
+            data=json.dumps(
+                {
+                    "masterPin": 4,
+                    "slavePin": 13,
+                },
+            ),
             content_type="application/json",
         )
 
@@ -127,11 +133,13 @@ class TestScoreSubmission:
 
             response = client.post(
                 "/api/Throw/zone",
-                data=json.dumps({
-                    "masterPin": 99,
-                    "slavePin": 99,
-                    "boardType": "unknown",
-                }),
+                data=json.dumps(
+                    {
+                        "masterPin": 99,
+                        "slavePin": 99,
+                        "boardType": "unknown",
+                    },
+                ),
                 content_type="application/json",
             )
 
@@ -231,7 +239,7 @@ class TestAdminDartboardEndpoints:
 
             flask_app.game_manager.db_service = db_service
 
-            with patch("src.core.auth.validate_token") as mock_validate:
+            with patch("dartserver_core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {"sub": "test-user", "groups": []}
 
                 response = client.get("/api/admin/dartboard/matrix/carromco")
@@ -268,14 +276,16 @@ class TestAdminDartboardEndpoints:
         with flask_app.test_client() as client:
             response = client.post(
                 "/api/admin/dartboard/mapping",
-                data=json.dumps({
-                    "boardType": "carromco",
-                    "masterPin": 4,
-                    "slavePin": 13,
-                    "zoneNumber": 20,
-                    "multiplierType": "TRIPLE",
-                    "baseValue": 20,
-                }),
+                data=json.dumps(
+                    {
+                        "boardType": "carromco",
+                        "masterPin": 4,
+                        "slavePin": 13,
+                        "zoneNumber": 20,
+                        "multiplierType": "TRIPLE",
+                        "baseValue": 20,
+                    },
+                ),
                 content_type="application/json",
             )
             assert response.status_code in [302, 401, 403]
@@ -291,14 +301,16 @@ class TestAdminDartboardEndpoints:
 
             response = client.post(
                 "/api/admin/dartboard/mapping",
-                data=json.dumps({
-                    "boardType": "carromco",
-                    "masterPin": 4,
-                    "slavePin": 13,
-                    "zoneNumber": 20,
-                    "multiplierType": "TRIPLE",
-                    "baseValue": 20,
-                }),
+                data=json.dumps(
+                    {
+                        "boardType": "carromco",
+                        "masterPin": 4,
+                        "slavePin": 13,
+                        "zoneNumber": 20,
+                        "multiplierType": "TRIPLE",
+                        "baseValue": 20,
+                    },
+                ),
                 content_type="application/json",
             )
 
@@ -312,11 +324,13 @@ class TestAdminDartboardEndpoints:
         """Test updating dartboard mapping with missing fields."""
         response = client.post(
             "/api/admin/dartboard/mapping",
-            data=json.dumps({
-                "boardType": "carromco",
-                "masterPin": 4,
-                # Missing slavePin and other required fields
-            }),
+            data=json.dumps(
+                {
+                    "boardType": "carromco",
+                    "masterPin": 4,
+                    # Missing slavePin and other required fields
+                },
+            ),
             content_type="application/json",
         )
 
@@ -329,10 +343,12 @@ class TestAdminDartboardEndpoints:
         with flask_app.test_client() as client:
             response = client.post(
                 "/api/admin/dartboard/import",
-                data=json.dumps({
-                    "boardType": "test",
-                    "mappings": [],
-                }),
+                data=json.dumps(
+                    {
+                        "boardType": "test",
+                        "mappings": [],
+                    },
+                ),
                 content_type="application/json",
             )
             assert response.status_code in [302, 401, 403]
@@ -349,18 +365,20 @@ class TestAdminDartboardEndpoints:
 
             response = client.post(
                 "/api/admin/dartboard/import",
-                data=json.dumps({
-                    "boardType": "carromco",
-                    "mappings": [
-                        {
-                            "masterPin": 4,
-                            "slavePin": 13,
-                            "zoneNumber": 20,
-                            "multiplierType": "TRIPLE",
-                            "baseValue": 20,
-                        },
-                    ],
-                }),
+                data=json.dumps(
+                    {
+                        "boardType": "carromco",
+                        "mappings": [
+                            {
+                                "masterPin": 4,
+                                "slavePin": 13,
+                                "zoneNumber": 20,
+                                "multiplierType": "TRIPLE",
+                                "baseValue": 20,
+                            },
+                        ],
+                    },
+                ),
                 content_type="application/json",
             )
 
@@ -375,10 +393,12 @@ class TestAdminDartboardEndpoints:
         with flask_app.test_client() as client:
             response = client.post(
                 "/api/admin/dartboard/type",
-                data=json.dumps({
-                    "name": "test",
-                    "brand": "Test Brand",
-                }),
+                data=json.dumps(
+                    {
+                        "name": "test",
+                        "brand": "Test Brand",
+                    },
+                ),
                 content_type="application/json",
             )
             assert response.status_code in [302, 401, 403]
@@ -403,14 +423,16 @@ class TestAdminDartboardEndpoints:
 
             response = client.post(
                 "/api/admin/dartboard/type",
-                data=json.dumps({
-                    "name": "granboard",
-                    "brand": "Gran Board",
-                    "model": "Gran Board 3",
-                    "description": "Bluetooth dartboard",
-                    "masterPins": [2, 4, 5],
-                    "slavePins": [12, 13, 14],
-                }),
+                data=json.dumps(
+                    {
+                        "name": "granboard",
+                        "brand": "Gran Board",
+                        "model": "Gran Board 3",
+                        "description": "Bluetooth dartboard",
+                        "masterPins": [2, 4, 5],
+                        "slavePins": [12, 13, 14],
+                    },
+                ),
                 content_type="application/json",
             )
 
@@ -423,9 +445,11 @@ class TestAdminDartboardEndpoints:
         """Test creating dartboard type without name."""
         response = client.post(
             "/api/admin/dartboard/type",
-            data=json.dumps({
-                "brand": "Test Brand",
-            }),
+            data=json.dumps(
+                {
+                    "brand": "Test Brand",
+                },
+            ),
             content_type="application/json",
         )
 
@@ -438,10 +462,12 @@ class TestAdminDartboardEndpoints:
         with flask_app.test_client() as client:
             response = client.put(
                 "/api/admin/dartboard/type/carromco/pins",
-                data=json.dumps({
-                    "masterPins": [2, 4, 5],
-                    "slavePins": [12, 13, 14],
-                }),
+                data=json.dumps(
+                    {
+                        "masterPins": [2, 4, 5],
+                        "slavePins": [12, 13, 14],
+                    },
+                ),
                 content_type="application/json",
             )
             assert response.status_code in [302, 401, 403]
@@ -451,7 +477,6 @@ class TestAdminDartboardEndpoints:
         """Test updating dartboard pins with valid data."""
         # This test is skipped because the actual implementation doesn't call
         # a separate update_dartboard_pins method on DartboardService
-        pass
 
     def test_get_available_pins(self, client):
         """Test getting available GPIO pins."""

@@ -15,7 +15,7 @@ def client(flask_app):
             sess["user_info"] = {"username": "testuser", "sub": "test-user"}
             sess["player_id"] = 1
 
-        with patch("src.core.auth.validate_token") as mock_validate:
+        with patch("dartserver_core.auth.validate_token") as mock_validate:
             mock_validate.return_value = {
                 "sub": "test-user",
                 "groups": ["admin", "gamemaster"],
@@ -229,7 +229,7 @@ class TestMobileAppPages:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-token"
 
-            with patch("src.core.auth.validate_token") as mock_validate:
+            with patch("dartserver_core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {"sub": "test-user", "groups": []}
 
                 response = client.get("/mobile/gamemaster")
@@ -293,7 +293,7 @@ class TestAPIKeyManagement:
                 sess["access_token"] = "test-token"
                 # No player_id
 
-            with patch("src.core.auth.validate_token") as mock_validate:
+            with patch("dartserver_core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {"sub": "test-user", "groups": ["admin"]}
 
                 response = client.get("/api/mobile/apikeys")
@@ -371,11 +371,13 @@ class TestDartboardManagement:
 
             response = client.post(
                 "/api/mobile/dartboards",
-                data=json.dumps({
-                    "dartboard_id": "board-123",
-                    "name": "New Board",
-                    "wpa_key": "secret-key",
-                }),
+                data=json.dumps(
+                    {
+                        "dartboard_id": "board-123",
+                        "name": "New Board",
+                        "wpa_key": "secret-key",
+                    },
+                ),
                 content_type="application/json",
             )
 
@@ -440,11 +442,13 @@ class TestHotspotConfiguration:
 
             response = client.post(
                 "/api/mobile/hotspot",
-                data=json.dumps({
-                    "dartboard_id": 1,
-                    "ssid": "MyHotspot",
-                    "password": "mypassword",
-                }),
+                data=json.dumps(
+                    {
+                        "dartboard_id": 1,
+                        "ssid": "MyHotspot",
+                        "password": "mypassword",
+                    },
+                ),
                 content_type="application/json",
             )
 

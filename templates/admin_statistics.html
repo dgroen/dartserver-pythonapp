@@ -311,10 +311,10 @@
 
             let url = '/api/admin/statistics';
             const params = new URLSearchParams();
-            
+
             if (startDate) params.append('start_date', startDate);
             if (endDate) params.append('end_date', endDate);
-            
+
             if (params.toString()) {
                 url += '?' + params.toString();
             }
@@ -364,7 +364,7 @@
             stats.forEach(stat => {
                 const winRate = stat.win_rate || 0;
                 const winRateWidth = Math.min(winRate, 100);
-                
+
                 html += `
                     <tr>
                         <td><strong>${stat.username || 'Unknown'}</strong></td>
@@ -409,7 +409,7 @@
                 // String comparison
                 const aStr = String(aVal).toLowerCase();
                 const bStr = String(bVal).toLowerCase();
-                
+
                 if (sortDirection === 'asc') {
                     return aStr < bStr ? -1 : aStr > bStr ? 1 : 0;
                 } else {
@@ -430,7 +430,7 @@
             // Add sort class to current column
             const headers = document.querySelectorAll('.stats-table th');
             const columnIndex = ['username', 'total_games', 'games_won', 'win_rate', 'avg_score', 'best_score', 'total_throws'].indexOf(sortColumn);
-            
+
             if (columnIndex >= 0 && headers[columnIndex]) {
                 headers[columnIndex].classList.add(sortDirection === 'asc' ? 'sorted-asc' : 'sorted-desc');
             }
@@ -486,7 +486,7 @@
             alert.className = `alert ${type}`;
             alert.textContent = message;
             container.appendChild(alert);
-            
+
             setTimeout(() => {
                 const elem = document.getElementById(alertId);
                 if (elem) elem.remove();
@@ -499,17 +499,17 @@
             const endDate = new Date();
             const startDate = new Date();
             startDate.setDate(startDate.getDate() - 30);
-            
+
             const filterEndDateEl = document.getElementById('filterEndDate');
             const filterStartDateEl = document.getElementById('filterStartDate');
-            
+
             if (filterEndDateEl) {
                 filterEndDateEl.valueAsDate = endDate;
             }
             if (filterStartDateEl) {
                 filterStartDateEl.valueAsDate = startDate;
             }
-            
+
             // Load initial statistics
             loadStatistics();
         });

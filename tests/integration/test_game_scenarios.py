@@ -2,10 +2,11 @@
 
 import pytest
 from dartserver_app import GameManager
+from dartserver_core import Player
 from dartserver_core.database_service import DatabaseService
 
 
-@pytest.fixture()
+@pytest.fixture
 def db_service():
     """Create in-memory database service for testing."""
     db = DatabaseService("sqlite:///:memory:")
@@ -22,8 +23,6 @@ def db_service():
 
 def get_player_ids(names, db_service):
     """Convert player names to player IDs for testing."""
-    from dartserver_core import Player
-
     player_ids = []
     session = db_service.db_manager.get_session()
     for name in names:
@@ -34,7 +33,7 @@ def get_player_ids(names, db_service):
 
 
 class TestGame301Scenarios:
-    """Test complete 301 game scenarios."""rrent URL: http://localhost/api/game
+    """Test complete 301 game scenarios."""
 
     def test_complete_301_game(self, mock_socketio, db_service):
         """Test a complete 301 game from start to finish."""
