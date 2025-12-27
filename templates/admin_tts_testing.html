@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - TTS Testing</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
     <style>
         * {
             margin: 0;
@@ -14,7 +15,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -254,11 +255,104 @@
                 transform: rotate(360deg);
             }
         }
+
+        .user-info-header {
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .user-info {
+            position: absolute;
+            top: 5px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9em;
+        }
+
+        .username {
+            padding: 5px 12px;
+        }
+
+        .username-link {
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.3s, transform 0.2s;
+            display: inline-block;
+        }
+
+        .username-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+            cursor: pointer;
+        }
+
+        .user-roles {
+            display: flex;
+            gap: 5px;
+        }
+
+        .role-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .role-admin {
+            background: #dc3545;
+            color: white;
+        }
+
+        .role-gamemaster {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .role-player {
+            background: #28a745;
+            color: white;
+        }
+
+        .logout-btn {
+            padding: 6px 15px;
+            background: rgba(220, 53, 69, 0.8);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(220, 53, 69, 1);
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
+        <div class="user-info-header">
+            <div class="user-info">
+                {% if user_claims %}
+                <a href="/profile" class="username username-link" title="View Profile">👤 {{
+                    user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + '
+                    ' + user_claims.get('family_name', '')).strip() or user_claims.get('username',
+                    user_claims.get('sub', 'User')) }}</a>
+                {% if user_roles %}
+                <span class="user-roles">
+                    {% for role in user_roles %}
+                    <span class="role-badge role-{{ role }}">{{ role }}</span>
+                    {% endfor %}
+                </span>
+                {% endif %}
+                <a href="/logout" class="logout-btn">Logout</a>
+                {% endif %}
+            </div>
+        </div>
         <div class="header">
             <h1>🔊 TTS Testing</h1>
             <a href="/admin" class="back-link">← Back to Admin</a>

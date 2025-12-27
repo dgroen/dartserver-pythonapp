@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Darts Game</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
     <style>
         * {
             margin: 0;
@@ -13,7 +15,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -138,8 +140,10 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
+        {% include '_user_header.html' %}
         <div class="header">
             <h1>🎯 Admin Dashboard</h1>
             <div class="user-info">
@@ -158,7 +162,8 @@
                 <span class="nav-card-icon">🎯</span>
                 <div class="nav-card-title">Dartboard Testing</div>
                 <div class="nav-card-description">
-                    Test and calibrate dartboard GPIO pin mappings. Configure dartboard types and troubleshoot hardware connections.
+                    Test and calibrate dartboard GPIO pin mappings. Configure dartboard types and troubleshoot hardware
+                    connections.
                 </div>
             </a>
 
@@ -167,7 +172,8 @@
                 <span class="nav-card-icon">🔊</span>
                 <div class="nav-card-title">TTS Testing</div>
                 <div class="nav-card-description">
-                    Test Text-to-Speech functionality. Preview different voices, test audio playback, and configure TTS settings.
+                    Test Text-to-Speech functionality. Preview different voices, test audio playback, and configure TTS
+                    settings.
                 </div>
             </a>
 
@@ -176,7 +182,8 @@
                 <span class="nav-card-icon">👥</span>
                 <div class="nav-card-title">User Management</div>
                 <div class="nav-card-description">
-                    Create new users, deactivate accounts, set passwords, and manage user roles. Full WSO2 user administration.
+                    Create new users, deactivate accounts, set passwords, and manage user roles. Full WSO2 user
+                    administration.
                 </div>
             </a>
 
@@ -203,7 +210,8 @@
                 <span class="nav-card-icon">📊</span>
                 <div class="nav-card-title">User Statistics</div>
                 <div class="nav-card-description">
-                    View comprehensive statistics for all users including game counts, win rates, rankings, and performance metrics.
+                    View comprehensive statistics for all users including game counts, win rates, rankings, and
+                    performance metrics.
                 </div>
             </a>
         </div>
@@ -215,4 +223,5 @@
         </div>
     </div>
 </body>
+
 </html>

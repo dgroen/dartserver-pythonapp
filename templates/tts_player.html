@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TTS Audio Player</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
     <style>
         * {
             margin: 0;
@@ -187,13 +189,20 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="container">
+        {% include '_user_header.html' %}
         <h1>🎤 TTS Audio Player</h1>
 
         <div class="form-group">
@@ -238,8 +247,10 @@
 
         <div class="form-group">
             <label for="configInput">TTS Configuration (JSON):</label>
-            <textarea id="configInput" placeholder="Enter TTS configuration as JSON..." style="font-family: 'Courier New', monospace; font-size: 12px; min-height: 120px;">{"enabled":true,"engine":"gtts","speed":150,"voice":"default","volume":0.9,"language":"en"}</textarea>
-            <small style="display: block; margin-top: 6px; color: #888;">Modify engine, speed, voice, volume, language, or enabled status. Changes are synced with the dropdown selectors.</small>
+            <textarea id="configInput" placeholder="Enter TTS configuration as JSON..."
+                style="font-family: 'Courier New', monospace; font-size: 12px; min-height: 120px;">{"enabled":true,"engine":"gtts","speed":150,"voice":"default","volume":0.9,"language":"en"}</textarea>
+            <small style="display: block; margin-top: 6px; color: #888;">Modify engine, speed, voice, volume, language,
+                or enabled status. Changes are synced with the dropdown selectors.</small>
         </div>
 
         <div class="button-group">
@@ -253,7 +264,8 @@
         </div>
 
         <div class="info-box">
-            <strong>ℹ️ How to use:</strong> Enter your text, select a language, and click "Generate Audio" to convert it to speech. The audio player will appear below with playback controls.
+            <strong>ℹ️ How to use:</strong> Enter your text, select a language, and click "Generate Audio" to convert it
+            to speech. The audio player will appear below with playback controls.
         </div>
     </div>
 
@@ -313,12 +325,12 @@
                 },
                 body: JSON.stringify(config)
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Config failed: ' + response.status);
-                }
-                return response.json();
-            });
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Config failed: ' + response.status);
+                    }
+                    return response.json();
+                });
         }
 
         function generateAudio() {
@@ -447,4 +459,5 @@
         fetchVoices(engineSelect.value);
     </script>
 </body>
+
 </html>

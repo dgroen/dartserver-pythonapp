@@ -2,7 +2,7 @@
 let currentGames = [];
 
 // Initialize dashboard when page loads
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Load users list for admin filter if user is admin
     if (window.userIsAdmin) {
         loadUsersList();
@@ -30,7 +30,7 @@ function setupEventListeners() {
     document.querySelector('.close-btn').addEventListener('click', closeModal);
 
     // Close modal when clicking outside
-    window.addEventListener('click', function(event) {
+    window.addEventListener('click', function (event) {
         const modal = document.getElementById('game-detail-modal');
         if (event.target === modal) {
             closeModal();
@@ -193,7 +193,14 @@ function createGameCard(game) {
     if (!isCompleted) {
         actionButtons = '<div class="game-actions">';
 
-        // Resume button - always visible for incomplete games
+        // View Details button - placed above resume
+        actionButtons += `
+            <button class="action-btn view-btn" data-session-id="${game.game_session_id}" title="View details">
+                🔍 Details
+            </button>
+        `;
+
+        // Resume button - visible for incomplete games
         actionButtons += `
             <button class="action-btn resume-btn" data-session-id="${game.game_session_id}" title="Resume game">
                 ▶️ Resume
@@ -241,9 +248,8 @@ function createGameCard(game) {
                 </div>
                 ${optionsHtml}
                 ${actionButtons}
+                </div>
             </div>
-            <button class="view-btn" data-session-id="${game.game_session_id}">View Details</button>
-        </div>
     `;
 }
 
@@ -418,11 +424,11 @@ function displayGameDetails(gameData) {
                 </thead>
                 <tbody>
                     ${gameData.throws.map(t => {
-                        let notes = [];
-                        if (t.is_finish) notes.push('<span class="throw-finish">FINISH</span>');
-                        if (t.is_bust) notes.push('<span class="throw-bust">BUST</span>');
+        let notes = [];
+        if (t.is_finish) notes.push('<span class="throw-finish">FINISH</span>');
+        if (t.is_bust) notes.push('<span class="throw-bust">BUST</span>');
 
-                        return `
+        return `
                             <tr>
                                 <td>${t.turn_number}</td>
                                 <td>${t.throw_in_turn}</td>
@@ -435,7 +441,7 @@ function displayGameDetails(gameData) {
                                 <td>${notes.join(' ')}</td>
                             </tr>
                         `;
-                    }).join('')}
+    }).join('')}
                 </tbody>
             </table>
         </div>

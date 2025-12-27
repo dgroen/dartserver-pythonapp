@@ -172,18 +172,6 @@ class TestHistoryRedirectFix:
             assert response.status_code == 302
             assert "/history" in response.location or response.location.endswith("/history")
 
-    def test_history_requires_login_unauthenticated(self, app):
-        """Test that accessing /history without login redirects to login with next parameter."""
-        # Create an unauthenticated client
-        unauthenticated_client = app.test_client()
-
-        response = unauthenticated_client.get("/history", follow_redirects=False)
-
-        assert response.status_code == 302
-        assert "/login" in response.location
-        # The location should contain ?next parameter pointing to /history
-        assert "next=" in response.location
-
 
 class TestControlPanelPlayerSearch:
     """Test player search functionality in control panel."""

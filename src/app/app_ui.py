@@ -114,24 +114,6 @@ def game_create():
     return render_template("game_create.html", user_roles=user_roles, user_claims=user_claims)
 
 
-@ui_bp.route("/history")
-@login_required
-def history():
-    """User game history page
-    ---
-    tags:
-      - UI
-    summary: Game history page
-    description: Renders the user's game history with statistics
-    responses:
-      200:
-        description: HTML page rendered successfully
-    """
-    user_roles = getattr(request, "user_roles", [])
-    user_claims = getattr(request, "user_claims", {})
-    return render_template("history.html", user_roles=user_roles, user_claims=user_claims)
-
-
 @ui_bp.route("/dashboard")
 @login_required
 def dashboard():
@@ -364,3 +346,21 @@ def admin_statistics():
         user_roles=user_roles,
         user_claims=user_claims,
     )
+
+
+@ui_bp.route("/profile")
+@login_required
+def profile():
+    """User profile page
+    ---
+    tags:
+      - UI
+    summary: User profile page
+    description: Renders the user profile page with personal information, statistics, and settings
+    responses:
+      200:
+        description: HTML page rendered successfully
+    """
+    user_roles = getattr(request, "user_roles", [])
+    user_claims = getattr(request, "user_claims", {})
+    return render_template("profile.html", user_roles=user_roles, user_claims=user_claims)

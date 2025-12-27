@@ -31,20 +31,6 @@ class TestLoginRedirectFlow:
     """Test login redirect flow for protected pages"""
 
     @patch("dartserver_core.auth.get_current_request_url")
-    @patch("dartserver_core.auth.validate_token")
-    def test_history_page_redirect_to_login(self, mock_validate, mock_get_url, client_with_login):
-        """Test that accessing /history without token redirects to login"""
-        mock_validate.return_value = None
-        mock_get_url.return_value = "https://localhost:5000/history"
-
-        response = client_with_login.get("/history", follow_redirects=False)
-
-        # Should redirect to login
-        assert response.status_code == 302
-        assert "/login" in response.location
-        assert "next=" in response.location
-
-    @patch("dartserver_core.auth.get_current_request_url")
     def test_login_stores_next_url_in_session(
         self,
         mock_get_url,

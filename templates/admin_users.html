@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - User Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
     <style>
         * {
             margin: 0;
@@ -13,7 +15,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -401,13 +403,20 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="container">
+        {% include '_user_header.html' %}
         <div class="header">
             <h1>👥 User Management</h1>
             <a href="/admin" class="back-link">← Back to Admin</a>
@@ -427,7 +436,7 @@
 
             <div class="search-box">
                 <input type="text" id="searchInput" placeholder="Search by username, email, or name..."
-                       onkeypress="if(event.key==='Enter') searchUsers()">
+                    onkeypress="if(event.key==='Enter') searchUsers()">
                 <button onclick="searchUsers()">🔍 Search</button>
                 <button onclick="loadAllUsers()" style="background: #9E9E9E;">📋 Load All</button>
             </div>
@@ -490,8 +499,8 @@
                 <div class="form-group">
                     <label for="newPassword">New Password *</label>
                     <input type="password" id="newPassword" required minlength="8"
-                           pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$"
-                           title="Password must be at least 8 characters with at least one uppercase letter, one lowercase letter, and one number">
+                        pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$"
+                        title="Password must be at least 8 characters with at least one uppercase letter, one lowercase letter, and one number">
                 </div>
                 <div class="form-group">
                     <label for="confirmPassword">Confirm Password *</label>
@@ -611,9 +620,9 @@
                                     Password
                                 </button>
                                 ${isActive ?
-                                    `<button class="btn-small btn-deactivate" onclick='toggleUserStatus("${user.id}", "${user.username}", false)'>Deactivate</button>` :
-                                    `<button class="btn-small btn-activate" onclick='toggleUserStatus("${user.id}", "${user.username}", true)'>Activate</button>`
-                                }
+                        `<button class="btn-small btn-deactivate" onclick='toggleUserStatus("${user.id}", "${user.username}", false)'>Deactivate</button>` :
+                        `<button class="btn-small btn-activate" onclick='toggleUserStatus("${user.id}", "${user.username}", true)'>Activate</button>`
+                    }
                             </div>
                         </td>
                     </tr>
@@ -837,4 +846,5 @@
         }
     </script>
 </body>
+
 </html>

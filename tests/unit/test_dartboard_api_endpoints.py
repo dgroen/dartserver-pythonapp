@@ -31,7 +31,7 @@ def mock_game_manager():
 @pytest.fixture
 def mock_db_session():
     """Create mock database session"""
-    with patch("src.app.app.get_session") as mock_get_session:
+    with patch("dartserver_core.database_service.get_session") as mock_get_session:
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
         yield mock_session
@@ -467,17 +467,17 @@ class TestCreateDartboardTypeEndpoint:
     """Test /api/admin/dartboard/type endpoint"""
 
     @pytest.fixture
-    def admin_client(self):
+    def admin_client(self, flask_app):
         """Create test client with admin authentication"""
-        app.config["TESTING"] = True
-        with app.test_client() as client:
+        flask_app.config["TESTING"] = True
+        with flask_app.test_client() as client:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-admin-token"
             yield client
 
     @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app_services.DartboardService")
-    @patch("src.app.app.get_session")
+    @patch("dartserver_core.database_service.get_session")
     def test_create_dartboard_type_success(
         self,
         mock_get_session,
@@ -522,7 +522,7 @@ class TestCreateDartboardTypeEndpoint:
         assert data["dartboard_type"]["brand"] == "Gran Board"
 
     @patch("dartserver_core.auth.validate_token")
-    @patch("src.app.app.get_session")
+    @patch("dartserver_core.database_service.get_session")
     def test_create_dartboard_type_missing_name(
         self,
         mock_get_session,
@@ -551,7 +551,7 @@ class TestCreateDartboardTypeEndpoint:
         assert "Name is required" in data["message"]
 
     @patch("dartserver_core.auth.validate_token")
-    @patch("src.app.app.get_session")
+    @patch("dartserver_core.database_service.get_session")
     def test_create_dartboard_type_missing_brand(
         self,
         mock_get_session,
@@ -580,7 +580,7 @@ class TestCreateDartboardTypeEndpoint:
         assert "Brand is required" in data["message"]
 
     @patch("dartserver_core.auth.validate_token")
-    @patch("src.app.app.get_session")
+    @patch("dartserver_core.database_service.get_session")
     def test_create_dartboard_type_invalid_name_format(
         self,
         mock_get_session,
@@ -610,7 +610,7 @@ class TestCreateDartboardTypeEndpoint:
 
     @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app_services.DartboardService")
-    @patch("src.app.app.get_session")
+    @patch("dartserver_core.database_service.get_session")
     def test_create_dartboard_type_duplicate(
         self,
         mock_get_session,
@@ -673,7 +673,7 @@ class TestCreateDartboardTypeEndpoint:
 
     @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app_services.DartboardService")
-    @patch("src.app.app.get_session")
+    @patch("dartserver_core.database_service.get_session")
     def test_create_dartboard_type_with_hyphens_and_underscores(
         self,
         mock_get_session,
@@ -711,7 +711,7 @@ class TestCreateDartboardTypeEndpoint:
 
     @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app_services.DartboardService")
-    @patch("src.app.app.get_session")
+    @patch("dartserver_core.database_service.get_session")
     def test_create_dartboard_type_minimal(
         self,
         mock_get_session,
@@ -754,17 +754,17 @@ class TestUpdateDartboardPinsEndpoint:
     """Test /api/admin/dartboard/type/<board_type>/pins endpoint"""
 
     @pytest.fixture
-    def admin_client(self):
+    def admin_client(self, flask_app):
         """Create test client with admin authentication"""
-        app.config["TESTING"] = True
-        with app.test_client() as client:
+        flask_app.config["TESTING"] = True
+        with flask_app.test_client() as client:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-admin-token"
             yield client
 
     @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app_services.DartboardService")
-    @patch("src.app.app.get_session")
+    @patch("dartserver_core.database_service.get_session")
     def test_update_pins_success(
         self,
         mock_get_session,
@@ -802,7 +802,7 @@ class TestUpdateDartboardPinsEndpoint:
         mock_service.update_dartboard_pins.assert_called_once()
 
     @patch("dartserver_core.auth.validate_token")
-    @patch("src.app.app.get_session")
+    @patch("dartserver_core.database_service.get_session")
     def test_update_pins_invalid_master_pins(
         self,
         mock_get_session,
@@ -831,7 +831,7 @@ class TestUpdateDartboardPinsEndpoint:
 
     @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app_services.DartboardService")
-    @patch("src.app.app.get_session")
+    @patch("dartserver_core.database_service.get_session")
     def test_update_pins_not_found(
         self,
         mock_get_session,
@@ -883,17 +883,17 @@ class TestCreateDartboardTypeWithPins:
     """Test creating dartboard types with pin configuration"""
 
     @pytest.fixture
-    def admin_client(self):
+    def admin_client(self, flask_app):
         """Create test client with admin authentication"""
-        app.config["TESTING"] = True
-        with app.test_client() as client:
+        flask_app.config["TESTING"] = True
+        with flask_app.test_client() as client:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-admin-token"
             yield client
 
     @patch("dartserver_core.auth.validate_token")
     @patch("src.app.app_services.DartboardService")
-    @patch("src.app.app.get_session")
+    @patch("dartserver_core.database_service.get_session")
     def test_create_with_pins(
         self,
         mock_get_session,
@@ -943,10 +943,10 @@ class TestGetAvailablePinsEndpoint:
     """Test /api/admin/dartboard/available-pins endpoint"""
 
     @pytest.fixture
-    def admin_client(self):
+    def admin_client(self, flask_app):
         """Create test client with admin authentication"""
-        app.config["TESTING"] = True
-        with app.test_client() as client:
+        flask_app.config["TESTING"] = True
+        with flask_app.test_client() as client:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-admin-token"
             yield client

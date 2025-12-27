@@ -112,17 +112,6 @@ class TestUIEndpoints:
         assert response.status_code == 200
         assert b"<!DOCTYPE html>" in response.data or b"<html" in response.data
 
-    def test_history_requires_auth(self, client):
-        """Test history page requires authentication."""
-        response = client.get("/history")
-        assert response.status_code in [302, 401, 403]
-
-    def test_history_renders_for_authenticated_user(self, authenticated_client):
-        """Test history page renders for authenticated user."""
-        response = authenticated_client.get("/history")
-        assert response.status_code == 200
-        assert b"<!DOCTYPE html>" in response.data or b"<html" in response.data
-
     def test_dashboard_requires_auth(self, client):
         """Test dashboard requires authentication."""
         response = client.get("/dashboard")

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <title>Profile - Darts Mobile</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+</head>
+<body>
+    <div class="mobile-app">
+        <header class="mobile-header">
+            <a href="/mobile" class="back-btn">←</a>
+            <h1>👤 Profile</h1>
+        </header>
+
+        <main class="mobile-content">
+            <!-- Personal Information Section -->
+            <section class="account-section">
+                <h2>📋 Personal Information</h2>
+                <div id="loading-message" class="loading">Loading profile...</div>
+                <div id="error-message" class="error-message" style="display: none;"></div>
+                
+                <div id="profile-info" class="profile-info" style="display: none;">
+                    <div class="info-list">
+                        <div class="info-item-mobile">
+                            <label>Username</label>
+                            <span id="display-username">-</span>
+                        </div>
+                        <div class="info-item-mobile">
+                            <label>Display Name</label>
+                            <span id="display-name">-</span>
+                        </div>
+                        <div class="info-item-mobile">
+                            <label>Email</label>
+                            <span id="display-email">-</span>
+                        </div>
+                        <div class="info-item-mobile">
+                            <label>Roles</label>
+                            <span id="display-roles">-</span>
+                        </div>
+                    </div>
+                    
+                    <p class="info-note-mobile">
+                        ℹ️ Profile information is managed through WSO2 Identity Server.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Game Statistics Section -->
+            <section class="account-section">
+                <h2>📊 Game Statistics</h2>
+                <div id="stats-loading" class="loading">Loading statistics...</div>
+                <div id="stats-error" class="error-message" style="display: none;"></div>
+                
+                <div id="statistics" class="stats-grid-mobile" style="display: none;">
+                    <div class="stat-card-mobile">
+                        <div class="stat-label">Total Games</div>
+                        <div class="stat-value-mobile" id="total-games">0</div>
+                    </div>
+                    <div class="stat-card-mobile">
+                        <div class="stat-label">Games Won</div>
+                        <div class="stat-value-mobile" id="games-won">0</div>
+                    </div>
+                    <div class="stat-card-mobile">
+                        <div class="stat-label">Win Rate</div>
+                        <div class="stat-value-mobile" id="win-rate">0%</div>
+                    </div>
+                    <div class="stat-card-mobile">
+                        <div class="stat-label">Avg Score</div>
+                        <div class="stat-value-mobile" id="avg-score">0</div>
+                    </div>
+                    <div class="stat-card-mobile">
+                        <div class="stat-label">Best Finish</div>
+                        <div class="stat-value-mobile" id="best-finish">-</div>
+                    </div>
+                    <div class="stat-card-mobile">
+                        <div class="stat-label">Total Throws</div>
+                        <div class="stat-value-mobile" id="total-throws">0</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Games Section -->
+            <section class="account-section">
+                <h2>🎮 Recent Games</h2>
+                <div id="games-loading" class="loading">Loading games...</div>
+                <div id="games-error" class="error-message" style="display: none;"></div>
+                <div id="recent-games" class="games-list-mobile"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
+</body>
+</html>
