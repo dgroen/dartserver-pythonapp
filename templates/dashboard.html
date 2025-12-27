@@ -21,6 +21,98 @@
             height: auto !important;
             min-height: 0 !important;
         }
+
+        /* Enforce summary cards auto-sizing specifically on dashboard page */
+        .summary-cards {
+            grid-auto-rows: min-content !important;
+            align-items: start;
+        }
+
+        .summary-cards .summary-card {
+            height: auto !important;
+            /* always size to content */
+            min-height: 36px !important;
+            /* small sensible minimum */
+            padding: 6px 8px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: flex-start !important;
+            overflow: visible !important;
+        }
+
+        .summary-cards .summary-card .stat-value {
+            font-size: 16px !important;
+            line-height: 1 !important;
+        }
+
+        /* Remove square/aspect-ratio enforcement for control card sections on dashboard */
+        .control-grid-row .section {
+            aspect-ratio: auto !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+        }
+
+        /* Darker text colors to match admin theme */
+        .header h1,
+        .header p {
+            color: #222 !important;
+        }
+
+        .section,
+        .section h2,
+        .summary-card h3 {
+            color: #333 !important;
+        }
+
+        .summary-cards .summary-card .stat-value {
+            color: #0f4c81 !important;
+        }
+
+        .game-card,
+        .game-card .game-info,
+        .game-card .game-details,
+        .detail-item,
+        .game-header,
+        .game-type,
+        .game-date {
+            color: #222 !important;
+        }
+
+        .player-card,
+        .player-card .player-name,
+        .player-card .player-stats,
+        .throws-table {
+            color: #222 !important;
+        }
+
+        .status-badge {
+            color: #fff !important;
+        }
+
+        /* Force two equal columns for dashboard summary+filters row */
+        .control-grid-row.dashboard-2col {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 20px !important;
+            align-items: stretch !important;
+        }
+
+        /* Make each section a column flex container and let its body stretch
+           so both columns match the height of the tallest one */
+        .control-grid-row.dashboard-2col>.section {
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: 0 !important;
+        }
+
+        /* Allow everything except the H2 header to grow and scroll if needed */
+        .control-grid-row.dashboard-2col>.section> :not(h2) {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            overflow: auto !important;
+        }
     </style>
 </head>
 
@@ -43,7 +135,7 @@
         </div>
 
         <div class="main-grid">
-            <div class="control-grid-row" style="grid-template-columns: 1fr 360px; align-items: start;">
+            <div class="control-grid-row dashboard-2col" style="align-items: start;">
                 <div class="section">
                     <h2>Summary</h2>
                     <div class="summary-cards">

@@ -379,6 +379,49 @@ button {
     box-shadow: 0 10px 30px rgba(15, 76, 129, 0.08);
 }
 
+/* Compact summary cards for dashboard: reduce height/padding to ~25% of previous size */
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    align-items: start;
+}
+
+.summary-cards .summary-card {
+    background: #ffffff;
+    border: 1px solid #e6eefb;
+    border-radius: 6px;
+    padding: 8px 10px;
+    height: 56px;
+    /* compact height */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    box-shadow: none;
+}
+
+.summary-cards .summary-card h3 {
+    margin: 0;
+    font-size: 12px;
+    color: #666;
+    font-weight: 600;
+}
+
+.summary-cards .summary-card .stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f4c81;
+    margin-top: 4px;
+}
+
+@media (max-width: 900px) {
+    .summary-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+
 .game-icon {
     width: 56px;
     height: 56px;
@@ -427,6 +470,72 @@ button {
 .status-incomplete {
     background: #fff4e6;
     color: #8a4b00;
+}
+
+/* Game card action buttons styles */
+.game-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+}
+
+.game-actions .action-btn {
+    background: #f0f4ff;
+    border: 1px solid rgba(15, 76, 129, 0.06);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: #0f4c81;
+    /* default action text color (matches Details) */
+}
+
+.game-actions .view-btn {
+    background: #eef7ff;
+    color: #0f4c81;
+}
+
+.game-actions .resume-btn {
+    background: #e6ffef;
+    color: #137a3f;
+}
+
+/* Make remove button share the same typography and default color as Details/Resume buttons */
+.game-actions .remove-btn {
+    background: #fff5f5;
+    color: #0f4c81;
+    /* match Details color */
+    border-color: rgba(15, 76, 129, 0.06);
+}
+
+/* Player detail modal cards: size to content */
+.players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    align-items: start;
+}
+
+.player-card {
+    background: #fff;
+    border: 1px solid #e9eef6;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: auto;
+    min-height: 0;
+    box-shadow: none;
+}
+
+.player-card .player-stats .stat-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
 }
 
 /* Training status specific adjustments
@@ -494,18 +603,23 @@ button {
     padding: 6px 10px;
     border-radius: 6px;
     cursor: pointer;
-}
 
-.action-btn:hover {
-    box-shadow: 0 4px 12px rgba(15, 76, 129, 0.06);
-}
-
-.view-btn {
-    background: #ffffff;
-    border: 1px solid rgba(15, 76, 129, 0.08);
-    padding: 8px 12px;
-    border-radius: 6px;
-    cursor: pointer;
+    .summary-cards .summary-card {
+        background: #ffffff;
+        border: 1px solid #e6eefb;
+        border-radius: 6px;
+        padding: 6px 10px;
+        /* small padding so cards stay compact */
+        height: auto;
+        /* allow card to grow with content */
+        min-height: 40px;
+        /* reasonable minimum */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        box-shadow: none;
+    }
 }
 
 .view-btn:hover {
