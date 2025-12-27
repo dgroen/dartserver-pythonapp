@@ -261,14 +261,50 @@ function updateGameDisplay(state) {
         } catch (e) {
             // ignore
         }
-        const playerCount = state.players ? state.players.length : 0;
+        // Deduplicate players by db_id (preferred) or name to avoid showing
+        // players from multiple sessions if server state is inconsistent.
+        const rawPlayers = Array.isArray(state.players) ? state.players : [];
+        const seen = new Set();
+        const players = [];
+        rawPlayers.forEach((p) => {
+            const key = (p && (p.db_id || p.id || p.name)) || JSON.stringify(p);
+            if (!seen.has(key)) {
+                seen.add(key);
+                players.push(p);
+            }
+        });
+
+        // Map original current_player index to deduped players array
+        let renderCurrent = null;
+        try {
+            if (typeof state.current_player !== 'undefined' && state.current_player !== null) {
+                const orig = rawPlayers[state.current_player];
+                if (orig) {
+                    const origKey = (orig.db_id || orig.id || orig.name) || JSON.stringify(orig);
+                    for (let i = 0; i < players.length; i++) {
+                        const p = players[i];
+                        const k = (p.db_id || p.id || p.name) || JSON.stringify(p);
+                        if (k === origKey) {
+                            renderCurrent = i;
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            // ignore mapping errors
+        }
+
+        if (renderCurrent !== null) state._render_current_player = renderCurrent;
+
+        const playerCount = players.length;
         if (playerCount && playerCount > 0) {
             const cls = 'players-count-' + (playerCount > 4 ? 4 : playerCount);
             playersContainer.classList.add(cls);
         }
 
-        if (state.players && state.players.length > 0) {
-            state.players.forEach((player, index) => {
+        if (players.length > 0) {
+            players.forEach((player, index) => {
                 const playerCard = createPlayerCard(player, index, state);
                 playersContainer.appendChild(playerCard);
             });
@@ -282,13 +318,16 @@ function createPlayerCard(player, index, state) {
     const card = document.createElement('div');
     card.className = 'player-card';
 
+    // Determine render-time current player (handle deduped player lists)
+    const renderCurrentPlayer = (typeof state._render_current_player !== 'undefined') ? state._render_current_player : state.current_player;
+
     // Add active class if it's this player's turn
-    if (index === state.current_player && state.is_started && !state.is_paused) {
+    if (index === renderCurrentPlayer && state.is_started && !state.is_paused) {
         card.classList.add('active');
     }
 
     // Add winner class if this player won
-    if (state.is_winner && index === state.current_player) {
+    if (state.is_winner && index === renderCurrentPlayer) {
         card.classList.add('winner');
     }
 
@@ -298,23 +337,55 @@ function createPlayerCard(player, index, state) {
     nameDiv.textContent = player.name;
     card.appendChild(nameDiv);
 
-    // Get player data from game state
+    // Get player data from game state. Prefer matching by db_id or name
     let playerData = player;
-    if (state.game_data && state.game_data.players && state.game_data.players[index]) {
-        playerData = state.game_data.players[index];
+    try {
+        if (state.game_data && Array.isArray(state.game_data.players)) {
+            const gamePlayers = state.game_data.players;
+            // Prefer matching by player_id/db_id
+            let match = null;
+            if (player && (player.db_id || player.id)) {
+                // Match DB-backed replay shape
+                match = gamePlayers.find(
+                    gp => gp.player_id === (player.db_id || player.id) || gp.id === (player.db_id || player.id)
+                );
+            }
+            // Fallback to matching by name for both shapes
+            if (!match && player && player.name) {
+                match = gamePlayers.find(
+                    gp => gp.player_name === player.name || gp.name === player.name
+                );
+            }
+            if (match) {
+                // Merge: prefer `player` base, but allow `match` (game_data/replay)
+                // to override runtime fields like `current_target`, `targets`, etc.
+                try {
+                    playerData = Object.assign({}, player, match);
+                } catch (e) {
+                    playerData = match;
+                }
+            }
+        }
+    } catch (e) {
+        // ignore and use provided player object
     }
 
     // Player score (don't show for Round-the-Clock game types)
     const scoreDiv = document.createElement('div');
     scoreDiv.className = 'player-score';
-    scoreDiv.textContent = playerData.score || 0;
+    // Prefer various possible score fields that different game modes or
+    // replay payloads might provide.
+    const displayScore = (playerData && (
+        playerData.score ?? playerData.current_score ?? playerData.final_score ?? playerData.start_score
+    )) ?? 0;
+    scoreDiv.textContent = displayScore;
     if (!(state.game_type === 'round_the_clock' || state.game_type === 'round_the_clock_double')) {
         card.appendChild(scoreDiv);
     }
 
     // Prepare per-card controls for the active player's card, but defer
     // appending for RTC (dartboard) game types so they appear under the board.
-    let isActivePlayer = (index === state.current_player);
+    let isActivePlayer = (index === renderCurrentPlayer);
     let throwInfo = null;
     let cardButtonContainer = null;
     let cardButton = null;
@@ -1152,20 +1223,39 @@ function displayGamesList(games, activeGameId) {
 
         console.log(`Game ${game.game_id}: ${game.player_count} players, is_active=${isActive}, players=`, game.players);
 
-        // Format player info with scores
+        // Deduplicate players by db_id or name to avoid counting duplicates
+        let dedupedPlayers = [];
+        try {
+            const raw = Array.isArray(game.players) ? game.players : [];
+            const seen = new Set();
+            raw.forEach(p => {
+                const key = (p && (p.db_id || p.id || p.name)) || (typeof p === 'string' ? p : JSON.stringify(p));
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    dedupedPlayers.push(p);
+                }
+            });
+        } catch (e) {
+            dedupedPlayers = Array.isArray(game.players) ? game.players : [];
+        }
+
+        const dedupedCount = dedupedPlayers.length;
+
+        // Format player info with scores using deduped list
         let playersHtml = '';
-        if (game.players && game.players.length > 0) {
-            const playerList = game.players.slice(0, 3).map(p => {
+        if (dedupedPlayers && dedupedPlayers.length > 0) {
+            const playerList = dedupedPlayers.slice(0, 3).map(p => {
                 if (typeof p === 'string') {
                     return p;
                 } else if (p.name) {
-                    // Show score if available
-                    return p.score !== undefined ? `${p.name} (${p.score})` : p.name;
+                    // Show score if available (support different property names)
+                    const score = p.score !== undefined ? p.score : (p.current_score !== undefined ? p.current_score : undefined);
+                    return score !== undefined ? `${p.name} (${score})` : p.name;
                 }
                 return 'Unknown';
             });
             playersHtml = '<br>' + playerList.join('<br>');
-            if (game.players.length > 3) {
+            if (dedupedPlayers.length > 3) {
                 playersHtml += '<br>...';
             }
         }
@@ -1179,7 +1269,7 @@ function displayGamesList(games, activeGameId) {
                 <div class="game-item-info">
                     <div class="game-item-type">${formatGameTypeName(game.game_type || 'N/A')}</div>
                     <div class="game-item-players">
-                        👥 ${game.player_count} player${game.player_count !== 1 ? 's' : ''}
+                        👥 ${dedupedCount} player${dedupedCount !== 1 ? 's' : ''}
                         ${playersHtml}
                     </div>
                 </div>

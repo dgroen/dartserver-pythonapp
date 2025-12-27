@@ -1173,11 +1173,36 @@ button {
 }
 
 .players-container.players-count-3 {
-    grid-template-columns: repeat(3, 1fr);
+    /* Use minmax(0,1fr) to allow proper shrinking and to avoid overflow
+       so three RTC player cards always fit the app container width */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .players-container.players-count-4 {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Ensure player cards stretch to fill their grid cell and match heights
+   so three cards look balanced and fit the app container cleanly. */
+.players-container {
+    align-items: stretch;
+    grid-auto-rows: 1fr;
+}
+
+.players-container>.player-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+    /* allow flex children to shrink inside grid cell */
+}
+
+/* On narrower screens, fall back to stacked layout but keep balanced heights */
+@media (max-width: 900px) {
+    .players-container.players-count-3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 .nav-links a.nav-link {
