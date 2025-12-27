@@ -16,52 +16,53 @@
             <div class="header-links">
                 <a href="/" class="header-link">🎮 Main Game</a>
                 <a href="/training" class="header-link">🎯 Training Mode</a>
-                <a href="/history" class="header-link">📜 Game History</a>
                 {% if 'admin' in user_roles %}
                 <a href="/admin" class="header-link">🔧 Admin</a>
                 {% endif %}
             </div>
         </header>
 
-        <div class="control-sections">
-            <!-- Statistics Summary -->
-            <section class="control-section">
-                <h2>Training Statistics</h2>
-                <div id="stats-summary"
-                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                    <div class="stat-card"
-                        style="background: rgba(0, 212, 255, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(0, 212, 255, 0.3);">
-                        <div style="color: #888; font-size: 0.875rem;">Total Sessions</div>
-                        <div id="total-sessions" style="font-size: 2rem; font-weight: bold; color: #00d4ff;">-</div>
-                    </div>
-                    <div class="stat-card"
-                        style="background: rgba(0, 255, 0, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(0, 255, 0, 0.3);">
-                        <div style="color: #888; font-size: 0.875rem;">Completed</div>
-                        <div id="completed-sessions" style="font-size: 2rem; font-weight: bold; color: #00ff00;">-</div>
-                    </div>
-                    <div class="stat-card"
-                        style="background: rgba(255, 165, 0, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255, 165, 0, 0.3);">
-                        <div style="color: #888; font-size: 0.875rem;">Avg Score/Throw</div>
-                        <div id="avg-score" style="font-size: 2rem; font-weight: bold; color: #ffa500;">-</div>
-                    </div>
-                    <div class="stat-card"
-                        style="background: rgba(255, 0, 255, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255, 0, 255, 0.3);">
-                        <div style="color: #888; font-size: 0.875rem;">Total Throws</div>
-                        <div id="total-throws" style="font-size: 2rem; font-weight: bold; color: #ff00ff;">-</div>
-                    </div>
-                </div>
-            </section>
+        <div class="main-grid">
+            <div>
+                <div class="control-grid-row">
+                    <!-- Statistics Summary -->
+                    <section class="section">
+                        <h2>Training Statistics</h2>
+                        <div id="stats-summary" class="summary-cards">
+                            <div class="summary-card">
+                                <h3>Total Sessions</h3>
+                                <div id="total-sessions" class="stat-value">-</div>
+                            </div>
+                            <div class="summary-card">
+                                <h3>Completed</h3>
+                                <div id="completed-sessions" class="stat-value">-</div>
+                            </div>
+                            <div class="summary-card">
+                                <h3>Avg Score/Throw</h3>
+                                <div id="avg-score" class="stat-value">-</div>
+                            </div>
+                            <div class="summary-card">
+                                <h3>Total Throws</h3>
+                                <div id="total-throws" class="stat-value">-</div>
+                            </div>
+                        </div>
+                    </section>
 
-            <!-- Training History -->
-            <section class="control-section">
-                <h2>Training History</h2>
-                <div style="margin-bottom: 1rem;">
-                    <button id="refresh-btn" class="btn btn-primary">Refresh</button>
+                    <!-- Training History -->
+                    <section class="section full-width">
+                        <h2>Training History</h2>
+                        <div class="button-group" style="margin-bottom: 1rem;">
+                            <button id="refresh-btn" class="btn-primary btn-auto-width">Refresh</button>
+                        </div>
+                        <div id="history-list" class="games-list" style="max-height: 500px; overflow-y: auto;">
+                            <p>Loading training history...</p>
+                        </div>
+                    </section>
                 </div>
-                <div id="history-list" style="max-height: 500px; overflow-y: auto;">
-                    <p>Loading training history...</p>
-                </div>
-            </section>
+            </div>
+            <div>
+                <!-- Right column intentionally left for future widgets/filters -->
+            </div>
         </div>
     </div>
 

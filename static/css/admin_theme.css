@@ -641,6 +641,61 @@ button {
     gap: 12px;
 }
 
+/* Card contrast: ensure active card text is white and inactive cards are black
+   This addresses low-contrast current-target/value visibility on the main page. */
+.player-card.active,
+.game-card.active {
+    color: #ffffff !important;
+}
+
+.player-card.active .stat-value,
+.game-card.active .stat-value,
+.player-card.active .player-name,
+.game-card.active .player-name {
+    color: #ffffff !important;
+}
+
+.player-card:not(.active),
+.game-card:not(.active) {
+    color: #000000 !important;
+}
+
+.player-card:not(.active) .stat-value,
+.game-card:not(.active) .stat-value {
+    color: #000000 !important;
+}
+
+/* Current target label/value contrast rules: cover common class names used
+   for the current target display on game/player cards. */
+.player-card .current-target,
+.game-card .current-target,
+.current-target-label,
+.current-target-value,
+.current-target .label,
+.current-target .value {
+    color: inherit !important;
+}
+
+/* Ensure active cards show the current target in white */
+.player-card.active .current-target,
+.game-card.active .current-target,
+.player-card.active .current-target-value,
+.game-card.active .current-target-value,
+.player-card.active .current-target-label,
+.game-card.active .current-target-label {
+    color: #ffffff !important;
+}
+
+/* Inactive cards: current target should be black for legibility */
+.player-card:not(.active) .current-target,
+.game-card:not(.active) .current-target,
+.player-card:not(.active) .current-target-value,
+.game-card:not(.active) .current-target-value,
+.player-card:not(.active) .current-target-label,
+.game-card:not(.active) .current-target-label {
+    color: #000000 !important;
+}
+
 
 .matrix {
     display: inline-block;
@@ -1238,4 +1293,63 @@ button {
     .main-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* RTC (round-the-clock) widget styles — appended to the end for clarity */
+/* Match admin/game-card visuals and improve inactive backgrounds */
+.rtc-container {
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    border: 1px solid rgba(15, 76, 129, 0.06);
+    border-radius: 8px;
+    padding: 10px;
+    color: #000;
+}
+
+.rtc-container.active {
+    background: linear-gradient(180deg, #2b5aa6 0%, #1f3f7a 100%);
+    border-color: rgba(15, 76, 129, 0.16);
+    color: #ffffff;
+    box-shadow: 0 8px 20px rgba(31, 63, 122, 0.18);
+}
+
+/* Target label/value inherit container color, with stronger weight for legibility */
+.rtc-current-target,
+.rtc-target-label,
+.rtc-target-value {
+    color: inherit !important;
+    font-weight: 700;
+}
+
+.rtc-container.active .rtc-target-value,
+.rtc-container.active .rtc-target-label {
+    color: #ffffff !important;
+}
+
+.rtc-container:not(.active) .rtc-target-value,
+.rtc-container:not(.active) .rtc-target-label {
+    color: #0b0b0b !important;
+}
+
+/* Dartboard visual container: subtle paper-like background when inactive */
+.rtc-dartboard-container {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border: 1px solid rgba(15, 76, 129, 0.04);
+    border-radius: 8px;
+    padding: 6px;
+}
+
+.rtc-container.active .rtc-dartboard-container {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+/* Highlighting helpers for RTC SVG elements */
+.rtc-current-segment {
+    stroke: #ffcc00;
+    stroke-width: 2px;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.12));
+}
+
+.rtc-current-number {
+    fill: #0f4c81;
+    font-weight: 800;
 }
