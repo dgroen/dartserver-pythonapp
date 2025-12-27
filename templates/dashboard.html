@@ -5,15 +5,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game History Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <style>
+        /* Dashboard-specific overrides: allow Recent Games to size dynamically */
+        .no-fixed-height {
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+        }
+
+        /* Ensure container grows with content */
+        .container {
+            height: auto !important;
+            min-height: 0 !important;
+        }
+    </style>
 </head>
 
 <body>
     <div class="container">
         {% include '_user_header.html' %}
-        <header>
-            <h1>📊 Game History Dashboard</h1>
+        <div class="header">
+            <div>
+                <h1>📊 Game History Dashboard</h1>
+                <p style="color: #999; margin-top: 5px; font-size: 14px;">Overview of recent games and player statistics
+                </p>
+            </div>
             <div class="nav-links">
                 <a href="/" class="nav-link">Game Board</a>
                 <a href="/control" class="nav-link">Control Panel</a>
@@ -21,57 +40,69 @@
                 <a href="/admin" class="nav-link">🔧 Admin</a>
                 {% endif %}
             </div>
-        </header>
+        </div>
 
-        <div class="dashboard-content">
-            <!-- Summary Cards -->
-            <div class="summary-cards">
-                <div class="summary-card">
-                    <h3>Total Games</h3>
-                    <div class="stat-value" id="total-games">-</div>
+        <div class="main-grid">
+            <div class="control-grid-row" style="grid-template-columns: 1fr 360px; align-items: start;">
+                <div class="section">
+                    <h2>Summary</h2>
+                    <div class="summary-cards">
+                        <div class="summary-card">
+                            <h3>Total Games</h3>
+                            <div class="stat-value" id="total-games">-</div>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Completed Games</h3>
+                            <div class="stat-value" id="completed-games">-</div>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Most Popular Game</h3>
+                            <div class="stat-value" id="popular-game">-</div>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Total Players</h3>
+                            <div class="stat-value" id="total-players">-</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="summary-card">
-                    <h3>Completed Games</h3>
-                    <div class="stat-value" id="completed-games">-</div>
-                </div>
-                <div class="summary-card">
-                    <h3>Most Popular Game</h3>
-                    <div class="stat-value" id="popular-game">-</div>
-                </div>
-                <div class="summary-card">
-                    <h3>Total Players</h3>
-                    <div class="stat-value" id="total-players">-</div>
+
+                <div class="section">
+                    <h2>Filters</h2>
+                    <div class="form-group">
+                        {% if 'admin' in user_roles %}
+                        <label for="user-select">Filter by user:</label>
+                        <select id="user-select">
+                            <option value="">All users</option>
+                        </select>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label for="limit-select">Show:</label>
+                        <select id="limit-select">
+                            <option value="10">Last 10 games</option>
+                            <option value="25">Last 25 games</option>
+                            <option value="50">Last 50 games</option>
+                            <option value="100">Last 100 games</option>
+                        </select>
+                    </div>
+                    <div class="button-group">
+                        <button id="refresh-btn" class="btn btn-primary btn-auto-width">🔄 Refresh</button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Filters -->
-            <div class="filters">
-                {% if 'admin' in user_roles %}
-                <label>
-                    Filter by user:
-                    <select id="user-select">
-                        <option value="">All users</option>
-                    </select>
-                </label>
-                {% endif %}
-                <label>
-                    Show:
-                    <select id="limit-select">
-                        <option value="10">Last 10 games</option>
-                        <option value="25">Last 25 games</option>
-                        <option value="50">Last 50 games</option>
-                        <option value="100">Last 100 games</option>
-                    </select>
-                </label>
-                <button id="refresh-btn" class="btn-primary">🔄 Refresh</button>
-            </div>
+        </div>
 
-            <!-- Games List -->
-            <div class="games-section">
-                <h2>Recent Games</h2>
-                <div id="loading-message" class="loading">Loading games...</div>
-                <div id="error-message" class="error-message" style="display: none;"></div>
-                <div id="games-list" class="games-list"></div>
+    </div>
+    <div class="container" style="margin-top: 20px;">
+        <div class="section no-fixed-height">
+            <h2>Recent Games</h2>
+            <div class="control-grid-row">
+                <div class="section full-width no-fixed-height">
+                    <div id="loading-message" class="loading">Loading games...</div>
+                    <div id="error-message" class="error-message" style="display: none;"></div>
+                    <div id="games-list" class="games-list"></div>
+                </div>
             </div>
 
             <!-- Game Detail Modal -->

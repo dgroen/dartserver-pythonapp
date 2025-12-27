@@ -281,14 +281,45 @@ button {
 .control-grid-row .section {
     display: flex;
     flex-direction: column;
-    height: 300px;
-    /* Fixed height for all cards except full-width */
+    /* Use an aspect-ratio so the card's height matches its width (square-like)
+       while still allowing the content to flow. On very narrow screens the
+       min-height ensures usability. */
+    aspect-ratio: 1 / 1;
+    min-height: 180px;
+    max-height: 60vh;
+    /* prevent cards from becoming excessively tall */
+    overflow: hidden;
+    align-items: stretch;
+    justify-content: flex-start;
 }
 
 .control-grid-row .section.full-width {
     grid-column: 1 / -1;
-    min-height: 300px;
-    /* Same height as other cards */
+    /* Full-width row should keep a reasonable height but can expand vertically */
+    aspect-ratio: auto;
+    min-height: 260px;
+    max-height: 80vh;
+}
+
+/* Ensure the main content inside sections grows and scrolls if necessary */
+.control-grid-row .section>*:not(h2) {
+    flex: 1 1 auto;
+    min-height: 0;
+    /* enable proper flexbox overflow behaviour */
+    overflow: auto;
+}
+
+/* Make elements inside the section lay out in a single row where suitable
+   (useful for compact cards like game/player cards). If a section explicitly
+   needs column layout it can override with `.column-layout`. */
+.control-grid-row .section .row-inline,
+.control-grid-row .section .game-card,
+.control-grid-row .section .player-card {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
 }
 
 /* Button auto-width sizing */
@@ -323,6 +354,179 @@ button {
     padding: 15px;
     overflow-x: auto;
 }
+
+/* Games list card styling */
+.games-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.game-card {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    gap: 12px;
+    align-items: start;
+    background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+    border: 1px solid rgba(15, 76, 129, 0.08);
+    border-radius: 8px;
+    padding: 12px 14px;
+    box-shadow: 0 6px 18px rgba(15, 76, 129, 0.03);
+}
+
+.game-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(15, 76, 129, 0.08);
+}
+
+.game-icon {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    background: #eef8ff;
+    color: #0f4c81;
+    border-radius: 8px;
+}
+
+.game-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.game-header {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.game-type {
+    font-weight: 700;
+    color: #0f4c81;
+}
+
+.game-date {
+    color: #6c757d;
+    font-size: 13px;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+}
+
+.status-completed {
+    background: #e6f6ec;
+    color: #137a3f;
+}
+
+.status-incomplete {
+    background: #fff4e6;
+    color: #8a4b00;
+}
+
+/* Training status specific adjustments
+   - Use a dedicated section class to override fixed card height and allow responsive scaling
+   - Ensure the inner status container can scroll when content exceeds available space
+*/
+.control-grid-row .section.training-status-section {
+    /* override the default fixed height for this section */
+    height: auto;
+    min-height: 180px;
+    max-height: 60vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.control-grid-row .section.training-status-section .status-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    /* allow flex children to shrink properly */
+    overflow: auto;
+    padding: 8px 4px;
+}
+
+/* Small screens: let the training status expand naturally but keep reasonable max */
+@media (max-width: 768px) {
+    .control-grid-row .section.training-status-section {
+        max-height: none;
+        min-height: auto;
+    }
+}
+
+.game-details {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.detail-item {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    color: #333;
+    font-size: 14px;
+}
+
+.option-badge {
+    display: inline-block;
+    background: rgba(102, 126, 234, 0.08);
+    color: #3344aa;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-top: 6px;
+}
+
+.game-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.action-btn {
+    background: transparent;
+    border: 1px solid rgba(15, 76, 129, 0.08);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.action-btn:hover {
+    box-shadow: 0 4px 12px rgba(15, 76, 129, 0.06);
+}
+
+.view-btn {
+    background: #ffffff;
+    border: 1px solid rgba(15, 76, 129, 0.08);
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.view-btn:hover {
+    background: #f2f8ff;
+}
+
+/* Player cards inside modal details */
+.player-card {
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    border: 1px solid rgba(15, 76, 129, 0.06);
+    border-radius: 8px;
+    padding: 10px;
+    margin: 8px;
+}
+
+.players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
 
 .matrix {
     display: inline-block;

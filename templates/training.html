@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Training Mode - Darts Game</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
@@ -12,92 +13,97 @@
 <body>
     <div class="container">
         {% include '_user_header.html' %}
-        <header>
-            <h1>🎯 Training Mode</h1>
-            <div class="header-links">
-                <a href="/" class="header-link">🎮 Main Game</a>
-                <a href="/training/dashboard" class="header-link">📊 Training Stats</a>
-                <a href="/history" class="header-link">📜 Game History</a>
+        <div class="header">
+            <div>
+                <h1>🎯 Training Mode</h1>
+                <p style="color: #999; margin-top: 5px; font-size: 14px;">Practice sessions and training statistics</p>
+            </div>
+            <div class="nav-links">
+                <a href="/" class="nav-link">🎮 Main Game</a>
+                <a href="/training/dashboard" class="nav-link">📊 Training Stats</a>
+                <a href="/history" class="nav-link">📜 Game History</a>
                 {% if 'admin' in user_roles %}
-                <a href="/admin" class="header-link">🔧 Admin</a>
+                <a href="/admin" class="nav-link">🔧 Admin</a>
                 {% endif %}
             </div>
-        </header>
+        </div>
 
-        <div class="control-sections">
-            <!-- Training Setup -->
-            <section class="control-section">
-                <h2>Start Training Session</h2>
-                <p>Practice your skills in single-player mode. All your training results will be saved for review.</p>
+        <div class="main-grid">
+            <div class="control-grid-row" style="grid-template-columns: 1fr 360px; align-items: start;">
+                <div class="section">
+                    <h2>Start Training Session</h2>
+                    <p>Practice your skills in single-player mode. All your training results will be saved for review.
+                    </p>
 
-                <div class="form-group">
-                    <label for="training-game-type">Game Type:</label>
-                    <select id="training-game-type">
-                        <option value="170">170</option>
-                        <option value="301">301</option>
-                        <option value="401">401</option>
-                        <option value="501">501</option>
-                        <option value="cricket">Cricket</option>
-                        <option value="round_the_clock">Round the Clock</option>
-                        <option value="round_the_clock_double">Round the Clock Double</option>
-                        <option value="bull_practice">Bull Practice (auto-restart)</option>
-                    </select>
-                    <small id="game-type-description" style="display: block; margin-top: 0.5rem; color: #888;"></small>
-                </div>
+                    <div class="form-group">
+                        <label for="training-game-type">Game Type:</label>
+                        <select id="training-game-type">
+                            <option value="170">170</option>
+                            <option value="301">301</option>
+                            <option value="401">401</option>
+                            <option value="501">501</option>
+                            <option value="cricket">Cricket</option>
+                            <option value="round_the_clock">Round the Clock</option>
+                            <option value="round_the_clock_double">Round the Clock Double</option>
+                            <option value="bull_practice">Bull Practice (auto-restart)</option>
+                        </select>
+                        <small id="game-type-description"
+                            style="display: block; margin-top: 0.5rem; color: #888;"></small>
+                    </div>
 
-                <script>
-                    // Update game type description when selection changes
-                    const gameTypeSelect = document.getElementById('training-game-type');
-                    const gameTypeDescription = document.getElementById('game-type-description');
+                    <script>
+                        // Update game type description when selection changes
+                        const gameTypeSelect = document.getElementById('training-game-type');
+                        const gameTypeDescription = document.getElementById('game-type-description');
 
-                    const descriptions = {
-                        '170': 'Like 301 but starting from 170 points',
-                        '301': 'Classic 301 game - score down to exactly 0',
-                        '401': '401 game - score down to exactly 0',
-                        '501': '501 game - score down to exactly 0',
-                        'cricket': 'Hit numbers 15-20 and bulls to win',
-                        'round_the_clock': 'Hit numbers 20 down to 1, then bull',
-                        'round_the_clock_double': 'Hit doubles 20 down to 1, then bull',
-                        'bull_practice': 'Score bulls consecutively. Game ends when a turn has no bulls, then auto-restarts until you click "End Training"'
-                    };
+                        const descriptions = {
+                            '170': 'Like 301 but starting from 170 points',
+                            '301': 'Classic 301 game - score down to exactly 0',
+                            '401': '401 game - score down to exactly 0',
+                            '501': '501 game - score down to exactly 0',
+                            'cricket': 'Hit numbers 15-20 and bulls to win',
+                            'round_the_clock': 'Hit numbers 20 down to 1, then bull',
+                            'round_the_clock_double': 'Hit doubles 20 down to 1, then bull',
+                            'bull_practice': 'Score bulls consecutively. Game ends when a turn has no bulls, then auto-restarts until you click "End Training"'
+                        };
 
-                    function updateGameTypeDescription() {
-                        const selectedType = gameTypeSelect.value;
-                        gameTypeDescription.textContent = descriptions[selectedType] || '';
-                    }
+                        function updateGameTypeDescription() {
+                            const selectedType = gameTypeSelect.value;
+                            gameTypeDescription.textContent = descriptions[selectedType] || '';
+                        }
 
-                    gameTypeSelect.addEventListener('change', updateGameTypeDescription);
-                    updateGameTypeDescription(); // Set initial description
-                </script>
+                        gameTypeSelect.addEventListener('change', updateGameTypeDescription);
+                        updateGameTypeDescription(); // Set initial description
+                    </script>
 
-                <div class="form-group">
-                    <label for="training-double-out">
+                    <div class="form-group">
+                        <label for="training-double-out">Double Out (must finish with a double)</label>
                         <input type="checkbox" id="training-double-out">
-                        Double Out (must finish with a double)
-                    </label>
+                    </div>
+
+                    <div class="button-group" style="margin-top: 1rem;">
+                        <button id="start-training-btn" class="btn btn-primary btn-auto-width">Start Training</button>
+                        <button id="end-training-btn" class="btn btn-danger btn-auto-width" style="display: none;">End
+                            Training</button>
+                    </div>
                 </div>
 
-                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                    <button id="start-training-btn" class="btn btn-primary">Start Training</button>
-                    <button id="end-training-btn" class="btn btn-danger" style="display: none;">End Training</button>
+                <div class="section training-status-section">
+                    <h2>Training Status</h2>
+                    <div id="training-status" class="status-container">
+                        <p>No active training session</p>
+                    </div>
                 </div>
-            </section>
+            </div>
 
-            <!-- Training Status -->
-            <section class="control-section">
-                <h2>Training Status</h2>
-                <div id="training-status">
-                    <p>No active training session</p>
+            <div class="control-grid-row">
+                <div class="section full-width">
+                    <h2>Current Game</h2>
+                    <div id="game-display" style="display: none;">
+                        <div id="game-info"></div>
+                    </div>
                 </div>
-            </section>
-
-            <!-- Game Display -->
-            <section class="control-section">
-                <h2>Current Game</h2>
-                <div id="game-display" style="display: none;">
-                    <div id="game-info"></div>
-                </div>
-            </section>
+            </div>
         </div>
     </div>
 
