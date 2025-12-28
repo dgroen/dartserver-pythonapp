@@ -545,7 +545,9 @@ def update_user_roles(user_id):
                     f"Failed to remove user from group '{role}': {remove_response.status_code} - {remove_response.text}",
                 )
 
-        logger.info(f"Roles updated for user {user_id}: added {roles_to_add}, removed {roles_to_remove}")
+        logger.info(
+            f"Roles updated for user {user_id}: added {roles_to_add}, removed {roles_to_remove}",
+        )
         return jsonify({"status": "success", "message": "Roles updated successfully"})
     except Exception as e:
         logger.exception("Error updating user roles")

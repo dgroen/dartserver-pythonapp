@@ -8,6 +8,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+# Import modules at top level to avoid PLC0415
+from dartserver_core import auth
+from src.app.app_admin import admin_bp
+
 
 @pytest.fixture
 def mock_env_vars(monkeypatch):
@@ -16,15 +20,22 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("WSO2_IS_INTROSPECT_USER", "admin")
     monkeypatch.setenv("WSO2_IS_INTROSPECT_PASSWORD", "admin_pass")
     monkeypatch.setenv("WSO2_IS_VERIFY_SSL", "false")
+    monkeypatch.setenv("AUTH_DISABLED", "true")
+
+
+@pytest.fixture
+def client(flask_app):
+    """Create test client with auth disabled."""
+    flask_app.config["TESTING"] = True
+    with flask_app.test_client() as client:
+        yield client
 
 
 class TestUpdateUserRoles:
     """Tests for the update_user_roles endpoint"""
 
-    def test_update_roles_add_and_remove(self, mock_env_vars):
+    def test_update_roles_add_and_remove(self, mock_env_vars, client):
         """Test updating user roles with additions and removals"""
-        from src.app.app_admin import admin_bp
-
         # Mock requests module
         with patch("src.app.app_admin.requests") as mock_requests:
             # Mock user data response
@@ -58,16 +69,11 @@ class TestUpdateUserRoles:
             mock_requests.get.side_effect = [mock_user_response, mock_groups_response]
             mock_requests.patch.return_value = mock_patch_response
 
-            # Simulate request to update roles
-            with admin_bp.test_client() as client:
-                # Mock authentication
-                with patch("src.app.app_admin.login_required", lambda f: f):
-                    with patch("src.app.app_admin.role_required", lambda r: lambda f: f):
-                        response = client.put(
-                            "/api/admin/users/test-user-id/roles",
-                            json={"roles": ["admin", "gamemaster"]},
-                            content_type="application/json",
-                        )
+            response = client.put(
+                "/api/admin/users/test-user-id/roles",
+                json={"roles": ["admin", "gamemaster"]},
+                content_type="application/json",
+            )
 
             assert response.status_code == 200
             data = json.loads(response.data)
@@ -78,10 +84,8 @@ class TestUpdateUserRoles:
             # And once to remove from player
             assert mock_requests.patch.call_count >= 2
 
-    def test_update_roles_no_changes(self, mock_env_vars):
+    def test_update_roles_no_changes(self, mock_env_vars, client):
         """Test updating user roles when no changes are needed"""
-        from src.app.app_admin import admin_bp
-
         with patch("src.app.app_admin.requests") as mock_requests:
             # User already has the requested roles
             user_data = {
@@ -106,36 +110,28 @@ class TestUpdateUserRoles:
 
             mock_requests.get.side_effect = [mock_user_response, mock_groups_response]
 
-            with admin_bp.test_client() as client:
-                with patch("src.app.app_admin.login_required", lambda f: f):
-                    with patch("src.app.app_admin.role_required", lambda r: lambda f: f):
-                        response = client.put(
-                            "/api/admin/users/test-user-id/roles",
-                            json={"roles": ["admin"]},
-                            content_type="application/json",
-                        )
+            response = client.put(
+                "/api/admin/users/test-user-id/roles",
+                json={"roles": ["admin"]},
+                content_type="application/json",
+            )
 
             assert response.status_code == 200
             # No patch calls should be made if roles don't change
             assert mock_requests.patch.call_count == 0
 
-    def test_update_roles_user_not_found(self, mock_env_vars):
+    def test_update_roles_user_not_found(self, mock_env_vars, client):
         """Test updating roles for non-existent user"""
-        from src.app.app_admin import admin_bp
-
         with patch("src.app.app_admin.requests") as mock_requests:
             mock_response = MagicMock()
             mock_response.status_code = 404
             mock_requests.get.return_value = mock_response
 
-            with admin_bp.test_client() as client:
-                with patch("src.app.app_admin.login_required", lambda f: f):
-                    with patch("src.app.app_admin.role_required", lambda r: lambda f: f):
-                        response = client.put(
-                            "/api/admin/users/nonexistent-id/roles",
-                            json={"roles": ["admin"]},
-                            content_type="application/json",
-                        )
+            response = client.put(
+                "/api/admin/users/nonexistent-id/roles",
+                json={"roles": ["admin"]},
+                content_type="application/json",
+            )
 
             assert response.status_code == 404
 
@@ -143,23 +139,18 @@ class TestUpdateUserRoles:
 class TestUpdateUserStatus:
     """Tests for the update_user_status endpoint"""
 
-    def test_deactivate_user(self, mock_env_vars):
+    def test_deactivate_user(self, mock_env_vars, client):
         """Test deactivating a user"""
-        from src.app.app_admin import admin_bp
-
         with patch("src.app.app_admin.requests") as mock_requests:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_requests.patch.return_value = mock_response
 
-            with admin_bp.test_client() as client:
-                with patch("src.app.app_admin.login_required", lambda f: f):
-                    with patch("src.app.app_admin.role_required", lambda r: lambda f: f):
-                        response = client.put(
-                            "/api/admin/users/test-user-id/status",
-                            json={"active": False},
-                            content_type="application/json",
-                        )
+            response = client.put(
+                "/api/admin/users/test-user-id/status",
+                json={"active": False},
+                content_type="application/json",
+            )
 
             assert response.status_code == 200
             data = json.loads(response.data)
@@ -174,23 +165,18 @@ class TestUpdateUserStatus:
             assert payload["Operations"][0]["path"] == "active"
             assert payload["Operations"][0]["value"] is False
 
-    def test_activate_user(self, mock_env_vars):
+    def test_activate_user(self, mock_env_vars, client):
         """Test activating a user"""
-        from src.app.app_admin import admin_bp
-
         with patch("src.app.app_admin.requests") as mock_requests:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_requests.patch.return_value = mock_response
 
-            with admin_bp.test_client() as client:
-                with patch("src.app.app_admin.login_required", lambda f: f):
-                    with patch("src.app.app_admin.role_required", lambda r: lambda f: f):
-                        response = client.put(
-                            "/api/admin/users/test-user-id/status",
-                            json={"active": True},
-                            content_type="application/json",
-                        )
+            response = client.put(
+                "/api/admin/users/test-user-id/status",
+                json={"active": True},
+                content_type="application/json",
+            )
 
             assert response.status_code == 200
             data = json.loads(response.data)
@@ -202,10 +188,8 @@ class TestUpdateUserStatus:
             payload = call_args[1]["json"]
             assert payload["Operations"][0]["value"] is True
 
-    def test_activate_user_with_fallback(self, mock_env_vars):
+    def test_activate_user_with_fallback(self, mock_env_vars, client):
         """Test activating a user when path-based PATCH fails and fallback succeeds"""
-        from src.app.app_admin import admin_bp
-
         with patch("src.app.app_admin.requests") as mock_requests:
             # First PATCH (path-based) fails, second (value-based) succeeds
             mock_fail_response = MagicMock()
@@ -215,14 +199,11 @@ class TestUpdateUserStatus:
 
             mock_requests.patch.side_effect = [mock_fail_response, mock_success_response]
 
-            with admin_bp.test_client() as client:
-                with patch("src.app.app_admin.login_required", lambda f: f):
-                    with patch("src.app.app_admin.role_required", lambda r: lambda f: f):
-                        response = client.put(
-                            "/api/admin/users/test-user-id/status",
-                            json={"active": True},
-                            content_type="application/json",
-                        )
+            response = client.put(
+                "/api/admin/users/test-user-id/status",
+                json={"active": True},
+                content_type="application/json",
+            )
 
             assert response.status_code == 200
             data = json.loads(response.data)
@@ -236,8 +217,6 @@ class TestSearchWso2Users:
 
     def test_search_includes_active_field(self):
         """Test that search_wso2_users includes the active field"""
-        from packages.dartserver_core.src.dartserver_core import auth
-
         with patch.object(auth, "requests") as mock_requests:
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -261,10 +240,12 @@ class TestSearchWso2Users:
             }
             mock_requests.get.return_value = mock_response
 
-            with patch.object(auth, "WSO2_IS_INTROSPECT_USER", "admin"):
-                with patch.object(auth, "WSO2_IS_INTROSPECT_PASSWORD", "pass"):
-                    with patch.object(auth, "WSO2_IS_INTERNAL_URL", "https://test"):
-                        users = auth.search_wso2_users("user")
+            with (
+                patch.object(auth, "WSO2_IS_INTROSPECT_USER", "admin"),
+                patch.object(auth, "WSO2_IS_INTROSPECT_PASSWORD", "pass"),
+                patch.object(auth, "WSO2_IS_INTERNAL_URL", "https://test"),
+            ):
+                users = auth.search_wso2_users("user")
 
             assert len(users) == 2
             assert users[0]["active"] is True
@@ -272,8 +253,6 @@ class TestSearchWso2Users:
 
     def test_search_defaults_active_to_true(self):
         """Test that search_wso2_users defaults active to True when not present"""
-        from packages.dartserver_core.src.dartserver_core import auth
-
         with patch.object(auth, "requests") as mock_requests:
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -289,10 +268,12 @@ class TestSearchWso2Users:
             }
             mock_requests.get.return_value = mock_response
 
-            with patch.object(auth, "WSO2_IS_INTROSPECT_USER", "admin"):
-                with patch.object(auth, "WSO2_IS_INTROSPECT_PASSWORD", "pass"):
-                    with patch.object(auth, "WSO2_IS_INTERNAL_URL", "https://test"):
-                        users = auth.search_wso2_users("testuser")
+            with (
+                patch.object(auth, "WSO2_IS_INTROSPECT_USER", "admin"),
+                patch.object(auth, "WSO2_IS_INTROSPECT_PASSWORD", "pass"),
+                patch.object(auth, "WSO2_IS_INTERNAL_URL", "https://test"),
+            ):
+                users = auth.search_wso2_users("testuser")
 
             assert len(users) == 1
             assert users[0]["active"] is True  # Should default to True
