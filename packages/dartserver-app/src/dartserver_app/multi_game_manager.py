@@ -122,25 +122,39 @@ class MultiGameManager:
             state = game_manager.get_game_state()
             players = state.get("players", [])
 
-            # Extract player information with scores
+            # Prefer authoritative player list from game_data replay when present
+            game_data_players = None
+            if state.get("game_data") and isinstance(state["game_data"].get("players"), list):
+                game_data_players = state["game_data"]["players"]
+
+            # Build player information using game_data players if available,
+            # otherwise fall back to the live `state['players']` list.
             player_info = []
-            for idx, player in enumerate(players):
-                player_data = {"name": player.get("name", f"Player {idx + 1}")}
-
-                # Get score from game_data if available
-                if state.get("game_data") and state["game_data"].get("players"):
-                    game_players = state["game_data"]["players"]
-                    if idx < len(game_players):
-                        player_data["score"] = game_players[idx].get("score", 0)
-
-                player_info.append(player_data)
+            if game_data_players is not None:
+                for idx, gp in enumerate(game_data_players):
+                    name = gp.get("name") or gp.get("player_name") or f"Player {idx + 1}"
+                    player_data = {"name": name}
+                    # Score may be present on the replay player object
+                    player_data["score"] = gp.get("score", 0)
+                    player_info.append(player_data)
+                players_for_count = game_data_players
+            else:
+                for idx, player in enumerate(players):
+                    player_data = {"name": player.get("name", f"Player {idx + 1}")}
+                    # Get score from game_data if available
+                    if state.get("game_data") and state["game_data"].get("players"):
+                        game_players = state["game_data"]["players"]
+                        if idx < len(game_players):
+                            player_data["score"] = game_players[idx].get("score", 0)
+                    player_info.append(player_data)
+                players_for_count = players
 
             game_info = {
                 "game_id": game_id,
                 "game_type": state.get("game_type"),
                 "is_started": state.get("is_started"),
                 "is_active": game_id == self.active_game_id,
-                "player_count": len(players),
+                "player_count": len(players_for_count),
                 # Return players as a simple list of names for compatibility with tests
                 "players": [p.get("name") for p in player_info],
             }

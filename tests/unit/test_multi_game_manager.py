@@ -170,3 +170,30 @@ class TestMultiGameManager:
 
         multi_manager.delete_game("game-1")
         assert multi_manager.has_game("game-1") is False
+
+    def test_list_games_uses_game_data_players(self, multi_manager):
+        """When a game's state contains `game_data.players`, use that as authoritative."""
+        gm = multi_manager.create_game("game-replay")
+
+        # Simulate a messed-up live state (e.g., resume merged players) but an
+        # authoritative replay payload in game_data.players
+        def fake_state():
+            return {
+                "game_type": "301",
+                "is_started": True,
+                # live players contains extra entries
+                "players": [{"name": "A"}, {"name": "B"}, {"name": "X"}],
+                "game_data": {
+                    "players": [{"name": "Alice"}, {"name": "Bob"}],
+                    "throws": [],
+                },
+            }
+
+        # Patch the game manager's get_game_state to return our fake state
+        gm.get_game_state = fake_state
+
+        games_list = multi_manager.list_games()
+        info = next(g for g in games_list if g["game_id"] == "game-replay")
+
+        assert info["player_count"] == 2
+        assert info["players"] == ["Alice", "Bob"]
