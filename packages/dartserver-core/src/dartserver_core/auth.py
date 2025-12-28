@@ -842,6 +842,7 @@ def search_wso2_users(query: str, access_token: str | None = None) -> list[dict]
                         "username": user.get("userName"),
                         "email": None,
                         "name": None,
+                        "active": user.get("active", True),  # Default to True if not present
                     }
 
                     # Extract email
