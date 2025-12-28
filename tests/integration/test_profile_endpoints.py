@@ -21,7 +21,11 @@ def client(flask_app, mock_auth):
     # Set up session with access token for authenticated requests
     with client.session_transaction() as sess:
         sess["access_token"] = "test-token"
-        sess["user_info"] = {"username": "testuser", "sub": "test-user", "preferred_username": "testuser"}
+        sess["user_info"] = {
+            "username": "testuser",
+            "sub": "test-user",
+            "preferred_username": "testuser",
+        }
         sess["player_id"] = 1
     return client
 
