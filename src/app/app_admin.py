@@ -365,6 +365,20 @@ def get_user_roles(user_id):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+def _extract_role_name(display_name: str) -> str:
+    """Extract role name from WSO2 group display name.
+
+    Args:
+        display_name: Group display name (e.g., "PRIMARY/admin" or "admin")
+
+    Returns:
+        Lowercase role name (e.g., "admin")
+    """
+    if "/" in display_name:
+        return display_name.split("/")[-1].lower()
+    return display_name.lower()
+
+
 @admin_bp.route("/users/<user_id>/roles", methods=["PUT"])
 @login_required
 @role_required("admin")
@@ -431,10 +445,7 @@ def update_user_roles(user_id):
         current_roles = set()
         for group in current_groups:
             display_name = group.get("display", "")
-            if "/" in display_name:
-                role_name = display_name.split("/")[-1].lower()
-            else:
-                role_name = display_name.lower()
+            role_name = _extract_role_name(display_name)
             if role_name in ["admin", "gamemaster", "player"]:
                 current_roles.add(role_name)
 
@@ -463,11 +474,7 @@ def update_user_roles(user_id):
             for group in groups_data["Resources"]:
                 display_name = group.get("displayName", "")
                 group_id = group.get("id")
-                # Map role names (e.g., "PRIMARY/admin" -> "admin": {id, display})
-                if "/" in display_name:
-                    role_name = display_name.split("/")[-1].lower()
-                else:
-                    role_name = display_name.lower()
+                role_name = _extract_role_name(display_name)
 
                 if role_name in ["admin", "gamemaster", "player"]:
                     role_to_group[role_name] = {"id": group_id, "display": display_name}
@@ -477,10 +484,14 @@ def update_user_roles(user_id):
         roles_to_add = new_roles_set - current_roles
         roles_to_remove = current_roles - new_roles_set
 
+        # Track failed operations for error reporting
+        failed_operations = []
+
         # Add user to new groups
         for role in roles_to_add:
             if role not in role_to_group:
                 logger.warning(f"Role '{role}' not found in WSO2, skipping")
+                failed_operations.append(f"Role '{role}' not found")
                 continue
 
             group_id = role_to_group[role]["id"]
@@ -508,9 +519,9 @@ def update_user_roles(user_id):
             )
 
             if add_response.status_code not in [200, 204]:
-                logger.error(
-                    f"Failed to add user to group '{role}': {add_response.status_code} - {add_response.text}",
-                )
+                error_msg = f"Failed to add role '{role}': {add_response.text}"
+                logger.error(error_msg)
+                failed_operations.append(error_msg)
 
         # Remove user from old groups
         for role in roles_to_remove:
@@ -541,9 +552,25 @@ def update_user_roles(user_id):
             )
 
             if remove_response.status_code not in [200, 204]:
-                logger.error(
-                    f"Failed to remove user from group '{role}': {remove_response.status_code} - {remove_response.text}",
-                )
+                error_msg = f"Failed to remove role '{role}': {remove_response.text}"
+                logger.error(error_msg)
+                failed_operations.append(error_msg)
+
+        # Report results
+        if failed_operations:
+            logger.warning(
+                f"Role update completed with errors for user {user_id}: {failed_operations}",
+            )
+            return (
+                jsonify(
+                    {
+                        "status": "partial",
+                        "message": "Some role changes failed",
+                        "errors": failed_operations,
+                    },
+                ),
+                207,  # Multi-Status
+            )
 
         logger.info(
             f"Roles updated for user {user_id}: added {roles_to_add}, removed {roles_to_remove}",
