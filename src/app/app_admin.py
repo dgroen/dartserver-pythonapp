@@ -397,30 +397,46 @@ def update_user_roles(user_id):
         description: Roles updated successfully
     """
     data = request.get_json()
-    roles = data.get("roles", [])
+    new_roles = data.get("roles", [])
 
     try:
         wso2_url = os.getenv("WSO2_IS_INTERNAL_URL", "https://localhost:9443")
         auth_user = os.getenv("WSO2_IS_INTROSPECT_USER", "admin")
         auth_pass = os.getenv("WSO2_IS_INTROSPECT_PASSWORD", "admin")
+        verify_ssl = os.getenv("WSO2_IS_VERIFY_SSL", "true").lower() == "true"
 
-        # First, get current user to find existing groups
+        # First, get current user to find existing groups and username
         scim_user_url = f"{wso2_url}/scim2/Users/{user_id}"
-        response = requests.get(
+        user_response = requests.get(
             scim_user_url,
             auth=(auth_user, auth_pass),
             headers={"Content-Type": "application/scim+json"},
-            verify=os.getenv("WSO2_IS_VERIFY_SSL", "true").lower() == "true",
+            verify=verify_ssl,
             timeout=10,
         )
 
-        if response.status_code != 200:
+        if user_response.status_code != 200:
             return (
                 jsonify(
                     {"status": "error", "message": "Failed to fetch user"},
                 ),
-                response.status_code,
+                user_response.status_code,
             )
+
+        user_data = user_response.json()
+        username = user_data.get("userName", "")
+        current_groups = user_data.get("groups", [])
+
+        # Extract current role names
+        current_roles = set()
+        for group in current_groups:
+            display_name = group.get("display", "")
+            if "/" in display_name:
+                role_name = display_name.split("/")[-1].lower()
+            else:
+                role_name = display_name.lower()
+            if role_name in ["admin", "gamemaster", "player"]:
+                current_roles.add(role_name)
 
         # Get all available groups to map role names to group IDs
         scim_groups_url = f"{wso2_url}/scim2/Groups"
@@ -428,7 +444,7 @@ def update_user_roles(user_id):
             scim_groups_url,
             auth=(auth_user, auth_pass),
             headers={"Content-Type": "application/scim+json"},
-            verify=os.getenv("WSO2_IS_VERIFY_SSL", "true").lower() == "true",
+            verify=verify_ssl,
             timeout=10,
         )
 
@@ -441,57 +457,96 @@ def update_user_roles(user_id):
             )
 
         groups_data = groups_response.json()
-        role_to_group_id = {}
+        role_to_group = {}
 
         if "Resources" in groups_data:
             for group in groups_data["Resources"]:
                 display_name = group.get("displayName", "")
                 group_id = group.get("id")
-                # Map role names (e.g., "PRIMARY/admin" -> "admin": group_id)
+                # Map role names (e.g., "PRIMARY/admin" -> "admin": {id, display})
                 if "/" in display_name:
                     role_name = display_name.split("/")[-1].lower()
                 else:
                     role_name = display_name.lower()
 
                 if role_name in ["admin", "gamemaster", "player"]:
-                    role_to_group_id[role_name] = group_id
+                    role_to_group[role_name] = {"id": group_id, "display": display_name}
 
-        # Build groups array for update
-        new_groups = []
-        for role in roles:
-            if role in role_to_group_id:
-                new_groups.append({"value": role_to_group_id[role]})
+        # Determine roles to add and remove
+        new_roles_set = set(new_roles)
+        roles_to_add = new_roles_set - current_roles
+        roles_to_remove = current_roles - new_roles_set
 
-        # Update user with new groups
-        scim_update = {
-            "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
-            "Operations": [{"op": "replace", "value": {"groups": new_groups}}],
-        }
+        # Add user to new groups
+        for role in roles_to_add:
+            if role not in role_to_group:
+                logger.warning(f"Role '{role}' not found in WSO2, skipping")
+                continue
 
-        update_response = requests.patch(
-            scim_user_url,
-            json=scim_update,
-            auth=(auth_user, auth_pass),
-            headers={"Content-Type": "application/scim+json"},
-            verify=os.getenv("WSO2_IS_VERIFY_SSL", "true").lower() == "true",
-            timeout=10,
-        )
+            group_id = role_to_group[role]["id"]
+            scim_group_url = f"{wso2_url}/scim2/Groups/{group_id}"
 
-        if update_response.status_code in [200, 204]:
-            logger.info(f"Roles updated for user {user_id}")
-            return jsonify({"status": "success", "message": "Roles updated successfully"})
-        logger.error(
-            f"Failed to update roles: {update_response.status_code} - {update_response.text}",
-        )
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": f"Failed to update roles: {update_response.text}",
-                },
-            ),
-            update_response.status_code,
-        )
+            # Add user to group using PATCH on the Group resource
+            patch_payload = {
+                "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+                "Operations": [
+                    {
+                        "op": "add",
+                        "path": "members",
+                        "value": [{"value": user_id, "display": username}],
+                    },
+                ],
+            }
+
+            add_response = requests.patch(
+                scim_group_url,
+                json=patch_payload,
+                auth=(auth_user, auth_pass),
+                headers={"Content-Type": "application/scim+json"},
+                verify=verify_ssl,
+                timeout=10,
+            )
+
+            if add_response.status_code not in [200, 204]:
+                logger.error(
+                    f"Failed to add user to group '{role}': {add_response.status_code} - {add_response.text}",
+                )
+
+        # Remove user from old groups
+        for role in roles_to_remove:
+            if role not in role_to_group:
+                continue
+
+            group_id = role_to_group[role]["id"]
+            scim_group_url = f"{wso2_url}/scim2/Groups/{group_id}"
+
+            # Remove user from group using PATCH on the Group resource
+            patch_payload = {
+                "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+                "Operations": [
+                    {
+                        "op": "remove",
+                        "path": f'members[value eq "{user_id}"]',
+                    },
+                ],
+            }
+
+            remove_response = requests.patch(
+                scim_group_url,
+                json=patch_payload,
+                auth=(auth_user, auth_pass),
+                headers={"Content-Type": "application/scim+json"},
+                verify=verify_ssl,
+                timeout=10,
+            )
+
+            if remove_response.status_code not in [200, 204]:
+                logger.error(
+                    f"Failed to remove user from group '{role}': {remove_response.status_code} - {remove_response.text}",
+                )
+
+        logger.info(f"Roles updated for user {user_id}: added {roles_to_add}, removed {roles_to_remove}")
+        return jsonify({"status": "success", "message": "Roles updated successfully"})
     except Exception as e:
         logger.exception("Error updating user roles")
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -532,21 +587,28 @@ def update_user_status(user_id):
     try:
         wso2_url = os.getenv("WSO2_IS_INTERNAL_URL", "https://localhost:9443")
         scim_user_url = f"{wso2_url}/scim2/Users/{user_id}"
-
-        scim_update = {
-            "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
-            "Operations": [{"op": "replace", "value": {"active": active}}],
-        }
-
         auth_user = os.getenv("WSO2_IS_INTROSPECT_USER", "admin")
         auth_pass = os.getenv("WSO2_IS_INTROSPECT_PASSWORD", "admin")
+        verify_ssl = os.getenv("WSO2_IS_VERIFY_SSL", "true").lower() == "true"
+
+        # Use PATCH operation with path-based operation for better compatibility
+        scim_update = {
+            "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+            "Operations": [
+                {
+                    "op": "replace",
+                    "path": "active",
+                    "value": active,
+                },
+            ],
+        }
 
         response = requests.patch(
             scim_user_url,
             json=scim_update,
             auth=(auth_user, auth_pass),
             headers={"Content-Type": "application/scim+json"},
-            verify=os.getenv("WSO2_IS_VERIFY_SSL", "true").lower() == "true",
+            verify=verify_ssl,
             timeout=10,
         )
 
@@ -554,6 +616,30 @@ def update_user_status(user_id):
             status_text = "activated" if active else "deactivated"
             logger.info(f"User {user_id} {status_text}")
             return jsonify({"status": "success", "message": f"User {status_text} successfully"})
+
+        # If path-based operation fails, try value-based operation as fallback
+        logger.warning(
+            f"Path-based PATCH failed ({response.status_code}), trying value-based PATCH",
+        )
+        scim_update_fallback = {
+            "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+            "Operations": [{"op": "replace", "value": {"active": active}}],
+        }
+
+        response = requests.patch(
+            scim_user_url,
+            json=scim_update_fallback,
+            auth=(auth_user, auth_pass),
+            headers={"Content-Type": "application/scim+json"},
+            verify=verify_ssl,
+            timeout=10,
+        )
+
+        if response.status_code in [200, 204]:
+            status_text = "activated" if active else "deactivated"
+            logger.info(f"User {user_id} {status_text} (using fallback method)")
+            return jsonify({"status": "success", "message": f"User {status_text} successfully"})
+
         logger.error(f"Failed to update status: {response.status_code} - {response.text}")
         return (
             jsonify(
