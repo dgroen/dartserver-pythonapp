@@ -56,6 +56,13 @@ class TestProfileRoute:
         assert b"Personal Information" in response.data
         assert b"Game Statistics" in response.data
 
+    def test_profile_uses_standard_styling(self, authenticated_client):
+        """Profile page should rely on the standard site styling."""
+        response = authenticated_client.get("/profile")
+        assert response.status_code == 200
+        assert b"css/style.css" in response.data
+        assert b"css/admin_theme.css" not in response.data
+
     def test_profile_requires_authentication(self, client):
         """Test profile route requires authentication."""
         response = client.get("/profile")
