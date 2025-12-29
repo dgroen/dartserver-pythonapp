@@ -17,7 +17,7 @@ import pika
 import requests
 import yaml
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory
 from flask_cors import CORS
 from jwt import PyJWKClient
 
@@ -384,8 +384,6 @@ def swagger_ui():
     </body>
     </html>
     """
-    from flask import Response
-
     return Response(html, mimetype="text/html")
 
 
@@ -399,55 +397,57 @@ def submit_score():
     """
     try:
         data = request.json
-        if data is None:
-            data = {}
-        error_response = None
-
         if not data:
-            error_response = jsonify(
-                {
-                    "error": "Invalid request",
-                    "message": "Request body must be JSON",
-                },
+            return (
+                jsonify(
+                    {
+                        "error": "Invalid request",
+                        "message": "Request body must be JSON",
+                    },
+                ),
+                400,
             )
 
         # Validate required fields
-        if not error_response:
-            required_fields = ["score", "multiplier"]
-            missing_fields = [field for field in required_fields if field not in data]
-            if missing_fields:
-                error_response = jsonify(
+        required_fields = ["score", "multiplier"]
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            return (
+                jsonify(
                     {
                         "error": "Missing required fields",
                         "message": f"Required fields: {', '.join(missing_fields)}",
                     },
-                )
+                ),
+                400,
+            )
 
         # Validate score value
-        if not error_response:
-            score = data.get("score")
-            if not isinstance(score, int) or score < 0 or score > 60:
-                error_response = jsonify(
+        score = data.get("score")
+        if not isinstance(score, int) or score < 0 or score > 60:
+            return (
+                jsonify(
                     {
                         "error": "Invalid score",
                         "message": "Score must be an integer between 0 and 60",
                     },
-                )
+                ),
+                400,
+            )
 
         # Validate multiplier
-        if not error_response:
-            valid_multipliers = ["SINGLE", "DOUBLE", "TRIPLE"]
-            multiplier = data.get("multiplier", "SINGLE").upper()
-            if multiplier not in valid_multipliers:
-                error_response = jsonify(
+        valid_multipliers = ["SINGLE", "DOUBLE", "TRIPLE"]
+        multiplier = data.get("multiplier", "SINGLE").upper()
+        if multiplier not in valid_multipliers:
+            return (
+                jsonify(
                     {
                         "error": "Invalid multiplier",
                         "message": f"Multiplier must be one of: {', '.join(valid_multipliers)}",
                     },
-                )
-
-        if error_response:
-            return error_response, 400
+                ),
+                400,
+            )
 
         # Add metadata
         message = {
@@ -506,8 +506,6 @@ def create_game():
     """
     try:
         data = request.json
-        if data is None:
-            data = {}
         if not data:
             return (
                 jsonify(
@@ -603,8 +601,6 @@ def add_player():
     """
     try:
         data = request.json
-        if data is None:
-            data = {}
         if not data:
             return (
                 jsonify(
@@ -684,55 +680,57 @@ def dartboard_throw():
     """
     try:
         data = request.json
-        if data is None:
-            data = {}
-        error_response = None
-
         if not data:
-            error_response = jsonify(
-                {
-                    "error": "Invalid request",
-                    "message": "Request body must be JSON",
-                },
+            return (
+                jsonify(
+                    {
+                        "error": "Invalid request",
+                        "message": "Request body must be JSON",
+                    },
+                ),
+                400,
             )
 
         # Validate required fields for dartboard
-        if not error_response:
-            required_fields = ["masterPin", "slavePin", "boardType"]
-            missing_fields = [field for field in required_fields if field not in data]
-            if missing_fields:
-                error_response = jsonify(
+        required_fields = ["masterPin", "slavePin", "boardType"]
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            return (
+                jsonify(
                     {
                         "error": "Missing required fields",
                         "message": f"Required fields: {', '.join(missing_fields)}",
                     },
-                )
+                ),
+                400,
+            )
 
         # Validate pin values
-        if not error_response:
-            master_pin = data.get("masterPin")
-            slave_pin = data.get("slavePin")
-            if not isinstance(master_pin, int) or not isinstance(slave_pin, int):
-                error_response = jsonify(
+        master_pin = data.get("masterPin")
+        slave_pin = data.get("slavePin")
+        if not isinstance(master_pin, int) or not isinstance(slave_pin, int):
+            return (
+                jsonify(
                     {
                         "error": "Invalid pin values",
                         "message": "masterPin and slavePin must be integers",
                     },
-                )
+                ),
+                400,
+            )
 
         # Validate board type
-        if not error_response:
-            board_type = data.get("boardType", "").strip()
-            if not board_type:
-                error_response = jsonify(
+        board_type = data.get("boardType", "").strip()
+        if not board_type:
+            return (
+                jsonify(
                     {
                         "error": "Invalid board type",
                         "message": "boardType must be a non-empty string",
                     },
-                )
-
-        if error_response:
-            return error_response, 400
+                ),
+                400,
+            )
 
         # Add metadata
         message = {
