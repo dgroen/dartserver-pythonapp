@@ -9,13 +9,15 @@ import logging
 import os
 from datetime import datetime, timezone
 from functools import wraps
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import jwt
 import pika
 import requests
+import yaml
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from jwt import PyJWKClient
 
@@ -308,6 +310,85 @@ def health_check():
     )
 
 
+# OpenAPI specification endpoint (no auth required)
+@app.route("/api/v1/openapi.yaml", methods=["GET"])
+def get_openapi_spec():
+    """Serve OpenAPI specification"""
+    try:
+        spec_path = Path(__file__).parent / "openapi.yaml"
+        return send_from_directory(
+            spec_path.parent,
+            spec_path.name,
+            mimetype="application/x-yaml",
+        )
+    except Exception as e:
+        logger.exception("Error serving OpenAPI spec")
+        return jsonify({"error": "OpenAPI spec not found"}), 404
+
+
+@app.route("/api/v1/openapi.json", methods=["GET"])
+def get_openapi_spec_json():
+    """Serve OpenAPI specification as JSON"""
+    try:
+        spec_path = Path(__file__).parent / "openapi.yaml"
+        with open(spec_path) as f:
+            spec_dict = yaml.safe_load(f)
+        return jsonify(spec_dict)
+    except Exception as e:
+        logger.exception("Error serving OpenAPI spec as JSON")
+        return jsonify({"error": "OpenAPI spec not found"}), 404
+
+
+# Swagger UI (no auth required - documentation is public)
+@app.route("/docs", methods=["GET"])
+@app.route("/api-docs", methods=["GET"])
+def swagger_ui():
+    """Serve Swagger UI for API documentation"""
+    html = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Darts API Gateway - API Documentation</title>
+        <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.10.0/swagger-ui.css">
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="swagger-ui"></div>
+        <script src="https://unpkg.com/swagger-ui-dist@5.10.0/swagger-ui-bundle.js"></script>
+        <script src="https://unpkg.com/swagger-ui-dist@5.10.0/swagger-ui-standalone-preset.js"></script>
+        <script>
+            window.onload = function() {
+                const ui = SwaggerUIBundle({
+                    url: "/api/v1/openapi.yaml",
+                    dom_id: '#swagger-ui',
+                    deepLinking: true,
+                    presets: [
+                        SwaggerUIBundle.presets.apis,
+                        SwaggerUIStandalonePreset
+                    ],
+                    plugins: [
+                        SwaggerUIBundle.plugins.DownloadUrl
+                    ],
+                    layout: "StandaloneLayout"
+                });
+                window.ui = ui;
+            };
+        </script>
+    </body>
+    </html>
+    """
+    from flask import Response
+
+    return Response(html, mimetype="text/html")
+
+
 # API v1 endpoints
 @app.route("/api/v1/scores", methods=["POST"])
 @require_auth(required_scopes=["score:write"])
@@ -583,6 +664,277 @@ def add_player():
 
     except Exception as e:
         logger.exception("Error adding player")
+        return (
+            jsonify(
+                {
+                    "error": "Internal server error",
+                    "message": str(e),
+                },
+            ),
+            500,
+        )
+
+
+@app.route("/api/v1/dartboard/throw", methods=["POST"])
+@require_auth(required_scopes=["dartboard:write"])
+def dartboard_throw():
+    """
+    Submit a dartboard throw (secure replacement for /api/Throw/zone)
+    This endpoint requires client credentials authentication
+    """
+    try:
+        data = request.json
+        if data is None:
+            data = {}
+        error_response = None
+
+        if not data:
+            error_response = jsonify(
+                {
+                    "error": "Invalid request",
+                    "message": "Request body must be JSON",
+                },
+            )
+
+        # Validate required fields for dartboard
+        if not error_response:
+            required_fields = ["masterPin", "slavePin", "boardType"]
+            missing_fields = [field for field in required_fields if field not in data]
+            if missing_fields:
+                error_response = jsonify(
+                    {
+                        "error": "Missing required fields",
+                        "message": f"Required fields: {', '.join(missing_fields)}",
+                    },
+                )
+
+        # Validate pin values
+        if not error_response:
+            master_pin = data.get("masterPin")
+            slave_pin = data.get("slavePin")
+            if not isinstance(master_pin, int) or not isinstance(slave_pin, int):
+                error_response = jsonify(
+                    {
+                        "error": "Invalid pin values",
+                        "message": "masterPin and slavePin must be integers",
+                    },
+                )
+
+        # Validate board type
+        if not error_response:
+            board_type = data.get("boardType", "").strip()
+            if not board_type:
+                error_response = jsonify(
+                    {
+                        "error": "Invalid board type",
+                        "message": "boardType must be a non-empty string",
+                    },
+                )
+
+        if error_response:
+            return error_response, 400
+
+        # Add metadata
+        message = {
+            "masterPin": master_pin,
+            "slavePin": slave_pin,
+            "boardType": board_type,
+            "client_id": request.user_claims.get("client_id", "unknown"),  # type: ignore
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Publish to RabbitMQ
+        routing_key = "darts.dartboard.throw"
+        success = rabbitmq_publisher.publish(routing_key, message)
+
+        if success:
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": "Throw submitted successfully",
+                        "data": message,
+                    },
+                ),
+                201,
+            )
+        return (
+            jsonify(
+                {
+                    "error": "Failed to submit throw",
+                    "message": "Unable to publish message to queue",
+                },
+            ),
+            500,
+        )
+
+    except Exception as e:
+        logger.exception("Error submitting dartboard throw")
+        return (
+            jsonify(
+                {
+                    "error": "Internal server error",
+                    "message": str(e),
+                },
+            ),
+            500,
+        )
+
+
+@app.route("/api/v1/game/actions/end-turn", methods=["POST"])
+@require_auth(required_scopes=["game:control"])
+def end_turn():
+    """
+    End the current player's turn early
+    Publishes turn end event to RabbitMQ
+    """
+    try:
+        data = request.json or {}
+        game_id = data.get("game_id")
+
+        message = {
+            "action": "end_turn",
+            "game_id": game_id,
+            "user": request.user_claims.get("sub", "unknown"),  # type: ignore
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        routing_key = "darts.game.action"
+        success = rabbitmq_publisher.publish(routing_key, message)
+
+        if success:
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": "Turn ended successfully",
+                        "data": message,
+                    },
+                ),
+                200,
+            )
+        return (
+            jsonify(
+                {
+                    "error": "Failed to end turn",
+                    "message": "Unable to publish message to queue",
+                },
+            ),
+            500,
+        )
+
+    except Exception as e:
+        logger.exception("Error ending turn")
+        return (
+            jsonify(
+                {
+                    "error": "Internal server error",
+                    "message": str(e),
+                },
+            ),
+            500,
+        )
+
+
+@app.route("/api/v1/game/actions/continue", methods=["POST"])
+@require_auth(required_scopes=["game:control"])
+def continue_game():
+    """
+    Continue the game after a pause or prompt
+    Publishes continue event to RabbitMQ
+    """
+    try:
+        data = request.json or {}
+        game_id = data.get("game_id")
+
+        message = {
+            "action": "continue",
+            "game_id": game_id,
+            "user": request.user_claims.get("sub", "unknown"),  # type: ignore
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        routing_key = "darts.game.action"
+        success = rabbitmq_publisher.publish(routing_key, message)
+
+        if success:
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": "Game continued successfully",
+                        "data": message,
+                    },
+                ),
+                200,
+            )
+        return (
+            jsonify(
+                {
+                    "error": "Failed to continue game",
+                    "message": "Unable to publish message to queue",
+                },
+            ),
+            500,
+        )
+
+    except Exception as e:
+        logger.exception("Error continuing game")
+        return (
+            jsonify(
+                {
+                    "error": "Internal server error",
+                    "message": str(e),
+                },
+            ),
+            500,
+        )
+
+
+@app.route("/api/v1/game/actions/pause", methods=["POST"])
+@require_auth(required_scopes=["game:control"])
+def pause_game():
+    """
+    Pause the current game
+    Publishes pause event to RabbitMQ
+    """
+    try:
+        data = request.json or {}
+        game_id = data.get("game_id")
+
+        message = {
+            "action": "pause",
+            "game_id": game_id,
+            "user": request.user_claims.get("sub", "unknown"),  # type: ignore
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        routing_key = "darts.game.action"
+        success = rabbitmq_publisher.publish(routing_key, message)
+
+        if success:
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": "Game paused successfully",
+                        "data": message,
+                    },
+                ),
+                200,
+            )
+        return (
+            jsonify(
+                {
+                    "error": "Failed to pause game",
+                    "message": "Unable to publish message to queue",
+                },
+            ),
+            500,
+        )
+
+    except Exception as e:
+        logger.exception("Error pausing game")
         return (
             jsonify(
                 {
