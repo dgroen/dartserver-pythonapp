@@ -17,7 +17,7 @@ import pika
 import requests
 import yaml
 from dotenv import load_dotenv
-from flask import Flask, Response, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request
 from flask_cors import CORS
 from jwt import PyJWKClient
 
@@ -42,9 +42,15 @@ CORS(app, supports_credentials=True)
 
 # WSO2 Identity Server Configuration
 WSO2_IS_URL = os.getenv("WSO2_IS_URL", "https://localhost:9443")
-WSO2_IS_JWKS_URL = f"{WSO2_IS_URL}/oauth2/jwks"
-WSO2_IS_INTROSPECT_URL = f"{WSO2_IS_URL}/oauth2/introspect"
-WSO2_IS_CLIENT_ID = os.getenv("WSO2_IS_CLIENT_ID", "")
+# Optional internal URL to use for backend-to-backend calls from inside Docker
+# If provided, use it for JWKS and introspection endpoints so the container
+# can reach the WSO2 service on the Docker network (e.g. https://darts-wso2is:9443)
+WSO2_IS_INTERNAL_URL = os.getenv("WSO2_IS_INTERNAL_URL", WSO2_IS_URL)
+WSO2_IS_JWKS_URL = f"{WSO2_IS_INTERNAL_URL}/oauth2/jwks"
+WSO2_IS_INTROSPECT_URL = f"{WSO2_IS_INTERNAL_URL}/oauth2/introspect"
+# Prefer the explicit internal client id, but fall back to the common
+# `WSO2_CLIENT_ID` if the internal-specific variable isn't provided.
+WSO2_IS_CLIENT_ID = os.getenv("WSO2_IS_CLIENT_ID", os.getenv("WSO2_CLIENT_ID", ""))
 WSO2_IS_CLIENT_SECRET = os.getenv("WSO2_IS_CLIENT_SECRET", "")
 
 # Introspection credentials (separate from client credentials)
@@ -316,12 +322,18 @@ def get_openapi_spec():
     """Serve OpenAPI specification"""
     try:
         spec_path = Path(__file__).parent / "openapi.yaml"
-        return send_from_directory(
-            spec_path.parent,
-            spec_path.name,
-            mimetype="application/x-yaml",
-        )
-    except Exception as e:
+        # Read YAML and replace any internal WSO2 host placeholders so the
+        # documentation served reflects the configured WSO2_IS_URL
+        with open(spec_path) as fh:
+            yaml_text = fh.read()
+
+        # Common internal hostname patterns to replace
+        yaml_text = yaml_text.replace("https://wso2-is:9443", WSO2_IS_URL)
+        yaml_text = yaml_text.replace("https://wso2-is", WSO2_IS_URL)
+        yaml_text = yaml_text.replace("wso2-is:9443", WSO2_IS_URL.replace("https://", ""))
+
+        return Response(yaml_text, mimetype="application/x-yaml")
+    except Exception:
         logger.exception("Error serving OpenAPI spec")
         return jsonify({"error": "OpenAPI spec not found"}), 404
 
@@ -333,8 +345,26 @@ def get_openapi_spec_json():
         spec_path = Path(__file__).parent / "openapi.yaml"
         with open(spec_path) as f:
             spec_dict = yaml.safe_load(f)
+
+        # Replace any internal wso2-is occurrences in all string fields
+        def _deep_replace(o):
+            if isinstance(o, dict):
+                for k, v in list(o.items()):
+                    o[k] = _deep_replace(v)
+                return o
+            if isinstance(o, list):
+                return [_deep_replace(i) for i in o]
+            if isinstance(o, str):
+                s = o.replace("https://wso2-is:9443", WSO2_IS_URL)
+                s = s.replace("https://wso2-is", WSO2_IS_URL)
+                s = s.replace("wso2-is:9443", WSO2_IS_URL.replace("https://", ""))
+                s = s.replace("wso2-is", WSO2_IS_URL.replace("https://", ""))
+                return s
+            return o
+
+        spec_dict = _deep_replace(spec_dict)
         return jsonify(spec_dict)
-    except Exception as e:
+    except Exception:
         logger.exception("Error serving OpenAPI spec as JSON")
         return jsonify({"error": "OpenAPI spec not found"}), 404
 
@@ -344,7 +374,7 @@ def get_openapi_spec_json():
 @app.route("/api-docs", methods=["GET"])
 def swagger_ui():
     """Serve Swagger UI for API documentation"""
-    html = """
+    html = r"""
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -364,26 +394,117 @@ def swagger_ui():
         <script src="https://unpkg.com/swagger-ui-dist@5.10.0/swagger-ui-bundle.js"></script>
         <script src="https://unpkg.com/swagger-ui-dist@5.10.0/swagger-ui-standalone-preset.js"></script>
         <script>
+            // Injected WSO2 IS URL from server-side env (placeholder)
+            const WSO2_IS_URL = "__WSO2_IS_URL__";
+
+            function deepReplace(obj, matchRe, replacement) {
+                if (obj && typeof obj === 'object') {
+                    for (const k of Object.keys(obj)) {
+                        const v = obj[k];
+                        if (typeof v === 'string') {
+                            obj[k] = v.replace(matchRe, replacement);
+                        } else if (typeof v === 'object') {
+                            deepReplace(v, matchRe, replacement);
+                        }
+                    }
+                }
+            }
+
             window.onload = function() {
-                const ui = SwaggerUIBundle({
-                    url: "/api/v1/openapi.yaml",
-                    dom_id: '#swagger-ui',
-                    deepLinking: true,
-                    presets: [
-                        SwaggerUIBundle.presets.apis,
-                        SwaggerUIStandalonePreset
-                    ],
-                    plugins: [
-                        SwaggerUIBundle.plugins.DownloadUrl
-                    ],
-                    layout: "StandaloneLayout"
-                });
-                window.ui = ui;
+                // Fetch the JSON spec, replace internal wso2-is occurrences,
+                // and initialize Swagger UI with the modified spec.
+                fetch('/api/v1/openapi.json')
+                    .then(response => response.json())
+                    .then(spec => {
+                        try {
+                            // Replace common internal host patterns
+                            const re = /https?:\/\/wso2-is(:\d+)?/g;
+                            deepReplace(spec, re, WSO2_IS_URL);
+
+                            // Also replace plain host entries (swagger 2.0)
+                            if (spec.host && typeof spec.host === 'string') {
+                                spec.host = spec.host.replace(/wso2-is/g, WSO2_IS_URL.replace(/^https?:\/\//, ''));
+                            }
+
+                            const ui = SwaggerUIBundle({
+                                spec: spec,
+                                dom_id: '#swagger-ui',
+                                deepLinking: true,
+                                // Ensure the OAuth redirect URI matches the browser origin
+                                oauth2RedirectUrl: window.location.origin + '/oauth2-redirect.html',
+                                presets: [
+                                    SwaggerUIBundle.presets.apis,
+                                    SwaggerUIStandalonePreset
+                                ],
+                                plugins: [
+                                    SwaggerUIBundle.plugins.DownloadUrl
+                                ],
+                                layout: "StandaloneLayout"
+                            });
+                            window.ui = ui;
+
+                            // Pre-fill OAuth client id in the Authorize dialog (client secret is NOT exposed here)
+                            try {
+                                const CLIENT_ID = "__WSO2_CLIENT_ID__";
+                                if (CLIENT_ID && CLIENT_ID !== "") {
+                                    // initOAuth takes configuration for the auth flow used by the UI
+                                    ui.initOAuth({
+                                        clientId: CLIENT_ID,
+                                        appName: 'Darts API Gateway',
+                                        scopeSeparator: ' ',
+                                        additionalQueryStringParams: {}
+                                    });
+                                }
+                            } catch (e) {
+                                console.warn('Failed to initOAuth prefill', e);
+                            }
+                        } catch (err) {
+                            console.error('Failed to load or rewrite OpenAPI spec', err);
+                            // Fallback to loading YAML URL
+                            const ui = SwaggerUIBundle({
+                                url: "/api/v1/openapi.yaml",
+                                dom_id: '#swagger-ui',
+                                deepLinking: true,
+                                // Ensure the OAuth redirect URI matches the browser origin
+                                oauth2RedirectUrl: window.location.origin + '/oauth2-redirect.html',
+                                presets: [
+                                    SwaggerUIBundle.presets.apis,
+                                    SwaggerUIStandalonePreset
+                                ],
+                                plugins: [
+                                    SwaggerUIBundle.plugins.DownloadUrl
+                                ],
+                                layout: "StandaloneLayout"
+                            });
+                            window.ui = ui;
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error fetching OpenAPI JSON:', err);
+                        // Fallback to YAML URL
+                        const ui = SwaggerUIBundle({
+                            url: "/api/v1/openapi.yaml",
+                            dom_id: '#swagger-ui',
+                            deepLinking: true,
+                            presets: [
+                                SwaggerUIBundle.presets.apis,
+                                SwaggerUIStandalonePreset
+                            ],
+                            plugins: [
+                                SwaggerUIBundle.plugins.DownloadUrl
+                            ],
+                            layout: "StandaloneLayout"
+                        });
+                        window.ui = ui;
+                    });
             };
         </script>
     </body>
     </html>
     """
+    # Replace placeholders with configured values safely (avoid f-string parsing issues)
+    html = html.replace("__WSO2_IS_URL__", WSO2_IS_URL)
+    html = html.replace("__WSO2_CLIENT_ID__", WSO2_IS_CLIENT_ID or "")
     return Response(html, mimetype="text/html")
 
 
