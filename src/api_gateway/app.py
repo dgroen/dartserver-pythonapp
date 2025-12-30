@@ -9,13 +9,15 @@ import logging
 import os
 from datetime import datetime, timezone
 from functools import wraps
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import jwt
 import pika
 import requests
+import yaml
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request
+from flask import Flask, Response, jsonify, request
 from flask_cors import CORS
 from jwt import PyJWKClient
 
@@ -40,9 +42,15 @@ CORS(app, supports_credentials=True)
 
 # WSO2 Identity Server Configuration
 WSO2_IS_URL = os.getenv("WSO2_IS_URL", "https://localhost:9443")
-WSO2_IS_JWKS_URL = f"{WSO2_IS_URL}/oauth2/jwks"
-WSO2_IS_INTROSPECT_URL = f"{WSO2_IS_URL}/oauth2/introspect"
-WSO2_IS_CLIENT_ID = os.getenv("WSO2_IS_CLIENT_ID", "")
+# Optional internal URL to use for backend-to-backend calls from inside Docker
+# If provided, use it for JWKS and introspection endpoints so the container
+# can reach the WSO2 service on the Docker network (e.g. https://darts-wso2is:9443)
+WSO2_IS_INTERNAL_URL = os.getenv("WSO2_IS_INTERNAL_URL", WSO2_IS_URL)
+WSO2_IS_JWKS_URL = f"{WSO2_IS_INTERNAL_URL}/oauth2/jwks"
+WSO2_IS_INTROSPECT_URL = f"{WSO2_IS_INTERNAL_URL}/oauth2/introspect"
+# Prefer the explicit internal client id, but fall back to the common
+# `WSO2_CLIENT_ID` if the internal-specific variable isn't provided.
+WSO2_IS_CLIENT_ID = os.getenv("WSO2_IS_CLIENT_ID", os.getenv("WSO2_CLIENT_ID", ""))
 WSO2_IS_CLIENT_SECRET = os.getenv("WSO2_IS_CLIENT_SECRET", "")
 
 # Introspection credentials (separate from client credentials)
@@ -308,65 +316,261 @@ def health_check():
     )
 
 
+# OpenAPI specification endpoint (no auth required)
+@app.route("/api/v1/openapi.yaml", methods=["GET"])
+def get_openapi_spec():
+    """Serve OpenAPI specification"""
+    try:
+        spec_path = Path(__file__).parent / "openapi.yaml"
+        # Read YAML and replace any internal WSO2 host placeholders so the
+        # documentation served reflects the configured WSO2_IS_URL
+        with spec_path.open() as fh:
+            yaml_text = fh.read()
+
+        # Common internal hostname patterns to replace
+        yaml_text = yaml_text.replace("https://wso2-is:9443", WSO2_IS_URL)
+        yaml_text = yaml_text.replace("https://wso2-is", WSO2_IS_URL)
+        yaml_text = yaml_text.replace("wso2-is:9443", WSO2_IS_URL.replace("https://", ""))
+
+        return Response(yaml_text, mimetype="application/x-yaml")
+    except Exception:
+        logger.exception("Error serving OpenAPI spec")
+        return jsonify({"error": "OpenAPI spec not found"}), 404
+
+
+@app.route("/api/v1/openapi.json", methods=["GET"])
+def get_openapi_spec_json():
+    """Serve OpenAPI specification as JSON"""
+    try:
+        spec_path = Path(__file__).parent / "openapi.yaml"
+        with spec_path.open() as f:
+            spec_dict = yaml.safe_load(f)
+
+        # Replace any internal wso2-is occurrences in all string fields
+        def _deep_replace(o):
+            if isinstance(o, dict):
+                for k, v in list(o.items()):
+                    o[k] = _deep_replace(v)
+                return o
+            if isinstance(o, list):
+                return [_deep_replace(i) for i in o]
+            if isinstance(o, str):
+                s = o.replace("https://wso2-is:9443", WSO2_IS_URL)
+                s = s.replace("https://wso2-is", WSO2_IS_URL)
+                s = s.replace("wso2-is:9443", WSO2_IS_URL.replace("https://", ""))
+                return s.replace("wso2-is", WSO2_IS_URL.replace("https://", ""))
+            return o
+
+        spec_dict = _deep_replace(spec_dict)
+        return jsonify(spec_dict)
+    except Exception:
+        logger.exception("Error serving OpenAPI spec as JSON")
+        return jsonify({"error": "OpenAPI spec not found"}), 404
+
+
+# Swagger UI (no auth required - documentation is public)
+@app.route("/docs", methods=["GET"])
+@app.route("/api-docs", methods=["GET"])
+def swagger_ui():
+    """Serve Swagger UI for API documentation"""
+    html = r"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Darts API Gateway - API Documentation</title>
+        <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.10.0/swagger-ui.css">
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="swagger-ui"></div>
+        <script src="https://unpkg.com/swagger-ui-dist@5.10.0/swagger-ui-bundle.js"></script>
+        <script src="https://unpkg.com/swagger-ui-dist@5.10.0/swagger-ui-standalone-preset.js"></script>
+        <script>
+            // Injected WSO2 IS URL from server-side env (placeholder)
+            const WSO2_IS_URL = "__WSO2_IS_URL__";
+
+            function deepReplace(obj, matchRe, replacement) {
+                if (obj && typeof obj === 'object') {
+                    for (const k of Object.keys(obj)) {
+                        const v = obj[k];
+                        if (typeof v === 'string') {
+                            obj[k] = v.replace(matchRe, replacement);
+                        } else if (typeof v === 'object') {
+                            deepReplace(v, matchRe, replacement);
+                        }
+                    }
+                }
+            }
+
+            window.onload = function() {
+                // Fetch the JSON spec, replace internal wso2-is occurrences,
+                // and initialize Swagger UI with the modified spec.
+                fetch('/api/v1/openapi.json')
+                    .then(response => response.json())
+                    .then(spec => {
+                        try {
+                            // Replace common internal host patterns
+                            const re = /https?:\/\/wso2-is(:\d+)?/g;
+                            deepReplace(spec, re, WSO2_IS_URL);
+
+                            // Also replace plain host entries (swagger 2.0)
+                            if (spec.host && typeof spec.host === 'string') {
+                                const hostReplacement = WSO2_IS_URL.replace(/^https?:\/\//, '');
+                                spec.host = spec.host.replace(/wso2-is/g, hostReplacement);
+                            }
+
+                            const ui = SwaggerUIBundle({
+                                spec: spec,
+                                dom_id: '#swagger-ui',
+                                deepLinking: true,
+                                // Ensure the OAuth redirect URI matches the browser origin
+                                oauth2RedirectUrl: window.location.origin + '/oauth2-redirect.html',
+                                presets: [
+                                    SwaggerUIBundle.presets.apis,
+                                    SwaggerUIStandalonePreset
+                                ],
+                                plugins: [
+                                    SwaggerUIBundle.plugins.DownloadUrl
+                                ],
+                                layout: "StandaloneLayout"
+                            });
+                            window.ui = ui;
+
+                            // Pre-fill OAuth client id in the Authorize dialog
+                            // (client secret is NOT exposed here)
+                            try {
+                                const CLIENT_ID = "__WSO2_CLIENT_ID__";
+                                if (CLIENT_ID && CLIENT_ID !== "") {
+                                    // initOAuth takes configuration for the auth
+                                    // flow used by the UI
+                                    ui.initOAuth({
+                                        clientId: CLIENT_ID,
+                                        appName: 'Darts API Gateway',
+                                        scopeSeparator: ' ',
+                                        additionalQueryStringParams: {}
+                                    });
+                                }
+                            } catch (e) {
+                                console.warn('Failed to initOAuth prefill', e);
+                            }
+                        } catch (err) {
+                            console.error('Failed to load or rewrite OpenAPI spec', err);
+                            // Fallback to loading YAML URL
+                            const ui = SwaggerUIBundle({
+                                url: "/api/v1/openapi.yaml",
+                                dom_id: '#swagger-ui',
+                                deepLinking: true,
+                                // Ensure the OAuth redirect URI matches the browser origin
+                                oauth2RedirectUrl: window.location.origin + '/oauth2-redirect.html',
+                                presets: [
+                                    SwaggerUIBundle.presets.apis,
+                                    SwaggerUIStandalonePreset
+                                ],
+                                plugins: [
+                                    SwaggerUIBundle.plugins.DownloadUrl
+                                ],
+                                layout: "StandaloneLayout"
+                            });
+                            window.ui = ui;
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error fetching OpenAPI JSON:', err);
+                        // Fallback to YAML URL
+                        const ui = SwaggerUIBundle({
+                            url: "/api/v1/openapi.yaml",
+                            dom_id: '#swagger-ui',
+                            deepLinking: true,
+                            presets: [
+                                SwaggerUIBundle.presets.apis,
+                                SwaggerUIStandalonePreset
+                            ],
+                            plugins: [
+                                SwaggerUIBundle.plugins.DownloadUrl
+                            ],
+                            layout: "StandaloneLayout"
+                        });
+                        window.ui = ui;
+                    });
+            };
+        </script>
+    </body>
+    </html>
+    """
+    # Replace placeholders with configured values safely (avoid f-string parsing issues)
+    html = html.replace("__WSO2_IS_URL__", WSO2_IS_URL)
+    html = html.replace("__WSO2_CLIENT_ID__", WSO2_IS_CLIENT_ID or "")
+    return Response(html, mimetype="text/html")
+
+
 # API v1 endpoints
 @app.route("/api/v1/scores", methods=["POST"])
 @require_auth(required_scopes=["score:write"])
-def submit_score():
+def submit_score():  # noqa: PLR0911
     """
     Submit a score to the game system
     Publishes score to RabbitMQ for processing
     """
     try:
         data = request.json
-        if data is None:
-            data = {}
-        error_response = None
-
         if not data:
-            error_response = jsonify(
-                {
-                    "error": "Invalid request",
-                    "message": "Request body must be JSON",
-                },
+            return (
+                jsonify(
+                    {
+                        "error": "Invalid request",
+                        "message": "Request body must be JSON",
+                    },
+                ),
+                400,
             )
 
         # Validate required fields
-        if not error_response:
-            required_fields = ["score", "multiplier"]
-            missing_fields = [field for field in required_fields if field not in data]
-            if missing_fields:
-                error_response = jsonify(
+        required_fields = ["score", "multiplier"]
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            return (
+                jsonify(
                     {
                         "error": "Missing required fields",
                         "message": f"Required fields: {', '.join(missing_fields)}",
                     },
-                )
+                ),
+                400,
+            )
 
         # Validate score value
-        if not error_response:
-            score = data.get("score")
-            if not isinstance(score, int) or score < 0 or score > 60:
-                error_response = jsonify(
+        score = data.get("score")
+        if not isinstance(score, int) or score < 0 or score > 60:
+            return (
+                jsonify(
                     {
                         "error": "Invalid score",
                         "message": "Score must be an integer between 0 and 60",
                     },
-                )
+                ),
+                400,
+            )
 
         # Validate multiplier
-        if not error_response:
-            valid_multipliers = ["SINGLE", "DOUBLE", "TRIPLE"]
-            multiplier = data.get("multiplier", "SINGLE").upper()
-            if multiplier not in valid_multipliers:
-                error_response = jsonify(
+        valid_multipliers = ["SINGLE", "DOUBLE", "TRIPLE"]
+        multiplier = data.get("multiplier", "SINGLE").upper()
+        if multiplier not in valid_multipliers:
+            return (
+                jsonify(
                     {
                         "error": "Invalid multiplier",
                         "message": f"Multiplier must be one of: {', '.join(valid_multipliers)}",
                     },
-                )
-
-        if error_response:
-            return error_response, 400
+                ),
+                400,
+            )
 
         # Add metadata
         message = {
@@ -425,8 +629,6 @@ def create_game():
     """
     try:
         data = request.json
-        if data is None:
-            data = {}
         if not data:
             return (
                 jsonify(
@@ -522,8 +724,6 @@ def add_player():
     """
     try:
         data = request.json
-        if data is None:
-            data = {}
         if not data:
             return (
                 jsonify(
@@ -583,6 +783,279 @@ def add_player():
 
     except Exception as e:
         logger.exception("Error adding player")
+        return (
+            jsonify(
+                {
+                    "error": "Internal server error",
+                    "message": str(e),
+                },
+            ),
+            500,
+        )
+
+
+@app.route("/api/v1/dartboard/throw", methods=["POST"])
+@require_auth(required_scopes=["dartboard:write"])
+def dartboard_throw():  # noqa: PLR0911
+    """
+    Submit a dartboard throw (secure replacement for /api/Throw/zone)
+    This endpoint requires client credentials authentication
+    """
+    try:
+        data = request.json
+        if not data:
+            return (
+                jsonify(
+                    {
+                        "error": "Invalid request",
+                        "message": "Request body must be JSON",
+                    },
+                ),
+                400,
+            )
+
+        # Validate required fields for dartboard
+        required_fields = ["masterPin", "slavePin", "boardType"]
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            return (
+                jsonify(
+                    {
+                        "error": "Missing required fields",
+                        "message": f"Required fields: {', '.join(missing_fields)}",
+                    },
+                ),
+                400,
+            )
+
+        # Validate pin values
+        master_pin = data.get("masterPin")
+        slave_pin = data.get("slavePin")
+        if not isinstance(master_pin, int) or not isinstance(slave_pin, int):
+            return (
+                jsonify(
+                    {
+                        "error": "Invalid pin values",
+                        "message": "masterPin and slavePin must be integers",
+                    },
+                ),
+                400,
+            )
+
+        # Validate board type
+        board_type = data.get("boardType", "").strip()
+        if not board_type:
+            return (
+                jsonify(
+                    {
+                        "error": "Invalid board type",
+                        "message": "boardType must be a non-empty string",
+                    },
+                ),
+                400,
+            )
+
+        # Add metadata
+        message = {
+            "masterPin": master_pin,
+            "slavePin": slave_pin,
+            "boardType": board_type,
+            "client_id": request.user_claims.get("client_id", "unknown"),  # type: ignore
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Publish to RabbitMQ
+        routing_key = "darts.dartboard.throw"
+        success = rabbitmq_publisher.publish(routing_key, message)
+
+        if success:
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": "Throw submitted successfully",
+                        "data": message,
+                    },
+                ),
+                201,
+            )
+        return (
+            jsonify(
+                {
+                    "error": "Failed to submit throw",
+                    "message": "Unable to publish message to queue",
+                },
+            ),
+            500,
+        )
+
+    except Exception as e:
+        logger.exception("Error submitting dartboard throw")
+        return (
+            jsonify(
+                {
+                    "error": "Internal server error",
+                    "message": str(e),
+                },
+            ),
+            500,
+        )
+
+
+@app.route("/api/v1/game/actions/end-turn", methods=["POST"])
+@require_auth(required_scopes=["game:control"])
+def end_turn():
+    """
+    End the current player's turn early
+    Publishes turn end event to RabbitMQ
+    """
+    try:
+        data = request.json or {}
+        game_id = data.get("game_id")
+
+        message = {
+            "action": "end_turn",
+            "game_id": game_id,
+            "user": request.user_claims.get("sub", "unknown"),  # type: ignore
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        routing_key = "darts.game.action"
+        success = rabbitmq_publisher.publish(routing_key, message)
+
+        if success:
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": "Turn ended successfully",
+                        "data": message,
+                    },
+                ),
+                200,
+            )
+        return (
+            jsonify(
+                {
+                    "error": "Failed to end turn",
+                    "message": "Unable to publish message to queue",
+                },
+            ),
+            500,
+        )
+
+    except Exception as e:
+        logger.exception("Error ending turn")
+        return (
+            jsonify(
+                {
+                    "error": "Internal server error",
+                    "message": str(e),
+                },
+            ),
+            500,
+        )
+
+
+@app.route("/api/v1/game/actions/continue", methods=["POST"])
+@require_auth(required_scopes=["game:control"])
+def continue_game():
+    """
+    Continue the game after a pause or prompt
+    Publishes continue event to RabbitMQ
+    """
+    try:
+        data = request.json or {}
+        game_id = data.get("game_id")
+
+        message = {
+            "action": "continue",
+            "game_id": game_id,
+            "user": request.user_claims.get("sub", "unknown"),  # type: ignore
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        routing_key = "darts.game.action"
+        success = rabbitmq_publisher.publish(routing_key, message)
+
+        if success:
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": "Game continued successfully",
+                        "data": message,
+                    },
+                ),
+                200,
+            )
+        return (
+            jsonify(
+                {
+                    "error": "Failed to continue game",
+                    "message": "Unable to publish message to queue",
+                },
+            ),
+            500,
+        )
+
+    except Exception as e:
+        logger.exception("Error continuing game")
+        return (
+            jsonify(
+                {
+                    "error": "Internal server error",
+                    "message": str(e),
+                },
+            ),
+            500,
+        )
+
+
+@app.route("/api/v1/game/actions/pause", methods=["POST"])
+@require_auth(required_scopes=["game:control"])
+def pause_game():
+    """
+    Pause the current game
+    Publishes pause event to RabbitMQ
+    """
+    try:
+        data = request.json or {}
+        game_id = data.get("game_id")
+
+        message = {
+            "action": "pause",
+            "game_id": game_id,
+            "user": request.user_claims.get("sub", "unknown"),  # type: ignore
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        routing_key = "darts.game.action"
+        success = rabbitmq_publisher.publish(routing_key, message)
+
+        if success:
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": "Game paused successfully",
+                        "data": message,
+                    },
+                ),
+                200,
+            )
+        return (
+            jsonify(
+                {
+                    "error": "Failed to pause game",
+                    "message": "Unable to publish message to queue",
+                },
+            ),
+            500,
+        )
+
+    except Exception as e:
+        logger.exception("Error pausing game")
         return (
             jsonify(
                 {

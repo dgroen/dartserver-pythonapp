@@ -9,7 +9,7 @@ import os
 import sys
 
 # Use legacy app which has all routes registered
-from src.app.app import app, socketio
+from src.app.app import app, socketio, start_rabbitmq_consumer
 
 if __name__ == "__main__":
     # Configure logging
@@ -23,6 +23,10 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
 
     try:
+        # Start RabbitMQ consumer before starting the Flask app
+        logger.info("Starting RabbitMQ consumer...")
+        start_rabbitmq_consumer()
+
         # Run the Flask application with SocketIO support
         # Bind to 0.0.0.0 to make it accessible from nginx on the Docker network
         # This is safe as it's behind a reverse proxy and not exposed directly
