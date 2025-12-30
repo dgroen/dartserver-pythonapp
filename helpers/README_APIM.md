@@ -80,16 +80,16 @@ Dartboard/Client
 
 All requests go through `https://your-domain/api/v1/`:
 
-| Endpoint | Method | Scope | Throttle Policy |
-|----------|--------|-------|-----------------|
-| `/v1/dartboard/throw` | POST | `dartboard:write` | 1000 req/min |
-| `/v1/scores` | POST | `score:write` | 100 req/min |
-| `/v1/games` | POST | `game:create` | 100 req/min |
-| `/v1/players` | POST | `player:create` | 100 req/min |
-| `/v1/game/actions/end-turn` | POST | `game:control` | 100 req/min |
-| `/v1/game/actions/continue` | POST | `game:control` | 100 req/min |
-| `/v1/game/actions/pause` | POST | `game:control` | 100 req/min |
-| `/health` | GET | (none) | Unlimited |
+| Endpoint                    | Method | Scope             | Throttle Policy |
+| --------------------------- | ------ | ----------------- | --------------- |
+| `/v1/dartboard/throw`       | POST   | `dartboard:write` | 1000 req/min    |
+| `/v1/scores`                | POST   | `score:write`     | 100 req/min     |
+| `/v1/games`                 | POST   | `game:create`     | 100 req/min     |
+| `/v1/players`               | POST   | `player:create`   | 100 req/min     |
+| `/v1/game/actions/end-turn` | POST   | `game:control`    | 100 req/min     |
+| `/v1/game/actions/continue` | POST   | `game:control`    | 100 req/min     |
+| `/v1/game/actions/pause`    | POST   | `game:control`    | 100 req/min     |
+| `/health`                   | GET    | (none)            | Unlimited       |
 
 ## OAuth2 Scopes
 

@@ -471,14 +471,14 @@ graph LR
 
 ## Performance Metrics
 
-| Metric | Target | Current |
-|--------|--------|---------|
-| Page Load | <2s | 1.2s |
-| Score Update | <100ms | 50ms |
-| API Response | <500ms | 200ms |
-| Database Query | <50ms | 30ms |
-| Memory Usage | <512MB | 250MB |
-| Concurrent Users | 100+ | Tested with 50 |
+| Metric           | Target | Current        |
+| ---------------- | ------ | -------------- |
+| Page Load        | <2s    | 1.2s           |
+| Score Update     | <100ms | 50ms           |
+| API Response     | <500ms | 200ms          |
+| Database Query   | <50ms  | 30ms           |
+| Memory Usage     | <512MB | 250MB          |
+| Concurrent Users | 100+   | Tested with 50 |
 
 ## Monitoring
 

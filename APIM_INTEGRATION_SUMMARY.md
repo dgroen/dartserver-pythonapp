@@ -59,14 +59,14 @@ Dartboard → Nginx → APIM (validates, rate limits) → API Gateway → Rabbit
 
 All requests to `https://domain/api/v1/*` now go through APIM:
 
-| Endpoint | Scope | Throttle Policy |
-|----------|-------|-----------------|
-| POST /v1/dartboard/throw | dartboard:write | 1000 req/min |
-| POST /v1/scores | score:write | 100 req/min |
-| POST /v1/games | game:create | 100 req/min |
-| POST /v1/players | player:create | 100 req/min |
-| POST /v1/game/actions/* | game:control | 100 req/min |
-| GET /health | (none) | Unlimited |
+| Endpoint                 | Scope           | Throttle Policy |
+| ------------------------ | --------------- | --------------- |
+| POST /v1/dartboard/throw | dartboard:write | 1000 req/min    |
+| POST /v1/scores          | score:write     | 100 req/min     |
+| POST /v1/games           | game:create     | 100 req/min     |
+| POST /v1/players         | player:create   | 100 req/min     |
+| POST /v1/game/actions/*  | game:control    | 100 req/min     |
+| GET /health              | (none)          | Unlimited       |
 
 ## How to Use
 

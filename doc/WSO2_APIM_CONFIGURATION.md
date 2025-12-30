@@ -161,21 +161,21 @@ GET  /health                  - Health check (no auth required)
 
 The following scopes are defined in the API:
 
-| Scope | Description |
-|-------|-------------|
-| `dartboard:write` | Submit dartboard throws |
-| `score:write` | Submit scores |
-| `game:create` | Create new games |
-| `game:control` | Control game flow (pause, resume, end turn) |
-| `player:create` | Add players to games |
+| Scope             | Description                                 |
+| ----------------- | ------------------------------------------- |
+| `dartboard:write` | Submit dartboard throws                     |
+| `score:write`     | Submit scores                               |
+| `game:create`     | Create new games                            |
+| `game:control`    | Control game flow (pause, resume, end turn) |
+| `player:create`   | Add players to games                        |
 
 ### 3.2 Throttling Policies
 
-| Policy | Rate Limit | Usage |
-|--------|------------|-------|
-| DartboardThrottle | 1000 req/min | Dartboard hardware throws |
-| GameControlThrottle | 100 req/min | Game control operations |
-| Unlimited | No limit | Health checks and development |
+| Policy              | Rate Limit   | Usage                         |
+| ------------------- | ------------ | ----------------------------- |
+| DartboardThrottle   | 1000 req/min | Dartboard hardware throws     |
+| GameControlThrottle | 100 req/min  | Game control operations       |
+| Unlimited           | No limit     | Health checks and development |
 
 ## Client Configuration
 

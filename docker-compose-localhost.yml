@@ -74,6 +74,7 @@ services:
       - JAVA_OPTS=-Xms512m -Xmx1024m
     volumes:
       - wso2apim_data:/home/wso2carbon/wso2am-4.0.0
+      - ./wso2apim-4-config/deployment.toml:/home/wso2carbon/wso2am-4.0.0/repository/conf/deployment.toml:ro
     depends_on:
       wso2is:
         condition: service_healthy
