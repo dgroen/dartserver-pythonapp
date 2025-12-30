@@ -7,14 +7,18 @@ Includes WSO2 IS authentication and role-based access control
 import logging
 import os
 import ssl
+import sys
 import threading
 import time
+import traceback
 from pathlib import Path
 
 import yaml
+from dartserver_core import get_session
 from dartserver_core.config import Config
 from dartserver_core.database_models import Player
 from dartserver_core.database_service import set_database_service
+from dartserver_services.dartboard_service import DartboardService
 from dartserver_services.rabbitmq import RabbitMQConsumer
 from dotenv import load_dotenv
 from eventlet import wsgi
@@ -301,6 +305,61 @@ def on_score_received(score_data):
     app.game_manager.process_score(score_data)
 
 
+def on_dartboard_throw_received(throw_data):
+    """Callback when a dartboard throw is received from RabbitMQ"""
+    print(f"[DARTBOARD_HANDLER] Dartboard throw received: {throw_data}", flush=True)
+    sys.stdout.flush()
+
+    try:
+        # Extract pin data
+        master_pin = throw_data.get("masterPin")
+        slave_pin = throw_data.get("slavePin")
+        board_type = throw_data.get("boardType", "carromco")
+
+        if master_pin is None or slave_pin is None:
+            print(f"Invalid throw data: missing pins - {throw_data}")
+            return
+
+        # Get zone mapping from database
+        session = get_session()
+        try:
+            zone_info = DartboardService.get_zone_from_pins(
+                session,
+                board_type,
+                master_pin,
+                slave_pin,
+            )
+
+            if not zone_info:
+                print(
+                    f"Zone mapping not found for pins ({master_pin}, {slave_pin}) "
+                    f"on board type '{board_type}'",
+                )
+                return
+
+            # Convert to score format and process
+            score_data = {
+                "score": zone_info["base_value"],
+                "multiplier": zone_info["multiplier_type"],
+            }
+
+            print(
+                f"Mapped pins ({master_pin},{slave_pin}) to "
+                f"{zone_info['multiplier_type']} {zone_info['base_value']} "
+                f"(zone {zone_info['zone_number']})",
+            )
+
+            # Process through game manager
+            app.game_manager.process_score(score_data)
+
+        finally:
+            session.close()
+
+    except Exception as e:
+        print(f"Error processing dartboard throw: {e}")
+        traceback.print_exc()
+
+
 # ============================================================================
 # Routes have been moved to blueprint modules:
 # - app_ui.py: UI/page rendering endpoints
@@ -483,14 +542,42 @@ def start_rabbitmq_consumer():
         "password": os.getenv("RABBITMQ_PASSWORD", "guest"),
         "vhost": os.getenv("RABBITMQ_VHOST", "/"),
         "exchange": os.getenv("RABBITMQ_EXCHANGE", "darts_exchange"),
-        "topic": os.getenv("RABBITMQ_TOPIC", "darts.scores.#"),
+        "topic": os.getenv("RABBITMQ_TOPIC", "darts.#"),
     }
 
+    def message_router(message):
+        """Route messages to appropriate handlers based on routing key"""
+        print(f"[MESSAGE_ROUTER] Received message: {message}", flush=True)
+        sys.stdout.flush()
+
+        # The routing key is not passed in the message body by the consumer,
+        # but we can infer it from the message structure
+        if "masterPin" in message and "slavePin" in message:
+            # This is a dartboard throw message
+            print("[MESSAGE_ROUTER] Routing to dartboard handler", flush=True)
+            sys.stdout.flush()
+            on_dartboard_throw_received(message)
+        else:
+            # This is a score message
+            print("[MESSAGE_ROUTER] Routing to score handler", flush=True)
+            sys.stdout.flush()
+            on_score_received(message)
+
+    def consumer_wrapper():
+        """Wrapper to catch and log consumer exceptions"""
+        try:
+            print("Consumer thread started, calling consumer.start()...")
+            rabbitmq_consumer.start()
+        except Exception as e:
+            print(f"FATAL: RabbitMQ consumer thread crashed: {e}")
+            traceback.print_exc()
+
     try:
-        rabbitmq_consumer = RabbitMQConsumer(rabbitmq_config, on_score_received)
-        consumer_thread = threading.Thread(target=rabbitmq_consumer.start, daemon=True)
+        rabbitmq_consumer = RabbitMQConsumer(rabbitmq_config, message_router)
+        consumer_thread = threading.Thread(target=consumer_wrapper, daemon=True)
         consumer_thread.start()
         print("RabbitMQ consumer started")
+        print(f"Listening on topic: {rabbitmq_config['topic']}")
     except Exception as e:
         print(f"Failed to start RabbitMQ consumer: {e}")
         print("Application will continue without RabbitMQ integration")

@@ -147,7 +147,11 @@ services:
       RABBITMQ_PASSWORD: guest
       RABBITMQ_VHOST: /
       RABBITMQ_EXCHANGE: darts_exchange
-      RABBITMQ_TOPIC: darts.scores.#
+      # Listen to all darts topics (scores, dartboard throws, etc.)
+      RABBITMQ_TOPIC: darts.#
+
+      # Python unbuffered output for better logging
+      PYTHONUNBUFFERED: "1"
 
       # Flask Configuration
       FLASK_HOST: 0.0.0.0

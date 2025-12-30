@@ -324,7 +324,7 @@ def get_openapi_spec():
         spec_path = Path(__file__).parent / "openapi.yaml"
         # Read YAML and replace any internal WSO2 host placeholders so the
         # documentation served reflects the configured WSO2_IS_URL
-        with open(spec_path) as fh:
+        with spec_path.open() as fh:
             yaml_text = fh.read()
 
         # Common internal hostname patterns to replace
@@ -343,7 +343,7 @@ def get_openapi_spec_json():
     """Serve OpenAPI specification as JSON"""
     try:
         spec_path = Path(__file__).parent / "openapi.yaml"
-        with open(spec_path) as f:
+        with spec_path.open() as f:
             spec_dict = yaml.safe_load(f)
 
         # Replace any internal wso2-is occurrences in all string fields
@@ -358,8 +358,7 @@ def get_openapi_spec_json():
                 s = o.replace("https://wso2-is:9443", WSO2_IS_URL)
                 s = s.replace("https://wso2-is", WSO2_IS_URL)
                 s = s.replace("wso2-is:9443", WSO2_IS_URL.replace("https://", ""))
-                s = s.replace("wso2-is", WSO2_IS_URL.replace("https://", ""))
-                return s
+                return s.replace("wso2-is", WSO2_IS_URL.replace("https://", ""))
             return o
 
         spec_dict = _deep_replace(spec_dict)
@@ -423,7 +422,8 @@ def swagger_ui():
 
                             // Also replace plain host entries (swagger 2.0)
                             if (spec.host && typeof spec.host === 'string') {
-                                spec.host = spec.host.replace(/wso2-is/g, WSO2_IS_URL.replace(/^https?:\/\//, ''));
+                                const hostReplacement = WSO2_IS_URL.replace(/^https?:\/\//, '');
+                                spec.host = spec.host.replace(/wso2-is/g, hostReplacement);
                             }
 
                             const ui = SwaggerUIBundle({
@@ -443,11 +443,13 @@ def swagger_ui():
                             });
                             window.ui = ui;
 
-                            // Pre-fill OAuth client id in the Authorize dialog (client secret is NOT exposed here)
+                            // Pre-fill OAuth client id in the Authorize dialog
+                            // (client secret is NOT exposed here)
                             try {
                                 const CLIENT_ID = "__WSO2_CLIENT_ID__";
                                 if (CLIENT_ID && CLIENT_ID !== "") {
-                                    // initOAuth takes configuration for the auth flow used by the UI
+                                    // initOAuth takes configuration for the auth
+                                    // flow used by the UI
                                     ui.initOAuth({
                                         clientId: CLIENT_ID,
                                         appName: 'Darts API Gateway',
@@ -511,7 +513,7 @@ def swagger_ui():
 # API v1 endpoints
 @app.route("/api/v1/scores", methods=["POST"])
 @require_auth(required_scopes=["score:write"])
-def submit_score():
+def submit_score():  # noqa: PLR0911
     """
     Submit a score to the game system
     Publishes score to RabbitMQ for processing
@@ -794,7 +796,7 @@ def add_player():
 
 @app.route("/api/v1/dartboard/throw", methods=["POST"])
 @require_auth(required_scopes=["dartboard:write"])
-def dartboard_throw():
+def dartboard_throw():  # noqa: PLR0911
     """
     Submit a dartboard throw (secure replacement for /api/Throw/zone)
     This endpoint requires client credentials authentication

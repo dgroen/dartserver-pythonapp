@@ -10,9 +10,22 @@ It can simulate:
 - Token management and renewal
 
 Usage:
-    python dartboard_simulator.py --client-id CLIENT_ID --client-secret SECRET
-    python dartboard_simulator.py --simulate-game
-    python dartboard_simulator.py --concurrent-boards 3
+    python3 dartboard_simulator.py --client-id CLIENT_ID --client-secret SECRET
+    python3 dartboard_simulator.py --simulate-game
+    python3 dartboard_simulator.py --concurrent-boards 3
+
+Examples:
+    # Single throw test
+    python3 dartboard_simulator.py --client-id local_client_id --client-secret local_client_secret
+
+    # Simulate a full game (10 rounds, 3 throws per round)
+    python3 dartboard_simulator.py --simulate-game --num-rounds 10
+
+    # Test multiple concurrent dartboards
+    python3 dartboard_simulator.py --concurrent-boards 3
+
+    # Continuous testing (press Ctrl+C to stop)
+    python3 dartboard_simulator.py --continuous
 """
 
 import argparse
@@ -20,9 +33,10 @@ import random
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import requests
+import urllib3
 
 
 class DartboardClient:
@@ -48,7 +62,7 @@ class DartboardClient:
                 self.token_url,
                 auth=(self.client_id, self.client_secret),
                 data={"grant_type": "client_credentials", "scope": "dartboard:write"},
-                verify=False,  # Disable SSL verification for testing
+                verify=False,  # noqa: S501 - Disable SSL verification for testing
                 timeout=10,
             )
 
@@ -57,7 +71,9 @@ class DartboardClient:
                 self.access_token = token_data["access_token"]
                 expires_in = token_data["expires_in"]
                 # Refresh token 60 seconds before expiration
-                self.token_expires_at = datetime.now() + timedelta(seconds=expires_in - 60)
+                self.token_expires_at = datetime.now(timezone.utc) + timedelta(
+                    seconds=expires_in - 60,
+                )
                 print(
                     f"[{self.client_id}] ✓ Token obtained (expires in {expires_in}s)",
                 )
@@ -71,7 +87,7 @@ class DartboardClient:
 
     def ensure_valid_token(self):
         """Ensure we have a valid access token"""
-        if not self.access_token or datetime.now() >= self.token_expires_at:
+        if not self.access_token or datetime.now(timezone.utc) >= self.token_expires_at:
             return self.get_access_token()
         return True
 
@@ -97,12 +113,11 @@ class DartboardClient:
                         "slavePin": slave_pin,
                         "boardType": self.board_type,
                     },
-                    verify=False,  # Disable SSL verification for testing
+                    verify=False,  # noqa: S501 - Disable SSL verification for testing
                     timeout=10,
                 )
 
                 if response.status_code == 201:
-                    result = response.json()
                     print(
                         f"[{self.client_id}] ✓ Throw {self.throw_count}: "
                         f"pins({master_pin},{slave_pin}) submitted successfully",
@@ -132,9 +147,7 @@ class DartboardClient:
 
     def print_stats(self):
         """Print statistics"""
-        success_rate = (
-            (self.success_count / self.throw_count * 100) if self.throw_count > 0 else 0
-        )
+        success_rate = (self.success_count / self.throw_count * 100) if self.throw_count > 0 else 0
         print(f"\n[{self.client_id}] Statistics:")
         print(f"  Total throws: {self.throw_count}")
         print(f"  Successful: {self.success_count}")
@@ -166,7 +179,7 @@ def simulate_game(client, num_rounds=10):
         print(f"\n[{client.client_id}] --- Round {round_num} ---")
 
         # Simulate 3 throws per round
-        for throw_num in range(1, 4):
+        for _throw_num in range(1, 4):
             master_pin, slave_pin = random.choice(SAMPLE_THROWS)
             success = client.submit_throw(master_pin, slave_pin)
 
@@ -217,10 +230,10 @@ def simulate_concurrent_boards(
     # Print summary
     total_throws = sum(c.throw_count for c in clients)
     total_success = sum(c.success_count for c in clients)
-    print(f"\n=== Summary ===")
+    print("\n=== Summary ===")
     print(f"Total throws: {total_throws}")
     print(f"Total successful: {total_success}")
-    print(f"Overall success rate: {total_success/total_throws*100:.1f}%")
+    print(f"Overall success rate: {total_success / total_throws * 100:.1f}%")
 
 
 def main():
@@ -239,7 +252,7 @@ def main():
     )
     parser.add_argument(
         "--token-url",
-        default="http://localhost:9443/oauth2/token",
+        default="https://localhost:9443/oauth2/token",
         help="OAuth2 token endpoint URL",
     )
     parser.add_argument(
@@ -284,8 +297,6 @@ def main():
     args = parser.parse_args()
 
     # Disable SSL warnings
-    import urllib3
-
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     print("=" * 60)
