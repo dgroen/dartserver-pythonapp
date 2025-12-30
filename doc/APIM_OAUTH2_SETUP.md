@@ -53,26 +53,28 @@ docker-compose -f docker-compose-localhost.yml ps
 
 **Manual Setup Required** (Automated setup will be available in future versions)
 
-1. **Open WSO2 IS MyAccount Portal**
+1. **Open WSO2 IS Console**
    ```
-   https://localhost:9443/myaccount
+   https://localhost:9443/console
    ```
 
 2. **Login**
    - Username: `admin`
    - Password: `admin`
 
-3. **Register OAuth2 Application**
-   - Click on: **Security** → **OAuth Applications**
-   - Click **Register** button
-   - Fill in the following details:
+3. **Create New Application**
+   - Navigate to: **Applications** → **New Application**
+   - Select protocol: **OAuth 2.0 OpenID Connect**
+   - Click **Next** to configure application
+
+4. **Configure Application Details**
 
    **Application Name:** 
    ```
    APIM
    ```
 
-   **Authorized Redirect URIs:** (Add each one separately)
+   **Authorized Redirect URLs:** (Click "Add URL" for each one)
    ```
    https://localhost:9444/publisher/services/auth/callback
    https://localhost:9444/devportal/services/auth/callback
@@ -80,18 +82,28 @@ docker-compose -f docker-compose-localhost.yml ps
    https://localhost:9444/analytics/services/auth/callback
    ```
 
-   **Allowed Grant Types:** (Select all)
+   **Allowed Grant Types:** (Select these options)
    ```
    ✓ Code
    ✓ Refresh Token
    ✓ Implicit
    ```
 
-4. **Complete Registration**
+   **Public Client:** 
+   ```
+   ☐ No (keep unchecked - APIM needs client secret)
+   ```
+
+5. **Register Application**
    - Click **Register** button
-   - You should see a success message with:
-     - **Client ID** (copy this)
-     - **Client Secret** (copy this)
+   - Application will be created and shown in the list
+
+6. **Get Client Credentials**
+   - Click on the newly created **APIM** application
+   - Go to the **Protocol** tab
+   - Copy the following credentials:
+     - **Client ID** (copy this value)
+     - **Client Secret** (copy this value)
 
 ### Step 3: Update APIM Configuration
 

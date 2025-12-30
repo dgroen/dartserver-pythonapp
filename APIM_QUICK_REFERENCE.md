@@ -10,20 +10,23 @@ All infrastructure ready. Only manual OAuth2 registration needed.
 ### 1️⃣ Register OAuth2 Application (5 min)
 
 ```
-Go to: https://localhost:9443/myaccount
+Go to: https://localhost:9443/console
 Login: admin / admin
-Path: Security → OAuth Applications → Register
+Path: Applications → New Application
 
 Fill in:
-- App Name: APIM
-- Redirect URIs: (Add all 4)
+- Protocol: OAuth 2.0 OpenID Connect
+- Application Name: APIM
+- Authorized Redirect URLs: (Add all 4)
   https://localhost:9444/publisher/services/auth/callback
   https://localhost:9444/devportal/services/auth/callback
   https://localhost:9444/admin/services/auth/callback
   https://localhost:9444/analytics/services/auth/callback
-- Grant Types: Code, Refresh Token, Implicit
+- Allowed Grant Types: Code, Refresh Token, Implicit
+- Public Client: No (keep unchecked)
 
-✓ Save credentials (Client ID & Client Secret)
+✓ Register application
+✓ Go to Protocol tab to copy Client ID & Client Secret
 ```
 
 ### 2️⃣ Update Configuration (3 min)
@@ -86,13 +89,13 @@ curl -k -H "Authorization: Bearer $TOKEN" \
 
 ## 📁 Key Files
 
-| File | Purpose |
-|------|---------|
-| `wso2apim-4-config/deployment.toml` | APIM configuration (needs OAuth2 creds) |
-| `docker-compose-localhost.yml` | Service orchestration (already configured) |
-| `nginx/nginx.conf` | API routing through APIM (already configured) |
-| `doc/APIM_OAUTH2_SETUP.md` | Detailed step-by-step guide |
-| `APIM_INTEGRATION_COMPLETION.md` | Full status report |
+| File                                | Purpose                                       |
+| ----------------------------------- | --------------------------------------------- |
+| `wso2apim-4-config/deployment.toml` | APIM configuration (needs OAuth2 creds)       |
+| `docker-compose-localhost.yml`      | Service orchestration (already configured)    |
+| `nginx/nginx.conf`                  | API routing through APIM (already configured) |
+| `doc/APIM_OAUTH2_SETUP.md`          | Detailed step-by-step guide                   |
+| `APIM_INTEGRATION_COMPLETION.md`    | Full status report                            |
 
 ## 🔧 Services Status
 
