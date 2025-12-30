@@ -2,6 +2,26 @@
 
 This guide explains how to configure WSO2 API Manager (APIM) to manage and expose the Darts API Gateway service.
 
+**Status**: ✅ **IMPLEMENTED** - This integration is now active in the system.
+
+## Quick Start
+
+For quick setup in development:
+
+```bash
+# 1. Start the stack
+docker-compose -f docker-compose-localhost.yml up -d
+
+# 2. Wait for services to be healthy (2-3 minutes)
+docker-compose -f docker-compose-localhost.yml ps
+
+# 3. Run automated APIM configuration
+./helpers/configure_wso2_apim.sh
+
+# 4. Test the integration
+python helpers/test_wso2_apim_integration.py --verbose
+```
+
 ## Prerequisites
 
 - WSO2 API Manager 4.x installed and running
@@ -23,11 +43,19 @@ This guide explains how to configure WSO2 API Manager (APIM) to manage and expos
 └─────────────────┘   │
                       ▼
                  ┌──────────────────┐
-                 │  WSO2 APIM       │
-                 │  (API Gateway)   │
+                 │  Nginx Proxy     │
+                 │  (Port 443)      │
                  └──────────────────┘
                           │
-                          │ Forwards to
+                          │ Routes /api/v1/*
+                          ▼
+                 ┌──────────────────┐
+                 │  WSO2 APIM       │
+                 │  Gateway         │
+                 │  (Port 8243)     │
+                 └──────────────────┘
+                          │
+                          │ Validates & Forwards
                           ▼
                  ┌──────────────────┐
                  │  Darts API       │
@@ -42,7 +70,55 @@ This guide explains how to configure WSO2 API Manager (APIM) to manage and expos
                  └──────────────────┘
 ```
 
-## Step 1: Configure WSO2 Identity Server Integration
+**Request Flow:**
+1. Client sends request to `https://your-domain/api/v1/dartboard/throw`
+2. Nginx routes to APIM gateway at port 8243
+3. APIM validates OAuth2 token with WSO2 IS
+4. APIM applies rate limiting policies
+5. APIM forwards to API Gateway at port 8080
+6. API Gateway publishes event to RabbitMQ
+7. Response flows back through the chain
+
+## Automated Setup
+
+### Using the Setup Script (Recommended)
+
+The automated setup script handles all APIM configuration:
+
+```bash
+# Run with defaults (uses environment variables)
+python helpers/setup_wso2_apim.py
+
+# Run with custom settings
+python helpers/setup_wso2_apim.py \
+  --apim-url https://localhost:9444 \
+  --api-gateway-url http://api-gateway:8080 \
+  --username admin \
+  --password admin \
+  --verbose
+```
+
+**What it does:**
+1. Waits for APIM to be ready
+2. Authenticates with admin credentials
+3. Creates throttling policies:
+   - `DartboardThrottle`: 1000 requests/minute (for dartboards)
+   - `GameControlThrottle`: 100 requests/minute (for game control)
+   - `UnlimitedThrottle`: No limits (for testing)
+4. Creates the Darts API with all endpoints
+5. Publishes the API to the Developer Portal
+
+### Docker Integration
+
+The APIM setup runs automatically during container startup. To trigger manually:
+
+```bash
+docker exec -it darts-wso2apim /app/helpers/configure_wso2_apim.sh
+```
+
+## Manual Configuration
+
+### Step 1: Configure WSO2 Identity Server Integration
 
 Ensure WSO2 IS is properly integrated with APIM for authentication:
 
@@ -57,96 +133,161 @@ Ensure WSO2 IS is properly integrated with APIM for authentication:
    curl -k https://wso2-apim:9443/api/am/admin/v4/key-managers
    ```
 
-## Step 2: Create API in WSO2 APIM
+### Step 2: Create API in WSO2 APIM
 
-### 2.1 Import OpenAPI Specification
+The automated script creates an API named **DartsGameAPI** with the following configuration:
 
-1. Log in to WSO2 APIM Publisher Portal: `https://wso2-apim:9443/publisher`
-2. Click "Create API" → "Import Open API"
-3. Upload the OpenAPI spec from `src/api_gateway/openapi.yaml`
-4. Configure API details:
-   - **Name**: Darts API Gateway
-   - **Version**: 1.0.0
-   - **Context**: `/darts/v1`
-   - **Endpoint**: `http://api-gateway:8080`
+**API Details:**
+- **Name**: DartsGameAPI
+- **Version**: v1
+- **Context**: `/api`
+- **Backend**: `http://api-gateway:8080`
 
-### 2.2 Configure API Manually (Alternative)
-
-If importing doesn't work, create the API manually:
-
-```bash
-# API Details
-Name: Darts API Gateway
-Version: 1.0.0
-Context: /darts/v1
-Business Plans: Unlimited
-
-# Endpoints
-Production Endpoint: http://api-gateway:8080
-Sandbox Endpoint: http://api-gateway:8080
-
-# Resources
-POST /api/v1/dartboard/throw     - dartboard:write
-POST /api/v1/scores               - score:write
-POST /api/v1/games                - game:write
-POST /api/v1/players              - player:write
-POST /api/v1/game/actions/*       - game:control
-GET  /health                      - (no scope required)
-GET  /docs                        - (no scope required)
+**Endpoints:**
+```
+POST /v1/dartboard/throw     - Submit dartboard throw (scope: dartboard:write)
+POST /v1/scores               - Submit score (scope: score:write)
+POST /v1/games                - Create game (scope: game:create)
+POST /v1/players              - Add player (scope: player:create)
+POST /v1/game/actions/end-turn     - End turn (scope: game:control)
+POST /v1/game/actions/continue     - Continue game (scope: game:control)
+POST /v1/game/actions/pause        - Pause game (scope: game:control)
+GET  /health                  - Health check (no auth required)
 ```
 
-## Step 3: Configure Security
+### Step 3: Configure Security
 
 ### 3.1 OAuth2 Scopes
 
-Define the following scopes in the API:
+The following scopes are defined in the API:
 
 | Scope | Description |
 |-------|-------------|
 | `dartboard:write` | Submit dartboard throws |
 | `score:write` | Submit scores |
-| `game:write` | Create and manage games |
+| `game:create` | Create new games |
 | `game:control` | Control game flow (pause, resume, end turn) |
-| `player:write` | Add players to games |
+| `player:create` | Add players to games |
 
-### 3.2 Configure Grant Types
+### 3.2 Throttling Policies
 
-Enable the following grant types:
+| Policy | Rate Limit | Usage |
+|--------|------------|-------|
+| DartboardThrottle | 1000 req/min | Dartboard hardware throws |
+| GameControlThrottle | 100 req/min | Game control operations |
+| Unlimited | No limit | Health checks and development |
 
-- **Client Credentials**: For dartboard hardware devices
-- **Authorization Code**: For web applications
-- **Refresh Token**: For maintaining sessions
+## Client Configuration
 
-## Step 4: Register Dartboard Clients
+### For Dartboard Hardware
 
-### 4.1 Create Application for Dartboards
-
-1. Go to WSO2 APIM Developer Portal: `https://wso2-apim:9443/devportal`
-2. Create a new application:
-   - **Name**: Dartboard Devices
-   - **Throttling Tier**: Unlimited
-   - **Description**: Hardware dartboard clients
-
-3. Subscribe to "Darts API Gateway"
-
-4. Generate Keys:
-   - **Grant Types**: Client Credentials
-   - **Scopes**: `dartboard:write`, `game:control`
-
-### 4.2 Distribute Credentials to Dartboards
-
-Each dartboard device needs:
-- **Client ID**: Unique identifier (e.g., `dartboard_001_client`)
-- **Client Secret**: Secure secret key
-
-Example `.env` configuration for dartboard:
+Configure dartboards to use APIM gateway:
 
 ```env
-WSO2_TOKEN_URL=https://wso2-apim:9443/oauth2/token
-WSO2_CLIENT_ID=dartboard_001_client
-WSO2_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxx
-API_GATEWAY_URL=https://wso2-apim:9443/darts/v1
+# Token endpoint (WSO2 IS)
+WSO2_TOKEN_URL=https://your-domain/auth/oauth2/token
+
+# APIM Gateway endpoint
+API_GATEWAY_URL=https://your-domain/api/v1
+
+# OAuth2 credentials (obtain from APIM Dev Portal)
+WSO2_CLIENT_ID=<your-client-id>
+WSO2_CLIENT_SECRET=<your-client-secret>
+
+# Scopes
+OAUTH_SCOPES=dartboard:write game:control
 ```
+
+**Example cURL request:**
+
+```bash
+# 1. Get access token
+TOKEN=$(curl -k -X POST https://localhost:9443/oauth2/token \
+  -u "CLIENT_ID:CLIENT_SECRET" \
+  -d "grant_type=client_credentials" \
+  -d "scope=dartboard:write" \
+  | jq -r '.access_token')
+
+# 2. Submit dartboard throw through APIM
+curl -k -X POST https://localhost:8243/api/v1/dartboard/throw \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "pins": [20, 1],
+    "game_id": "test-game",
+    "player_id": "player-1"
+  }'
+```
+
+### For Web Applications
+
+Web apps should use the authorization code flow:
+
+```javascript
+// 1. Redirect to authorization endpoint
+const authUrl = `https://your-domain/auth/oauth2/authorize?` +
+  `client_id=${CLIENT_ID}&` +
+  `redirect_uri=${REDIRECT_URI}&` +
+  `response_type=code&` +
+  `scope=score:write game:create`;
+
+window.location.href = authUrl;
+
+// 2. Exchange code for token (on callback)
+const tokenResponse = await fetch('https://your-domain/auth/oauth2/token', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  body: new URLSearchParams({
+    grant_type: 'authorization_code',
+    code: authCode,
+    redirect_uri: REDIRECT_URI,
+    client_id: CLIENT_ID,
+    client_secret: CLIENT_SECRET
+  })
+});
+
+const { access_token } = await tokenResponse.json();
+
+// 3. Use token to call API through APIM
+const response = await fetch('https://your-domain/api/v1/scores', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${access_token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    score: 60,
+    multiplier: 'TRIPLE',
+    game_id: 'game-123',
+    player_id: 'player-1'
+  })
+});
+```
+
+## Testing the Integration
+
+### Automated Testing
+
+Run the comprehensive test suite:
+
+```bash
+# Basic test
+python helpers/test_wso2_apim_integration.py
+
+# Verbose output
+python helpers/test_wso2_apim_integration.py --verbose
+
+# Custom endpoints
+python helpers/test_wso2_apim_integration.py \
+  --apim-gateway-url https://localhost:8243 \
+  --wso2-is-url https://localhost:9443 \
+  --client-id YOUR_CLIENT_ID \
+  --client-secret YOUR_CLIENT_SECRET
+```
+
+**Tests performed:**
+1. ✓ OAuth2 token acquisition
+2. ✓ Health endpoint (no auth)
 
 ### 4.3 Test Dartboard Authentication
 

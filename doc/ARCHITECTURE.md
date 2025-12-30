@@ -10,24 +10,26 @@ graph TB
     Client["Web Clients<br/>(Browser)"]
     Mobile["Mobile Clients"]
     
-    WSO2_APIM["WSO2 API Manager<br/>(API Gateway)"]
+    Nginx["Nginx<br/>(Reverse Proxy)"]
+    WSO2_APIM["WSO2 API Manager<br/>(API Gateway)<br/>Port 8243"]
     API_Gateway["Darts API Gateway<br/>(Port 8080)"]
     
     RMQ["RabbitMQ<br/>(Score Queue)"]
     
-    Dartboards -->|HTTPS + OAuth2| WSO2_APIM
+    Dartboards -->|HTTPS + OAuth2| Nginx
+    Nginx -->|/api/v1/*| WSO2_APIM
     Client -->|HTTP/WebSocket| Flask["Flask App<br/>(Port 5000)"]
     Mobile -->|HTTP/WebSocket| Flask
     
-    WSO2_APIM -->|Forwards| API_Gateway
+    WSO2_APIM -->|Validates & Forwards| API_Gateway
     API_Gateway -->|Publishes| RMQ
     RMQ -->|Consumer| Flask
 
     Flask -->|SQL| DB["PostgreSQL<br/>(Database)"]
     Flask -->|Token Validation| WSO2_IS["WSO2 Identity<br/>(Port 9443)"]
     API_Gateway -->|Token Validation| WSO2_IS
+    WSO2_APIM -->|Token Validation| WSO2_IS
 
-    Nginx["Nginx<br/>(Reverse Proxy)"]
     Nginx -->|http:5000| Flask
 
     Browser["User Browser"]
@@ -39,11 +41,12 @@ graph TB
     style WSO2_IS fill:#FF6B6B
     style WSO2_APIM fill:#E67E22
     style RMQ fill:#F5A623
+    style Nginx fill:#95A5A6
 ```
 
 ## Core Components
 
-### 1. API Gateway (src/api_gateway/app.py) **NEW**
+### 1. API Gateway (src/api_gateway/app.py) **ACTIVE**
 
 **Responsibilities:**
 - Secure REST API for dartboard hardware
@@ -52,8 +55,13 @@ graph TB
 - OpenAPI documentation
 - Token validation (JWKS or introspection)
 
+**Deployment:**
+- **Production**: Accessed through WSO2 APIM at `https://domain/api/v1/`
+- **Development**: Direct access at `http://localhost:8080` or via nginx at `/api-direct/v1/`
+- **APIM Integration**: APIM validates tokens and applies rate limiting before forwarding
+
 **Key Endpoints:**
-- POST /api/v1/dartboard/throw - Submit dartboard throw (secure)
+- POST /api/v1/dartboard/throw - Submit dartboard throw (secure, via APIM)
 - POST /api/v1/scores - Submit score manually
 - POST /api/v1/games - Create new game
 - POST /api/v1/game/actions/* - Game control (end turn, pause, continue)
@@ -64,7 +72,12 @@ graph TB
 - Replaces insecure `/api/Throw/zone` endpoint
 - Requires OAuth2 Bearer tokens
 - Scope-based authorization (dartboard:write, game:control, etc.)
-- Managed through WSO2 API Manager
+- **Managed through WSO2 API Manager** (active integration)
+
+**Rate Limiting (via APIM):**
+- Dartboard throws: 1000 requests/minute
+- Game control: 100 requests/minute
+- Health checks: Unlimited
 
 ### 2. Flask Application (src/app/app.py)
 
@@ -199,32 +212,42 @@ erDiagram
 
 ## Request Flow Diagram
 
-### Dartboard Score Submission Flow **NEW**
+### Dartboard Score Submission Flow **ACTIVE via APIM**
 
 ```mermaid
 sequenceDiagram
     participant Dartboard as Dartboard Hardware
+    participant Nginx as Nginx Proxy
     participant APIM as WSO2 API Manager
     participant Gateway as API Gateway
     participant RMQ as RabbitMQ
     participant Flask as Flask App
     participant DB as Database
+    participant IS as WSO2 Identity Server
 
     Note over Dartboard: Dart hits the board
     Dartboard->>Dartboard: Detect GPIO pins activated
     
     Note over Dartboard: First request or token expired
-    Dartboard->>APIM: POST /oauth2/token<br/>(client_credentials)
-    APIM->>Dartboard: Access Token (expires in 3600s)
+    Dartboard->>Nginx: POST /auth/oauth2/token<br/>(client_credentials)
+    Nginx->>IS: Forward token request
+    IS->>IS: Validate credentials
+    IS->>Nginx: Access Token (expires in 3600s)
+    Nginx->>Dartboard: Return token
     
-    Dartboard->>APIM: POST /api/v1/dartboard/throw<br/>Bearer token + pin data
-    APIM->>APIM: Validate token & rate limit
+    Dartboard->>Nginx: POST /api/v1/dartboard/throw<br/>Bearer token + pin data
+    Nginx->>APIM: Route to APIM gateway (port 8243)
+    APIM->>IS: Validate token via introspection
+    IS->>APIM: Token valid
+    APIM->>APIM: Check throttling policy<br/>(1000 req/min)
     APIM->>Gateway: Forward request
     
-    Gateway->>Gateway: Validate JWT token
+    Gateway->>Gateway: Validate JWT token (redundant)
     Gateway->>Gateway: Check scopes (dartboard:write)
     Gateway->>RMQ: Publish to darts.dartboard.throw
-    Gateway->>Dartboard: 201 Success
+    Gateway->>APIM: 201 Success
+    APIM->>Nginx: Forward response
+    Nginx->>Dartboard: Return success
     
     RMQ->>Flask: Consume message
     Flask->>Flask: Map pins to score
