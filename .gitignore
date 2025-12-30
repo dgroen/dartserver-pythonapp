@@ -99,6 +99,9 @@ credentials.json
 token
 tokens.json
 
+# WSO2 Configuration with credentials
+wso2apim-4-config/deployment.toml
+
 # API keys
 api_keys.json
 .api_keys
