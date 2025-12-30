@@ -132,7 +132,6 @@ services:
         condition: service_healthy
       wso2apim:
         condition: service_healthy
-        condition: service_healthy
     restart: unless-stopped
     networks:
       - darts-network
