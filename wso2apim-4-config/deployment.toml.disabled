@@ -1,0 +1,142 @@
+[server]
+hostname = "localhost"
+node_ip = "127.0.0.1"
+server_role = "default"
+enable_shutdown_via_file = true
+
+[super_admin]
+username = "admin"
+password = "admin"
+create_admin_account = true
+
+[user_store]
+type = "database"
+
+[database.apim_db]
+type = "h2"
+url = "jdbc:h2:./repository/database/WSO2AM_DB;DB_CLOSE_ON_EXIT=FALSE"
+username = "wso2carbon"
+password = "wso2carbon"
+
+[database.shared_db]
+type = "h2"
+url = "jdbc:h2:./repository/database/WSO2SHARED_DB;DB_CLOSE_ON_EXIT=FALSE"
+username = "wso2carbon"
+password = "wso2carbon"
+
+[keymanager.default]
+serverUrl = "https://wso2is:9443"
+introspectionUrl = "https://wso2is:9443/oauth2/introspect"
+tokenUrl = "https://wso2is:9443/oauth2/token"
+revokeUrl = "https://wso2is:9443/oauth2/revoke"
+scopeManagementUrl = "https://wso2is:9443/api/identity/oauth2/v1.0/scopes"
+userInfoUrl = "https://wso2is:9443/oauth2/userinfo"
+authorizeUrl = "https://wso2is:9443/oauth2/authorize"
+jwksUrl = "https://wso2is:9443/oauth2/jwks"
+certificateAlias = "wso2carbon"
+clientRegistrationEndpoint = "https://wso2is:9443/api/identity/oauth2/dcr/v1.1/register"
+issuer = "https://wso2is:9443"
+# Add your Key Manager OAuth2 credentials from WSO2 IS console (APIM_KeyManager application)
+username = "zPOCcMwMP7_6hOqL88BUDIiU6x4a"
+password = "BfUjEkRcfy52Nf8FzxhlzySMfNB6MbfNIqiQsTW9egMa"
+
+[[keymanager.default.grant_types]]
+displayName = "Code"
+value = "authorization_code"
+
+[[keymanager.default.grant_types]]
+displayName = "Implicit"
+value = "implicit"
+
+[[keymanager.default.grant_types]]
+displayName = "Password"
+value = "password"
+
+[[keymanager.default.grant_types]]
+displayName = "Client Credentials"
+value = "client_credentials"
+
+[[keymanager.default.grant_types]]
+displayName = "Refresh Token"
+value = "refresh_token"
+
+[[keymanager.default.grant_types]]
+displayName = "JWT Bearer"
+value = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+
+[[keymanager.default.certificate_type]]
+name = "JWKS"
+enabled = true
+
+[[keymanager.default.certificate_type]]
+name = "PEM"
+enabled = true
+
+[transport.https]
+listener.wso2.bind_address = "0.0.0.0"
+listener.wso2.port = 9443
+
+[apim.idp.server_url]
+server_url = "https://wso2is:9443"
+
+[apim.key_manager]
+service_url = "https://wso2is:9443"
+
+[apim.gateway.cache.gateway_token]
+enable = true
+expiry_time = 900
+
+[apim.throttling]
+enable_advanced_throttling = true
+enable_data_publishing = true
+traffic_manager_type = "Traffic Manager"
+traffic_manager_receiver_url_group = "tcp://127.0.0.1:9611"
+traffic_manager_auth_url_group = "ssl://127.0.0.1:9712"
+traffic_manager_receiver_username = "admin"
+traffic_manager_receiver_password = "admin"
+
+[apim.analytics]
+enable = true
+publisher_class = "org.wso2.am.analytics.publisher.default.DefaultAnalyticsDataPublisher"
+publisher_type = "DBEventPublisher"
+properties.enable_batch_event_publishing = true
+
+[apim.cache.km_token]
+enable = true
+expiry_time = 900
+
+[[apim.apim_apis]]
+api_name = "APIProductLifecycleWorkflow"
+api_version = "1.0.0"
+api_context = "/apiproductlifecycle"
+api_provider = "admin"
+
+[[apim.apim_apis]]
+api_name = "SubscriptionCreationWorkflow"
+api_version = "1.0.0"
+api_context = "/subscriptioncreation"
+api_provider = "admin"
+
+[apim.cors]
+enable = true
+allow_origins = ["*"]
+allow_methods = ["GET","PUT","POST","DELETE","PATCH"]
+allow_headers = ["authorization","Access-Control-Allow-Origin","Content-Type","SOAPAction"]
+allow_credentials = false
+
+[open_banking.gateway_certificate_validator.enable]
+value = false
+
+# OAuth2 OIDC configuration for APIM Portal authentication
+# Add your Portal OAuth2 credentials from WSO2 IS console (APIM application)
+[oauth2.oidc]
+client_id = "3gIJQHMEfwOP07LPQWE77L96I4oa"
+client_secret = "13LGugPmT1IpgRWN9PNgpKIKPwRdoInF1TybSNG7ROUa"
+server_url = "https://wso2is:9443"
+authorize_endpoint = "https://wso2is:9443/oauth2/authorize"
+token_endpoint = "https://wso2is:9443/oauth2/token"
+revoke_endpoint = "https://wso2is:9443/oauth2/revoke"
+userinfo_endpoint = "https://wso2is:9443/oauth2/userinfo"
+oidc_logout_endpoint = "https://wso2is:9443/oidc/logout"
+oidc_session_iframe_endpoint = "https://wso2is:9443/oidc/checksession"
+scope = "openid profile email"

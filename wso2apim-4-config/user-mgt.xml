@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<UserManager xmlns:svns="http://org.wso2.securevault/configuration">
+    <Realm>
+        <Configuration>
+            <AddAdmin>
+                <UserName>admin</UserName>
+                <Password>admin</Password>
+            </AddAdmin>
+            <AdminRole>admin</AdminRole>
+            <AdminUser>
+                <UserName>admin</UserName>
+                <Password>admin</Password>
+            </AdminUser>
+            <EveryOneRoleName>everyone</EveryOneRoleName>
+            <OverrideUsernameClaimFromInternalUsername>true</OverrideUsernameClaimFromInternalUsername>
+            <Property name="initializeNewClaimManager">true</Property>
+            <Property name="isCascadeDeleteEnabled">true</Property>
+            <Property name="dataSource">jdbc/SHARED_DB</Property>
+        </Configuration>
+        <UserStoreManager class="org.wso2.carbon.user.core.ldap.ActiveDirectoryUserStoreManager">
+            <Property name="MaxUserNameListLength">100</Property>
+            <Property name="PasswordJavaRegEx">^[\S]{5,30}$</Property>
+            <Property name="ReadGroups">true</Property>
+            <Property name="UsernameJavaRegExViolationErrorMsg">Username pattern policy violated</Property>
+            <Property name="UsernameJavaScriptRegEx">^[\S]{3,30}$</Property>
+            <Property name="MultiAttributeSeparator">,</Property>
+            <Property name="RolenameJavaScriptRegEx">^[\S]{3,30}$</Property>
+            <Property name="PasswordJavaRegExViolationErrorMsg">Password length should be within 5 to 30 characters</Property>
+            <Property name="MaxRoleNameListLength">100</Property>
+            <Property name="PasswordJavaScriptRegEx">^[\S]{5,30}$</Property>
+        </UserStoreManager>
+        <AuthorizationManager class="org.wso2.carbon.user.core.authorization.JDBCAuthorizationManager">
+            <Property name="AdminRoleManagementPermissions">/permission</Property>
+            <Property name="GroupAndRoleSeparationEnabled">false</Property>
+            <Property name="AuthorizationCacheEnabled">true</Property>
+            <Property name="GetAllRolesOfUserEnabled">false</Property>
+        </AuthorizationManager>
+    </Realm>
+</UserManager>

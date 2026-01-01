@@ -36,3 +36,8 @@ description: Coding companion for the dartserver application and infrastructure
 - Regularly refactor the codebase to improve readability and maintainability
 - Always update the changelog with significant changes made in PR's
 - Keep the README and other documentation files updated with relevant information
+- Always backup the database container volume before making schema changes
+- When working on performance improvements, profile the code to identify bottlenecks
+- Always ensure compatibility with existing APIs when making changes
+- When fixing bugs, write tests that replicate the issue before applying the fix
+- Always check for memory leaks and optimize resource usage in the dartserver application
