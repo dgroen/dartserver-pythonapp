@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key")
 # Enable CORS with credentials support - required for session cookies to work
-CORS(app, supports_credentials=True)
+CORS(app, supports_credentials=True, origins=["http://localhost:8080", "https://localhost:8080"])
 
 # WSO2 Identity Server Configuration
 WSO2_IS_URL = os.getenv("WSO2_IS_URL", "https://localhost:9443")
@@ -358,7 +358,16 @@ def get_openapi_spec_json():
                 s = o.replace("https://wso2-is:9443", WSO2_IS_URL)
                 s = s.replace("https://wso2-is", WSO2_IS_URL)
                 s = s.replace("wso2-is:9443", WSO2_IS_URL.replace("https://", ""))
-                return s.replace("wso2-is", WSO2_IS_URL.replace("https://", ""))
+                s = s.replace("wso2-is", WSO2_IS_URL.replace("https://", ""))
+                # Also replace the token URL with local proxy for Swagger UI
+                s = s.replace(
+                    f"{WSO2_IS_URL}/oauth2/token",
+                    "http://localhost:8080/oauth2/token",
+                )
+                return s.replace(
+                    "https://localhost:9443/oauth2/token",
+                    "http://localhost:8080/oauth2/token",
+                )
             return o
 
         spec_dict = _deep_replace(spec_dict)
@@ -431,7 +440,7 @@ def swagger_ui():
                                 dom_id: '#swagger-ui',
                                 deepLinking: true,
                                 // Ensure the OAuth redirect URI matches the browser origin
-                                oauth2RedirectUrl: window.location.origin + '/oauth2-redirect.html',
+                                oauth2RedirectUrl: window.location.origin + '/oauth2-redirect',
                                 presets: [
                                     SwaggerUIBundle.presets.apis,
                                     SwaggerUIStandalonePreset
@@ -468,7 +477,7 @@ def swagger_ui():
                                 dom_id: '#swagger-ui',
                                 deepLinking: true,
                                 // Ensure the OAuth redirect URI matches the browser origin
-                                oauth2RedirectUrl: window.location.origin + '/oauth2-redirect.html',
+                                oauth2RedirectUrl: window.location.origin + '/oauth2-redirect',
                                 presets: [
                                     SwaggerUIBundle.presets.apis,
                                     SwaggerUIStandalonePreset
@@ -1065,6 +1074,219 @@ def pause_game():
             ),
             500,
         )
+
+
+# OAuth2 token proxy for Swagger UI
+@app.route("/oauth2/token", methods=["POST", "OPTIONS"])
+def oauth2_token_proxy():
+    """
+    Proxy OAuth2 token requests from Swagger UI.
+    This allows the browser to get tokens without exposing client_secret.
+    """
+    # Handle CORS preflight
+    if request.method == "OPTIONS":
+        response = Response()
+        response.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
+        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response, 200
+
+    try:
+        # Log the request for debugging
+        logger.info(f"OAuth2 token proxy called with form data: {request.form}")
+        logger.info(f"OAuth2 token proxy called with JSON data: {request.get_json(silent=True)}")
+
+        # Try to get parameters from both form data and JSON
+        auth_code = request.form.get("code") or (request.get_json(silent=True) or {}).get("code")
+        redirect_uri = request.form.get("redirect_uri") or (
+            request.get_json(silent=True) or {}
+        ).get("redirect_uri")
+        grant_type = request.form.get("grant_type") or (request.get_json(silent=True) or {}).get(
+            "grant_type",
+            "authorization_code",
+        )
+        client_id = (
+            request.form.get("client_id")
+            or (request.get_json(silent=True) or {}).get("client_id")
+            or WSO2_IS_CLIENT_ID
+        )
+        scope = request.form.get("scope") or (request.get_json(silent=True) or {}).get("scope")
+
+        logger.info(
+            f"Extracted: code={auth_code}, redirect_uri={redirect_uri}, "
+            f"grant_type={grant_type}, scope={scope}",
+        )
+
+        # Build the token request data
+        token_data = {
+            "grant_type": grant_type,
+            "client_id": client_id,
+        }
+
+        # Add grant-type specific parameters
+        if grant_type == "authorization_code":
+            if not auth_code:
+                logger.error("Missing authorization code for authorization_code grant")
+                return (
+                    jsonify(
+                        {
+                            "error": "invalid_request",
+                            "error_description": "Missing authorization code",
+                        },
+                    ),
+                    400,
+                )
+            token_data["code"] = auth_code
+            token_data["redirect_uri"] = redirect_uri
+        elif grant_type == "client_credentials":
+            # Client credentials flow - just needs scope
+            if scope:
+                token_data["scope"] = scope
+        else:
+            logger.error(f"Unsupported grant type: {grant_type}")
+            return (
+                jsonify(
+                    {
+                        "error": "unsupported_grant_type",
+                        "error_description": f"Grant type {grant_type} is not supported",
+                    },
+                ),
+                400,
+            )
+
+        # Exchange for token using backend credentials
+        logger.info(
+            f"Requesting token at {WSO2_IS_INTERNAL_URL}/oauth2/token with grant_type={grant_type}",
+        )
+        token_response = requests.post(
+            f"{WSO2_IS_INTERNAL_URL}/oauth2/token",
+            data=token_data,
+            auth=(WSO2_IS_CLIENT_ID, WSO2_IS_CLIENT_SECRET),
+            verify=WSO2_IS_VERIFY_SSL,
+            timeout=10,
+        )
+
+        if token_response.status_code == 200:
+            logger.info("Token exchange successful")
+            response = jsonify(token_response.json())
+            response.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response, 200
+        logger.error(
+            f"Token exchange failed: {token_response.status_code} - {token_response.text}",
+        )
+        response = jsonify(token_response.json())
+        response.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response, token_response.status_code
+
+    except Exception as e:
+        logger.exception("Error in OAuth2 token proxy")
+        return jsonify({"error": "server_error", "error_description": str(e)}), 500
+
+
+# OAuth2 redirect handler for Swagger UI
+@app.route("/oauth2-redirect")
+def oauth2_redirect():
+    """Serve the OAuth2 redirect handler for Swagger UI"""
+    # This is the standard Swagger UI OAuth2 redirect handler
+    # It captures the authorization code and passes it to Swagger UI
+    html = """
+    <!DOCTYPE html>
+    <html lang="en-US">
+    <head>
+        <title>Swagger UI: OAuth2 Redirect</title>
+    </head>
+    <body>
+        <script>
+            'use strict';
+            function run () {
+                var oauth2 = window.opener.swaggerUIRedirectOauth2;
+                var sentState = oauth2.state;
+                var redirectUrl = oauth2.redirectUrl;
+                var isValid, qp, arr;
+
+                if (/code|token|error/.test(window.location.hash)) {
+                    qp = window.location.hash.substring(1);
+                } else {
+                    qp = location.search.substring(1);
+                }
+
+                arr = qp.split("&");
+                arr.forEach(function (v,i,_arr) { _arr[i] = '"' + v.replace('=', '":"') + '"';});
+                qp = qp ? JSON.parse('{' + arr.join() + '}',
+                        function (key, value) {
+                            return key === "" ? value : decodeURIComponent(value);
+                        }
+                ) : {};
+
+                isValid = qp.state === sentState;
+
+                if ((
+                  oauth2.auth.schema.get("flow") === "accessCode" ||
+                  oauth2.auth.schema.get("flow") === "authorizationCode" ||
+                  oauth2.auth.schema.get("flow") === "authorization_code"
+                ) && !oauth2.auth.code) {
+                    if (!isValid) {
+                        oauth2.errCb({
+                            authId: oauth2.auth.name,
+                            source: "auth",
+                            level: "warning",
+                            message: "Authorization may be unsafe, passed state was "
+                                + "changed in server. Passed state wasn't returned from auth server"
+                        });
+                    }
+
+                    if (qp.code) {
+                        delete oauth2.state;
+                        oauth2.auth.code = qp.code;
+                        oauth2.callback({auth: oauth2.auth, redirectUrl: redirectUrl});
+                    } else {
+                        let oauthErrorMsg;
+                        if (qp.error) {
+                            oauthErrorMsg = "[" + qp.error + "]: " +
+                                (qp.error_description
+                                    ? qp.error_description + ". "
+                                    : "no accessCode received from the server. ") +
+                                (qp.error_uri
+                                    ? "More info: " + qp.error_uri
+                                    : "");
+                        }
+
+                        oauth2.errCb({
+                            authId: oauth2.auth.name,
+                            source: "auth",
+                            level: "error",
+                            message: oauthErrorMsg
+                                || "[Authorization failed]: no accessCode received from the server"
+                        });
+                    }
+                } else {
+                    oauth2.callback({
+                        auth: oauth2.auth,
+                        token: qp,
+                        isValid: isValid,
+                        redirectUrl: redirectUrl
+                    });
+                }
+                window.close();
+            }
+
+            window.addEventListener('DOMContentLoaded', function () {
+              run();
+            });
+        </script>
+    </body>
+    </html>
+    """
+    return Response(html, mimetype="text/html")
+
+
+# Test route
+@app.route("/test")
+def test():
+    return "Test route working"
 
 
 # Error handlers

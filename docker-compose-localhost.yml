@@ -51,9 +51,9 @@ services:
     environment:
       - JAVA_OPTS=-Xms512m -Xmx1024m
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./helpers/init-wso2-databases.sql:/docker-entrypoint-initdb.d/init-wso2-databases.sql
+      - wso2is_data:/home/wso2carbon/wso2is-7.1.0
       - ./wso2is-7-config/deployment.toml:/home/wso2carbon/wso2is-7.1.0/repository/conf/deployment.toml:ro
+      - /tmp/postgresql.jar:/home/wso2carbon/wso2is-7.1.0/repository/components/lib/postgresql-42.7.3.jar:ro
     healthcheck:
       test: [ "CMD", "curl", "-k", "-f", "https://localhost:9443/api/health-check/v1.0/health" ]
       interval: 30s
@@ -112,8 +112,8 @@ services:
       WSO2_IS_URL: https://localhost:9443
       # Internal Docker network URL for backend calls from the api-gateway container
       WSO2_IS_INTERNAL_URL: https://darts-wso2is:9443
-      WSO2_IS_CLIENT_ID: ${WSO2_IS_CLIENT_ID:-L2rvop0o4DfJsqpqsh44cUgVn_ga}
-      WSO2_IS_CLIENT_SECRET: ${WSO2_IS_CLIENT_SECRET:-VhNFUK083Q2iUsu8GCWfcJTVCX8a}
+      WSO2_IS_CLIENT_ID: ${WSO2_CLIENT_ID:-qbAfIfHMVTQd7BD_FRfaM1hvTewa}
+      WSO2_IS_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-2iP2XubBjEaPhvq2Bhx3NWtJWKygrp_UHIhr0FQKx5ga}
 
       # Introspection credentials (required for token validation)
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}

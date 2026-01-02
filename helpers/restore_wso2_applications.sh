@@ -56,8 +56,18 @@ fi
 
 echo ""
 
-# Step 3: Configure APIM OAuth2 clients
-log_info "Step 3: Configuring APIM OAuth2 clients..."
+# Step 3: Register DartsApp OAuth2 client
+log_info "Step 3: Registering DartsApp OAuth2 client..."
+if python3 helpers/register_darts_app.py; then
+    log_info "✓ DartsApp registered successfully"
+else
+    log_warn "⚠ DartsApp registration failed (may already exist)"
+fi
+
+echo ""
+
+# Step 4: Configure APIM OAuth2 clients
+log_info "Step 4: Configuring APIM OAuth2 clients..."
 if python3 helpers/configure_wso2_oauth_apps.py; then
     log_info "✓ APIM clients configured successfully"
 else
@@ -66,8 +76,8 @@ fi
 
 echo ""
 
-# Step 4: Setup APIM OAuth2 clients
-log_info "Step 4: Setting up APIM OAuth2 clients..."
+# Step 5: Setup APIM OAuth2 clients
+log_info "Step 5: Setting up APIM OAuth2 clients..."
 if bash helpers/setup_apim_oauth2_clients.sh; then
     log_info "✓ APIM OAuth2 clients setup successfully"
 else
@@ -76,8 +86,8 @@ fi
 
 echo ""
 
-# Step 5: Configure WSO2 IS for APIM
-log_info "Step 5: Configuring WSO2 IS for APIM integration..."
+# Step 6: Configure WSO2 IS for APIM
+log_info "Step 6: Configuring WSO2 IS for APIM integration..."
 if python3 helpers/configure_wso2_is_for_apim.py; then
     log_info "✓ WSO2 IS configured for APIM"
 else
