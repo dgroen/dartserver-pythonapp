@@ -85,7 +85,7 @@ class DartboardClient:
             },
             verify=True  # Set to False for development with self-signed certs
         )
-        
+
         if response.status_code == 200:
             token_data = response.json()
             self.access_token = token_data["access_token"]
@@ -173,36 +173,36 @@ private:
     unsigned long tokenExpiresAt;
 
 public:
-    DartboardClient(String cId, String cSecret, String tUrl, String gUrl, String bType) 
-        : clientId(cId), clientSecret(cSecret), tokenUrl(tUrl), 
+    DartboardClient(String cId, String cSecret, String tUrl, String gUrl, String bType)
+        : clientId(cId), clientSecret(cSecret), tokenUrl(tUrl),
           gatewayUrl(gUrl), boardType(bType), tokenExpiresAt(0) {}
 
     bool getAccessToken() {
         HTTPClient http;
         http.begin(tokenUrl);
-        
+
         // Set authorization header (Basic Auth)
         String auth = clientId + ":" + clientSecret;
         String authHeader = "Basic " + base64::encode(auth);
         http.addHeader("Authorization", authHeader);
         http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-        
+
         String payload = "grant_type=client_credentials&scope=dartboard:write";
         int httpCode = http.POST(payload);
-        
+
         if (httpCode == 200) {
             String response = http.getString();
             DynamicJsonDocument doc(1024);
             deserializeJson(doc, response);
-            
+
             accessToken = doc["access_token"].as<String>();
             int expiresIn = doc["expires_in"];
             tokenExpiresAt = millis() + (expiresIn - 60) * 1000; // Refresh 60s early
-            
+
             http.end();
             return true;
         }
-        
+
         http.end();
         return false;
     }
@@ -223,20 +223,20 @@ public:
         HTTPClient http;
         String url = gatewayUrl + "/api/v1/dartboard/throw";
         http.begin(url);
-        
+
         http.addHeader("Authorization", "Bearer " + accessToken);
         http.addHeader("Content-Type", "application/json");
-        
+
         DynamicJsonDocument doc(256);
         doc["masterPin"] = masterPin;
         doc["slavePin"] = slavePin;
         doc["boardType"] = boardType;
-        
+
         String payload;
         serializeJson(doc, payload);
-        
+
         int httpCode = http.POST(payload);
-        
+
         if (httpCode == 201) {
             Serial.println("Throw submitted successfully");
             http.end();
@@ -260,7 +260,7 @@ DartboardClient* dartboard;
 
 void setup() {
     Serial.begin(115200);
-    
+
     // Connect to WiFi
     WiFi.begin("YOUR_SSID", "YOUR_PASSWORD");
     while (WiFi.status() != WL_CONNECTED) {
@@ -268,7 +268,7 @@ void setup() {
         Serial.print(".");
     }
     Serial.println("\nWiFi connected");
-    
+
     // Initialize dartboard client
     dartboard = new DartboardClient(
         "dartboard_001_client",
@@ -326,12 +326,12 @@ def submit_with_backoff(client, master_pin, slave_pin, max_retries=5):
     for attempt in range(max_retries):
         if client.submit_throw(master_pin, slave_pin):
             return True
-        
+
         # Exponential backoff: 1s, 2s, 4s, 8s, 16s
         wait_time = min(2 ** attempt, 30)  # Cap at 30 seconds
         print(f"Retry {attempt + 1}/{max_retries} in {wait_time}s...")
         time.sleep(wait_time)
-    
+
     return False
 ```
 

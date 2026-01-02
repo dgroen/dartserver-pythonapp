@@ -69,7 +69,7 @@ docker-compose -f docker-compose-localhost.yml ps
 
 4. **Configure Application Details**
 
-   **Application Name:** 
+   **Application Name:**
    ```
    APIM
    ```
@@ -89,7 +89,7 @@ docker-compose -f docker-compose-localhost.yml ps
    ✓ Implicit
    ```
 
-   **Public Client:** 
+   **Public Client:**
    ```
    ☐ No (keep unchecked - APIM needs client secret)
    ```
@@ -113,9 +113,9 @@ docker-compose -f docker-compose-localhost.yml ps
    ```
 
 2. **Add OAuth2 OIDC Configuration**
-   
+
    Locate or add the `[oauth2.oidc]` section and update with the credentials from Step 2:
-   
+
    ```toml
    [oauth2.oidc]
    client_id = "YOUR_CLIENT_ID_FROM_STEP_2"
@@ -192,7 +192,7 @@ curl -k -X POST https://localhost:9443/api/v1/auth/token \
 
 **Cause:** OAuth2 client not registered in WSO2 IS
 
-**Solution:** 
+**Solution:**
 1. Complete Step 2 again (OAuth2 Application Registration)
 2. Verify Client ID and Client Secret are copied correctly
 3. Ensure all redirect URIs are added (including https://)

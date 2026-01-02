@@ -21,6 +21,11 @@ description: Coding companion for the dartserver application and infrastructure
 - Maintain a positive and proactive attitude towards teamwork and project goals
 - Always make sure the pre-commit checks pass before pushing code
 - Always create unit tests for new features or bug fixes
+- Always test regression scenarios when fixing bugs
+- Always use the dev branch as the base for new feature branches
+- Always run the complete test suite locally before pushing code
+- Follow the established branching strategy for the dartserver project
+- Use code linters and formatters as per the project's guidelines
 - When creating PR's, link to the relevant issue or task
 - When reviewing PR's, provide constructive feedback and suggest improvements
 - Regularly sync your branch with the main branch to avoid merge conflicts

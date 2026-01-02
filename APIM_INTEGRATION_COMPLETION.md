@@ -127,13 +127,13 @@ APIM portals (Publisher, DevPortal, Admin) use OAuth2 to authenticate with WSO2 
 
    ```
    Application Name: APIM
-   
+
    Redirect URIs:
    - https://localhost:9444/publisher/services/auth/callback
    - https://localhost:9444/devportal/services/auth/callback
    - https://localhost:9444/admin/services/auth/callback
    - https://localhost:9444/analytics/services/auth/callback
-   
+
    Grant Types:
    - Code
    - Refresh Token

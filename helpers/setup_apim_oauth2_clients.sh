@@ -59,10 +59,10 @@ ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | grep -o '"access_token":"[^"]*' | cut -d
 
 if [ ! -z "$ACCESS_TOKEN" ]; then
   log_success "Got access token from WSO2 IS"
-  
+
   # Try to register via Service Provider API
   log_info "Registering APIM as service provider in WSO2 IS..."
-  
+
   SP_RESPONSE=$(curl -k -s -X POST \
     "https://$IS_HOST:$IS_PORT/api/server/v1/applications" \
     -H "Content-Type: application/json" \
@@ -75,9 +75,9 @@ if [ ! -z "$ACCESS_TOKEN" ]; then
         "oauth2"
       ]
     }')
-  
+
   APP_ID=$(echo "$SP_RESPONSE" | grep -o '"id":"[^"]*' | cut -d'"' -f4 | head -1)
-  
+
   if [ ! -z "$APP_ID" ]; then
     log_success "Service provider created: $APP_ID"
     echo ""

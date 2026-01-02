@@ -29,7 +29,7 @@ while [ $ELAPSED -lt $MAX_WAIT_TIME ]; do
         echo "✓ WSO2 APIM is responding"
         break
     fi
-    
+
     echo "  Waiting... (${ELAPSED}s/${MAX_WAIT_TIME}s)"
     sleep $INTERVAL
     ELAPSED=$((ELAPSED + INTERVAL))

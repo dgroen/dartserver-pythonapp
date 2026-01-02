@@ -13,7 +13,7 @@ async function loadUserProfile() {
         if (!response.ok) {
             throw new Error('Failed to load user profile');
         }
-        
+
         const data = await response.json();
         displayUserProfile(data);
     } catch (error) {
@@ -28,17 +28,17 @@ async function loadUserProfile() {
 function displayUserProfile(data) {
     document.getElementById('loading-message').style.display = 'none';
     document.getElementById('profile-info').style.display = 'block';
-    
+
     // Display username
     document.getElementById('display-username').textContent = data.username || 'N/A';
-    
+
     // Display email (we'll need to get this from user info API)
     // For now, we'll fetch it separately
     fetchUserEmail();
-    
+
     // Display roles
     if (data.roles && data.roles.length > 0) {
-        const rolesHtml = data.roles.map(role => 
+        const rolesHtml = data.roles.map(role =>
             `<span class="role-badge role-${role}">${role}</span>`
         ).join(' ');
         document.getElementById('display-roles').innerHTML = rolesHtml;
@@ -69,7 +69,7 @@ async function loadUserStatistics() {
         if (!response.ok) {
             throw new Error('Failed to load statistics');
         }
-        
+
         const data = await response.json();
         if (data.success && data.statistics) {
             displayStatistics(data.statistics);
@@ -88,27 +88,27 @@ async function loadUserStatistics() {
 function displayStatistics(stats) {
     document.getElementById('stats-loading').style.display = 'none';
     document.getElementById('statistics').style.display = 'grid';
-    
+
     // Total games
     document.getElementById('total-games').textContent = stats.total_games || 0;
-    
+
     // Games won
     document.getElementById('games-won').textContent = stats.games_won || 0;
-    
+
     // Win rate
-    const winRate = stats.total_games > 0 
-        ? ((stats.games_won / stats.total_games) * 100).toFixed(1) 
+    const winRate = stats.total_games > 0
+        ? ((stats.games_won / stats.total_games) * 100).toFixed(1)
         : 0;
     document.getElementById('win-rate').textContent = `${winRate}%`;
-    
+
     // Average score
-    document.getElementById('avg-score').textContent = stats.average_score 
-        ? stats.average_score.toFixed(1) 
+    document.getElementById('avg-score').textContent = stats.average_score
+        ? stats.average_score.toFixed(1)
         : '0';
-    
+
     // Best finish
     document.getElementById('best-finish').textContent = stats.best_finish || '-';
-    
+
     // Total throws
     document.getElementById('total-throws').textContent = stats.total_throws || 0;
 }
@@ -120,7 +120,7 @@ async function loadRecentGames() {
         if (!response.ok) {
             throw new Error('Failed to load games');
         }
-        
+
         const data = await response.json();
         if (data.success && data.games) {
             displayRecentGames(data.games);
@@ -138,21 +138,21 @@ async function loadRecentGames() {
 
 function displayRecentGames(games) {
     document.getElementById('games-loading').style.display = 'none';
-    
+
     if (games.length === 0) {
         document.getElementById('games-error').textContent = 'No games played yet.';
         document.getElementById('games-error').style.display = 'block';
         return;
     }
-    
+
     const gamesContainer = document.getElementById('recent-games');
     gamesContainer.innerHTML = games.map(game => {
         const date = new Date(game.started_at || game.finished_at);
         const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-        
+
         const resultClass = game.is_winner ? 'won' : 'lost';
         const resultText = game.is_winner ? 'Won' : 'Lost';
-        
+
         return `
             <div class="game-item">
                 <div class="game-info-left">

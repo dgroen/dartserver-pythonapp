@@ -33,7 +33,7 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
         echo "✓ WSO2 APIM is responding"
         break
     fi
-    
+
     echo "  Waiting... (${ELAPSED}s/${MAX_WAIT}s)"
     sleep 10
     ELAPSED=$((ELAPSED + 10))
@@ -52,7 +52,7 @@ ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | grep -o '"access_token":"[^"]*' | cut -d
 if [ -z "$ACCESS_TOKEN" ]; then
     # Try alternative approach - use basic auth directly
     echo "Direct token endpoint not available, using admin API directly..."
-    
+
     # Configure Key Manager via deployment.toml instead
     echo "✓ APIM will use default Key Manager configuration"
 else

@@ -9,18 +9,18 @@ graph TB
     Dartboards["Dartboard Hardware<br/>(OAuth2 Client)"]
     Client["Web Clients<br/>(Browser)"]
     Mobile["Mobile Clients"]
-    
+
     Nginx["Nginx<br/>(Reverse Proxy)"]
     WSO2_APIM["WSO2 API Manager<br/>(API Gateway)<br/>Port 8243"]
     API_Gateway["Darts API Gateway<br/>(Port 8080)"]
-    
+
     RMQ["RabbitMQ<br/>(Score Queue)"]
-    
+
     Dartboards -->|HTTPS + OAuth2| Nginx
     Nginx -->|/api/v1/*| WSO2_APIM
     Client -->|HTTP/WebSocket| Flask["Flask App<br/>(Port 5000)"]
     Mobile -->|HTTP/WebSocket| Flask
-    
+
     WSO2_APIM -->|Validates & Forwards| API_Gateway
     API_Gateway -->|Publishes| RMQ
     RMQ -->|Consumer| Flask
@@ -227,28 +227,28 @@ sequenceDiagram
 
     Note over Dartboard: Dart hits the board
     Dartboard->>Dartboard: Detect GPIO pins activated
-    
+
     Note over Dartboard: First request or token expired
     Dartboard->>Nginx: POST /auth/oauth2/token<br/>(client_credentials)
     Nginx->>IS: Forward token request
     IS->>IS: Validate credentials
     IS->>Nginx: Access Token (expires in 3600s)
     Nginx->>Dartboard: Return token
-    
+
     Dartboard->>Nginx: POST /api/v1/dartboard/throw<br/>Bearer token + pin data
     Nginx->>APIM: Route to APIM gateway (port 8243)
     APIM->>IS: Validate token via introspection
     IS->>APIM: Token valid
     APIM->>APIM: Check throttling policy<br/>(1000 req/min)
     APIM->>Gateway: Forward request
-    
+
     Gateway->>Gateway: Validate JWT token (redundant)
     Gateway->>Gateway: Check scopes (dartboard:write)
     Gateway->>RMQ: Publish to darts.dartboard.throw
     Gateway->>APIM: 201 Success
     APIM->>Nginx: Forward response
     Nginx->>Dartboard: Return success
-    
+
     RMQ->>Flask: Consume message
     Flask->>Flask: Map pins to score
     Flask->>DB: Save throw

@@ -18,7 +18,7 @@ The `deployment.toml` file contains sensitive OAuth2 credentials and is **not tr
    - **Name:** `APIM_KeyManager`
    - **Grant Types:** Client Credentials, Password, Refresh Token
    - **Redirect URL:** `https://localhost:9444/commonauth`
-   
+
    After creation, copy **Client ID** and **Client Secret** from Protocol tab.
 
    #### Application 2: APIM (Portal Authentication)
@@ -30,7 +30,7 @@ The `deployment.toml` file contains sensitive OAuth2 credentials and is **not tr
      - `https://localhost:9444/devportal/services/auth/callback`
      - `https://localhost:9444/admin/services/auth/callback`
      - `https://localhost:9444/analytics/services/auth/callback`
-   
+
    After creation, copy **Client ID** and **Client Secret** from Protocol tab.
 
 3. **Update deployment.toml with credentials:**
@@ -41,7 +41,7 @@ The `deployment.toml` file contains sensitive OAuth2 credentials and is **not tr
    [keymanager.default]
    username = "PASTE_KEY_MANAGER_CLIENT_ID_HERE"  # From APIM_KeyManager app
    password = "PASTE_KEY_MANAGER_CLIENT_SECRET_HERE"
-   
+
    [oauth2.oidc]
    client_id = "PASTE_PORTAL_CLIENT_ID_HERE"  # From APIM app
    client_secret = "PASTE_PORTAL_CLIENT_SECRET_HERE"

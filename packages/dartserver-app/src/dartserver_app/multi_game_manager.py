@@ -133,9 +133,11 @@ class MultiGameManager:
             if game_data_players is not None:
                 for idx, gp in enumerate(game_data_players):
                     name = gp.get("name") or gp.get("player_name") or f"Player {idx + 1}"
-                    player_data = {"name": name}
-                    # Score may be present on the replay player object
-                    player_data["score"] = gp.get("score", 0)
+                    player_data = {
+                        "name": name,
+                        # Score may be present on the replay player object
+                        "score": gp.get("score", 0),
+                    }
                     player_info.append(player_data)
                 players_for_count = game_data_players
             else:

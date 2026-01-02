@@ -919,7 +919,7 @@ def end_turn():
     Publishes turn end event to RabbitMQ
     """
     try:
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
         game_id = data.get("game_id")
 
         message = {
