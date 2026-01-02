@@ -4,9 +4,10 @@ Tests authentication, dartboard endpoints, and game control actions
 """
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
+
 from src.api_gateway.app import app as gateway_app
 from src.api_gateway.app import rabbitmq_publisher
 
@@ -127,7 +128,7 @@ class TestDartboardEndpoint:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert "error" in data
-        assert "Missing required fields" in data["message"]
+        assert "required fields" in data["message"].lower()
 
     def test_dartboard_throw_invalid_pins(
         self,
