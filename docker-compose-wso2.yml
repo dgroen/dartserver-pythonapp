@@ -46,6 +46,7 @@ services:
   wso2is:
     image: wso2/wso2is:7.1.0
     container_name: darts-wso2is
+    user: root
     ports:
       - "9443:9443" # HTTPS port
       - "9763:9763" # HTTP port
@@ -53,9 +54,18 @@ services:
       - JAVA_OPTS=-Xms512m -Xmx1024m
       - CONSOLE_SERVER_ORIGIN=https://letsplaydarts.eu/auth
       - SERVER_ORIGIN=https://letsplaydarts.eu/auth
+      - WSO2_DB_HOST=postgres
+      - WSO2_DB_PORT=5432
+      - WSO2_DB_USER=postgres
+      - WSO2_DB_PASSWORD=postgres
+      - WSO2_IDENTITY_DB=wso2is_identity
+      - WSO2_SHARED_DB=wso2is_shared
     volumes:
       - wso2is_data:/home/wso2carbon/wso2is-7.1.0
+      - ./helpers/wso2is-entrypoint.sh:/home/wso2carbon/wso2is-entrypoint.sh:ro
       - ./wso2is-7-config/deployment.toml:/home/wso2carbon/wso2is-7.1.0/repository/conf/deployment.toml:ro
+      - ./drivers/postgresql.jar:/home/wso2carbon/wso2is-7.1.0/repository/components/lib/postgresql-42.7.3.jar:ro
+    entrypoint: [ "/home/wso2carbon/wso2is-entrypoint.sh" ]
     healthcheck:
       test: [ "CMD", "curl", "-k", "-f", "https://localhost:9443/api/health-check/v1.0/health" ]
       interval: 30s

@@ -4,14 +4,25 @@ WSO2 Identity Server Role and Group Configuration Script
 This script configures roles and groups for the Darts Game application via SCIM2 API
 """
 
+import os
 import sys
+from pathlib import Path
 
 import requests
 
-# WSO2 IS Configuration
-WSO2_IS_URL = "https://letsplaydarts.eu/auth"
-WSO2_ADMIN_USER = "admin"
-WSO2_ADMIN_PASSWORD = "admin"  # pragma: allowlist secret
+# Load .env if available so WSO2_* values come from local configuration
+try:
+    from dotenv import load_dotenv
+
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    load_dotenv(env_path)
+except ImportError:
+    print("⚠ python-dotenv not installed; ensure WSO2_* env vars are set or install python-dotenv.")
+
+# WSO2 IS Configuration (populated from environment / .env)
+WSO2_IS_URL = os.getenv("WSO2_IS_URL", "https://localhost:9443")
+WSO2_ADMIN_USER = os.getenv("WSO2_ADMIN_USER", "admin")
+WSO2_ADMIN_PASSWORD = os.getenv("WSO2_ADMIN_PASSWORD", "admin")  # pragma: allowlist secret
 
 # Disable SSL warnings for self-signed certificates
 requests.packages.urllib3.disable_warnings()  # type: ignore
@@ -161,17 +172,50 @@ class WSO2RoleManager:
         print(f"   Response: {response.text}")
         return []
 
-    def setup_user_roles(self, username, roles):
-        """Setup roles for a user by adding them to appropriate groups"""
-        print(f"\n{'='*60}")
+    def ensure_user(self, username, password, email):
+        """Ensure a SCIM user exists; create if missing."""
+        user = self.get_user_by_username(username)
+        if user:
+            return user
+
+        url = f"{self.base_url}/scim2/Users"
+        payload = {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "userName": username,
+            "password": password,
+            "active": True,
+            "emails": [{"primary": True, "value": email}],
+        }
+
+        print(f"➕ Creating user: {username}")
+        response = requests.post(
+            url,
+            auth=self.auth,
+            headers=self.headers,
+            json=payload,
+            verify=False,
+        )
+
+        if response.status_code in (200, 201):
+            user = response.json()
+            print(f"✅ Created user: {user['userName']} (ID: {user['id']})")
+            return user
+
+        print(f"❌ Error creating user: {response.status_code}")
+        print(f"   Response: {response.text}")
+        return None
+
+    def setup_user_roles(self, username, roles, password=None, email=None):
+        """Setup roles for a user by creating the user (if missing) and adding them to groups."""
+        print(f"\n{'=' * 60}")
         print(f"🎯 Setting up roles for user: {username}")
         print(f"   Roles to assign: {', '.join(roles)}")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
-        # Step 1: Get user
-        user = self.get_user_by_username(username)
+        # Step 1: Get or create user
+        user = self.ensure_user(username, password or "ChangeMe123!", email or "user@example.com")
         if not user:
-            print(f"\n❌ Cannot proceed: User '{username}' not found")
+            print(f"\n❌ Cannot proceed: User '{username}' could not be ensured")
             return False
 
         user_id = user["id"]
@@ -199,9 +243,9 @@ class WSO2RoleManager:
                 success = False
 
         # Step 3: Verify final group membership
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"📋 Final Group Membership for '{username}':")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         self.get_user_groups(user_id)
 
         return success
@@ -216,18 +260,23 @@ def main():
     """,
     )
 
+    print(f"WSO2 base URL: {WSO2_IS_URL}")
+    print(f"Admin user   : {WSO2_ADMIN_USER}")
+
     # Initialize manager
     manager = WSO2RoleManager(WSO2_IS_URL, WSO2_ADMIN_USER, WSO2_ADMIN_PASSWORD)
 
     # Configure roles for Dennis
     username = "Dennis"
+    password = "Password123!"  # TODO: change immediately after creation
+    email = "dennis@example.com"
     roles = ["gamemaster"]  # Add more roles as needed: ["gamemaster", "admin", "player"]
 
     # Setup roles
-    success = manager.setup_user_roles(username, roles)
+    success = manager.setup_user_roles(username, roles, password=password, email=email)
 
     # Final status
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     if success:
         print("✅ Role configuration completed successfully!")
         print("\n📝 Next steps:")
@@ -238,7 +287,7 @@ def main():
     else:
         print("⚠️  Role configuration completed with some errors")
         print("   Please check the output above for details")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     return 0 if success else 1
 

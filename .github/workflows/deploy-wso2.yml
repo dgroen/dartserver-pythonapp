@@ -1,0 +1,160 @@
+name: Deploy WSO2 Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - test
+          - staging
+          - production
+      skip_apim:
+        description: 'Skip APIM OAuth setup'
+        required: false
+        type: boolean
+        default: false
+      skip_validation:
+        description: 'Skip validation checks'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-wso2:
+    name: Deploy WSO2 to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests python-dotenv
+
+      - name: Create environment file
+        env:
+          WSO2_IS_URL: ${{ secrets.WSO2_IS_URL }}
+          WSO2_IS_INTERNAL_URL: ${{ secrets.WSO2_IS_INTERNAL_URL }}
+          WSO2_ADMIN_USERNAME: ${{ secrets.WSO2_ADMIN_USERNAME }}
+          WSO2_ADMIN_PASSWORD: ${{ secrets.WSO2_ADMIN_PASSWORD }}
+          WSO2_CLIENT_ID: ${{ secrets.WSO2_CLIENT_ID }}
+          WSO2_CLIENT_SECRET: ${{ secrets.WSO2_CLIENT_SECRET }}
+          WSO2_REDIRECT_URI: ${{ secrets.WSO2_REDIRECT_URI }}
+          WSO2_POST_LOGOUT_REDIRECT_URI: ${{ secrets.WSO2_POST_LOGOUT_REDIRECT_URI }}
+          WSO2_IS_VERIFY_SSL: ${{ secrets.WSO2_IS_VERIFY_SSL }}
+        run: |
+          cat > .env.${{ inputs.environment }} << 'EOF'
+          WSO2_IS_URL=${{ secrets.WSO2_IS_URL }}
+          WSO2_IS_INTERNAL_URL=${{ secrets.WSO2_IS_INTERNAL_URL }}
+          WSO2_ADMIN_USERNAME=${{ secrets.WSO2_ADMIN_USERNAME }}
+          WSO2_ADMIN_PASSWORD=${{ secrets.WSO2_ADMIN_PASSWORD }}
+          WSO2_CLIENT_ID=${{ secrets.WSO2_CLIENT_ID }}
+          WSO2_CLIENT_SECRET=${{ secrets.WSO2_CLIENT_SECRET }}
+          WSO2_REDIRECT_URI=${{ secrets.WSO2_REDIRECT_URI }}
+          WSO2_POST_LOGOUT_REDIRECT_URI=${{ secrets.WSO2_POST_LOGOUT_REDIRECT_URI }}
+          WSO2_IS_VERIFY_SSL=${{ secrets.WSO2_IS_VERIFY_SSL }}
+          EOF
+
+      - name: Setup SSH for remote deployment
+        if: inputs.environment != 'test'
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          
+          cat > ~/.ssh/config << 'SSHCONFIG'
+          Host deploy-server
+            HostName ${{ secrets.DEPLOY_SERVER_HOST }}
+            Port ${{ secrets.DEPLOY_SERVER_PORT }}
+            User ${{ secrets.DEPLOY_SERVER_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+          SSHCONFIG
+
+      - name: Run WSO2 setup (local)
+        if: inputs.environment == 'test'
+        run: |
+          python3 helpers/setup_wso2_complete.py \
+            --env ${{ inputs.environment }} \
+            --env-file .env.${{ inputs.environment }} \
+            ${{ inputs.skip_apim && '--skip-apim' || '' }} \
+            ${{ inputs.skip_validation && '--no-validate' || '' }} \
+            --verbose
+
+      - name: Copy scripts to remote server
+        if: inputs.environment != 'test'
+        run: |
+          # Create deployment package
+          tar czf wso2-setup.tar.gz \
+            helpers/setup_wso2_complete.py \
+            helpers/setup_wso2_roles.py \
+            helpers/configure_wso2_oauth_apps.py \
+            helpers/register_darts_app.py \
+            helpers/configure_wso2_redirects.py \
+            .env.${{ inputs.environment }}
+          
+          # Copy to remote server
+          scp wso2-setup.tar.gz deploy-server:/tmp/
+          
+          # Extract on remote server
+          ssh deploy-server "
+            mkdir -p /tmp/wso2-setup
+            cd /tmp/wso2-setup
+            tar xzf /tmp/wso2-setup.tar.gz
+          "
+
+      - name: Run WSO2 setup (remote)
+        if: inputs.environment != 'test'
+        run: |
+          ssh deploy-server "
+            cd /tmp/wso2-setup
+            python3 helpers/setup_wso2_complete.py \
+              --env ${{ inputs.environment }} \
+              --env-file .env.${{ inputs.environment }} \
+              ${{ inputs.skip_apim && '--skip-apim' || '' }} \
+              ${{ inputs.skip_validation && '--no-validate' || '' }} \
+              --verbose
+          "
+
+      - name: Restart services
+        if: inputs.environment != 'test'
+        run: |
+          ssh deploy-server "
+            cd /opt/dartserver
+            docker-compose restart wso2apim
+            docker-compose restart darts-app
+          "
+
+      - name: Verify deployment
+        run: |
+          echo "✅ WSO2 setup completed for ${{ inputs.environment }}"
+          echo ""
+          echo "Next steps:"
+          echo "1. Verify WSO2 IS at: ${{ secrets.WSO2_IS_URL }}"
+          echo "2. Test login flow at: ${{ secrets.WSO2_REDIRECT_URI }}"
+          echo "3. Check application logs for any errors"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f .env.${{ inputs.environment }}
+          rm -f wso2-setup.tar.gz
+          if [ -f ~/.ssh/deploy_key ]; then
+            rm -f ~/.ssh/deploy_key
+          fi

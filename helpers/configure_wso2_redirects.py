@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
 Script to configure WSO2 Identity Server OAuth2 Application Redirect URIs
-This script updates the service provider to include both callback and post-logout redirect URIs
+Automates callback regex/post-logout configuration via server/v1 applications API.
 """
 
 import os
 import sys
 import time
+from urllib.parse import urlparse
 
 import requests
 from dotenv import load_dotenv
@@ -18,150 +19,144 @@ requests.packages.urllib3.disable_warnings()  # type: ignore
 load_dotenv()
 
 # WSO2 IS Configuration
-WSO2_IS_URL = os.getenv("WSO2_IS_URL", "https://letsplaydarts.eu/auth")
-WSO2_CLIENT_ID = os.getenv("WSO2_CLIENT_ID", "")
-WSO2_CLIENT_SECRET = os.getenv("WSO2_CLIENT_SECRET", "")
+WSO2_IS_URL = os.getenv("WSO2_IS_URL", "https://localhost:9443")
+WSO2_CLIENT_ID = os.getenv("WSO2_CLIENT_ID", "")  # used to locate the app
+WSO2_APP_NAME = os.getenv("WSO2_APP_NAME", "DartsApp")
 WSO2_ADMIN_USERNAME = os.getenv("WSO2_ADMIN_USERNAME", "admin")
 WSO2_ADMIN_PASSWORD = os.getenv("WSO2_ADMIN_PASSWORD", "admin")
 WSO2_IS_VERIFY_SSL = os.getenv("WSO2_IS_VERIFY_SSL", "False").lower() == "true"
 
 # Redirect URIs to register
-CALLBACK_URI = os.getenv("WSO2_REDIRECT_URI", "https://letsplaydarts.eu/callback")
-POST_LOGOUT_URI = os.getenv("WSO2_POST_LOGOUT_REDIRECT_URI", "https://letsplaydarts.eu/")
+CALLBACK_URI = os.getenv("WSO2_REDIRECT_URI", "https://localhost:5000/callback")
+POST_LOGOUT_URI = os.getenv("WSO2_POST_LOGOUT_REDIRECT_URI", "https://localhost:5000/")
 
 # API endpoints
 API_BASE = f"{WSO2_IS_URL}/api/server/v1"
 APPLICATIONS_ENDPOINT = f"{API_BASE}/applications"
 
 
-def get_access_token():
-    """Get access token using client credentials"""
-    token_url = f"{WSO2_IS_URL}/oauth2/token"
-
-    try:
-        response = requests.post(
-            token_url,
-            auth=(WSO2_CLIENT_ID, WSO2_CLIENT_SECRET),
-            data={
-                "grant_type": "client_credentials",
-                "scope": "internal_application_mgt_view internal_application_mgt_update",
-            },
-            verify=WSO2_IS_VERIFY_SSL,
-            timeout=10,
-        )
-
-        if response.status_code == 200:
-            return response.json().get("access_token")
-        print(f"❌ Failed to get access token: {response.status_code}")
-        print(f"Response: {response.text}")
-        return None
-    except Exception as e:
-        print(f"❌ Error getting access token: {e}")
-        return None
+def build_regex_pattern(callback_uri: str) -> str:
+    """Build a regex callback pattern that accepts both callback and post-logout URLs."""
+    parsed = urlparse(callback_uri)
+    host_port = parsed.netloc
+    scheme = parsed.scheme or "https"
+    return f"regexp={scheme}://{host_port}(/callback|/)"
 
 
-def get_application_by_client_id(access_token):
-    """Get application details by OAuth2 client ID"""
-    try:
-        # Search for application by client ID
-        response = requests.get(
+def find_application(session, auth):
+    """Find application by clientId (preferred) or by name."""
+    params = {}
+    if WSO2_CLIENT_ID:
+        params["filter"] = f'clientId eq "{WSO2_CLIENT_ID}"'
+    else:
+        params["filter"] = f'name eq "{WSO2_APP_NAME}"'
+    params["limit"] = 50
+
+    response = session.get(
+        APPLICATIONS_ENDPOINT,
+        auth=auth,
+        params=params,
+        verify=WSO2_IS_VERIFY_SSL,
+        timeout=10,
+    )
+
+    if response.status_code == 200:
+        apps = response.json().get("applications", [])
+        if apps:
+            return apps[0]
+        # Fallback: fetch all and match by name
+        response_all = session.get(
             APPLICATIONS_ENDPOINT,
-            headers={
-                "Authorization": f"Bearer {access_token}",
-                "Accept": "application/json",
-            },
-            params={
-                "filter": f"clientId eq {WSO2_CLIENT_ID}",
-            },
+            auth=auth,
+            params={"limit": 100},
             verify=WSO2_IS_VERIFY_SSL,
             timeout=10,
         )
+        if response_all.status_code == 200:
+            for app in response_all.json().get("applications", []):
+                if app.get("name") == WSO2_APP_NAME:
+                    return app
+        return None
 
-        if response.status_code == 200:
-            applications = response.json().get("applications", [])
-            if applications:
-                return applications[0]
-            print(f"❌ No application found with client ID: {WSO2_CLIENT_ID}")
+    print(f"❌ Failed to list applications: {response.status_code}")
+    print(f"Response: {response.text}")
+    return None
+
+
+def create_application(session, auth, pattern):
+    """Create a simple OAuth2 application if it does not exist."""
+    payload = {
+        "name": WSO2_APP_NAME,
+        "description": "Darts application OAuth",
+        "templateId": "custom",
+        "inboundProtocolConfiguration": {
+            "oidc": {
+                "grantTypes": ["authorization_code", "refresh_token"],
+                "callbackURLs": [pattern],
+            },
+        },
+    }
+
+    response = session.post(
+        APPLICATIONS_ENDPOINT,
+        auth=auth,
+        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        json=payload,
+        verify=WSO2_IS_VERIFY_SSL,
+        timeout=10,
+    )
+
+    if response.status_code in (200, 201):
+        try:
+            app = response.json()
+        except Exception:
+            print("❌ Failed to parse create response:", response.text)
             return None
-        print(f"❌ Failed to get application: {response.status_code}")
+        print(f"✓ Created application {app.get('name')} (ID: {app.get('id')})")
+        return app
+
+    print(f"❌ Failed to create application: {response.status_code}")
+    print(f"Response: {response.text}")
+    return None
+
+
+def update_application_redirect_uris(session, auth, app_id, new_pattern):
+    """Update application redirect URIs to include both callback and post-logout URIs."""
+    response = session.get(
+        f"{APPLICATIONS_ENDPOINT}/{app_id}/inbound-protocols/oidc",
+        auth=auth,
+        verify=WSO2_IS_VERIFY_SSL,
+        timeout=10,
+    )
+
+    if response.status_code != 200:
+        print(f"❌ Failed to get OIDC inbound config: {response.status_code}")
         print(f"Response: {response.text}")
-        return None
-    except Exception as e:
-        print(f"❌ Error getting application: {e}")
-        return None
-
-
-def update_application_redirect_uris(access_token, app_id):
-    """Update application redirect URIs to include both callback and post-logout URIs"""
-    try:
-        # Get full application details
-        response = requests.get(
-            f"{APPLICATIONS_ENDPOINT}/{app_id}",
-            headers={
-                "Authorization": f"Bearer {access_token}",
-                "Accept": "application/json",
-            },
-            verify=WSO2_IS_VERIFY_SSL,
-            timeout=10,
-        )
-
-        if response.status_code != 200:
-            print(f"❌ Failed to get application details: {response.status_code}")
-            return False
-
-        app_data = response.json()
-
-        # Find OAuth2 inbound configuration
-        inbound_protocols = app_data.get("inboundProtocols", [])
-        oauth_config = None
-
-        for protocol in inbound_protocols:
-            if protocol.get("type") == "oauth2":
-                oauth_config = protocol
-                break
-
-        if not oauth_config:
-            print("❌ No OAuth2 configuration found")
-            return False
-
-        # Update callback URLs
-        current_callbacks = oauth_config.get("callbackURLs", [])
-        print(f"\n📋 Current callback URLs: {current_callbacks}")
-
-        # Create regex pattern for both URIs
-        # This allows both callback and post-logout URIs
-        new_callback_pattern = "regexp=https://letsplaydarts\\.eu(/callback|/)"
-
-        # Alternative: comma-separated list
-        # new_callbacks = f"{CALLBACK_URI},{POST_LOGOUT_URI}"
-
-        oauth_config["callbackURLs"] = [new_callback_pattern]
-
-        print(f"✅ New callback pattern: {new_callback_pattern}")
-
-        # Update the application
-        update_response = requests.put(
-            f"{APPLICATIONS_ENDPOINT}/{app_id}",
-            headers={
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            },
-            json=app_data,
-            verify=WSO2_IS_VERIFY_SSL,
-            timeout=10,
-        )
-
-        if update_response.status_code in [200, 204]:
-            print("✅ Application updated successfully!")
-            return True
-        print(f"❌ Failed to update application: {update_response.status_code}")
-        print(f"Response: {update_response.text}")
         return False
 
-    except Exception as e:
-        print(f"❌ Error updating application: {e}")
-        return False
+    oidc_config = response.json()
+    current_callbacks = oidc_config.get("callbackURLs", [])
+    print(f"\n📋 Current callback URLs: {current_callbacks}")
+
+    oidc_config["callbackURLs"] = [new_pattern]
+    print(f"✅ New callback pattern: {new_pattern}")
+
+    update_response = session.put(
+        f"{APPLICATIONS_ENDPOINT}/{app_id}/inbound-protocols/oidc",
+        auth=auth,
+        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        json=oidc_config,
+        verify=WSO2_IS_VERIFY_SSL,
+        timeout=10,
+    )
+
+    if update_response.status_code in [200, 204]:
+        print("✅ Application updated successfully!")
+        return True
+
+    print(f"❌ Failed to update application: {update_response.status_code}")
+    print(f"Response: {update_response.text}")
+    return False
 
 
 def main():
@@ -171,17 +166,13 @@ def main():
     print("=" * 60)
     print()
 
-    # Validate configuration
-    if not WSO2_CLIENT_ID or not WSO2_CLIENT_SECRET:
-        print("❌ Error: WSO2_CLIENT_ID and WSO2_CLIENT_SECRET must be set")
-        print("Please check your .env file")
-        sys.exit(1)
-
     print("🔧 Configuration:")
     print(f"   WSO2 IS URL: {WSO2_IS_URL}")
-    print(f"   Client ID: {WSO2_CLIENT_ID}")
-    print(f"   Callback URI: {CALLBACK_URI}")
-    print(f"   Post-Logout URI: {POST_LOGOUT_URI}")
+    print(f"   Admin User : {WSO2_ADMIN_USERNAME}")
+    print(f"   Client ID  : {WSO2_CLIENT_ID or '(search by app name)'}")
+    print(f"   App Name   : {WSO2_APP_NAME}")
+    print(f"   Callback   : {CALLBACK_URI}")
+    print(f"   PostLogout : {POST_LOGOUT_URI}")
     print()
 
     # Wait for WSO2 IS to be ready
@@ -201,7 +192,7 @@ def main():
             pass
 
         if i < max_retries - 1:
-            print(f"   Retry {i+1}/{max_retries}...")
+            print(f"   Retry {i + 1}/{max_retries}...")
             time.sleep(2)
         else:
             print("❌ WSO2 IS is not responding. Please check if it's running.")
@@ -209,24 +200,27 @@ def main():
 
     print()
 
-    # Note: The REST API approach requires proper authentication
-    # For now, we'll provide manual instructions
-    print("⚠️  Note: WSO2 IS REST API requires proper authentication setup.")
-    print("Please follow the manual steps in FIX_REDIRECT_URIS.md")
+    session = requests.Session()
+    auth = (WSO2_ADMIN_USERNAME, WSO2_ADMIN_PASSWORD)
+
+    pattern = build_regex_pattern(CALLBACK_URI)
+
+    app = find_application(session, auth)
+    if not app:
+        print("ℹ No existing application found; creating one...")
+        app = create_application(session, auth, pattern)
+        if not app:
+            sys.exit(1)
+
+    app_id = app.get("id")
+    app_name = app.get("name")
+    print(f"✓ Target application: {app_name} (ID: {app_id})")
+
+    if not update_application_redirect_uris(session, auth, app_id, pattern):
+        sys.exit(1)
+
     print()
-    print("Manual Steps:")
-    print("1. Navigate to: https://letsplaydarts.eu/auth/carbon")
-    print("2. Login with admin/admin")
-    print("3. Go to: Main → Identity → Service Providers → List")
-    print("4. Edit your application")
-    print("5. In OAuth/OpenID Connect Configuration, update Callback Url to:")
-    print("   regexp=https://letsplaydarts\\.eu(/callback|/)")
-    print("6. Click Update twice to save")
-    print()
-    print("This will allow both:")
-    print(f"   ✓ {CALLBACK_URI} (for login)")
-    print(f"   ✓ {POST_LOGOUT_URI} (for logout)")
-    print()
+    print("All done. Verify login and logout flows against the updated callback regex.")
 
 
 if __name__ == "__main__":

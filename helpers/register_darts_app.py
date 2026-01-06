@@ -29,6 +29,28 @@ REDIRECT_URIS = [
 
 # DCR API endpoint
 DCR_REGISTER_ENDPOINT = f"{WSO2_IS_URL}/api/identity/oauth2/dcr/v1.1/register"
+APPLICATIONS_ENDPOINT = f"{WSO2_IS_URL}/api/server/v1/applications"
+
+
+def fetch_oidc_credentials(app_id: str) -> tuple[str | None, str | None]:
+    """Fetch clientId/clientSecret via application inbound OIDC config."""
+    try:
+        response = requests.get(
+            f"{APPLICATIONS_ENDPOINT}/{app_id}/inbound-protocols/oidc",
+            auth=(WSO2_ADMIN_USER, WSO2_ADMIN_PASS),
+            headers={"Accept": "application/json"},
+            verify=False,
+            timeout=10,
+        )
+        if response.status_code != 200:
+            print(f"❌ Failed to fetch OIDC config: {response.status_code}")
+            print(f"   Response: {response.text[:200]}")
+            return None, None
+        data = response.json()
+        return data.get("clientId"), data.get("clientSecret")
+    except Exception as exc:
+        print(f"❌ Error fetching OIDC config: {exc}")
+        return None, None
 
 
 def register_darts_app():
@@ -49,7 +71,15 @@ def register_darts_app():
             apps = response.json().get("applications", [])
             for app in apps:
                 if app.get("name") == CLIENT_NAME:
-                    print(f"✅ DartsApp already exists (ID: {app.get('id')})")
+                    app_id = app.get("id")
+                    print(f"✅ DartsApp already exists (ID: {app_id})")
+                    client_id, client_secret = fetch_oidc_credentials(app_id)
+                    if client_id:
+                        print(f"   Client ID: {client_id}")
+                    if client_secret:
+                        print(f"   Client Secret: {client_secret}")
+                    if not client_id:
+                        print("   ⚠ No OIDC client configured; add inbound OIDC and rerun")
                     return True
         else:
             print(f"❌ Failed to check existing applications: {response.status_code}")

@@ -114,7 +114,7 @@ class APIMIntegrationTester:
         """
         logger.info("Testing health endpoint...")
 
-        url = f"{self.apim_gateway_url}/health"
+        url = f"{self.apim_gateway_url}/api/v1/1.0.0/health"
 
         try:
             response = requests.get(url, verify=self.verify_ssl, timeout=10)
@@ -142,7 +142,7 @@ class APIMIntegrationTester:
         """
         logger.info("Testing dartboard throw submission...")
 
-        url = f"{self.apim_gateway_url}/api/v1/dartboard/throw"
+        url = f"{self.apim_gateway_url}/api/v1/1.0.0/dartboard/throw"
 
         headers = {
             "Authorization": f"Bearer {self.access_token}",
@@ -150,7 +150,9 @@ class APIMIntegrationTester:
         }
 
         payload = {
-            "pins": [20, 1],  # D20 in segment format
+            "masterPin": 1,
+            "slavePin": 2,
+            "boardType": "standard",
             "game_id": "test-game-123",
             "player_id": "test-player-1",
         }
@@ -187,7 +189,7 @@ class APIMIntegrationTester:
         """
         logger.info("Testing score submission...")
 
-        url = f"{self.apim_gateway_url}/api/v1/scores"
+        url = f"{self.apim_gateway_url}/api/v1/1.0.0/scores"
 
         headers = {
             "Authorization": f"Bearer {self.access_token}",
@@ -237,7 +239,7 @@ class APIMIntegrationTester:
         """
         logger.info(f"Testing rate limiting (sending {requests_count} requests)...")
 
-        url = f"{self.apim_gateway_url}/api/v1/dartboard/throw"
+        url = f"{self.apim_gateway_url}/api/v1/1.0.0/dartboard/throw"
 
         headers = {
             "Authorization": f"Bearer {self.access_token}",
@@ -292,7 +294,7 @@ class APIMIntegrationTester:
         """
         logger.info("Testing unauthorized access...")
 
-        url = f"{self.apim_gateway_url}/api/v1/dartboard/throw"
+        url = f"{self.apim_gateway_url}/api/v1/1.0.0/dartboard/throw"
 
         payload = {
             "pins": [20, 1],
