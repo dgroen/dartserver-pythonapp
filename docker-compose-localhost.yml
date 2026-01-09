@@ -45,14 +45,22 @@ services:
   wso2is:
     image: wso2/wso2is:7.1.0
     container_name: darts-wso2is
+    user: root
     ports:
       - "9443:9443" # HTTPS port
       - "9763:9763" # HTTP port
     environment:
       - JAVA_OPTS=-Xms512m -Xmx1024m
+      - WSO2_DB_HOST=postgres
+      - WSO2_DB_PORT=5432
+      - WSO2_DB_USER=postgres
+      - WSO2_DB_PASSWORD=postgres
+      - WSO2_IDENTITY_DB=wso2is_identity
+      - WSO2_SHARED_DB=wso2is_shared
     volumes:
       - wso2is_data:/home/wso2carbon/wso2is-7.1.0
       - ./wso2is-7-config/deployment.toml:/home/wso2carbon/wso2is-7.1.0/repository/conf/deployment.toml:ro
+      - ./drivers/postgresql.jar:/home/wso2carbon/wso2is-7.1.0/repository/components/lib/postgresql-42.7.3.jar:ro
     healthcheck:
       test: [ "CMD", "curl", "-k", "-f", "https://localhost:9443/api/health-check/v1.0/health" ]
       interval: 30s
@@ -74,6 +82,8 @@ services:
       - JAVA_OPTS=-Xms512m -Xmx1024m
     volumes:
       - wso2apim_data:/home/wso2carbon/wso2am-4.0.0
+      # deployment.toml mount disabled - let APIM start with default config first
+      # - ./wso2apim-4-config/deployment.toml:/home/wso2carbon/wso2am-4.0.0/repository/conf/deployment.toml
     depends_on:
       wso2is:
         condition: service_healthy
@@ -92,8 +102,9 @@ services:
       context: .
       dockerfile: Dockerfile.gateway
     container_name: darts-api-gateway
-    ports:
-      - "8080:8080"
+    # Note: Port 8080 is NOT exposed to host - only accessible via nginx reverse proxy
+    # This prevents direct connection attempts to the API gateway
+    # All traffic must go through nginx on ports 80 (HTTP) and 443 (HTTPS)
     environment:
       # RabbitMQ Configuration
       RABBITMQ_HOST: rabbitmq
@@ -109,8 +120,8 @@ services:
       WSO2_IS_URL: https://localhost:9443
       # Internal Docker network URL for backend calls from the api-gateway container
       WSO2_IS_INTERNAL_URL: https://darts-wso2is:9443
-      WSO2_IS_CLIENT_ID: ${WSO2_IS_CLIENT_ID:-L2rvop0o4DfJsqpqsh44cUgVn_ga}
-      WSO2_IS_CLIENT_SECRET: ${WSO2_IS_CLIENT_SECRET:-VhNFUK083Q2iUsu8GCWfcJTVCX8a}
+      WSO2_IS_CLIENT_ID: ${WSO2_CLIENT_ID:-qbAfIfHMVTQd7BD_FRfaM1hvTewa}
+      WSO2_IS_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-2iP2XubBjEaPhvq2Bhx3NWtJWKygrp_UHIhr0FQKx5ga}
 
       # Introspection credentials (required for token validation)
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
@@ -129,6 +140,8 @@ services:
         condition: service_healthy
       wso2is:
         condition: service_healthy
+      wso2apim:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - darts-network
@@ -137,6 +150,7 @@ services:
   darts-app:
     build: .
     container_name: darts-app
+    # Expose port 5000 to host for local direct access (restore previous behavior)
     ports:
       - "5000:5000"
     environment:
@@ -158,6 +172,9 @@ services:
       FLASK_PORT: 5000
       FLASK_DEBUG: "False"
       FLASK_USE_SSL: "False"
+      # Use HTTPS scheme with nginx (port 443) for external callbacks
+      APP_SCHEME: https
+      APP_DOMAIN: localhost
       SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
 
       # Dartboard Configuration
@@ -181,22 +198,20 @@ services:
       WSO2_IS_INTERNAL_URL: https://darts-wso2is:9443
       WSO2_CLIENT_ID: ${WSO2_CLIENT_ID:-your_client_id_here}
       WSO2_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-your_client_secret_here}
-      # Use explicit server-side callback for local development so the
-      # server OAuth flow uses the registered redirect URI in WSO2.
-      WSO2_REDIRECT_URI: ${WSO2_REDIRECT_URI:-https://localhost:5000/callback}
-      WSO2_POST_LOGOUT_REDIRECT_URI: ${WSO2_POST_LOGOUT_REDIRECT_URI:-https://localhost:5000/}
+      # Match nginx-facing HTTPS origin for local dev callbacks
+      WSO2_REDIRECT_URI: ${WSO2_REDIRECT_URI:-https://localhost/callback}
+      WSO2_POST_LOGOUT_REDIRECT_URI: ${WSO2_POST_LOGOUT_REDIRECT_URI:-https://localhost/}
       WSO2_IS_VERIFY_SSL: "False"
       JWT_VALIDATION_MODE: introspection
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
       WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin} # pragma: allowlist secret
-      SESSION_COOKIE_SECURE: "True" # Enable secure cookies for HTTPS
+      SESSION_COOKIE_SECURE: "False" # Disable for local HTTP development
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      wso2is:
-        condition: service_healthy
+      # wso2is dependency removed temporarily to allow app to start for local testing
     restart: unless-stopped
     networks:
       - darts-network
