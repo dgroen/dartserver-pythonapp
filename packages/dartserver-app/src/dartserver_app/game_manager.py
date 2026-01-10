@@ -36,6 +36,7 @@ class GameManager:
         self.throws_per_turn = 3
         self.start_score = 0
         self.is_winner = False
+        self.is_finished = False  # Track if game is finished
         self.double_out = False
         self.is_training_mode = False  # Track if in training mode
         self.training_session_id = None  # Training session ID for recording
@@ -237,6 +238,7 @@ class GameManager:
         self.is_paused = True
         self.current_throw = 1
         self.is_winner = False
+        self.is_finished = False
         self.turn_throws = []
         self.turn_start_state = None
         self.turn_number = {}
@@ -740,6 +742,7 @@ class GameManager:
             "is_started": self.is_started,
             "is_paused": self.is_paused,
             "is_winner": self.is_winner,
+            "is_finished": self.is_finished,
             "current_throw": self.current_throw,
             "show_throwout_advice": self.show_throwout_advice,
         }
@@ -1024,7 +1027,14 @@ class GameManager:
         except Exception as e:
             print(f"Warning: Could not mark winner in database: {e}")
 
+        # Mark game as finished in database
+        try:
+            self.db_service.finish_game()
+        except Exception as e:
+            print(f"Warning: Could not mark game as finished in database: {e}")
+
         self.is_winner = True
+        self.is_finished = True
         self.is_paused = True
 
         winner_name = self.players[player_id]["name"]
