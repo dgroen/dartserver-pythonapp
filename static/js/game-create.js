@@ -11,6 +11,16 @@ document.addEventListener('DOMContentLoaded', async function () {
     await loadGameTypes(document.getElementById('game-type'));
     setupEventListeners();
     handleGameTypeChange(); // Initialize hard mode visibility
+    
+    // Check for pre-filled players from query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const playersParam = urlParams.get('players');
+    if (playersParam) {
+        const playerNames = playersParam.split(',').map(name => name.trim()).filter(name => name.length > 0);
+        playerNames.forEach(name => {
+            addPlayer({ name: name, username: null });
+        });
+    }
 });
 
 function setupEventListeners() {

@@ -67,6 +67,14 @@ function handleNextPlayerClick() {
     }
 
     console.log('Game is_paused:', currentGame.is_paused);
+    console.log('Game is_finished:', currentGame.is_finished);
+
+    // If game is finished, navigate to game creation with players pre-selected
+    if (currentGame.is_finished) {
+        const playerNames = currentGame.players.map(p => p.name).join(',');
+        window.location.href = `/game/create?players=${encodeURIComponent(playerNames)}`;
+        return;
+    }
 
     // If game is paused (waiting for continue), just emit next_player
     if (currentGame.is_paused) {
@@ -287,7 +295,13 @@ function updateNextPlayerButton(game) {
 function updateButtonText(game, buttonElement, hintElement) {
     if (!buttonElement) return;
 
-    if (game.is_paused) {
+    if (game.is_finished) {
+        // Game is finished - button navigates to new game creation
+        buttonElement.textContent = '🎮 New Game with Same Players';
+        if (hintElement) {
+            hintElement.textContent = 'Start a new game with the same players';
+        }
+    } else if (game.is_paused) {
         // Game is paused - button continues to next player
         buttonElement.textContent = '▶️ Continue Game';
         if (hintElement) {
