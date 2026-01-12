@@ -607,6 +607,18 @@ def import_dartboard_mappings():
                 400,
             )
 
+        # Prevent placeholder type usage from clients
+        if board_type == "__new__":
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": "Invalid boardType '__new__'. Please use an existing type name.",
+                    },
+                ),
+                400,
+            )
+
         session = get_session()
         try:
             # Convert CSV-like format to mapping data format
@@ -763,33 +775,41 @@ def create_dartboard_type():
 
         session = get_session()
         try:
+            # First register the type (service doesn't accept pin args)
             dartboard_type = DartboardService.register_dartboard_type(
                 session,
                 name=name,
                 brand=brand,
                 model=model,
                 description=description,
-                master_pins=master_pins,
-                slave_pins=slave_pins,
             )
-            return (
-                jsonify(
-                    {
-                        "status": "success",
-                        "message": f"Dartboard type '{name}' created successfully",
-                        "dartboard_type": {
-                            "id": dartboard_type.id,
-                            "name": dartboard_type.name,
-                            "brand": dartboard_type.brand,
-                            "model": dartboard_type.model,
-                            "description": dartboard_type.description,
-                            "master_pins": master_pins,
-                            "slave_pins": slave_pins,
+
+            # If pins were provided, validate them against available GPIO pins
+            if master_pins is not None or slave_pins is not None:
+                DartboardService.update_dartboard_pins(
+                    session,
+                    dartboard_type_name=name,
+                    master_pins=master_pins,
+                    slave_pins=slave_pins,
+                )
+                return (
+                    jsonify(
+                        {
+                            "status": "success",
+                            "message": f"Dartboard type '{name}' created successfully",
+                            "dartboard_type": {
+                                "id": dartboard_type.id,
+                                "name": dartboard_type.name,
+                                "brand": dartboard_type.brand,
+                                "model": dartboard_type.model,
+                                "description": dartboard_type.description,
+                                "master_pins": master_pins,
+                                "slave_pins": slave_pins,
+                            },
                         },
-                    },
-                ),
-                201,
-            )
+                    ),
+                    201,
+                )
         finally:
             session.close()
     except DartboardMappingError as e:
