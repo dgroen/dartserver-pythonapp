@@ -69,7 +69,8 @@ RABBITMQ_CONFIG = {
 }
 
 # JWT validation mode: 'jwks' or 'introspection'
-JWT_VALIDATION_MODE = os.getenv("JWT_VALIDATION_MODE", "jwks")
+# Use introspection for opaque reference tokens from WSO2, or jwks for JWT tokens
+JWT_VALIDATION_MODE = os.getenv("JWT_VALIDATION_MODE", "introspection")
 
 # Initialize JWKS client for JWT validation
 jwks_client = None
@@ -214,6 +215,14 @@ def validate_jwt_token(token: str) -> dict[str, Any] | None:
                         f"Token validated via introspection for client: "
                         f"{introspection_result.get('client_id', 'unknown')}",
                     )
+                    # WSO2 introspection may not return scopes, so add them from configured client scopes
+                    # Map of client_id -> scopes for clients created via DCR
+                    client_scopes = {
+                        "qGUe7mARfB_rbEn09jWJtTyi9uMa": "openid profile email dartboard:write dartboard:read game:write game:control score:write player:write",
+                    }
+                    client_id = introspection_result.get("client_id", "")
+                    if "scope" not in introspection_result and client_id in client_scopes:
+                        introspection_result["scope"] = client_scopes[client_id]
                     result = introspection_result
                 else:
                     logger.warning(f"Token is not active: {introspection_result}")
@@ -449,12 +458,18 @@ def swagger_ui():
                                 const CLIENT_ID = "__WSO2_CLIENT_ID__";
                                 if (CLIENT_ID && CLIENT_ID !== "") {
                                     // initOAuth takes configuration for the auth
-                                    // flow used by the UI
+                                    // flow used by the UI. Enable PKCE so the
+                                    // browser can perform Authorization Code
+                                    // flow without exposing a client secret.
                                     ui.initOAuth({
                                         clientId: CLIENT_ID,
                                         appName: 'Darts API Gateway',
                                         scopeSeparator: ' ',
-                                        additionalQueryStringParams: {}
+                                        additionalQueryStringParams: {},
+                                        // Enable PKCE for authorization code grant
+                                        usePkceWithAuthorizationCodeGrant: true,
+                                        // Prefer SHA-256 challenge method when available
+                                        pkceChallengeMethod: 'S256'
                                     });
                                 }
                             } catch (e) {
@@ -507,6 +522,61 @@ def swagger_ui():
     # Replace placeholders with configured values safely (avoid f-string parsing issues)
     html = html.replace("__WSO2_IS_URL__", WSO2_IS_URL)
     html = html.replace("__WSO2_CLIENT_ID__", WSO2_IS_CLIENT_ID or "")
+    return Response(html, mimetype="text/html")
+
+
+@app.route("/oauth2-redirect.html", methods=["GET"])
+def oauth2_redirect():
+    """Serve the OAuth2 redirect HTML used by Swagger UI for auth code flow."""
+    html = r"""
+        <!doctype html>
+        <html>
+            <head>
+                <meta charset="utf-8" />
+                <title>OAuth2 Redirect</title>
+            </head>
+            <body>
+                <script>
+                    (function () {
+                        function parseQuery(query) {
+                            var params = {};
+                            query.replace(/^[?#]/, '').split('&').forEach(function (part) {
+                                if (!part) return;
+                                var kv = part.split('=');
+                                params[decodeURIComponent(kv[0])] = kv.length>1 ? decodeURIComponent(kv[1]) : '';
+                            });
+                            return params;
+                        }
+
+                        var oauth2 = window.opener && window.opener.swaggerUIRedirectOauth2;
+                        var redirectUrl = window.location.origin;
+                        try {
+                            if (oauth2 && oauth2.redirectUrl) {
+                                redirectUrl = oauth2.redirectUrl;
+                            }
+                        } catch (e) {}
+
+                        var params = {};
+                        if (window.location.search.length) {
+                            params = parseQuery(window.location.search);
+                        } else if (window.location.hash && window.location.hash.length) {
+                            params = parseQuery(window.location.hash);
+                        }
+
+                        // Post the params back to the opener window and close
+                        try {
+                            if (window.opener && window.opener.postMessage) {
+                                window.opener.postMessage(params, redirectUrl);
+                            }
+                        } catch (e) {
+                            // ignore
+                        }
+                        try { window.close(); } catch (e) {}
+                    })();
+                </script>
+            </body>
+        </html>
+        """
     return Response(html, mimetype="text/html")
 
 

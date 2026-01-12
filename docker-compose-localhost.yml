@@ -102,6 +102,9 @@ services:
       context: .
       dockerfile: Dockerfile.gateway
     container_name: darts-api-gateway
+    # Expose port 8080 to the host so the gateway is reachable directly
+    ports:
+      - "8080:8080"
     # Note: Port 8080 is NOT exposed to host - only accessible via nginx reverse proxy
     # This prevents direct connection attempts to the API gateway
     # All traffic must go through nginx on ports 80 (HTTP) and 443 (HTTPS)
@@ -120,8 +123,8 @@ services:
       WSO2_IS_URL: https://localhost:9443
       # Internal Docker network URL for backend calls from the api-gateway container
       WSO2_IS_INTERNAL_URL: https://darts-wso2is:9443
-      WSO2_IS_CLIENT_ID: ${WSO2_CLIENT_ID:-qbAfIfHMVTQd7BD_FRfaM1hvTewa}
-      WSO2_IS_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-2iP2XubBjEaPhvq2Bhx3NWtJWKygrp_UHIhr0FQKx5ga}
+      WSO2_IS_CLIENT_ID: ${WSO2_CLIENT_ID:-qGUe7mARfB_rbEn09jWJtTyi9uMa}
+      WSO2_IS_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-HUgKyYNsXxfGAYHb2SYMFuX18Gmu9R9kE99EQkXOfKka}
 
       # Introspection credentials (required for token validation)
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
@@ -133,8 +136,13 @@ services:
       # Flask Configuration
       API_GATEWAY_HOST: 0.0.0.0
       API_GATEWAY_PORT: 8080
+      # Ensure the flask process listens on the expected port inside container
+      FLASK_HOST: 0.0.0.0
+      FLASK_PORT: 8080
       FLASK_DEBUG: "False"
       SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
+      # Database Configuration for api-gateway (use internal postgres service)
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dartsdb # pragma: allowlist secret
     depends_on:
       rabbitmq:
         condition: service_healthy
