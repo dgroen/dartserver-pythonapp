@@ -338,17 +338,17 @@ class TestGameManager:
         # Verify initial state
         assert manager.is_finished is False
         assert manager.is_winner is False
-        
+
         # Set player score to exact winning amount
         manager.game.players[0]["score"] = 20
         score_data = {"score": 20, "multiplier": "SINGLE"}
         manager.process_score(score_data)
-        
+
         # Should detect winner and mark as finished
         assert manager.is_winner is True
         assert manager.is_finished is True
         assert manager.is_paused is True
-        
+
         # Verify finished state is in game state
         state = manager.get_game_state()
         assert state["is_finished"] is True
