@@ -933,8 +933,9 @@ class TestCreateDartboardTypeWithPins:
         assert response.status_code == 201
         data = json.loads(response.data)
         assert data["status"] == "success"
-        # Verify pins were passed to service
-        call_kwargs = mock_service.register_dartboard_type.call_args[1]
+        # Verify pins were passed to update_dartboard_pins service
+        mock_service.update_dartboard_pins.assert_called_once()
+        call_kwargs = mock_service.update_dartboard_pins.call_args[1]
         assert call_kwargs["master_pins"] == [2, 4, 5, 16, 17, 18, 19]
         assert call_kwargs["slave_pins"] == [12, 13, 14, 25, 26, 27, 32, 33]
 
