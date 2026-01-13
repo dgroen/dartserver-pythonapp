@@ -215,10 +215,15 @@ def validate_jwt_token(token: str) -> dict[str, Any] | None:
                         f"Token validated via introspection for client: "
                         f"{introspection_result.get('client_id', 'unknown')}",
                     )
-                    # WSO2 introspection may not return scopes, so add them from configured client scopes
+                    # WSO2 introspection may not return scopes. Add them
+                    # from configured client scopes.
                     # Map of client_id -> scopes for clients created via DCR
                     client_scopes = {
-                        "qGUe7mARfB_rbEn09jWJtTyi9uMa": "openid profile email dartboard:write dartboard:read game:write game:control score:write player:write",
+                        "qGUe7mARfB_rbEn09jWJtTyi9uMa": (
+                            "openid profile email "
+                            "dartboard:write dartboard:read "
+                            "game:write game:control score:write player:write"
+                        ),
                     }
                     client_id = introspection_result.get("client_id", "")
                     if "scope" not in introspection_result and client_id in client_scopes:
@@ -543,7 +548,8 @@ def oauth2_redirect():
                             query.replace(/^[?#]/, '').split('&').forEach(function (part) {
                                 if (!part) return;
                                 var kv = part.split('=');
-                                params[decodeURIComponent(kv[0])] = kv.length>1 ? decodeURIComponent(kv[1]) : '';
+                                var value = kv.length > 1 ? decodeURIComponent(kv[1]) : '';
+                                params[decodeURIComponent(kv[0])] = value;
                             });
                             return params;
                         }
@@ -589,7 +595,7 @@ def submit_score():  # noqa: PLR0911
     Publishes score to RabbitMQ for processing
     """
     try:
-        data = request.json
+        data = request.get_json(silent=True)
         if not data:
             return (
                 jsonify(
@@ -609,7 +615,7 @@ def submit_score():  # noqa: PLR0911
                 jsonify(
                     {
                         "error": "Missing required fields",
-                        "message": f"Required fields: {', '.join(missing_fields)}",
+                        "message": f"Missing required fields: {', '.join(missing_fields)}",
                     },
                 ),
                 400,
@@ -698,7 +704,7 @@ def create_game():
     Publishes game creation event to RabbitMQ
     """
     try:
-        data = request.json
+        data = request.get_json(silent=True)
         if not data:
             return (
                 jsonify(
@@ -892,7 +898,7 @@ def dartboard_throw():  # noqa: PLR0911
                 jsonify(
                     {
                         "error": "Missing required fields",
-                        "message": f"Required fields: {', '.join(missing_fields)}",
+                        "message": f"Missing required fields: {', '.join(missing_fields)}",
                     },
                 ),
                 400,
@@ -980,7 +986,7 @@ def end_turn():
     Publishes turn end event to RabbitMQ
     """
     try:
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
         game_id = data.get("game_id")
 
         message = {
@@ -1035,7 +1041,7 @@ def continue_game():
     Publishes continue event to RabbitMQ
     """
     try:
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
         game_id = data.get("game_id")
 
         message = {
@@ -1090,7 +1096,7 @@ def pause_game():
     Publishes pause event to RabbitMQ
     """
     try:
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
         game_id = data.get("game_id")
 
         message = {
