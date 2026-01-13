@@ -969,3 +969,48 @@ class TestGetAvailablePinsEndpoint:
         assert isinstance(data["pins"], list)
         assert 2 in data["pins"]  # Common ESP32 GPIO pin
         assert 4 in data["pins"]
+
+
+class TestImportDartboardMappingsEndpoint:
+    """Test /api/admin/dartboard/import endpoint"""
+
+    @pytest.fixture
+    def admin_client(self, flask_app):
+        """Create test client with admin authentication"""
+        flask_app.config["TESTING"] = True
+        with flask_app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["access_token"] = "test-admin-token"
+            yield client
+
+    @patch("dartserver_core.auth.validate_token")
+    def test_import_rejects_placeholder_board_type(self, mock_validate, admin_client):
+        """Test that __new__ placeholder board type is rejected"""
+        mock_validate.return_value = {
+            "sub": "admin-user",
+            "username": "admin",
+            "groups": ["admin"],
+        }
+
+        response = admin_client.post(
+            "/api/admin/dartboard/import",
+            json={
+                "boardType": "__new__",
+                "mappings": [
+                    {
+                        "masterPin": 4,
+                        "slavePin": 13,
+                        "zoneNumber": 20,
+                        "multiplierType": "TRIPLE",
+                        "baseValue": 20,
+                    },
+                ],
+            },
+            content_type="application/json",
+        )
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert data["status"] == "error"
+        assert "__new__" in data["message"]
+        assert "Invalid boardType" in data["message"]

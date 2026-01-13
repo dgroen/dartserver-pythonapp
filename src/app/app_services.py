@@ -792,24 +792,26 @@ def create_dartboard_type():
                     master_pins=master_pins,
                     slave_pins=slave_pins,
                 )
-                return (
-                    jsonify(
-                        {
-                            "status": "success",
-                            "message": f"Dartboard type '{name}' created successfully",
-                            "dartboard_type": {
-                                "id": dartboard_type.id,
-                                "name": dartboard_type.name,
-                                "brand": dartboard_type.brand,
-                                "model": dartboard_type.model,
-                                "description": dartboard_type.description,
-                                "master_pins": master_pins,
-                                "slave_pins": slave_pins,
-                            },
+
+            # Return success response with or without pins
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": f"Dartboard type '{name}' created successfully",
+                        "dartboard_type": {
+                            "id": dartboard_type.id,
+                            "name": dartboard_type.name,
+                            "brand": dartboard_type.brand,
+                            "model": dartboard_type.model,
+                            "description": dartboard_type.description,
+                            "master_pins": master_pins,
+                            "slave_pins": slave_pins,
                         },
-                    ),
-                    201,
-                )
+                    },
+                ),
+                201,
+            )
         finally:
             session.close()
     except DartboardMappingError as e:
