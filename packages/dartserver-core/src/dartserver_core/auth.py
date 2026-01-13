@@ -506,6 +506,8 @@ def login_required(f):
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        print("DEBUG: login_required session keys=", list(session.keys()))
+        print("DEBUG: login_required access_token in session=", "access_token" in session)
         # Bypass authentication if disabled (check at runtime so tests can patch env)
         if is_auth_disabled():
             # Set default user info for bypass mode

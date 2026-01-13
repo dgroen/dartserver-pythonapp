@@ -161,8 +161,39 @@ class RabbitMQPublisher:
             logger.exception("Error closing RabbitMQ connection")
 
 
-# Initialize RabbitMQ publisher
-rabbitmq_publisher = RabbitMQPublisher(RABBITMQ_CONFIG)
+class _LazyRabbitMQPublisher:
+    """Lazy proxy for RabbitMQPublisher that defers network connect until first use.
+
+    This avoids creating a real TCP connection at module import time which causes
+    tests or other import-time code to fail if RabbitMQ isn't available.
+    """
+
+    def __init__(self, config: dict[str, Any]):
+        self._config = config
+        self._real: RabbitMQPublisher | None = None
+
+    def _ensure_real(self):
+        if self._real is None:
+            self._real = RabbitMQPublisher(self._config)
+
+    def publish(self, routing_key: str, message: dict[str, Any]) -> bool:
+        try:
+            self._ensure_real()
+            return self._real.publish(routing_key, message)
+        except Exception:
+            logger.exception("Lazy publisher failed to publish message")
+            return False
+
+    def close(self):
+        if self._real:
+            try:
+                self._real.close()
+            except Exception:
+                logger.exception("Error closing real rabbitmq publisher")
+
+
+# Initialize lazy RabbitMQ publisher (defers real connection until first publish)
+rabbitmq_publisher: _LazyRabbitMQPublisher = _LazyRabbitMQPublisher(RABBITMQ_CONFIG)
 
 
 def validate_jwt_token(token: str) -> dict[str, Any] | None:
