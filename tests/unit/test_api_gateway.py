@@ -4,9 +4,10 @@ Tests authentication, dartboard endpoints, and game control actions
 """
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
+
 from src.api_gateway.app import app as gateway_app
 from src.api_gateway.app import rabbitmq_publisher
 

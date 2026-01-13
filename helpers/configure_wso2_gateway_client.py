@@ -42,7 +42,10 @@ def dcr_get(ws_url: str, client_id: str, admin_user: str, admin_pass: str) -> re
 
 
 def dcr_post(
-    ws_url: str, payload: dict[str, Any], admin_user: str, admin_pass: str
+    ws_url: str,
+    payload: dict[str, Any],
+    admin_user: str,
+    admin_pass: str,
 ) -> requests.Response:
     url = f"{ws_url.rstrip('/')}/api/identity/oauth2/dcr/v1.1/register"
     return requests.post(
@@ -56,7 +59,11 @@ def dcr_post(
 
 
 def dcr_put(
-    ws_url: str, client_id: str, payload: dict[str, Any], admin_user: str, admin_pass: str
+    ws_url: str,
+    client_id: str,
+    payload: dict[str, Any],
+    admin_user: str,
+    admin_pass: str,
 ) -> requests.Response:
     url = f"{ws_url.rstrip('/')}/api/identity/oauth2/dcr/v1.1/register/{client_id}"
     return requests.put(
@@ -70,7 +77,10 @@ def dcr_put(
 
 
 def request_token(
-    ws_url: str, client_id: str, client_secret: str, scope: str | None = None
+    ws_url: str,
+    client_id: str,
+    client_secret: str,
+    scope: str | None = None,
 ) -> requests.Response:
     url = f"{ws_url.rstrip('/')}/oauth2/token"
     data = {"grant_type": "client_credentials"}
@@ -79,7 +89,7 @@ def request_token(
     return requests.post(url, auth=(client_id, client_secret), data=data, verify=False, timeout=10)
 
 
-def main() -> int:
+def main() -> int:  # noqa: PLR0911
     p = argparse.ArgumentParser(description="Configure WSO2 OAuth2 client for API Gateway")
     p.add_argument("--ws-url", help="WSO2 base URL (e.g. https://localhost:9443)")
     p.add_argument("--admin-user", help="WSO2 admin username")
@@ -91,34 +101,40 @@ def main() -> int:
     p.add_argument("--dry-run", action="store_true", help="Show actions without applying")
     args = p.parse_args()
 
-    WSO2_IS_URL = get_env_or(args.ws_url, "WSO2_IS_URL", "https://localhost:9443")
-    ADMIN_USER = get_env_or(
-        args.admin_user, "WSO2_IS_ADMIN_USER", os.getenv("WSO2_IS_INTROSPECT_USER", "admin")
+    wso2_is_url = get_env_or(args.ws_url, "WSO2_IS_URL", "https://localhost:9443")
+    admin_user = get_env_or(
+        args.admin_user,
+        "WSO2_IS_ADMIN_USER",
+        os.getenv("WSO2_IS_INTROSPECT_USER", "admin"),
     )
-    ADMIN_PASS = get_env_or(
-        args.admin_pass, "WSO2_IS_ADMIN_PASS", os.getenv("WSO2_IS_INTROSPECT_PASSWORD", "admin")
+    admin_pass = get_env_or(
+        args.admin_pass,
+        "WSO2_IS_ADMIN_PASS",
+        os.getenv("WSO2_IS_INTROSPECT_PASSWORD", "admin"),
     )
-    CLIENT_ID = get_env_or(args.client_id, "WSO2_CLIENT_ID", os.getenv("WSO2_CLIENT_ID", ""))
-    CLIENT_SECRET = get_env_or(
-        args.client_secret, "WSO2_CLIENT_SECRET", os.getenv("WSO2_CLIENT_SECRET", "")
+    client_id = get_env_or(args.client_id, "WSO2_CLIENT_ID", os.getenv("WSO2_CLIENT_ID", ""))
+    client_secret = get_env_or(
+        args.client_secret,
+        "WSO2_CLIENT_SECRET",
+        os.getenv("WSO2_CLIENT_SECRET", ""),
     )
-    REDIRECT_URIS = []
+    redirect_uris = []
     if args.redirect_uris:
-        REDIRECT_URIS = [u.strip() for u in args.redirect_uris.split(",") if u.strip()]
+        redirect_uris = [u.strip() for u in args.redirect_uris.split(",") if u.strip()]
     elif os.getenv("WSO2_REDIRECT_URI"):
         # single redirect URL may be provided
-        REDIRECT_URIS = [os.getenv("WSO2_REDIRECT_URI")]
+        redirect_uris = [os.getenv("WSO2_REDIRECT_URI")]
 
-    if not CLIENT_ID:
+    if not client_id:
         print("ERROR: CLIENT_ID not provided (set WS02_CLIENT_ID or --client-id)")
         return 2
 
-    print(f"Using WSO2 URL: {WSO2_IS_URL}")
-    print(f"Client ID: {CLIENT_ID}")
+    print(f"Using WSO2 URL: {wso2_is_url}")
+    print(f"Client ID: {client_id}")
 
     # Fetch existing client
     try:
-        resp = dcr_get(WSO2_IS_URL, CLIENT_ID, ADMIN_USER, ADMIN_PASS)
+        resp = dcr_get(wso2_is_url, client_id, admin_user, admin_pass)
     except Exception as e:
         print(f"ERROR: failed to contact WSO2 DCR endpoint: {e}")
         return 3
@@ -145,11 +161,11 @@ def main() -> int:
         desired.get("token_endpoint_auth_method") or "client_secret_basic"
     )
     # set client secret if provided
-    if CLIENT_SECRET:
-        desired["client_secret"] = CLIENT_SECRET
+    if client_secret:
+        desired["client_secret"] = client_secret
     # set redirect URIs if provided
-    if REDIRECT_URIS:
-        desired["redirect_uris"] = REDIRECT_URIS
+    if redirect_uris:
+        desired["redirect_uris"] = redirect_uris
     # enable PKCE support so Swagger UI can use Authorization Code + PKCE
     # without requiring a client secret in the browser
     desired["ext_pkce_support_plain"] = True
@@ -167,30 +183,30 @@ def main() -> int:
         # ensure required fields for creation
         payload = {
             "client_name": os.getenv("SWAGGER_CLIENT_NAME", "DartsApiGateway"),
-            "client_id": CLIENT_ID,
-            "client_secret": CLIENT_SECRET or "",
+            "client_id": client_id,
+            "client_secret": client_secret or "",
             "grant_types": desired["grant_types"],
             "redirect_uris": desired.get("redirect_uris", []),
             "token_endpoint_auth_method": desired.get("token_endpoint_auth_method"),
         }
         print("Registering new client via DCR...")
-        r = dcr_post(WSO2_IS_URL, payload, ADMIN_USER, ADMIN_PASS)
+        r = dcr_post(wso2_is_url, payload, admin_user, admin_pass)
         if r.status_code not in (200, 201):
             print(f"Failed to register client: {r.status_code} {r.text}")
             return 5
         print("Client registered")
     else:
         print("Updating existing client via DCR...")
-        r = dcr_put(WSO2_IS_URL, CLIENT_ID, desired, ADMIN_USER, ADMIN_PASS)
+        r = dcr_put(wso2_is_url, client_id, desired, admin_user, admin_pass)
         if r.status_code not in (200, 201):
             print(f"Failed to update client: {r.status_code} {r.text}")
             return 6
         print("Client updated")
 
     # Verify by requesting token
-    if CLIENT_SECRET:
+    if client_secret:
         print("Requesting client_credentials token to verify configuration...")
-        t = request_token(WSO2_IS_URL, CLIENT_ID, CLIENT_SECRET, args.scope)
+        t = request_token(wso2_is_url, client_id, client_secret, args.scope)
         if t.status_code == 200:
             print("Token request successful")
             try:

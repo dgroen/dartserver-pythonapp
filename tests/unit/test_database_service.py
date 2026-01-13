@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 import pytest
-from dartserver_core.database_models import DatabaseManager, Player
+from dartserver_core.database_models import DatabaseManager, GameResult, Player
 from dartserver_core.database_service import DatabaseService
 
 
@@ -206,8 +206,6 @@ class TestDatabaseService:
         # Verify all players have finished_at timestamp
         session = db_service.db_manager.get_session()
         try:
-            from dartserver_core.database_models import GameResult
-
             game_results = (
                 session.query(GameResult)
                 .filter_by(game_session_id=db_service.current_game_session_id)

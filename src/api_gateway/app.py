@@ -215,13 +215,12 @@ def validate_jwt_token(token: str) -> dict[str, Any] | None:
                         f"Token validated via introspection for client: "
                         f"{introspection_result.get('client_id', 'unknown')}",
                     )
-                    # WSO2 introspection may not return scopes. Add them
-                    # from configured client scopes.
+                    # WSO2 introspection may not return scopes,
+                    # so add them from configured client scopes
                     # Map of client_id -> scopes for clients created via DCR
                     client_scopes = {
                         "qGUe7mARfB_rbEn09jWJtTyi9uMa": (
-                            "openid profile email "
-                            "dartboard:write dartboard:read "
+                            "openid profile email dartboard:write dartboard:read "
                             "game:write game:control score:write player:write"
                         ),
                     }
@@ -548,8 +547,9 @@ def oauth2_redirect():
                             query.replace(/^[?#]/, '').split('&').forEach(function (part) {
                                 if (!part) return;
                                 var kv = part.split('=');
-                                var value = kv.length > 1 ? decodeURIComponent(kv[1]) : '';
-                                params[decodeURIComponent(kv[0])] = value;
+                                params[decodeURIComponent(kv[0])] = (
+                                    kv.length>1 ? decodeURIComponent(kv[1]) : ''
+                                );
                             });
                             return params;
                         }

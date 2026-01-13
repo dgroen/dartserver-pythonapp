@@ -10,7 +10,6 @@ import pytest
 
 # Import modules at top level to avoid PLC0415
 from dartserver_core import auth
-from src.app.app_admin import admin_bp
 
 
 @pytest.fixture

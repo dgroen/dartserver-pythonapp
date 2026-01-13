@@ -141,7 +141,7 @@ class TestCompleteGameFlow:
             content_type="application/json",
         )
         assert response.status_code == 200
-        end_turn_msg = next((m for m in messages if m["message"].get("action") == "end_turn"), None)
+        end_turn_msg = next(m for m in messages if m["message"].get("action") == "end_turn")
         assert end_turn_msg["routing_key"] == "darts.game.action"
 
         # Step 5: Continue game
