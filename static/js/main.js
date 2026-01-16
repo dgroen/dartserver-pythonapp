@@ -403,7 +403,9 @@ function createPlayerCard(player, index, state) {
         cardButton.className = 'btn-primary btn-card-next';
 
         function updateCardButtonText() {
-            if (state.is_paused) {
+            if (state.is_finished) {
+                cardButton.textContent = '🎮 New Game with Same Players';
+            } else if (state.is_paused) {
                 cardButton.textContent = '▶️ Continue';
             } else {
                 cardButton.textContent = '⏭️ End Turn Early';
@@ -414,6 +416,13 @@ function createPlayerCard(player, index, state) {
 
         cardButton.addEventListener('click', function () {
             if (!socket || !currentGame) return;
+
+            // If game is finished, navigate to game creation with players pre-selected
+            if (currentGame.is_finished) {
+                const playerNames = currentGame.players.map(p => p.name).join(',');
+                window.location.href = `/game/create?players=${encodeURIComponent(playerNames)}`;
+                return;
+            }
 
             if (currentGame.is_paused) {
                 socket.emit('next_player');

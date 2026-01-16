@@ -346,6 +346,36 @@ class DatabaseService:
         finally:
             session.close()
 
+    def finish_game(self):
+        """
+        Mark all players in the current game as finished
+        (sets finished_at timestamp for all game results)
+        """
+        if self.current_game_session_id is None:
+            return
+
+        session = self.db_manager.get_session()
+        try:
+            # Update finished_at for all players in this game session
+            all_results = (
+                session.query(GameResult)
+                .filter_by(game_session_id=self.current_game_session_id)
+                .all()
+            )
+
+            for result in all_results:
+                if result.finished_at is None:
+                    result.finished_at = datetime.now(tz=timezone.utc)
+
+            session.commit()
+            print(f"Game finished: session={self.current_game_session_id}")
+
+        except Exception as e:
+            session.rollback()
+            print(f"Error finishing game: {e}")
+        finally:
+            session.close()
+
     def undo_throws_for_bust(self, player_id, throw_count):
         """
         Remove the last N throws for a player (for bust handling)

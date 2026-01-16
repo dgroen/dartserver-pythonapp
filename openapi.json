@@ -1,0 +1,853 @@
+{
+    "components": {
+        "schemas": {
+            "DartboardThrow": {
+                "properties": {
+                    "boardType": {
+                        "description": "Dartboard type identifier",
+                        "enum": [
+                            "carromco",
+                            "winmau",
+                            "unicorn"
+                        ],
+                        "example": "carromco",
+                        "type": "string"
+                    },
+                    "masterPin": {
+                        "description": "Master (row) GPIO pin number",
+                        "example": 4,
+                        "maximum": 40,
+                        "minimum": 0,
+                        "type": "integer"
+                    },
+                    "slavePin": {
+                        "description": "Slave (column) GPIO pin number",
+                        "example": 13,
+                        "maximum": 40,
+                        "minimum": 0,
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "masterPin",
+                    "slavePin",
+                    "boardType"
+                ],
+                "type": "object"
+            },
+            "Error": {
+                "properties": {
+                    "error": {
+                        "description": "Error type",
+                        "example": "Invalid request",
+                        "type": "string"
+                    },
+                    "message": {
+                        "description": "Human-readable error message",
+                        "example": "Missing required fields",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "error",
+                    "message"
+                ],
+                "type": "object"
+            },
+            "Game": {
+                "properties": {
+                    "double_out": {
+                        "default": false,
+                        "description": "Whether double-out is required",
+                        "example": false,
+                        "type": "boolean"
+                    },
+                    "game_type": {
+                        "description": "Type of game",
+                        "enum": [
+                            "301",
+                            "401",
+                            "501",
+                            "cricket"
+                        ],
+                        "example": "301",
+                        "type": "string"
+                    },
+                    "players": {
+                        "description": "List of player names",
+                        "example": [
+                            "Player 1",
+                            "Player 2"
+                        ],
+                        "items": {
+                            "type": "string"
+                        },
+                        "maxItems": 6,
+                        "minItems": 1,
+                        "type": "array"
+                    }
+                },
+                "required": [
+                    "game_type",
+                    "players"
+                ],
+                "type": "object"
+            },
+            "GameAction": {
+                "properties": {
+                    "game_id": {
+                        "description": "Game session ID (optional)",
+                        "example": "game-123-abc",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "HealthCheck": {
+                "properties": {
+                    "service": {
+                        "example": "darts-api-gateway",
+                        "type": "string"
+                    },
+                    "status": {
+                        "enum": [
+                            "healthy",
+                            "unhealthy"
+                        ],
+                        "example": "healthy",
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "example": "2024-01-15T10:30:00Z",
+                        "format": "date-time",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "status",
+                    "service",
+                    "timestamp"
+                ],
+                "type": "object"
+            },
+            "Player": {
+                "properties": {
+                    "name": {
+                        "description": "Player name",
+                        "example": "John Doe",
+                        "maxLength": 100,
+                        "minLength": 1,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name"
+                ],
+                "type": "object"
+            },
+            "Score": {
+                "properties": {
+                    "game_id": {
+                        "description": "Game session ID (optional)",
+                        "example": "game-123-abc",
+                        "type": "string"
+                    },
+                    "multiplier": {
+                        "description": "Score multiplier type",
+                        "enum": [
+                            "SINGLE",
+                            "DOUBLE",
+                            "TRIPLE",
+                            "BULL",
+                            "DBLBULL"
+                        ],
+                        "example": "TRIPLE",
+                        "type": "string"
+                    },
+                    "player_id": {
+                        "description": "Player ID (optional)",
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "score": {
+                        "description": "Base score value (0-60)",
+                        "example": 20,
+                        "maximum": 60,
+                        "minimum": 0,
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "score",
+                    "multiplier"
+                ],
+                "type": "object"
+            },
+            "SuccessResponse": {
+                "properties": {
+                    "data": {
+                        "description": "Optional response data",
+                        "type": "object"
+                    },
+                    "message": {
+                        "example": "Operation completed successfully",
+                        "type": "string"
+                    },
+                    "status": {
+                        "enum": [
+                            "success"
+                        ],
+                        "example": "success",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "status",
+                    "message"
+                ],
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "OAuth2": {
+                "flows": {
+                    "authorizationCode": {
+                        "authorizationUrl": "https://localhost:9443/oauth2/authorize",
+                        "scopes": {
+                            "dartboard:write": "Submit dartboard throws",
+                            "game:control": "Control game flow",
+                            "game:write": "Create and manage games",
+                            "player:write": "Add players to games",
+                            "score:write": "Submit scores"
+                        },
+                        "tokenUrl": "https://localhost:9443/oauth2/token"
+                    },
+                    "clientCredentials": {
+                        "scopes": {
+                            "dartboard:write": "Submit dartboard throws",
+                            "game:control": "Control game flow (pause, resume, end turn)",
+                            "game:write": "Create and manage games",
+                            "player:write": "Add players to games",
+                            "score:write": "Submit scores"
+                        },
+                        "tokenUrl": "https://localhost:9443/oauth2/token"
+                    }
+                },
+                "type": "oauth2"
+            }
+        }
+    },
+    "info": {
+        "contact": {
+            "email": "support@dartsapp.example.com",
+            "name": "API Support"
+        },
+        "description": "Secure REST API Gateway for the Darts Game System\n\nThis API provides secure endpoints for:\n- Dartboard hardware integration with client credentials authentication\n- Game management and control\n- Score submission and tracking\n- Player management\n\n## Authentication\n\nAll endpoints require OAuth2 authentication via WSO2 Identity Server.\n\n### For Dartboards (Hardware Clients)\nUse the Client Credentials grant type:\n\n```bash\ncurl -X POST https://localhost:9443/oauth2/token \\\n  -u CLIENT_ID:CLIENT_SECRET \\\n  -d \"grant_type=client_credentials&scope=dartboard:write\"\n```\n\n### For Users\nUse the Authorization Code grant type through the web interface.\n",
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "title": "Darts API Gateway",
+        "version": "1.0.0"
+    },
+    "openapi": "3.0.3",
+    "paths": {
+        "/api/v1/dartboard/throw": {
+            "post": {
+                "description": "Submit a dart throw from a dartboard hardware device.\n\nThis is the secure replacement for the legacy `/api/Throw/zone` endpoint.\nRequires client credentials authentication with `dartboard:write` scope.\n\nThe dartboard sends GPIO pin information which is mapped to score values\nby the backend.\n",
+                "operationId": "submitDartboardThrow",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "examples": {
+                                "double15": {
+                                    "summary": "Double 15",
+                                    "value": {
+                                        "boardType": "carromco",
+                                        "masterPin": 5,
+                                        "slavePin": 10
+                                    }
+                                },
+                                "triple20": {
+                                    "summary": "Triple 20",
+                                    "value": {
+                                        "boardType": "carromco",
+                                        "masterPin": 4,
+                                        "slavePin": 13
+                                    }
+                                }
+                            },
+                            "schema": {
+                                "$ref": "#/components/schemas/DartboardThrow"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "example": {
+                                    "data": {
+                                        "boardType": "carromco",
+                                        "client_id": "dartboard-001",
+                                        "masterPin": 4,
+                                        "slavePin": 13,
+                                        "timestamp": "2024-01-15T10:30:00Z"
+                                    },
+                                    "message": "Throw submitted successfully",
+                                    "status": "success"
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        },
+                        "description": "Throw submitted successfully"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Invalid request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized - missing or invalid token"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Forbidden - insufficient permissions"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "OAuth2": [
+                            "dartboard:write"
+                        ]
+                    }
+                ],
+                "summary": "Submit dartboard throw",
+                "tags": [
+                    "Dartboard"
+                ]
+            }
+        },
+        "/api/v1/game/actions/continue": {
+            "post": {
+                "description": "Continue the game after a pause or prompt",
+                "operationId": "continueGame",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GameAction"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        },
+                        "description": "Game continued successfully"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "OAuth2": [
+                            "game:control"
+                        ]
+                    }
+                ],
+                "summary": "Continue game",
+                "tags": [
+                    "Game Actions"
+                ]
+            }
+        },
+        "/api/v1/game/actions/end-turn": {
+            "post": {
+                "description": "End the current player's turn early",
+                "operationId": "endTurn",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GameAction"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        },
+                        "description": "Turn ended successfully"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "OAuth2": [
+                            "game:control"
+                        ]
+                    }
+                ],
+                "summary": "End current turn",
+                "tags": [
+                    "Game Actions"
+                ]
+            }
+        },
+        "/api/v1/game/actions/pause": {
+            "post": {
+                "description": "Pause the current game",
+                "operationId": "pauseGame",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GameAction"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        },
+                        "description": "Game paused successfully"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "OAuth2": [
+                            "game:control"
+                        ]
+                    }
+                ],
+                "summary": "Pause game",
+                "tags": [
+                    "Game Actions"
+                ]
+            }
+        },
+        "/api/v1/games": {
+            "post": {
+                "description": "Create a new darts game with specified players and settings",
+                "operationId": "createGame",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "examples": {
+                                "cricket": {
+                                    "summary": "Cricket game",
+                                    "value": {
+                                        "game_type": "cricket",
+                                        "players": [
+                                            "Charlie",
+                                            "Dave",
+                                            "Eve"
+                                        ]
+                                    }
+                                },
+                                "game301": {
+                                    "summary": "Standard 301 game",
+                                    "value": {
+                                        "double_out": false,
+                                        "game_type": "301",
+                                        "players": [
+                                            "Alice",
+                                            "Bob"
+                                        ]
+                                    }
+                                }
+                            },
+                            "schema": {
+                                "$ref": "#/components/schemas/Game"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        },
+                        "description": "Game created successfully"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Invalid game configuration"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "OAuth2": [
+                            "game:write"
+                        ]
+                    }
+                ],
+                "summary": "Create a new game",
+                "tags": [
+                    "Games"
+                ]
+            }
+        },
+        "/api/v1/players": {
+            "post": {
+                "description": "Add a player to the current game",
+                "operationId": "addPlayer",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Player"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        },
+                        "description": "Player added successfully"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Invalid player data"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "OAuth2": [
+                            "player:write"
+                        ]
+                    }
+                ],
+                "summary": "Add a player",
+                "tags": [
+                    "Players"
+                ]
+            }
+        },
+        "/api/v1/scores": {
+            "post": {
+                "description": "Submit a dart score to the game system",
+                "operationId": "submitScore",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "examples": {
+                                "single15": {
+                                    "summary": "Single 15",
+                                    "value": {
+                                        "multiplier": "SINGLE",
+                                        "score": 15
+                                    }
+                                },
+                                "triple20": {
+                                    "summary": "Triple 20",
+                                    "value": {
+                                        "multiplier": "TRIPLE",
+                                        "score": 20
+                                    }
+                                }
+                            },
+                            "schema": {
+                                "$ref": "#/components/schemas/Score"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        },
+                        "description": "Score submitted successfully"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Invalid score data"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "OAuth2": [
+                            "score:write"
+                        ]
+                    }
+                ],
+                "summary": "Submit a score",
+                "tags": [
+                    "Scores"
+                ]
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Check the health status of the API Gateway service",
+                "operationId": "healthCheck",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthCheck"
+                                }
+                            }
+                        },
+                        "description": "Service is healthy"
+                    }
+                },
+                "security": [],
+                "summary": "Health check",
+                "tags": [
+                    "System"
+                ]
+            }
+        }
+    },
+    "security": [
+        {
+            "OAuth2": []
+        }
+    ],
+    "servers": [
+        {
+            "description": "Production server",
+            "url": "https://api.dartsapp.example.com"
+        },
+        {
+            "description": "Test server",
+            "url": "https://test-api.dartsapp.example.com"
+        },
+        {
+            "description": "Development server",
+            "url": "http://localhost:5000"
+        }
+    ],
+    "tags": [
+        {
+            "description": "System health and status endpoints",
+            "name": "System"
+        },
+        {
+            "description": "Dartboard hardware integration endpoints",
+            "name": "Dartboard"
+        },
+        {
+            "description": "Score submission endpoints",
+            "name": "Scores"
+        },
+        {
+            "description": "Game management endpoints",
+            "name": "Games"
+        },
+        {
+            "description": "Player management endpoints",
+            "name": "Players"
+        },
+        {
+            "description": "Game flow control endpoints",
+            "name": "Game Actions"
+        }
+    ]
+}

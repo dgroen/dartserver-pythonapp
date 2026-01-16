@@ -104,3 +104,4 @@ api_keys.json
 .api_keys
 docs
 .wheels/
+.zencoder

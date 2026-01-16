@@ -70,7 +70,6 @@ coverage.xml
 .pre-commit-config.yaml_
 
 # Documentation
-docs/
 
 # Examples and helpers
 examples/

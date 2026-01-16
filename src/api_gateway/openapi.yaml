@@ -1,0 +1,572 @@
+openapi: 3.0.3
+info:
+  title: Darts API Gateway
+  version: 1.0.0
+  description: |
+    Secure REST API Gateway for the Darts Game System
+    
+    This API provides secure endpoints for:
+    - Dartboard hardware integration with client credentials authentication
+    - Game management and control
+    - Score submission and tracking
+    - Player management
+    
+    ## Authentication
+    
+    All endpoints require OAuth2 authentication via WSO2 Identity Server.
+    
+    ### For Dartboards (Hardware Clients)
+    Use the Client Credentials grant type:
+    
+    ```bash
+    curl -X POST https://wso2-is:9443/oauth2/token \
+      -u CLIENT_ID:CLIENT_SECRET \
+      -d "grant_type=client_credentials&scope=dartboard:write"
+    ```
+    
+    ### For Users
+    Use the Authorization Code grant type through the web interface.
+    
+  contact:
+    name: API Support
+    email: support@dartsapp.example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.dartsapp.example.com
+    description: Production server
+  - url: https://test-api.dartsapp.example.com
+    description: Test server
+  - url: http://localhost:8080
+    description: Development server
+
+security:
+  - OAuth2: []
+
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://wso2-is:9443/oauth2/token
+          scopes:
+            dartboard:write: Submit dartboard throws
+            score:write: Submit scores
+            game:write: Create and manage games
+            game:control: Control game flow (pause, resume, end turn)
+            player:write: Add players to games
+        authorizationCode:
+          authorizationUrl: https://wso2-is:9443/oauth2/authorize
+          tokenUrl: https://wso2-is:9443/oauth2/token
+          scopes:
+            dartboard:write: Submit dartboard throws
+            score:write: Submit scores
+            game:write: Create and manage games
+            game:control: Control game flow
+            player:write: Add players to games
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error type
+          example: Invalid request
+        message:
+          type: string
+          description: Human-readable error message
+          example: Missing required fields
+
+    SuccessResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          enum: [success]
+          example: success
+        message:
+          type: string
+          example: Operation completed successfully
+        data:
+          type: object
+          description: Optional response data
+
+    DartboardThrow:
+      type: object
+      required:
+        - masterPin
+        - slavePin
+        - boardType
+      properties:
+        masterPin:
+          type: integer
+          description: Master (row) GPIO pin number
+          example: 4
+          minimum: 0
+          maximum: 40
+        slavePin:
+          type: integer
+          description: Slave (column) GPIO pin number
+          example: 13
+          minimum: 0
+          maximum: 40
+        boardType:
+          type: string
+          description: Dartboard type identifier
+          example: carromco
+          enum: [carromco, winmau, unicorn]
+
+    Score:
+      type: object
+      required:
+        - score
+        - multiplier
+      properties:
+        score:
+          type: integer
+          description: Base score value (0-60)
+          example: 20
+          minimum: 0
+          maximum: 60
+        multiplier:
+          type: string
+          description: Score multiplier type
+          example: TRIPLE
+          enum: [SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL]
+        player_id:
+          type: integer
+          description: Player ID (optional)
+          example: 1
+        game_id:
+          type: string
+          description: Game session ID (optional)
+          example: "game-123-abc"
+
+    Game:
+      type: object
+      required:
+        - game_type
+        - players
+      properties:
+        game_type:
+          type: string
+          description: Type of game
+          example: "301"
+          enum: ["301", "401", "501", "cricket"]
+        players:
+          type: array
+          description: List of player names
+          items:
+            type: string
+          example: ["Player 1", "Player 2"]
+          minItems: 1
+          maxItems: 6
+        double_out:
+          type: boolean
+          description: Whether double-out is required
+          default: false
+          example: false
+
+    Player:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Player name
+          example: John Doe
+          minLength: 1
+          maxLength: 100
+
+    GameAction:
+      type: object
+      properties:
+        game_id:
+          type: string
+          description: Game session ID (optional)
+          example: "game-123-abc"
+
+    HealthCheck:
+      type: object
+      required:
+        - status
+        - service
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+          example: healthy
+        service:
+          type: string
+          example: darts-api-gateway
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Check the health status of the API Gateway service
+      operationId: healthCheck
+      security: []
+      tags:
+        - System
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+
+  /api/v1/dartboard/throw:
+    post:
+      summary: Submit dartboard throw
+      description: |
+        Submit a dart throw from a dartboard hardware device.
+        
+        This is the secure replacement for the legacy `/api/Throw/zone` endpoint.
+        Requires client credentials authentication with `dartboard:write` scope.
+        
+        The dartboard sends GPIO pin information which is mapped to score values
+        by the backend.
+      operationId: submitDartboardThrow
+      tags:
+        - Dartboard
+      security:
+        - OAuth2: [dartboard:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DartboardThrow'
+            examples:
+              triple20:
+                summary: Triple 20
+                value:
+                  masterPin: 4
+                  slavePin: 13
+                  boardType: carromco
+              double15:
+                summary: Double 15
+                value:
+                  masterPin: 5
+                  slavePin: 10
+                  boardType: carromco
+      responses:
+        '201':
+          description: Throw submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                status: success
+                message: Throw submitted successfully
+                data:
+                  masterPin: 4
+                  slavePin: 13
+                  boardType: carromco
+                  client_id: dartboard-001
+                  timestamp: "2024-01-15T10:30:00Z"
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/scores:
+    post:
+      summary: Submit a score
+      description: Submit a dart score to the game system
+      operationId: submitScore
+      tags:
+        - Scores
+      security:
+        - OAuth2: [score:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Score'
+            examples:
+              triple20:
+                summary: Triple 20
+                value:
+                  score: 20
+                  multiplier: TRIPLE
+              single15:
+                summary: Single 15
+                value:
+                  score: 15
+                  multiplier: SINGLE
+      responses:
+        '201':
+          description: Score submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid score data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/games:
+    post:
+      summary: Create a new game
+      description: Create a new darts game with specified players and settings
+      operationId: createGame
+      tags:
+        - Games
+      security:
+        - OAuth2: [game:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Game'
+            examples:
+              game301:
+                summary: Standard 301 game
+                value:
+                  game_type: "301"
+                  players: ["Alice", "Bob"]
+                  double_out: false
+              cricket:
+                summary: Cricket game
+                value:
+                  game_type: cricket
+                  players: ["Charlie", "Dave", "Eve"]
+      responses:
+        '201':
+          description: Game created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid game configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/players:
+    post:
+      summary: Add a player
+      description: Add a player to the current game
+      operationId: addPlayer
+      tags:
+        - Players
+      security:
+        - OAuth2: [player:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Player'
+      responses:
+        '201':
+          description: Player added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid player data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/game/actions/end-turn:
+    post:
+      summary: End current turn
+      description: End the current player's turn early
+      operationId: endTurn
+      tags:
+        - Game Actions
+      security:
+        - OAuth2: [game:control]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameAction'
+      responses:
+        '200':
+          description: Turn ended successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/game/actions/continue:
+    post:
+      summary: Continue game
+      description: Continue the game after a pause or prompt
+      operationId: continueGame
+      tags:
+        - Game Actions
+      security:
+        - OAuth2: [game:control]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameAction'
+      responses:
+        '200':
+          description: Game continued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/game/actions/pause:
+    post:
+      summary: Pause game
+      description: Pause the current game
+      operationId: pauseGame
+      tags:
+        - Game Actions
+      security:
+        - OAuth2: [game:control]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameAction'
+      responses:
+        '200':
+          description: Game paused successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+tags:
+  - name: System
+    description: System health and status endpoints
+  - name: Dartboard
+    description: Dartboard hardware integration endpoints
+  - name: Scores
+    description: Score submission endpoints
+  - name: Games
+    description: Game management endpoints
+  - name: Players
+    description: Player management endpoints
+  - name: Game Actions
+    description: Game flow control endpoints

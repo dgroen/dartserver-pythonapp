@@ -65,8 +65,8 @@ services:
       WSO2_IS_INTROSPECT_USER: admin
       WSO2_IS_INTROSPECT_PASSWORD: DwvTAis11k! # pragma: allowlist secret
 
-      # RabbitMQ Topic for test
-      RABBITMQ_TOPIC: darts.scores.#
+      # RabbitMQ Topic for test (listen to all darts topics)
+      RABBITMQ_TOPIC: darts.#
 
       # Test-specific TTS Engine settings (disabled but configured)
       TTS_ENGINE: gtts
@@ -83,7 +83,7 @@ services:
       RABBITMQ_PASSWORD: guest # pragma: allowlist secret
       RABBITMQ_VHOST: /
       RABBITMQ_EXCHANGE: darts_exchange_test
-      RABBITMQ_TOPIC: darts.scores.#
+      RABBITMQ_TOPIC: darts.#
 
       # WSO2 Configuration
       WSO2_IS_URL: https://wso2is:9443

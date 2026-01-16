@@ -6,16 +6,26 @@
 
 ```mermaid
 graph TB
+    Dartboards["Dartboard Hardware<br/>(OAuth2 Client)"]
     Client["Web Clients<br/>(Browser)"]
     Mobile["Mobile Clients"]
+    
+    WSO2_APIM["WSO2 API Manager<br/>(API Gateway)"]
+    API_Gateway["Darts API Gateway<br/>(Port 8080)"]
+    
     RMQ["RabbitMQ<br/>(Score Queue)"]
-
+    
+    Dartboards -->|HTTPS + OAuth2| WSO2_APIM
     Client -->|HTTP/WebSocket| Flask["Flask App<br/>(Port 5000)"]
     Mobile -->|HTTP/WebSocket| Flask
+    
+    WSO2_APIM -->|Forwards| API_Gateway
+    API_Gateway -->|Publishes| RMQ
     RMQ -->|Consumer| Flask
 
     Flask -->|SQL| DB["PostgreSQL<br/>(Database)"]
-    Flask -->|Token Validation| WSO2["WSO2 Identity<br/>(Port 9443)"]
+    Flask -->|Token Validation| WSO2_IS["WSO2 Identity<br/>(Port 9443)"]
+    API_Gateway -->|Token Validation| WSO2_IS
 
     Nginx["Nginx<br/>(Reverse Proxy)"]
     Nginx -->|http:5000| Flask
@@ -24,14 +34,39 @@ graph TB
     Browser -->|https| Nginx
 
     style Flask fill:#4A90E2
+    style API_Gateway fill:#9B59B6
     style DB fill:#50C878
-    style WSO2 fill:#FF6B6B
+    style WSO2_IS fill:#FF6B6B
+    style WSO2_APIM fill:#E67E22
     style RMQ fill:#F5A623
 ```
 
 ## Core Components
 
-### 1. Flask Application (src/app/app.py)
+### 1. API Gateway (src/api_gateway/app.py) **NEW**
+
+**Responsibilities:**
+- Secure REST API for dartboard hardware
+- OAuth2 client credentials authentication
+- Publish events to RabbitMQ
+- OpenAPI documentation
+- Token validation (JWKS or introspection)
+
+**Key Endpoints:**
+- POST /api/v1/dartboard/throw - Submit dartboard throw (secure)
+- POST /api/v1/scores - Submit score manually
+- POST /api/v1/games - Create new game
+- POST /api/v1/game/actions/* - Game control (end turn, pause, continue)
+- GET /docs - Swagger UI documentation
+- GET /health - Health check
+
+**Security:**
+- Replaces insecure `/api/Throw/zone` endpoint
+- Requires OAuth2 Bearer tokens
+- Scope-based authorization (dartboard:write, game:control, etc.)
+- Managed through WSO2 API Manager
+
+### 2. Flask Application (src/app/app.py)
 
 **Responsibilities:**
 - HTTP request handling
@@ -46,7 +81,7 @@ graph TB
 - POST /api/score - Submit score
 - GET /callback - OAuth2 callback
 
-### 2. Game Manager (src/app/game_manager.py)
+### 3. Game Manager (src/app/game_manager.py)
 
 ```mermaid
 graph LR
@@ -163,6 +198,40 @@ erDiagram
 ```
 
 ## Request Flow Diagram
+
+### Dartboard Score Submission Flow **NEW**
+
+```mermaid
+sequenceDiagram
+    participant Dartboard as Dartboard Hardware
+    participant APIM as WSO2 API Manager
+    participant Gateway as API Gateway
+    participant RMQ as RabbitMQ
+    participant Flask as Flask App
+    participant DB as Database
+
+    Note over Dartboard: Dart hits the board
+    Dartboard->>Dartboard: Detect GPIO pins activated
+    
+    Note over Dartboard: First request or token expired
+    Dartboard->>APIM: POST /oauth2/token<br/>(client_credentials)
+    APIM->>Dartboard: Access Token (expires in 3600s)
+    
+    Dartboard->>APIM: POST /api/v1/dartboard/throw<br/>Bearer token + pin data
+    APIM->>APIM: Validate token & rate limit
+    APIM->>Gateway: Forward request
+    
+    Gateway->>Gateway: Validate JWT token
+    Gateway->>Gateway: Check scopes (dartboard:write)
+    Gateway->>RMQ: Publish to darts.dartboard.throw
+    Gateway->>Dartboard: 201 Success
+    
+    RMQ->>Flask: Consume message
+    Flask->>Flask: Map pins to score
+    Flask->>DB: Save throw
+    Flask->>Flask: Update game state
+    Flask-->>Browser: WebSocket: game state update
+```
 
 ### Score Submission Flow
 
