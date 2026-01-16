@@ -99,98 +99,102 @@ swagger_config = {
 
 swagger_template = None
 try:
-    # Prefer the centralized OpenAPI spec in docs if available so Swagger UI
-    # reflects the full API surface instead of relying solely on docstrings.
-    spec_path = _root_dir / "docs" / "api-spec.yaml"
-    if spec_path.exists():
-        with Path.open(spec_path) as fh:
+    # Prefer the centralized OpenAPI spec at project root (openapi.json)
+    # so Swagger UI reflects the full API surface. Fall back to
+    # docs/api-spec.yaml if the root spec is not present.
+    spec_path_json = _root_dir / "openapi.json"
+    spec_path_yaml = _root_dir / "docs" / "api-spec.yaml"
+    if spec_path_json.exists():
+        with spec_path_json.open() as fh:
+            # yaml.safe_load can parse JSON as well as YAML
             swagger_template = yaml.safe_load(fh)
-        # flasgger expects 'swagger' 2.0 style when using template. If the
-        # loaded YAML is an OpenAPI 3 spec it will contain an 'openapi'
-        # top-level key. Flasgger may merge in a `swagger: "2.0"` field,
-        # producing a spec that contains both 'swagger' and 'openapi' —
-        # which breaks the Swagger UI. Remove the top-level 'openapi'
-        # key to avoid that conflict while keeping the rest of the
-        # spec (paths/components) available to the UI.
-        if isinstance(swagger_template, dict) and "openapi" in swagger_template:
+    elif spec_path_yaml.exists():
+        with spec_path_yaml.open() as fh:
+            swagger_template = yaml.safe_load(fh)
+
+    # If we loaded an OpenAPI 3 spec (contains 'openapi'), convert it to a
+    # Swagger 2.0-style template expected by Flasgger. This avoids having both
+    # 'openapi' and 'swagger' top-level fields which breaks the UI.
+    if isinstance(swagger_template, dict) and "openapi" in swagger_template:
+        logger.info(
+            "Loaded OpenAPI 3 spec; converting to Swagger 2.0 compatible template.",
+        )
+        # Remove top-level openapi key
+        swagger_template.pop("openapi", None)
+        # Convert components -> definitions/securityDefinitions
+        comps = swagger_template.get("components") or {}
+        schemas = comps.get("schemas")
+        if schemas:
             logger.info(
-                "Loaded OpenAPI 3 spec; removing top-level 'openapi' to avoid Flasgger conflict.",
+                "Converting components.schemas -> definitions for Swagger UI compatibility.",
             )
-            swagger_template.pop("openapi", None)
-            # Convert OpenAPI3 'components' -> Swagger 2.0 compatible fields
-            comps = swagger_template.get("components") or {}
-            schemas = comps.get("schemas")
-            if schemas:
-                logger.info(
-                    "Converting components.schemas -> definitions for Swagger UI compatibility.",
-                )
-                swagger_template["definitions"] = schemas
-            sec = comps.get("securitySchemes")
-            if sec:
-                logger.info("Converting components.securitySchemes -> securityDefinitions.")
-                swagger_template["securityDefinitions"] = sec
-            # Remove components to avoid mixed OpenAPI3 keys
-            if "components" in swagger_template:
-                swagger_template.pop("components", None)
-            # Ensure top-level swagger field exists
-            swagger_template.setdefault("swagger", "2.0")
+            swagger_template["definitions"] = schemas
+        sec = comps.get("securitySchemes")
+        if sec:
+            logger.info("Converting components.securitySchemes -> securityDefinitions.")
+            swagger_template["securityDefinitions"] = sec
+        # Remove components to avoid mixed OpenAPI3 keys
+        if "components" in swagger_template:
+            swagger_template.pop("components", None)
+        # Ensure top-level swagger field exists
+        swagger_template.setdefault("swagger", "2.0")
 
-            # Convert requestBody/content to Swagger 2.0 compatible parameters and
-            # replace any component $ref references with definitions refs.
-            def _replace_refs(obj):
-                if isinstance(obj, dict):
-                    for k, v in list(obj.items()):
-                        if isinstance(v, str) and v.startswith("#/components/schemas/"):
-                            obj[k] = v.replace("#/components/schemas/", "#/definitions/")
-                        else:
-                            _replace_refs(v)
-                elif isinstance(obj, list):
-                    for item in obj:
-                        _replace_refs(item)
+        # Convert requestBody/content to Swagger 2.0 compatible parameters and
+        # replace any component $ref references with definitions refs.
+        def _replace_refs(obj):
+            if isinstance(obj, dict):
+                for k, v in list(obj.items()):
+                    if isinstance(v, str) and v.startswith("#/components/schemas/"):
+                        obj[k] = v.replace("#/components/schemas/", "#/definitions/")
+                    else:
+                        _replace_refs(v)
+            elif isinstance(obj, list):
+                for item in obj:
+                    _replace_refs(item)
 
-            paths = swagger_template.get("paths") or {}
-            for _path, methods in list(paths.items()):
-                if not isinstance(methods, dict):
+        paths = swagger_template.get("paths") or {}
+        for _path, methods in list(paths.items()):
+            if not isinstance(methods, dict):
+                continue
+            for _method, op in list(methods.items()):
+                if not isinstance(op, dict):
                     continue
-                for _method, op in list(methods.items()):
-                    if not isinstance(op, dict):
-                        continue
-                    # requestBody -> parameters (body)
-                    rb = op.pop("requestBody", None)
-                    if rb:
-                        required = rb.get("required", False)
-                        content = rb.get("content", {}) or {}
-                        schema = None
-                        for _media, media_val in content.items():
-                            if isinstance(media_val, dict) and "schema" in media_val:
-                                schema = media_val["schema"]
-                                break
-                        if schema is not None:
-                            params = op.get("parameters", [])
-                            params.append(
-                                {
-                                    "in": "body",
-                                    "name": "body",
-                                    "required": required,
-                                    "schema": schema,
-                                },
-                            )
-                            op["parameters"] = params
-                    # responses: move content -> schema
-                    responses = op.get("responses", {})
-                    for code, resp in list(responses.items()):
-                        if isinstance(resp, dict):
-                            content = resp.pop("content", None)
-                            if content and isinstance(content, dict):
-                                for _media, media_val in content.items():
-                                    if isinstance(media_val, dict) and "schema" in media_val:
-                                        resp["schema"] = media_val["schema"]
-                                        break
-                                responses[code] = resp
-                    # Replace refs within operation
-                    _replace_refs(op)
-            # Replace refs in whole template as a final pass
-            _replace_refs(swagger_template)
+                # requestBody -> parameters (body)
+                rb = op.pop("requestBody", None)
+                if rb:
+                    required = rb.get("required", False)
+                    content = rb.get("content", {}) or {}
+                    schema = None
+                    for _media, media_val in content.items():
+                        if isinstance(media_val, dict) and "schema" in media_val:
+                            schema = media_val["schema"]
+                            break
+                    if schema is not None:
+                        params = op.get("parameters", [])
+                        params.append(
+                            {
+                                "in": "body",
+                                "name": "body",
+                                "required": required,
+                                "schema": schema,
+                            },
+                        )
+                        op["parameters"] = params
+                # responses: move content -> schema
+                responses = op.get("responses", {})
+                for code, resp in list(responses.items()):
+                    if isinstance(resp, dict):
+                        content = resp.pop("content", None)
+                        if content and isinstance(content, dict):
+                            for _media, media_val in content.items():
+                                if isinstance(media_val, dict) and "schema" in media_val:
+                                    resp["schema"] = media_val["schema"]
+                                    break
+                            responses[code] = resp
+                # Replace refs within operation
+                _replace_refs(op)
+        # Replace refs in whole template as a final pass
+        _replace_refs(swagger_template)
 except Exception:
     swagger_template = None
 

@@ -175,14 +175,17 @@ services:
       # Python unbuffered output for better logging
       PYTHONUNBUFFERED: "1"
 
+      # Set development environment so generated Swagger spec includes http scheme
+      ENVIRONMENT: development
+
       # Flask Configuration
       FLASK_HOST: 0.0.0.0
       FLASK_PORT: 5000
       FLASK_DEBUG: "False"
       FLASK_USE_SSL: "False"
-      # Use HTTPS scheme with nginx (port 443) for external callbacks
-      APP_SCHEME: https
-      APP_DOMAIN: localhost
+      # Use HTTP scheme for local direct access on port 5000
+      APP_SCHEME: http
+      APP_DOMAIN: localhost:5000
       SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
 
       # Dartboard Configuration

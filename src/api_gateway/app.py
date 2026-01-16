@@ -365,6 +365,33 @@ def health_check():
 def get_openapi_spec():
     """Serve OpenAPI specification"""
     try:
+        # Prefer centralized project root openapi.json/openapi.yaml when present
+        root_spec_json = Path(__file__).resolve().parents[2] / "openapi.json"
+        _root_spec_yaml: Path = Path(__file__).resolve().parents[2] / "openapi.yaml"
+        if root_spec_json.exists():
+            # If JSON exists at project root, convert to YAML for legacy endpoints
+            with root_spec_json.open() as fh:
+                spec = json.load(fh)
+
+            # Replace internal WSO2 occurrences in string fields
+            def _deep_replace(o):
+                if isinstance(o, dict):
+                    for k, v in list(o.items()):
+                        o[k] = _deep_replace(v)
+                    return o
+                if isinstance(o, list):
+                    return [_deep_replace(i) for i in o]
+                if isinstance(o, str):
+                    s = o.replace("https://wso2-is:9443", WSO2_IS_URL)
+                    s = s.replace("https://wso2-is", WSO2_IS_URL)
+                    s = s.replace("wso2-is:9443", WSO2_IS_URL.replace("https://", ""))
+                    return s.replace("wso2-is", WSO2_IS_URL.replace("https://", ""))
+                return o
+
+            spec = _deep_replace(spec)
+            yaml_text = yaml.safe_dump(spec)
+            return Response(yaml_text, mimetype="application/x-yaml")
+        # Fallback to local openapi.yaml bundled with gateway
         spec_path = Path(__file__).parent / "openapi.yaml"
         # Read YAML and replace any internal WSO2 host placeholders so the
         # documentation served reflects the configured WSO2_IS_URL
@@ -386,9 +413,21 @@ def get_openapi_spec():
 def get_openapi_spec_json():
     """Serve OpenAPI specification as JSON"""
     try:
-        spec_path = Path(__file__).parent / "openapi.yaml"
-        with spec_path.open() as f:
-            spec_dict = yaml.safe_load(f)
+        # Prefer centralized OpenAPI at project root if present
+        root_spec_json = Path(__file__).resolve().parents[2] / "openapi.json"
+        root_spec_yaml = Path(__file__).resolve().parents[2] / "openapi.yaml"
+        spec_dict = None
+        if root_spec_json.exists():
+            with root_spec_json.open() as fh:
+                spec_dict = json.load(fh)
+        elif root_spec_yaml.exists():
+            with root_spec_yaml.open() as fh:
+                spec_dict = yaml.safe_load(fh)
+        else:
+            # Fallback to bundled gateway YAML
+            spec_path = Path(__file__).parent / "openapi.yaml"
+            with spec_path.open() as f:
+                spec_dict = yaml.safe_load(f)
 
         # Replace any internal wso2-is occurrences in all string fields
         def _deep_replace(o):
@@ -406,6 +445,85 @@ def get_openapi_spec_json():
             return o
 
         spec_dict = _deep_replace(spec_dict)
+
+        # If OpenAPI 3 spec detected, convert to Swagger 2.0 style to maintain
+        # compatibility with tools that expect top-level 'swagger' field.
+        def _convert_openapi3_to_swagger2(spec: dict) -> dict:
+            try:
+                if not isinstance(spec, dict) or "openapi" not in spec:
+                    return spec
+                # Remove openapi key
+                spec.pop("openapi", None)
+                comps = spec.get("components") or {}
+                schemas = comps.get("schemas")
+                if schemas:
+                    spec["definitions"] = schemas
+                sec = comps.get("securitySchemes")
+                if sec:
+                    spec["securityDefinitions"] = sec
+                if "components" in spec:
+                    spec.pop("components", None)
+                spec.setdefault("swagger", "2.0")
+
+                def _replace_refs(o):
+                    if isinstance(o, dict):
+                        for k, v in list(o.items()):
+                            if isinstance(v, str) and v.startswith("#/components/schemas/"):
+                                o[k] = v.replace("#/components/schemas/", "#/definitions/")
+                            else:
+                                _replace_refs(v)
+                    elif isinstance(o, list):
+                        for item in o:
+                            _replace_refs(item)
+
+                paths = spec.get("paths") or {}
+                for _path, methods in list(paths.items()):
+                    if not isinstance(methods, dict):
+                        continue
+                    for _method, op in list(methods.items()):
+                        if not isinstance(op, dict):
+                            continue
+                        rb = op.pop("requestBody", None)
+                        if rb:
+                            required = rb.get("required", False)
+                            content = rb.get("content", {}) or {}
+                            schema = None
+                            for _media, media_val in content.items():
+                                if isinstance(media_val, dict) and "schema" in media_val:
+                                    schema = media_val["schema"]
+                                    break
+                            if schema is not None:
+                                params = op.get("parameters", [])
+                                params.append(
+                                    {
+                                        "in": "body",
+                                        "name": "body",
+                                        "required": required,
+                                        "schema": schema,
+                                    },
+                                )
+                                op["parameters"] = params
+                        responses = op.get("responses", {})
+                        for code, resp in list(responses.items()):
+                            if isinstance(resp, dict):
+                                content = resp.pop("content", None)
+                                if content and isinstance(content, dict):
+                                    for _media, media_val in content.items():
+                                        if isinstance(media_val, dict) and "schema" in media_val:
+                                            resp["schema"] = media_val["schema"]
+                                            break
+                                    responses[code] = resp
+                        _replace_refs(op)
+                _replace_refs(spec)
+            except Exception:
+                # If conversion fails, return original spec
+                logger.exception(
+                    "Error converting OpenAPI 3 spec to Swagger 2.0, return original spec.",
+                )
+            return spec
+
+        spec_dict = _convert_openapi3_to_swagger2(spec_dict)
+
         return jsonify(spec_dict)
     except Exception:
         logger.exception("Error serving OpenAPI spec as JSON")
