@@ -1,6 +1,6 @@
 """Unit tests for GameCricket class."""
 
-from src.games.game_cricket import GameCricket
+from dartserver_games.game_cricket import GameCricket
 
 
 class TestGameCricket:

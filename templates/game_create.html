@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create New Game - Darts</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/control.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
+    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"> -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 32px;
+        }
+
+        .header .user-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px;
+        }
+
+        .header .user-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .header .user-role {
+            font-size: 14px;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .nav-card {
+            background: #fafafa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 25px;
+            text-decoration: none;
+            color: #333;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .nav-card:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+        }
+
+        .nav-card-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .nav-card-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .nav-card-description {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: #f0f0f0;
+            color: #333;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .back-link:hover {
+            background: #e0e0e0;
+        }
+
+        .section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .section h2 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .section p {
+            color: #666;
+            line-height: 1.6;
+        }
+    </style>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <div class="user-info-header">
+            <div class="user-info">
+                {% if user_claims %}
+                <a href="/profile" class="username username-link" title="View Profile">👤 {{
+                    user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + '
+                    ' + user_claims.get('family_name', '')).strip() or user_claims.get('username',
+                    user_claims.get('sub', 'User')) }}</a>
+                {% if user_roles %}
+                <span class="user-roles">
+                    {% for role in user_roles %}
+                    <span class="role-badge role-{{ role }}">{{ role }}</span>
+                    {% endfor %}
+                </span>
+                {% endif %}
+                <a href="/logout" class="logout-btn">Logout</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <header>
+            <h1>🎮 Create New Game</h1>
+            <div class="header-links">
+                <a href="/" class="header-link">🎯 Back to Game</a>
+                {% if 'admin' in user_roles %}
+                <a href="/admin" class="header-link">🔧 Admin</a>
+                {% endif %}
+            </div>
+        </header>
+
+        <div class="control-sections">
+            <!-- Game Setup -->
+            <section class="control-section">
+                <h2>Game Setup</h2>
+                <div class="form-group">
+                    <label for="game-id">Game ID (optional):</label>
+                    <input type="text" id="game-id" placeholder="Leave empty for auto-generated ID">
+                </div>
+                <div class="form-group">
+                    <label for="game-type">Game Type:</label>
+                    <select id="game-type"></select>
+                </div>
+                <div class="form-group">
+                    <label for="double-out">
+                        <input type="checkbox" id="double-out" checked>
+                        Double Out (must finish with a double)
+                    </label>
+                </div>
+                <div class="form-group" id="hard-mode-container" style="display: none;">
+                    <label for="reset-on-miss">
+                        <input type="checkbox" id="reset-on-miss">
+                        Hard Mode (reset to 20 after 3 consecutive misses)
+                    </label>
+                </div>
+            </section>
+
+            <!-- Player Management -->
+            <section class="control-section">
+                <h2>👥 Player Management</h2>
+
+                <!-- Current Players List -->
+                <div class="current-players-section" style="margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 10px; color: #333; font-size: 16px;">Current Players</h3>
+                    <div id="players-list" class="players-list-container">
+                        <!-- Players will be dynamically added here -->
+                        <div class="empty-players">No players added yet</div>
+                    </div>
+                </div>
+
+                <!-- Add Player Section -->
+                <div class="add-player-section">
+                    <h3 style="margin-bottom: 15px; color: #333; font-size: 16px;">Add New Player</h3>
+
+                    <div class="search-box">
+                        <input type="text" id="player-name" placeholder="Search WSO2 users or enter manual name...">
+                        <button id="add-player-btn" class="btn btn-success btn-auto-width">➕ Add Player</button>
+                    </div>
+
+                    <div id="player-search-results" class="search-results-container">
+                        <!-- Search results will appear here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Action Buttons -->
+            <section class="control-section">
+                <h2>Actions</h2>
+                <div class="button-group">
+                    <button id="create-game-btn" class="btn btn-primary btn-large">🚀 Create and Start Game</button>
+                    <button id="cancel-btn" class="btn btn-secondary" onclick="window.location.href='/'">Cancel</button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/game-create.js') }}"></script>
+</body>
+
+</html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Darts Game</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 32px;
+        }
+
+        .header .user-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px;
+        }
+
+        .header .user-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .header .user-role {
+            font-size: 14px;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .nav-card {
+            background: #fafafa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 25px;
+            text-decoration: none;
+            color: #333;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .nav-card:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+        }
+
+        .nav-card-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .nav-card-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .nav-card-description {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: #f0f0f0;
+            color: #333;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .back-link:hover {
+            background: #e0e0e0;
+        }
+
+        .section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .section h2 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .section p {
+            color: #666;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        {% include '_user_header.html' %}
+        <div class="header">
+            <h1>🎯 Admin Dashboard</h1>
+            <div class="user-info">
+                {% if user_claims and user_claims.get('sub') %}
+                <span class="user-name">{{ user_claims.get('sub') }}</span>
+                {% endif %}
+                {% if user_roles %}
+                <span class="user-role">Role: {{ ', '.join(user_roles) }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="nav-grid">
+            <!-- Dartboard Testing -->
+            <a href="/admin/dartboard-testing" class="nav-card">
+                <span class="nav-card-icon">🎯</span>
+                <div class="nav-card-title">Dartboard Testing</div>
+                <div class="nav-card-description">
+                    Test and calibrate dartboard GPIO pin mappings. Configure dartboard types and troubleshoot hardware
+                    connections.
+                </div>
+            </a>
+
+            <!-- TTS Testing -->
+            <a href="/admin/tts-testing" class="nav-card">
+                <span class="nav-card-icon">🔊</span>
+                <div class="nav-card-title">TTS Testing</div>
+                <div class="nav-card-description">
+                    Test Text-to-Speech functionality. Preview different voices, test audio playback, and configure TTS
+                    settings.
+                </div>
+            </a>
+
+            <!-- User Management -->
+            <a href="/admin/users" class="nav-card">
+                <span class="nav-card-icon">👥</span>
+                <div class="nav-card-title">User Management</div>
+                <div class="nav-card-description">
+                    Create new users, deactivate accounts, set passwords, and manage user roles. Full WSO2 user
+                    administration.
+                </div>
+            </a>
+
+            <!-- Game Management -->
+            <a href="/admin/games" class="nav-card">
+                <span class="nav-card-icon">🎮</span>
+                <div class="nav-card-title">Game Management</div>
+                <div class="nav-card-description">
+                    Remove paused games, archive games by user and date range, and manage game data cleanup.
+                </div>
+            </a>
+
+            <!-- Logged-in Users -->
+            <a href="/admin/active-users" class="nav-card">
+                <span class="nav-card-icon">🟢</span>
+                <div class="nav-card-title">Active Users</div>
+                <div class="nav-card-description">
+                    View real-time overview of currently logged-in users, active sessions, and connection status.
+                </div>
+            </a>
+
+            <!-- User Statistics -->
+            <a href="/admin/statistics" class="nav-card">
+                <span class="nav-card-icon">📊</span>
+                <div class="nav-card-title">User Statistics</div>
+                <div class="nav-card-description">
+                    View comprehensive statistics for all users including game counts, win rates, rankings, and
+                    performance metrics.
+                </div>
+            </a>
+        </div>
+
+        <div class="section">
+            <a href="/" class="back-link">
+                ← Back to Main Dashboard
+            </a>
+        </div>
+    </div>
+</body>
+
+</html>

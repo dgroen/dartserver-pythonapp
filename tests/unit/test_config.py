@@ -2,7 +2,7 @@
 Unit tests for multi-environment configuration module
 """
 
-from src.config import Config
+from dartserver_core import Config
 
 
 class TestConfigMethods:

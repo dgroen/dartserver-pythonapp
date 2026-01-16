@@ -2,7 +2,7 @@
 let currentGames = [];
 
 // Initialize dashboard when page loads
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Load users list for admin filter if user is admin
     if (window.userIsAdmin) {
         loadUsersList();
@@ -30,7 +30,7 @@ function setupEventListeners() {
     document.querySelector('.close-btn').addEventListener('click', closeModal);
 
     // Close modal when clicking outside
-    window.addEventListener('click', function(event) {
+    window.addEventListener('click', function (event) {
         const modal = document.getElementById('game-detail-modal');
         if (event.target === modal) {
             closeModal();
@@ -119,6 +119,10 @@ function displayGames(games) {
 
     gamesList.innerHTML = games.map(game => createGameCard(game)).join('');
 
+    // After rendering cards, fetch replay data for each game to ensure
+    // player counts and preview details match replay (fixes resumed-game mismatch).
+    updateCardPreviews(games);
+
     // Add click event listeners to view buttons
     document.querySelectorAll('.view-btn').forEach((btn) => {
         btn.addEventListener('click', (e) => {
@@ -184,7 +188,7 @@ function createGameCard(game) {
     if (game.reset_on_miss) {
         optionsBadges.push('<span class="option-badge hard-mode">💀 Hard Mode</span>');
     }
-    const optionsHtml = optionsBadges.length > 0 
+    const optionsHtml = optionsBadges.length > 0
         ? `<div class="game-options">${optionsBadges.join('')}</div>`
         : '';
 
@@ -192,14 +196,21 @@ function createGameCard(game) {
     let actionButtons = '';
     if (!isCompleted) {
         actionButtons = '<div class="game-actions">';
-        
-        // Resume button - always visible for incomplete games
+
+        // View Details button - placed above resume
+        actionButtons += `
+            <button class="action-btn view-btn" data-session-id="${game.game_session_id}" title="View details">
+                🔍 Details
+            </button>
+        `;
+
+        // Resume button - visible for incomplete games
         actionButtons += `
             <button class="action-btn resume-btn" data-session-id="${game.game_session_id}" title="Resume game">
                 ▶️ Resume
             </button>
         `;
-        
+
         // Remove button - only visible for games older than 1 day
         if (isOlderThanOneDay) {
             actionButtons += `
@@ -208,7 +219,7 @@ function createGameCard(game) {
                 </button>
             `;
         }
-        
+
         actionButtons += '</div>';
     }
 
@@ -222,10 +233,10 @@ function createGameCard(game) {
                     <span class="status-badge ${statusClass}">${statusText}</span>
                 </div>
                 <div class="game-details">
-                    <div class="detail-item">
-                        <span>👥</span>
-                        <span>${game.player_count} player${game.player_count > 1 ? 's' : ''}</span>
-                    </div>
+                        <div class="detail-item detail-players">
+                            <span>👥</span>
+                            <span class="player-count">${game.player_count} player${game.player_count > 1 ? 's' : ''}</span>
+                        </div>
                     ${game.winner ? `
                         <div class="detail-item">
                             <span>🏆</span>
@@ -241,10 +252,85 @@ function createGameCard(game) {
                 </div>
                 ${optionsHtml}
                 ${actionButtons}
+                </div>
             </div>
-            <button class="view-btn" data-session-id="${game.game_session_id}">View Details</button>
-        </div>
     `;
+}
+
+// Fetch replay data for each game card and update the DOM preview where applicable.
+function updateCardPreviews(games) {
+    if (!Array.isArray(games) || games.length === 0) return;
+
+    games.forEach(game => {
+        // Fire-and-forget async update per card
+        (async () => {
+            try {
+                const resp = await fetch(`/api/game/replay/${game.game_session_id}`, {
+                    credentials: 'include'
+                });
+                if (!resp.ok) return;
+                const data = await resp.json();
+                if (!data || data.status !== 'success' || !data.game_data) return;
+
+                const replay = data.game_data;
+                const card = document.querySelector(`.game-card[data-session-id="${game.game_session_id}"]`);
+                if (!card) return;
+
+                // Update player count from replay players if present
+                if (Array.isArray(replay.players)) {
+                    const count = replay.players.length;
+                    const span = card.querySelector('.player-count');
+                    if (span) {
+                        span.textContent = `${count} player${count > 1 ? 's' : ''}`;
+                    }
+                    // Insert/update small players preview list
+                    try {
+                        let preview = card.querySelector('.card-players-preview');
+                        if (!preview) {
+                            preview = document.createElement('div');
+                            preview.className = 'card-players-preview';
+                            const details = card.querySelector('.game-details');
+                            if (details) details.appendChild(preview);
+                        }
+
+                        // Build compact HTML for players (name and optional score)
+                        const playersHtml = replay.players.map(p => {
+                            const name = p.player_name || p.name || 'Unknown';
+                            const score = (p.final_score !== undefined && p.final_score !== null) ? p.final_score : (p.current_score !== undefined ? p.current_score : null);
+                            return score !== null ? `${name} (${score})` : name;
+                        }).slice(0, 4);
+
+                        preview.innerHTML = '<div class="preview-label">Players:</div><div class="preview-list">' + playersHtml.join('<br>') + (replay.players.length > 4 ? '<br>...' : '') + '</div>';
+                    } catch (e) {
+                        // ignore preview build errors
+                    }
+                }
+
+                // Update winner display if available
+                if (replay.players) {
+                    const winner = replay.players.find(p => p.is_winner === true);
+                    if (winner) {
+                        const winnerBadge = card.querySelector('.winner-badge');
+                        if (winnerBadge) {
+                            winnerBadge.textContent = winner.player_name;
+                        } else {
+                            // Insert winner badge into details if not present
+                            const details = card.querySelector('.game-details');
+                            if (details) {
+                                const div = document.createElement('div');
+                                div.className = 'detail-item';
+                                div.innerHTML = `<span>🏆</span><span class="winner-badge">${winner.player_name}</span>`;
+                                details.appendChild(div);
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                // Non-fatal: leave card as-is
+                console.warn('Error updating game card preview for', game.game_session_id, e);
+            }
+        })();
+    });
 }
 
 function formatDate(date) {
@@ -418,11 +504,11 @@ function displayGameDetails(gameData) {
                 </thead>
                 <tbody>
                     ${gameData.throws.map(t => {
-                        let notes = [];
-                        if (t.is_finish) notes.push('<span class="throw-finish">FINISH</span>');
-                        if (t.is_bust) notes.push('<span class="throw-bust">BUST</span>');
+        let notes = [];
+        if (t.is_finish) notes.push('<span class="throw-finish">FINISH</span>');
+        if (t.is_bust) notes.push('<span class="throw-bust">BUST</span>');
 
-                        return `
+        return `
                             <tr>
                                 <td>${t.turn_number}</td>
                                 <td>${t.throw_in_turn}</td>
@@ -435,7 +521,7 @@ function displayGameDetails(gameData) {
                                 <td>${notes.join(' ')}</td>
                             </tr>
                         `;
-                    }).join('')}
+    }).join('')}
                 </tbody>
             </table>
         </div>

@@ -1,7 +1,6 @@
 """Unit tests for 170 game type and Bull Practice game."""
 
-from src.games.game_301 import Game301
-from src.games.game_bull_practice import GameBullPractice
+from dartserver_games import Game301, GameBullPractice
 
 
 class TestGame170:

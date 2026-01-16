@@ -6,15 +6,22 @@ WORKDIR /app
 # Install system dependencies including PostgreSQL client for pg_isready
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        gcc \
-        libpq-dev \
-        postgresql-client \
-        curl \
+    gcc \
+    libpq-dev \
+    postgresql-client \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Copy packages first (needed for pip install)
+COPY packages ./packages
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -e ./packages/dartserver-core && \
+    pip install --no-cache-dir -e ./packages/dartserver-games && \
+    pip install --no-cache-dir -e ./packages/dartserver-services && \
+    pip install --no-cache-dir -e ./packages/dartserver-app
 
 # Copy Alembic configuration and migrations (needed before running migrations in entrypoint)
 COPY alembic.ini .

@@ -4,11 +4,10 @@ Tests both new generic pin-based and legacy score/multiplier formats
 """
 
 import pytest
+from dartserver_core.database_models import Base
+from dartserver_services import DartboardMappingError, DartboardService
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
-from src.core.dartboard_service import DartboardMappingError, DartboardService
-from src.core.database_models import Base
 
 
 @pytest.fixture

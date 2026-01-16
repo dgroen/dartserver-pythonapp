@@ -1,49 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Round the Clock UI Test</title>
+    <title>RTC UI Test</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
     <link rel="stylesheet" href="/static/css/style.css">
     <style>
         body {
             padding: 20px;
         }
+
         #test-container {
             max-width: 1200px;
             margin: 0 auto;
         }
+
         .test-section {
             margin-bottom: 40px;
             padding: 20px;
             background: rgba(0, 0, 0, 0.3);
             border-radius: 10px;
         }
+
         .test-section h2 {
             color: #00d4ff;
             margin-bottom: 20px;
         }
+
         #players-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
         }
+
         .player-card {
             background: rgba(0, 0, 0, 0.3);
             padding: 20px;
             border-radius: 10px;
             border: 2px solid rgba(255, 255, 255, 0.1);
         }
+
         .player-card.active {
             border-color: #00d4ff;
             box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
         }
+
         .player-name {
             font-size: 1.5em;
             font-weight: bold;
             margin-bottom: 10px;
             text-align: center;
         }
+
         .player-score {
             font-size: 3em;
             font-weight: bold;
@@ -53,6 +63,7 @@
         }
     </style>
 </head>
+
 <body>
     <div id="test-container">
         <div class="test-section">
@@ -253,4 +264,5 @@
         renderTestCase(testState3, 'players-container-3');
     </script>
 </body>
+
 </html>

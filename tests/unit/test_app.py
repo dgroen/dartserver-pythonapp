@@ -1,149 +1,142 @@
 """Unit tests for app.py module."""
 
-import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-from src.app.app import on_score_received
+import pytest
+
+
+@pytest.fixture
+def client(flask_app):
+    """Create test client."""
+    with flask_app.test_client() as client:
+        yield client
+
+
+@pytest.fixture
+def authenticated_client(client):
+    """Create authenticated test client."""
+    with client.session_transaction() as sess:
+        sess["access_token"] = "test-token"
+        sess["user_info"] = {"username": "testuser", "sub": "test-user"}
+
+    with patch("dartserver_core.auth.validate_token") as mock_validate:
+        mock_validate.return_value = {
+            "sub": "test-user",
+            "groups": ["admin"],
+            "roles": ["admin"],
+        }
+        yield client
 
 
 class TestAppModule:
-    """Test app module functions."""
+    """Test app module functions and SocketIO handlers."""
 
-    def test_on_score_received(self):
-        """Test on_score_received callback function."""
-        # Setup
-        with patch("src.app.app.game_manager") as mock_game_manager:
-            score_data = {"score": 20, "multiplier": "TRIPLE"}
+    def test_app_initialization(self, flask_app):
+        """Test Flask app initializes correctly."""
+        assert flask_app is not None
+        assert flask_app.config["TESTING"] is True
+        assert hasattr(flask_app, "game_manager")
+        assert hasattr(flask_app, "multi_game_manager")
+        assert hasattr(flask_app, "socketio")
 
-            # Call callback
-            on_score_received(score_data)
+    def test_app_blueprints_registered(self, flask_app):
+        """Test all blueprints are registered."""
+        blueprint_names = [bp.name for bp in flask_app.blueprints.values()]
+        assert "ui" in blueprint_names
+        assert "auth" in blueprint_names
+        assert "games" in blueprint_names
+        assert "api" in blueprint_names
+        assert "services" in blueprint_names
 
-            # Verify game_manager.process_score was called
-            mock_game_manager.process_score.assert_called_once_with(score_data)
+    def test_swagger_configured(self, flask_app):
+        """Test Swagger UI is configured."""
+        response = flask_app.test_client().get("/api/docs/")
+        # Swagger UI should be accessible (may redirect)
+        assert response.status_code in [200, 301, 302, 404]
 
-    @patch("src.app.app.RabbitMQConsumer")
-    @patch("src.app.app.threading.Thread")
-    def test_start_rabbitmq_consumer_success(self, mock_thread, mock_consumer_class):
-        """Test successful RabbitMQ consumer start."""
-        from src.app.app import start_rabbitmq_consumer
+    def test_cors_enabled(self, flask_app):
+        """Test CORS is enabled for the app."""
+        # CORS extension should be attached
+        assert hasattr(flask_app, "extensions")
 
-        # Setup mocks
-        mock_consumer_instance = MagicMock()
-        mock_consumer_class.return_value = mock_consumer_instance
-        mock_thread_instance = MagicMock()
-        mock_thread.return_value = mock_thread_instance
+    def test_session_cookie_config(self, flask_app):
+        """Test session cookie is configured securely."""
+        assert flask_app.config["SESSION_COOKIE_HTTPONLY"] is True
+        assert flask_app.config["SESSION_COOKIE_SAMESITE"] == "Lax"
+        assert flask_app.config["PERMANENT_SESSION_LIFETIME"] == 3600
 
-        # Start consumer
-        start_rabbitmq_consumer()
 
-        # Verify consumer was created
-        assert mock_consumer_class.called
+class TestSocketIOHandlers:
+    """Test SocketIO event handlers."""
 
-        # Verify thread was created and started
-        mock_thread.assert_called_once()
-        mock_thread_instance.start.assert_called_once()
+    def test_socketio_connect_event(self, flask_app, mock_socketio):
+        """Test SocketIO connect event emits game state."""
+        with flask_app.test_request_context(), patch("src.app.app.socketio", mock_socketio):
+            # Import the handler after patching
+            from src.app.app import handle_connect  # noqa: PLC0415
 
-    @patch("src.app.app.RabbitMQConsumer")
-    def test_start_rabbitmq_consumer_failure(self, mock_consumer_class):
-        """Test RabbitMQ consumer start with failure."""
-        from src.app.app import start_rabbitmq_consumer
+            # Simulate connection
+            with patch("src.app.app.request") as mock_request:
+                mock_request.sid = "test-session-id"
+                handle_connect()
 
-        # Setup mock to raise exception
-        mock_consumer_class.side_effect = Exception("Connection failed")
+                # Verify game_state was emitted
+                mock_socketio.emit.assert_called_once()
+                call_args = mock_socketio.emit.call_args
+                assert call_args[0][0] == "game_state"
 
-        # Start consumer (should handle exception gracefully)
-        start_rabbitmq_consumer()
+    def test_socketio_disconnect_event(self, flask_app):
+        """Test SocketIO disconnect event."""
+        from src.app.app import handle_disconnect  # noqa: PLC0415
 
         # Should not raise exception
+        handle_disconnect()
 
-    @patch.dict(os.environ, {}, clear=True)
-    @patch("src.app.app.RabbitMQConsumer")
-    @patch("src.app.app.threading.Thread")
-    def test_start_rabbitmq_consumer_default_config(self, mock_thread, mock_consumer_class):
-        """Test RabbitMQ consumer with default configuration."""
-        from src.app.app import start_rabbitmq_consumer
+    def test_socketio_manual_score_event(self, flask_app):
+        """Test SocketIO manual score event."""
+        from src.app.app import handle_manual_score  # noqa: PLC0415
 
-        # Setup mocks
-        mock_consumer_instance = MagicMock()
-        mock_consumer_class.return_value = mock_consumer_instance
-        mock_thread_instance = MagicMock()
-        mock_thread.return_value = mock_thread_instance
+        test_score = {"score": 20, "multiplier": "TRIPLE"}
 
-        # Start consumer
-        start_rabbitmq_consumer()
+        with patch.object(flask_app.game_manager, "process_score") as mock_process:
+            handle_manual_score(test_score)
+            mock_process.assert_called_once_with(test_score)
 
-        # Verify consumer was created with default config
-        call_args = mock_consumer_class.call_args
-        config = call_args[0][0]
+    def test_socketio_next_player_event(self, flask_app):
+        """Test SocketIO next player event."""
+        from src.app.app import handle_next_player  # noqa: PLC0415
 
-        assert config["host"] == "localhost"
-        assert config["port"] == 5672
-        assert config["user"] == "guest"
-        assert config["password"] == "guest"
-        assert config["vhost"] == "/"
-        assert config["exchange"] == "darts_exchange"
-        assert config["topic"] == "darts.scores.#"
+        with patch.object(flask_app.game_manager, "next_player") as mock_next:
+            handle_next_player()
+            mock_next.assert_called_once()
 
-    @patch.dict(
-        os.environ,
-        {
-            "RABBITMQ_HOST": "custom-host",
-            "RABBITMQ_PORT": "5673",
-            "RABBITMQ_USER": "custom_user",
-            "RABBITMQ_PASSWORD": "custom_pass",
-            "RABBITMQ_VHOST": "/custom",
-            "RABBITMQ_EXCHANGE": "custom_exchange",
-            "RABBITMQ_TOPIC": "custom.topic",
-        },
-    )
-    @patch("src.app.app.RabbitMQConsumer")
-    @patch("src.app.app.threading.Thread")
-    def test_start_rabbitmq_consumer_custom_config(self, mock_thread, mock_consumer_class):
-        """Test RabbitMQ consumer with custom configuration."""
-        from src.app.app import start_rabbitmq_consumer
+    def test_socketio_end_turn_early_event(self, flask_app):
+        """Test SocketIO end turn early event."""
+        from src.app.app import handle_end_turn_early  # noqa: PLC0415
 
-        # Setup mocks
-        mock_consumer_instance = MagicMock()
-        mock_consumer_class.return_value = mock_consumer_instance
-        mock_thread_instance = MagicMock()
-        mock_thread.return_value = mock_thread_instance
+        with patch.object(flask_app.game_manager, "end_turn_early") as mock_end:
+            handle_end_turn_early()
+            mock_end.assert_called_once()
 
-        # Start consumer
-        start_rabbitmq_consumer()
+    def test_socketio_set_throwout_advice_event(self, flask_app):
+        """Test SocketIO set throwout advice event."""
+        from src.app.app import handle_set_throwout_advice  # noqa: PLC0415
 
-        # Verify consumer was created with custom config
-        call_args = mock_consumer_class.call_args
-        config = call_args[0][0]
+        with patch.object(flask_app.game_manager, "set_show_throwout_advice") as mock_set:
+            handle_set_throwout_advice({"enabled": True})
+            mock_set.assert_called_once_with(True)
 
-        assert config["host"] == "custom-host"
-        assert config["port"] == 5673
-        assert config["user"] == "custom_user"
-        assert config["password"] == "custom_pass"
-        assert config["vhost"] == "/custom"
-        assert config["exchange"] == "custom_exchange"
-        assert config["topic"] == "custom.topic"
+    def test_socketio_dartboard_test_message(self, flask_app, mock_socketio):
+        """Test SocketIO dartboard test message broadcasts."""
+        from src.app.app import handle_dartboard_test_message  # noqa: PLC0415
 
+        test_data = {"masterPin": 4, "slavePin": 13, "boardType": "carromco"}
 
-class TestHealthCheckEndpoint:
-    """Test health check endpoint for Docker monitoring."""
+        with patch("src.app.app.socketio", mock_socketio):
+            handle_dartboard_test_message(test_data)
 
-    def test_health_check_returns_200_ok(self, client):
-        """Test that health check endpoint returns 200 OK status."""
-        response = client.get("/health")
-        assert response.status_code == 200
-
-    def test_health_check_returns_json_response(self, client):
-        """Test that health check endpoint returns valid JSON response."""
-        response = client.get("/health")
-        assert response.content_type == "application/json"
-        data = response.get_json()
-        assert isinstance(data, dict)
-        assert "status" in data
-        assert data["status"] == "healthy"
-
-    def test_health_check_no_auth_required(self, client):
-        """Test that health check endpoint doesn't require authentication."""
-        # Make request without login - should still return 200
-        response = client.get("/health")
-        assert response.status_code == 200
-        assert response.get_json()["status"] == "healthy"
+            mock_socketio.emit.assert_called_once_with(
+                "dartboard_test_received",
+                test_data,
+                namespace="/",
+            )

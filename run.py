@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
 Main entry point for the Darts Game Web Application
-Imports and runs the Flask app from src.app.app module
+Uses legacy src.app.app until route migration is complete
 """
 
 import logging
 import os
 import sys
 
-from src.app.app import app, socketio
+# Use legacy app which has all routes registered
+from src.app.app import app, socketio, start_rabbitmq_consumer
 
 if __name__ == "__main__":
     # Configure logging
@@ -17,9 +18,15 @@ if __name__ == "__main__":
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[logging.StreamHandler()],
     )
+    # Reduce request log noise from Werkzeug in dev
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
     logger = logging.getLogger(__name__)
 
     try:
+        # Start RabbitMQ consumer before starting the Flask app
+        logger.info("Starting RabbitMQ consumer...")
+        start_rabbitmq_consumer()
+
         # Run the Flask application with SocketIO support
         # Bind to 0.0.0.0 to make it accessible from nginx on the Docker network
         # This is safe as it's behind a reverse proxy and not exposed directly
@@ -29,6 +36,7 @@ if __name__ == "__main__":
 
         logger.info(f"Starting Flask-SocketIO server on {host}:{port}")
         logger.info(f"Debug mode: {debug}")
+        logger.info(f"Using legacy app with {len(list(app.url_map.iter_rules()))} routes")
 
         # Run the Flask application with SocketIO support
         # Disable reloader to avoid hanging issues in Docker

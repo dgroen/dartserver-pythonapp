@@ -1,6 +1,6 @@
 """Unit tests for GameRoundTheClock class."""
 
-from src.games.game_round_the_clock import GameRoundTheClock
+from dartserver_games.game_round_the_clock import GameRoundTheClock
 
 
 class TestGameRoundTheClock:

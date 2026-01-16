@@ -1,0 +1,41 @@
+name: PR Tests
+
+on:
+  pull_request:
+    branches: [main, test]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install ruff black mypy pytest pytest-cov
+        for pkg in packages/*/; do
+          pip install -e "$pkg[dev]"
+        done
+
+    - name: Lint all packages
+      run: |
+        for pkg in packages/*/; do
+          echo "Linting $pkg..."
+          ruff check "$pkg/src/" "$pkg/tests/"
+          black --check "$pkg/src/" "$pkg/tests/" || true
+        done
+
+    - name: Run all tests
+      run: |
+        for pkg in packages/*/; do
+          echo "Testing $pkg..."
+          pytest "$pkg/tests/" -v --cov="$pkg/src/" --cov-report=term-missing
+        done

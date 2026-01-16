@@ -67,6 +67,14 @@ function handleNextPlayerClick() {
     }
 
     console.log('Game is_paused:', currentGame.is_paused);
+    console.log('Game is_finished:', currentGame.is_finished);
+
+    // If game is finished, navigate to game creation with players pre-selected
+    if (currentGame.is_finished) {
+        const playerNames = currentGame.players.map(p => p.name).join(',');
+        window.location.href = `/game/create?players=${encodeURIComponent(playerNames)}`;
+        return;
+    }
 
     // If game is paused (waiting for continue), just emit next_player
     if (currentGame.is_paused) {
@@ -287,7 +295,13 @@ function updateNextPlayerButton(game) {
 function updateButtonText(game, buttonElement, hintElement) {
     if (!buttonElement) return;
 
-    if (game.is_paused) {
+    if (game.is_finished) {
+        // Game is finished - button navigates to new game creation
+        buttonElement.textContent = '🎮 New Game with Same Players';
+        if (hintElement) {
+            hintElement.textContent = 'Start a new game with the same players';
+        }
+    } else if (game.is_paused) {
         // Game is paused - button continues to next player
         buttonElement.textContent = '▶️ Continue Game';
         if (hintElement) {
@@ -353,33 +367,12 @@ function handleGameState(data) {
     // Update current game state
     currentGame = data;
 
-    // Handle game state updates which may include throwout advice
-    if (data.throwout_advice) {
-        displayThrowoutAdvice(data.throwout_advice);
-    } else {
-        hideThrowoutAdvice();
-    }
-
+    // Handle game state updates
     // Update button visibility
     updateNextPlayerButton(data);
 }
 
-function displayThrowoutAdvice(advice) {
-    const adviceElement = document.getElementById('throwoutAdvice');
-    const adviceDisplay = document.getElementById('adviceDisplay');
-
-    if (Array.isArray(advice) && advice.length > 0) {
-        adviceDisplay.textContent = advice.join(' or ');
-        adviceElement.style.display = 'block';
-    } else {
-        adviceElement.style.display = 'none';
-    }
-}
-
-function hideThrowoutAdvice() {
-    const adviceElement = document.getElementById('throwoutAdvice');
-    adviceElement.style.display = 'none';
-}
+// throwout advice is shown per-player in each player card now
 
 function handleGameEnd(data) {
     console.log('Game ended');

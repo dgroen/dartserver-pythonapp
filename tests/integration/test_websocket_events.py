@@ -3,11 +3,9 @@
 import time
 from unittest.mock import patch
 
+import eventlet
 import pytest
-
-from src.app.app import app as flask_app
-from src.app.app import game_manager, socketio
-from src.core.database_service import DatabaseService
+from dartserver_core.database_service import DatabaseService
 
 
 @pytest.fixture
@@ -31,7 +29,7 @@ def app(db_service):
     with (
         patch("src.app.app.start_rabbitmq_consumer"),
         patch(
-            "src.app.game_manager.DatabaseService",
+            "dartserver_app.game_manager.DatabaseService",
         ) as mock_db_class,
     ):
         mock_db_class.return_value = db_service
@@ -56,8 +54,6 @@ def socketio_client(app, db_service):
 
 def wait_for_events(client, timeout=1.0):
     """Wait for events to be received by the client."""
-    import eventlet
-
     # Give time for the server to process and emit events
     # Use eventlet.sleep to allow the eventlet greenthread to process
     eventlet.sleep(0.3)

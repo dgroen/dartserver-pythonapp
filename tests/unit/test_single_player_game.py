@@ -1,13 +1,10 @@
 """Unit tests for single-player game endpoint."""
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-
-from src.app.app import app as flask_app
-from src.app.app import game_manager
-from src.core.database_service import DatabaseService
+from dartserver_core.database_service import DatabaseService
 
 
 @pytest.fixture
@@ -25,7 +22,7 @@ def db_service():
 @pytest.fixture
 def mock_auth_player():
     """Mock authentication decorators with player role."""
-    with patch("src.core.auth.validate_token") as mock_validate:
+    with patch("dartserver_core.auth.validate_token") as mock_validate:
         mock_validate.return_value = {
             "sub": "test-user",
             "username": "testuser",
@@ -40,7 +37,7 @@ def mock_auth_player():
 @pytest.fixture
 def mock_auth_admin():
     """Mock authentication decorators with admin role."""
-    with patch("src.core.auth.validate_token") as mock_validate:
+    with patch("dartserver_core.auth.validate_token") as mock_validate:
         mock_validate.return_value = {
             "sub": "test-user",
             "username": "testuser",
@@ -55,7 +52,7 @@ def mock_auth_admin():
 @pytest.fixture
 def mock_auth_gamemaster():
     """Mock authentication decorators with gamemaster role."""
-    with patch("src.core.auth.validate_token") as mock_validate:
+    with patch("dartserver_core.auth.validate_token") as mock_validate:
         mock_validate.return_value = {
             "sub": "test-user",
             "username": "testuser",
@@ -73,7 +70,7 @@ def app_with_player(mock_auth_player, db_service):
     db, player = db_service
     with (
         patch("src.app.app.start_rabbitmq_consumer"),
-        patch("src.app.game_manager.DatabaseService") as mock_db_class,
+        patch("dartserver_app.game_manager.DatabaseService") as mock_db_class,
     ):
         mock_db_class.return_value = db
         flask_app.config["TESTING"] = True
@@ -87,7 +84,7 @@ def app_with_admin(mock_auth_admin, db_service):
     db, player = db_service
     with (
         patch("src.app.app.start_rabbitmq_consumer"),
-        patch("src.app.game_manager.DatabaseService") as mock_db_class,
+        patch("dartserver_app.game_manager.DatabaseService") as mock_db_class,
     ):
         mock_db_class.return_value = db
         flask_app.config["TESTING"] = True
@@ -101,7 +98,7 @@ def app_with_gamemaster(mock_auth_gamemaster, db_service):
     db, player = db_service
     with (
         patch("src.app.app.start_rabbitmq_consumer"),
-        patch("src.app.game_manager.DatabaseService") as mock_db_class,
+        patch("dartserver_app.game_manager.DatabaseService") as mock_db_class,
     ):
         mock_db_class.return_value = db
         flask_app.config["TESTING"] = True

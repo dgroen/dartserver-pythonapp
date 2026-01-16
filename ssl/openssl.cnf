@@ -1,25 +1,20 @@
 [req]
-default_bits = 4096
+distinguished_name = req_distinguished_name
+x509_extensions = v3_req
 prompt = no
-default_md = sha256
-distinguished_name = dn
-req_extensions = v3_req
 
-[dn]
-C=EU
-ST=Europe
-L=Development
-O=Darts Game Server
-OU=Development
-CN=letsplaydarts.eu
+[req_distinguished_name]
+C = US
+ST = Test
+L = Test
+O = Test
+OU = Test
+CN = letsplaydarts.eu
 
 [v3_req]
 subjectAltName = @alt_names
 
 [alt_names]
 DNS.1 = letsplaydarts.eu
-DNS.2 = *.letsplaydarts.eu
-DNS.3 = localhost
-DNS.4 = *.localhost
+DNS.2 = localhost
 IP.1 = 127.0.0.1
-IP.2 = ::1

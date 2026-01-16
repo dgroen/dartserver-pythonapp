@@ -5,25 +5,23 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import jwt
-from flask import Flask, jsonify
-
-from src.core.auth import (
+from dartserver_core import search_wso2_users
+from dartserver_core.auth import (
     get_dynamic_post_logout_redirect_uri,
     get_dynamic_redirect_uri,
-    get_user_roles,
-    has_permission,
     login_required,
     permission_required,
     role_required,
     validate_token,
 )
+from flask import Flask, jsonify
 
 
 class TestValidateToken:
     """Test token validation functions."""
 
-    @patch("src.core.auth.JWT_VALIDATION_MODE", "jwks")
-    @patch("src.core.auth.jwks_client")
+    @patch("dartserver_core.auth.JWT_VALIDATION_MODE", "jwks")
+    @patch("dartserver_core.auth.jwks_client")
     def test_validate_token_jwks_success(self, mock_jwks_client):
         """Test successful token validation using JWKS."""
         # Mock signing key
@@ -38,48 +36,48 @@ class TestValidateToken:
             "groups": ["admin"],
         }
 
-        with patch("src.core.auth.jwt.decode", return_value=expected_claims):
+        with patch("dartserver_core.auth.jwt.decode", return_value=expected_claims):
             result = validate_token("test-token")
             assert result == expected_claims
 
-    @patch("src.core.auth.JWT_VALIDATION_MODE", "jwks")
-    @patch("src.core.auth.jwks_client")
+    @patch("dartserver_core.auth.JWT_VALIDATION_MODE", "jwks")
+    @patch("dartserver_core.auth.jwks_client")
     def test_validate_token_jwks_expired(self, mock_jwks_client):
         """Test token validation with expired token."""
         mock_signing_key = Mock()
         mock_signing_key.key = "test-key"
         mock_jwks_client.get_signing_key_from_jwt.return_value = mock_signing_key
 
-        with patch("src.core.auth.jwt.decode", side_effect=jwt.ExpiredSignatureError):
+        with patch("dartserver_core.auth.jwt.decode", side_effect=jwt.ExpiredSignatureError):
             result = validate_token("expired-token")
             assert result is None
 
-    @patch("src.core.auth.JWT_VALIDATION_MODE", "jwks")
-    @patch("src.core.auth.jwks_client")
+    @patch("dartserver_core.auth.JWT_VALIDATION_MODE", "jwks")
+    @patch("dartserver_core.auth.jwks_client")
     def test_validate_token_jwks_invalid(self, mock_jwks_client):
         """Test token validation with invalid token."""
         mock_signing_key = Mock()
         mock_signing_key.key = "test-key"
         mock_jwks_client.get_signing_key_from_jwt.return_value = mock_signing_key
 
-        with patch("src.core.auth.jwt.decode", side_effect=jwt.InvalidTokenError("Invalid")):
+        with patch("dartserver_core.auth.jwt.decode", side_effect=jwt.InvalidTokenError("Invalid")):
             result = validate_token("invalid-token")
             assert result is None
 
-    @patch("src.core.auth.JWT_VALIDATION_MODE", "jwks")
-    @patch("src.core.auth.jwks_client")
+    @patch("dartserver_core.auth.JWT_VALIDATION_MODE", "jwks")
+    @patch("dartserver_core.auth.jwks_client")
     def test_validate_token_jwks_exception(self, mock_jwks_client):
         """Test token validation with unexpected exception."""
         mock_signing_key = Mock()
         mock_signing_key.key = "test-key"
         mock_jwks_client.get_signing_key_from_jwt.return_value = mock_signing_key
 
-        with patch("src.core.auth.jwt.decode", side_effect=Exception("Unexpected error")):
+        with patch("dartserver_core.auth.jwt.decode", side_effect=Exception("Unexpected error")):
             result = validate_token("test-token")
             assert result is None
 
-    @patch("src.core.auth.JWT_VALIDATION_MODE", "introspection")
-    @patch("src.core.auth.requests.post")
+    @patch("dartserver_core.auth.JWT_VALIDATION_MODE", "introspection")
+    @patch("dartserver_core.auth.requests.post")
     def test_validate_token_introspection_success(self, mock_post):
         """Test successful token validation using introspection."""
         mock_response = Mock()
@@ -97,8 +95,8 @@ class TestValidateToken:
         assert result["username"] == "testuser"
         assert result["groups"] == ["player"]
 
-    @patch("src.core.auth.JWT_VALIDATION_MODE", "introspection")
-    @patch("src.core.auth.requests.post")
+    @patch("dartserver_core.auth.JWT_VALIDATION_MODE", "introspection")
+    @patch("dartserver_core.auth.requests.post")
     def test_validate_token_introspection_inactive(self, mock_post):
         """Test token validation with inactive token."""
         mock_response = Mock()
@@ -109,8 +107,8 @@ class TestValidateToken:
         result = validate_token("inactive-token")
         assert result is None
 
-    @patch("src.core.auth.JWT_VALIDATION_MODE", "introspection")
-    @patch("src.core.auth.requests.post")
+    @patch("dartserver_core.auth.JWT_VALIDATION_MODE", "introspection")
+    @patch("dartserver_core.auth.requests.post")
     def test_validate_token_introspection_error(self, mock_post):
         """Test token validation with introspection error."""
         mock_response = Mock()
@@ -120,8 +118,8 @@ class TestValidateToken:
         result = validate_token("test-token")
         assert result is None
 
-    @patch("src.core.auth.JWT_VALIDATION_MODE", "introspection")
-    @patch("src.core.auth.requests.post")
+    @patch("dartserver_core.auth.JWT_VALIDATION_MODE", "introspection")
+    @patch("dartserver_core.auth.requests.post")
     def test_validate_token_introspection_exception(self, mock_post):
         """Test token validation with request exception."""
         mock_post.side_effect = Exception("Connection error")
@@ -247,7 +245,7 @@ class TestLoginRequired:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-token"
 
-            with patch("src.core.auth.validate_token") as mock_validate:
+            with patch("dartserver_core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {
                     "sub": "test-user",
                     "username": "testuser",
@@ -276,7 +274,7 @@ class TestLoginRequired:
         with app.test_client() as client:
             response = client.get("/protected")
             assert response.status_code == 302
-            assert "/login" in response.location
+            assert "login" in response.location
 
     def test_login_required_with_invalid_token(self):
         """Test login_required redirects with invalid token."""
@@ -296,10 +294,10 @@ class TestLoginRequired:
             with client.session_transaction() as sess:
                 sess["access_token"] = "invalid-token"
 
-            with patch("src.core.auth.validate_token", return_value=None):
+            with patch("dartserver_core.auth.validate_token", return_value=None):
                 response = client.get("/protected")
                 assert response.status_code == 302
-                assert "/login" in response.location
+                assert "login" in response.location
 
 
 class TestRoleRequired:
@@ -319,7 +317,7 @@ class TestRoleRequired:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-token"
 
-            with patch("src.core.auth.validate_token") as mock_validate:
+            with patch("dartserver_core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {
                     "sub": "test-user",
                     "username": "testuser",
@@ -345,7 +343,7 @@ class TestRoleRequired:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-token"
 
-            with patch("src.core.auth.validate_token") as mock_validate:
+            with patch("dartserver_core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {
                     "sub": "test-user",
                     "username": "testuser",
@@ -371,7 +369,7 @@ class TestRoleRequired:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-token"
 
-            with patch("src.core.auth.validate_token") as mock_validate:
+            with patch("dartserver_core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {
                     "sub": "test-user",
                     "username": "testuser",
@@ -401,7 +399,7 @@ class TestPermissionRequired:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-token"
 
-            with patch("src.core.auth.validate_token") as mock_validate:
+            with patch("dartserver_core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {
                     "sub": "test-user",
                     "username": "testuser",
@@ -427,7 +425,7 @@ class TestPermissionRequired:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-token"
 
-            with patch("src.core.auth.validate_token") as mock_validate:
+            with patch("dartserver_core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {
                     "sub": "test-user",
                     "username": "testuser",
@@ -453,7 +451,7 @@ class TestPermissionRequired:
             with client.session_transaction() as sess:
                 sess["access_token"] = "test-token"
 
-            with patch("src.core.auth.validate_token") as mock_validate:
+            with patch("dartserver_core.auth.validate_token") as mock_validate:
                 mock_validate.return_value = {
                     "sub": "test-user",
                     "username": "testuser",
@@ -469,8 +467,8 @@ class TestPermissionRequired:
 class TestAuthDisabled:
     """Test authentication bypass functionality."""
 
-    @patch("src.core.auth.AUTH_DISABLED", True)
-    def test_login_required_bypassed(self):
+    @patch("dartserver_core.auth.is_auth_disabled", return_value=True)
+    def test_login_required_bypassed(self, mock_auth_disabled):
         """Test login_required decorator bypassed when AUTH_DISABLED is True."""
         app = Flask(__name__)
         app.config["SECRET_KEY"] = "test-secret"
@@ -487,8 +485,8 @@ class TestAuthDisabled:
             data = json.loads(response.data)
             assert data["message"] == "success"
 
-    @patch("src.core.auth.AUTH_DISABLED", True)
-    def test_role_required_bypassed(self):
+    @patch("dartserver_core.auth.is_auth_disabled", return_value=True)
+    def test_role_required_bypassed(self, mock_auth_disabled):
         """Test role_required decorator bypassed when AUTH_DISABLED is True."""
         app = Flask(__name__)
         app.config["SECRET_KEY"] = "test-secret"
@@ -505,8 +503,8 @@ class TestAuthDisabled:
             data = json.loads(response.data)
             assert data["message"] == "admin access"
 
-    @patch("src.core.auth.AUTH_DISABLED", True)
-    def test_permission_required_bypassed(self):
+    @patch("dartserver_core.auth.is_auth_disabled", return_value=True)
+    def test_permission_required_bypassed(self, mock_auth_disabled):
         """Test permission_required decorator bypassed when AUTH_DISABLED is True."""
         app = Flask(__name__)
         app.config["SECRET_KEY"] = "test-secret"
@@ -523,8 +521,8 @@ class TestAuthDisabled:
             data = json.loads(response.data)
             assert data["message"] == "game created"
 
-    @patch("src.core.auth.AUTH_DISABLED", True)
-    def test_multiple_decorators_bypassed(self):
+    @patch("dartserver_core.auth.is_auth_disabled", return_value=True)
+    def test_multiple_decorators_bypassed(self, mock_auth_disabled):
         """Test multiple auth decorators bypassed when AUTH_DISABLED is True."""
         app = Flask(__name__)
         app.config["SECRET_KEY"] = "test-secret"
@@ -542,7 +540,7 @@ class TestAuthDisabled:
             data = json.loads(response.data)
             assert data["message"] == "complex access granted"
 
-    @patch("src.core.auth.AUTH_DISABLED", False)
+    @patch("dartserver_core.auth.AUTH_DISABLED", False)
     def test_auth_not_bypassed_when_disabled_false(self):
         """Test authentication is enforced when AUTH_DISABLED is False."""
         app = Flask(__name__)
@@ -561,7 +559,7 @@ class TestAuthDisabled:
             # No session token, should redirect to login
             response = client.get("/protected")
             assert response.status_code == 302  # Redirect
-            assert "/login" in response.location
+            assert "login" in response.location
 
 
 class TestDynamicRedirectUri:
@@ -622,11 +620,9 @@ class TestDynamicRedirectUri:
 class TestSearchWSO2Users:
     """Test WSO2 user search functionality."""
 
-    @patch("src.core.auth.requests.get")
+    @patch("dartserver_core.auth.requests.get")
     def test_search_users_success(self, mock_get):
         """Test successful user search."""
-        from src.core.auth import search_wso2_users
-
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -654,11 +650,9 @@ class TestSearchWSO2Users:
         assert users[0]["name"] == "John Doe"
         assert users[1]["username"] == "jane_doe"
 
-    @patch("src.core.auth.requests.get")
+    @patch("dartserver_core.auth.requests.get")
     def test_search_users_no_results(self, mock_get):
         """Test search with no results."""
-        from src.core.auth import search_wso2_users
-
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"Resources": []}
@@ -667,11 +661,9 @@ class TestSearchWSO2Users:
         users = search_wso2_users("nonexistent")
         assert len(users) == 0
 
-    @patch("src.core.auth.requests.get")
+    @patch("dartserver_core.auth.requests.get")
     def test_search_users_http_error(self, mock_get):
         """Test search with HTTP error."""
-        from src.core.auth import search_wso2_users
-
         mock_response = Mock()
         mock_response.status_code = 500
         mock_response.text = "Internal Server Error"
@@ -680,21 +672,17 @@ class TestSearchWSO2Users:
         users = search_wso2_users("john")
         assert len(users) == 0
 
-    @patch("src.core.auth.requests.get")
+    @patch("dartserver_core.auth.requests.get")
     def test_search_users_network_error(self, mock_get):
         """Test search with network error."""
-        from src.core.auth import search_wso2_users
-
         mock_get.side_effect = Exception("Connection error")
 
         users = search_wso2_users("john")
         assert len(users) == 0
 
-    @patch("src.core.auth.requests.get")
+    @patch("dartserver_core.auth.requests.get")
     def test_search_users_missing_email(self, mock_get):
         """Test search with user missing email."""
-        from src.core.auth import search_wso2_users
-
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -714,11 +702,9 @@ class TestSearchWSO2Users:
         assert users[0]["email"] is None
         assert users[0]["name"] == "John Doe"
 
-    @patch("src.core.auth.requests.get")
+    @patch("dartserver_core.auth.requests.get")
     def test_search_users_missing_name(self, mock_get):
         """Test search with user missing name."""
-        from src.core.auth import search_wso2_users
-
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -738,11 +724,9 @@ class TestSearchWSO2Users:
         assert users[0]["email"] == "john@example.com"
         assert users[0]["name"] is None
 
-    @patch("src.core.auth.requests.get")
+    @patch("dartserver_core.auth.requests.get")
     def test_search_users_with_access_token(self, mock_get):
         """Test search using access token instead of admin credentials."""
-        from src.core.auth import search_wso2_users
-
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {

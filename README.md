@@ -8,6 +8,7 @@ A Python web application for managing darts games (301 and Cricket) with RabbitM
 
 - **Multiple Game Modes**: 301, 401, 501, and Cricket
 - **Single & Multi-Player Support**: Support for 1-6 players (Cricket max 4)
+- **🆕 Multi-Game Management**: Create and manage multiple concurrent games with different players
 - **RabbitMQ Integration**: Receives dart scores through RabbitMQ topic subscription
 - **Real-time Updates**: WebSocket-based real-time game state updates
 - **Automatic UI Refresh**: All connected clients automatically refresh when scores are sent/received
@@ -23,6 +24,17 @@ A Python web application for managing darts games (301 and Cricket) with RabbitM
 - **🆕 Permission System**: Granular permission-based access control
 - **🆕 Session Management**: Secure session handling with HttpOnly cookies
 - **🆕 Token Validation**: JWT signature verification and introspection
+
+### 🚀 API Gateway (NEW!)
+
+- **🆕 Secure Dartboard Integration**: OAuth2-secured endpoint for dartboard hardware
+- **🆕 Client Credentials Flow**: Easy token management for dartboards
+- **🆕 OpenAPI Documentation**: Complete API specification with Swagger UI
+- **🆕 Multi-Board Support**: Handle multiple concurrent dartboards
+- **🆕 Game Control API**: Endpoints for game flow control (pause, resume, end turn)
+- **🆕 WSO2 APIM Integration**: Enterprise API management and monitoring
+- **🆕 Rate Limiting**: Protect against abuse with configurable throttling
+- **🆕 Comprehensive Testing**: Simulator and test suite included
 
 ### Enterprise Integration
 
@@ -95,6 +107,26 @@ docker-compose -f docker-compose-wso2.yml up -d
 # Without authentication (development only)
 docker-compose up -d
 ```
+
+### 5. API Gateway (Optional but Recommended)
+
+The API Gateway provides a secure REST API for dartboard hardware and external integrations.
+
+```bash
+# Run API Gateway
+python api_gateway.py
+
+# Or with Docker
+docker build -f Dockerfile.gateway -t darts-api-gateway .
+docker run -p 8080:8080 --env-file .env darts-api-gateway
+```
+
+**Access API Documentation:**
+- Swagger UI: http://localhost:8080/docs
+- OpenAPI Spec: http://localhost:8080/api/v1/openapi.yaml
+- Health Check: http://localhost:8080/health
+
+**See [src/api_gateway/README.md](src/api_gateway/README.md) for complete API Gateway documentation.**
 
 ## Configuration
 
@@ -264,6 +296,7 @@ The application listens for messages on the configured RabbitMQ exchange and top
 
 ### REST API
 
+#### Single Game Endpoints (Active Game)
 - `GET /api/game/state` - Get current game state
 - `POST /api/game/new` - Start a new game
 
@@ -294,6 +327,15 @@ The application listens for messages on the configured RabbitMQ exchange and top
   ```
 
 - `DELETE /api/players/<player_id>` - Remove a player
+
+#### 🆕 Multi-Game Management Endpoints
+- `GET /api/games` - List all active games
+- `POST /api/games/create` - Create a new game session
+- `POST /api/games/<game_id>/activate` - Switch to a different game
+- `DELETE /api/games/<game_id>` - Delete a game session
+- `GET /api/games/<game_id>/state` - Get state of a specific game
+
+**📖 See [Multi-Game Management Documentation](docs/MULTI_GAME_MANAGEMENT.md) for detailed usage examples.**
 
 **Note**: All API endpoints that modify game state automatically trigger UI refresh for all connected clients via WebSocket.
 
@@ -581,6 +623,61 @@ dartserver-pythonapp/
         ├── main.js                 # Main game board JavaScript
         └── control.js              # Control panel JavaScript
 ```
+
+---
+
+## 🎯 Dartboard Hardware Integration
+
+### Quick Start for Dartboard Developers
+
+The API Gateway provides a secure OAuth2-authenticated endpoint for dartboard hardware to submit throws.
+
+**Key Features:**
+- ✅ OAuth2 client credentials flow (easy token management)
+- ✅ Automatic token renewal
+- ✅ Pin-based score mapping (send GPIO pins, server calculates score)
+- ✅ Multiple board type support (Carromco, Winmau, etc.)
+- ✅ Rate limiting and security built-in
+
+**Example Integration (Python):**
+
+```python
+from dartboard_client import DartboardClient
+
+# Initialize client with credentials
+client = DartboardClient(
+    client_id="dartboard_001_client",
+    client_secret="your_secret_here",
+    token_url="https://wso2-apim:9443/oauth2/token",
+    gateway_url="https://api.dartsapp.example.com/darts/v1",
+    board_type="carromco"
+)
+
+# Submit a throw (Triple 20)
+client.submit_throw(master_pin=4, slave_pin=13)
+```
+
+**Testing Your Dartboard:**
+
+```bash
+# Use the simulator to test your integration
+python scripts/dartboard_simulator.py \
+  --client-id your_client_id \
+  --client-secret your_secret \
+  --gateway-url http://localhost:8080
+
+# Simulate a complete game
+python scripts/dartboard_simulator.py --simulate-game
+
+# Test multiple concurrent boards
+python scripts/dartboard_simulator.py --concurrent-boards 3
+```
+
+**Documentation:**
+- 📖 [Dartboard Client Integration Guide](doc/DARTBOARD_CLIENT_INTEGRATION.md) - Complete implementation guide
+- 📖 [API Gateway README](src/api_gateway/README.md) - API documentation
+- 📖 [WSO2 APIM Configuration](doc/WSO2_APIM_CONFIGURATION.md) - Setup and deployment
+- 🔧 [Dartboard Simulator](scripts/dartboard_simulator.py) - Testing tool
 
 ---
 

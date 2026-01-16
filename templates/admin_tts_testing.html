@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - TTS Testing</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+        }
+
+        .back-link {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            color: #333;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .back-link:hover {
+            background: #e0e0e0;
+        }
+
+        .section {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section h2::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 2px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #555;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .form-group textarea,
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .preset-btn {
+            padding: 10px;
+            background: #e3f2fd;
+            border: 1px solid #667eea;
+            border-radius: 4px;
+            color: #333;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .info-text {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 12px;
+            border-radius: 4px;
+            color: #1565c0;
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .alert.success {
+            background: #e8f5e9;
+            border-color: #4CAF50;
+            color: #2e7d32;
+        }
+
+        .alert.error {
+            background: #ffebee;
+            border-color: #f44336;
+            color: #c62828;
+        }
+
+        .alert button {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0;
+            width: auto;
+        }
+
+        #alertsContainer {
+            margin-bottom: 20px;
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .user-info-header {
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .user-info {
+            position: absolute;
+            top: 5px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9em;
+        }
+
+        .username {
+            padding: 5px 12px;
+        }
+
+        .username-link {
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.3s, transform 0.2s;
+            display: inline-block;
+        }
+
+        .username-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+            cursor: pointer;
+        }
+
+        .user-roles {
+            display: flex;
+            gap: 5px;
+        }
+
+        .role-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .role-admin {
+            background: #dc3545;
+            color: white;
+        }
+
+        .role-gamemaster {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .role-player {
+            background: #28a745;
+            color: white;
+        }
+
+        .logout-btn {
+            padding: 6px 15px;
+            background: rgba(220, 53, 69, 0.8);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(220, 53, 69, 1);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="user-info-header">
+            <div class="user-info">
+                {% if user_claims %}
+                <a href="/profile" class="username username-link" title="View Profile">👤 {{
+                    user_claims.get('displayName') or user_claims.get('name') or (user_claims.get('given_name', '') + '
+                    ' + user_claims.get('family_name', '')).strip() or user_claims.get('username',
+                    user_claims.get('sub', 'User')) }}</a>
+                {% if user_roles %}
+                <span class="user-roles">
+                    {% for role in user_roles %}
+                    <span class="role-badge role-{{ role }}">{{ role }}</span>
+                    {% endfor %}
+                </span>
+                {% endif %}
+                <a href="/logout" class="logout-btn">Logout</a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="header">
+            <h1>🔊 TTS Testing</h1>
+            <a href="/admin" class="back-link">← Back to Admin</a>
+        </div>
+
+        <div id="alertsContainer"></div>
+
+        <!-- TTS Configuration -->
+        <div class="section">
+            <h2>TTS Configuration</h2>
+            <div class="info-text">
+                🎙️ Test Text-to-Speech functionality with different voices and settings
+            </div>
+
+            <div class="form-group">
+                <label for="ttsText">Text to Speak:</label>
+                <textarea id="ttsText"
+                    placeholder="Enter text to convert to speech...">Welcome to the Darts Game! Player one scored triple twenty.</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="voiceSelect">Voice:</label>
+                <select id="voiceSelect">
+                    <option value="">Loading voices...</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="rateInput">Speed: <span id="rateValue">1.0</span></label>
+                <input type="range" id="rateInput" min="0.5" max="2.0" step="0.1" value="1.0" style="width: 100%;">
+            </div>
+
+            <div class="form-group">
+                <label for="pitchInput">Pitch: <span id="pitchValue">1.0</span></label>
+                <input type="range" id="pitchInput" min="0.5" max="2.0" step="0.1" value="1.0" style="width: 100%;">
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" onclick="testTTS()">🔊 Test Speech</button>
+                <button class="btn-secondary" onclick="stopTTS()">⏹️ Stop</button>
+            </div>
+        </div>
+
+        <!-- Preset Messages -->
+        <div class="section">
+            <h2>Preset Game Messages</h2>
+            <div class="info-text">
+                Click a preset to test common game announcements
+            </div>
+            <div class="preset-buttons">
+                <button class="preset-btn" onclick="setPreset('Triple 20!')">Triple 20!</button>
+                <button class="preset-btn" onclick="setPreset('Double out!')">Double out!</button>
+                <button class="preset-btn" onclick="setPreset('Bullseye!')">Bullseye!</button>
+                <button class="preset-btn" onclick="setPreset('Player one wins!')">Player wins!</button>
+                <button class="preset-btn" onclick="setPreset('One hundred and eighty!')">180!</button>
+                <button class="preset-btn" onclick="setPreset('Game shot!')">Game shot!</button>
+                <button class="preset-btn" onclick="setPreset('Bust!')">Bust!</button>
+                <button class="preset-btn" onclick="setPreset('Your turn, player one')">Your turn</button>
+            </div>
+        </div>
+
+        <!-- Server-side TTS Test -->
+        <div class="section">
+            <h2>Server-side TTS Test</h2>
+            <div class="info-text">
+                🖥️ Test server-side TTS generation (if configured)
+            </div>
+
+            <div class="form-group">
+                <label for="serverText">Text to Generate:</label>
+                <textarea id="serverText"
+                    placeholder="Enter text for server-side TTS...">Testing server-side text to speech generation.</textarea>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" onclick="testServerTTS()" id="serverTestBtn">
+                    🎤 Generate & Play
+                </button>
+            </div>
+
+            <div id="audioContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        let voices = [];
+        let currentUtterance = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function () {
+            loadVoices();
+
+            // Update rate/pitch display
+            document.getElementById('rateInput').addEventListener('input', function (e) {
+                document.getElementById('rateValue').textContent = e.target.value;
+            });
+
+            document.getElementById('pitchInput').addEventListener('input', function (e) {
+                document.getElementById('pitchValue').textContent = e.target.value;
+            });
+        });
+
+        function loadVoices() {
+            // Some browsers (Chrome) populate voices asynchronously. Try now and also
+            // retry a few times if we get an empty list and onvoiceschanged does not fire.
+            const tryPopulate = (attempt = 0) => {
+                voices = speechSynthesis.getVoices();
+                if (voices.length > 0) {
+                    populateVoiceSelect();
+                    return true;
+                }
+                // Give up after a handful of retries to avoid spinning forever
+                if (attempt < 5) {
+                    setTimeout(() => tryPopulate(attempt + 1), 300);
+                } else {
+                    // Show a friendly message if voices are still unavailable
+                    const select = document.getElementById('voiceSelect');
+                    select.innerHTML = '<option value="">No voices available (check browser permissions)</option>';
+                }
+                return false;
+            };
+
+            // Register event listener as primary signal
+            speechSynthesis.onvoiceschanged = () => {
+                voices = speechSynthesis.getVoices();
+                populateVoiceSelect();
+            };
+
+            // Kick off initial attempt immediately
+            tryPopulate();
+        }
+
+        function populateVoiceSelect() {
+            const select = document.getElementById('voiceSelect');
+            select.innerHTML = '';
+
+            voices.forEach((voice, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                if (voice.default) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        }
+
+        function testTTS() {
+            const text = document.getElementById('ttsText').value;
+            const voiceIndex = document.getElementById('voiceSelect').value;
+            const rate = parseFloat(document.getElementById('rateInput').value);
+            const pitch = parseFloat(document.getElementById('pitchInput').value);
+
+            if (!text.trim()) {
+                showAlert('Please enter text to speak', 'error');
+                return;
+            }
+
+            // Stop any ongoing speech
+            stopTTS();
+
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            if (voiceIndex) {
+                currentUtterance.voice = voices[voiceIndex];
+            }
+            currentUtterance.rate = rate;
+            currentUtterance.pitch = pitch;
+
+            currentUtterance.onstart = () => {
+                showAlert('🔊 Speaking...', 'success');
+            };
+
+            currentUtterance.onend = () => {
+                showAlert('✓ Finished speaking', 'success');
+            };
+
+            currentUtterance.onerror = (event) => {
+                showAlert(`Error: ${event.error}`, 'error');
+            };
+
+            speechSynthesis.speak(currentUtterance);
+        }
+
+        function stopTTS() {
+            speechSynthesis.cancel();
+        }
+
+        function setPreset(text) {
+            document.getElementById('ttsText').value = text;
+            testTTS();
+        }
+
+        async function testServerTTS() {
+            const text = document.getElementById('serverText').value;
+            const btn = document.getElementById('serverTestBtn');
+
+            if (!text.trim()) {
+                showAlert('Please enter text to generate', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Generating...';
+
+            try {
+                const response = await fetch('/api/admin/tts/test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success' && data.audio_url) {
+                    showAlert('✓ Audio generated successfully', 'success');
+
+                    // Create audio player
+                    const audioContainer = document.getElementById('audioContainer');
+                    audioContainer.innerHTML = `
+                        <audio controls autoplay>
+                            <source src="${data.audio_url}" type="audio/mpeg">
+                            Your browser does not support audio playback.
+                        </audio>
+                    `;
+                } else {
+                    showAlert(data.message || 'Failed to generate audio', 'error');
+                }
+            } catch (error) {
+                console.error('Error testing server TTS:', error);
+                showAlert('Failed to connect to server TTS', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🎤 Generate & Play';
+            }
+        }
+
+        function showAlert(message, type = 'success') {
+            const container = document.getElementById('alertsContainer');
+            const alertId = 'alert-' + Date.now();
+            const alert = document.createElement('div');
+            alert.id = alertId;
+            alert.className = `alert ${type}`;
+            alert.innerHTML = `
+                <span>${message}</span>
+                <button onclick="document.getElementById('${alertId}').remove()">✕</button>
+            `;
+            container.appendChild(alert);
+
+            setTimeout(() => {
+                const elem = document.getElementById(alertId);
+                if (elem) elem.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+
+</html>

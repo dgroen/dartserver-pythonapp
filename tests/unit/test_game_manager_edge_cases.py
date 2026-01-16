@@ -3,8 +3,7 @@
 from unittest.mock import MagicMock
 
 import pytest
-
-from src.app.game_manager import GameManager
+from dartserver_app import GameManager
 
 # Constants for testing
 DEFAULT_PLAYER_IDS = [

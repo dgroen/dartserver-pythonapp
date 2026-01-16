@@ -4,9 +4,8 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from src.app.mobile_service import MobileService
-from src.core.database_models import ApiKey, Dartboard, HotspotConfig, Player
+from dartserver_core import ApiKey, Dartboard, HotspotConfig, Player
+from dartserver_services import MobileService
 
 
 class TestMobileService:

@@ -2,7 +2,7 @@
 // Note: socket is already defined in main.js, so we don't redeclare it here
 
 // DOM Elements
-const gameTypeSelect = document.getElementById('game-type');
+const gameTypeSelect = document.getElementById('game-type-select');
 const doubleOutCheckbox = document.getElementById('double-out');
 const resetOnMissCheckbox = document.getElementById('reset-on-miss');
 const hardModeContainer = document.getElementById('hard-mode-container');
@@ -170,7 +170,7 @@ function updateSearchSelection(results) {
 }
 
 // Select WSO2 user from search results
-window.selectUser = function(username, displayName, email) {
+window.selectUser = function (username, displayName, email) {
     selectedUser = { username, displayName, email };
     playerNameInput.value = displayName;
     playerSearchResults.style.display = 'none';

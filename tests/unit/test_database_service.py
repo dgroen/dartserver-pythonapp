@@ -3,9 +3,8 @@
 from unittest.mock import patch
 
 import pytest
-
-from src.core.database_models import DatabaseManager, Player
-from src.core.database_service import DatabaseService
+from dartserver_core.database_models import DatabaseManager, GameResult, Player
+from dartserver_core.database_service import DatabaseService
 
 
 class TestDatabaseManager:
@@ -173,6 +172,55 @@ class TestDatabaseService:
         """Test marking winner when no game is active."""
         # Should not raise an error (silently fails)
         db_service.mark_winner(player_id=0)
+
+    def test_finish_game(self, db_service):
+        """Test finishing a game marks all players with finished_at timestamp."""
+        # Start a new game
+        player_ids = self._create_test_players(db_service, ["Player 1", "Player 2"])
+        db_service.start_new_game(
+            game_type_name="301",
+            player_ids=player_ids,
+            start_score=301,
+            double_out=True,
+        )
+
+        # Record some throws
+        db_service.record_throw(
+            player_id=0,
+            turn_number=1,
+            throw_in_turn=1,
+            base_score=20,
+            multiplier="TRIPLE",
+            multiplier_value=3,
+            actual_score=60,
+            score_before=301,
+            score_after=241,
+            dartboard_sends_actual_score=False,
+            is_bust=False,
+            is_finish=False,
+        )
+
+        # Finish the game
+        db_service.finish_game()
+
+        # Verify all players have finished_at timestamp
+        session = db_service.db_manager.get_session()
+        try:
+            game_results = (
+                session.query(GameResult)
+                .filter_by(game_session_id=db_service.current_game_session_id)
+                .all()
+            )
+            assert len(game_results) == 2
+            for result in game_results:
+                assert result.finished_at is not None
+        finally:
+            session.close()
+
+    def test_finish_game_without_active_game(self, db_service):
+        """Test finishing game when no active game session."""
+        # Should not raise error even when no active game
+        db_service.finish_game()
 
     def test_update_player_score(self, db_service):
         """Test updating player score."""

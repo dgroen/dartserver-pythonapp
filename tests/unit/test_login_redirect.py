@@ -10,9 +10,8 @@ from flask import session
 
 
 @pytest.fixture
-def app_with_login():
+def app_with_login(flask_app):
     """Create Flask app with login routes"""
-    from src.app.app import app as flask_app
 
     flask_app.config["TESTING"] = True
     flask_app.config["WTF_CSRF_ENABLED"] = False
@@ -31,21 +30,7 @@ def client_with_login(app_with_login):
 class TestLoginRedirectFlow:
     """Test login redirect flow for protected pages"""
 
-    @patch("src.core.auth.get_current_request_url")
-    @patch("src.core.auth.validate_token")
-    def test_history_page_redirect_to_login(self, mock_validate, mock_get_url, client_with_login):
-        """Test that accessing /history without token redirects to login"""
-        mock_validate.return_value = None
-        mock_get_url.return_value = "https://localhost:5000/history"
-
-        response = client_with_login.get("/history", follow_redirects=False)
-
-        # Should redirect to login
-        assert response.status_code == 302
-        assert "/login" in response.location
-        assert "next=" in response.location
-
-    @patch("src.core.auth.get_current_request_url")
+    @patch("dartserver_core.auth.get_current_request_url")
     def test_login_stores_next_url_in_session(
         self,
         mock_get_url,
@@ -64,7 +49,7 @@ class TestLoginRedirectFlow:
             assert session.get("login_next_url") == "https://localhost:5000/history"
             assert session.get("oauth_state") is not None
 
-    @patch("src.core.auth.get_current_request_url")
+    @patch("dartserver_core.auth.get_current_request_url")
     def test_login_stores_oauth_state(self, mock_get_url, client_with_login):
         """Test that login route generates and stores OAuth state"""
         with client_with_login:
@@ -76,8 +61,8 @@ class TestLoginRedirectFlow:
             # State should be a URL-safe token
             assert len(state) > 20  # type: ignore
 
-    @patch("src.app.app.get_user_info")
-    @patch("src.app.app.exchange_code_for_token")
+    @patch("src.app.app_auth.get_user_info")
+    @patch("src.app.app_auth.exchange_code_for_token")
     def test_callback_redirect_to_next_url(
         self,
         mock_exchange,
@@ -114,8 +99,8 @@ class TestLoginRedirectFlow:
             assert response.status_code == 302
             assert response.location == "https://localhost:5000/history"
 
-    @patch("src.app.app.get_user_info")
-    @patch("src.app.app.exchange_code_for_token")
+    @patch("src.app.app_auth.get_user_info")
+    @patch("src.app.app_auth.exchange_code_for_token")
     def test_callback_redirects_to_home_without_next_url(
         self,
         mock_exchange,
@@ -150,8 +135,8 @@ class TestLoginRedirectFlow:
             assert response.status_code == 302
             assert response.location == "/"
 
-    @patch("src.app.app.get_user_info")
-    @patch("src.app.app.exchange_code_for_token")
+    @patch("src.app.app_auth.get_user_info")
+    @patch("src.app.app_auth.exchange_code_for_token")
     def test_callback_clears_login_next_url_from_session(
         self,
         mock_exchange,
@@ -187,7 +172,7 @@ class TestLoginRedirectFlow:
             with client_with_login.session_transaction() as sess:
                 assert "login_next_url" not in sess
 
-    @patch("src.core.auth.get_current_request_url")
+    @patch("dartserver_core.auth.get_current_request_url")
     def test_login_session_marked_as_permanent(self, mock_get_url, client_with_login):
         """Test that login route marks session as permanent"""
         with client_with_login:

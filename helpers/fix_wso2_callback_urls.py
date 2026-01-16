@@ -6,6 +6,7 @@ Uses WSO2 IS REST API with basic authentication
 
 import os
 import sys
+import traceback
 
 import requests
 import urllib3
@@ -145,8 +146,6 @@ def update_callback_urls(app_id):
 
     except Exception as e:
         print(f"❌ Error updating application: {e}")
-        import traceback
-
         traceback.print_exc()
         return False
 

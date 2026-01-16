@@ -1,19 +1,13 @@
 """
-Compatibility wrapper for app module - imports from new location
+Compatibility wrapper for app module - imports from dartserver_app package
 Re-exports the main Flask app and socketio for backward compatibility
 """
 
-from src.app.app import (  # noqa: F401
-    app,
-    game_manager,
-    on_score_received,
-    socketio,
-    start_rabbitmq_consumer,
-)
+from dartserver_app import create_app
 
-# If running as main, use the run.py script instead
+app, socketio = create_app()
+game_manager = app.game_manager
+
 if __name__ == "__main__":
+    print("Use run.py to start the main application")
     print("Please run 'python run.py' instead to start the application")
-    import sys
-
-    sys.exit(1)

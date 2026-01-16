@@ -14,7 +14,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -34,7 +34,7 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -45,23 +45,24 @@ services:
   wso2is:
     image: wso2/wso2is:7.1.0
     container_name: darts-wso2is
+    user: root
     ports:
       - "9443:9443" # HTTPS port
       - "9763:9763" # HTTP port
     environment:
       - JAVA_OPTS=-Xms512m -Xmx1024m
+      - WSO2_DB_HOST=postgres
+      - WSO2_DB_PORT=5432
+      - WSO2_DB_USER=postgres
+      - WSO2_DB_PASSWORD=postgres
+      - WSO2_IDENTITY_DB=wso2is_identity
+      - WSO2_SHARED_DB=wso2is_shared
     volumes:
       - wso2is_data:/home/wso2carbon/wso2is-7.1.0
       - ./wso2is-7-config/deployment.toml:/home/wso2carbon/wso2is-7.1.0/repository/conf/deployment.toml:ro
+      - ./drivers/postgresql.jar:/home/wso2carbon/wso2is-7.1.0/repository/components/lib/postgresql-42.7.3.jar:ro
     healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "-k",
-          "-f",
-          "https://localhost:9443/api/health-check/v1.0/health",
-        ]
+      test: [ "CMD", "curl", "-k", "-f", "https://localhost:9443/api/health-check/v1.0/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -81,18 +82,13 @@ services:
       - JAVA_OPTS=-Xms512m -Xmx1024m
     volumes:
       - wso2apim_data:/home/wso2carbon/wso2am-4.0.0
+      # deployment.toml mount disabled - let APIM start with default config first
+      # - ./wso2apim-4-config/deployment.toml:/home/wso2carbon/wso2am-4.0.0/repository/conf/deployment.toml
     depends_on:
       wso2is:
         condition: service_healthy
     healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "-k",
-          "-f",
-          "https://localhost:9443/api/health-check/v1.0/health",
-        ]
+      test: [ "CMD", "curl", "-k", "-f", "https://localhost:9443/api/health-check/v1.0/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -106,8 +102,12 @@ services:
       context: .
       dockerfile: Dockerfile.gateway
     container_name: darts-api-gateway
+    # Expose port 8080 to the host so the gateway is reachable directly
     ports:
       - "8080:8080"
+    # Note: Port 8080 is NOT exposed to host - only accessible via nginx reverse proxy
+    # This prevents direct connection attempts to the API gateway
+    # All traffic must go through nginx on ports 80 (HTTP) and 443 (HTTPS)
     environment:
       # RabbitMQ Configuration
       RABBITMQ_HOST: rabbitmq
@@ -118,9 +118,13 @@ services:
       RABBITMQ_EXCHANGE: darts_exchange
 
       # WSO2 Identity Server Configuration
-      WSO2_IS_URL: https://wso2is:9443
-      WSO2_IS_CLIENT_ID: ${WSO2_IS_CLIENT_ID:-L2rvop0o4DfJsqpqsh44cUgVn_ga}
-      WSO2_IS_CLIENT_SECRET: ${WSO2_IS_CLIENT_SECRET:-VhNFUK083Q2iUsu8GCWfcJTVCX8a}
+      # Use a host reachable from the browser (localhost) so the Swagger UI
+      # Authorize redirect resolves correctly on the developer machine.
+      WSO2_IS_URL: https://localhost:9443
+      # Internal Docker network URL for backend calls from the api-gateway container
+      WSO2_IS_INTERNAL_URL: https://darts-wso2is:9443
+      WSO2_IS_CLIENT_ID: ${WSO2_CLIENT_ID:-qGUe7mARfB_rbEn09jWJtTyi9uMa}
+      WSO2_IS_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-HUgKyYNsXxfGAYHb2SYMFuX18Gmu9R9kE99EQkXOfKka}
 
       # Introspection credentials (required for token validation)
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
@@ -132,12 +136,19 @@ services:
       # Flask Configuration
       API_GATEWAY_HOST: 0.0.0.0
       API_GATEWAY_PORT: 8080
+      # Ensure the flask process listens on the expected port inside container
+      FLASK_HOST: 0.0.0.0
+      FLASK_PORT: 8080
       FLASK_DEBUG: "False"
       SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
+      # Database Configuration for api-gateway (use internal postgres service)
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dartsdb # pragma: allowlist secret
     depends_on:
       rabbitmq:
         condition: service_healthy
       wso2is:
+        condition: service_healthy
+      wso2apim:
         condition: service_healthy
     restart: unless-stopped
     networks:
@@ -147,6 +158,7 @@ services:
   darts-app:
     build: .
     container_name: darts-app
+    # Expose port 5000 to host for local direct access (restore previous behavior)
     ports:
       - "5000:5000"
     environment:
@@ -157,13 +169,23 @@ services:
       RABBITMQ_PASSWORD: guest
       RABBITMQ_VHOST: /
       RABBITMQ_EXCHANGE: darts_exchange
-      RABBITMQ_TOPIC: darts.scores.#
+      # Listen to all darts topics (scores, dartboard throws, etc.)
+      RABBITMQ_TOPIC: darts.#
+
+      # Python unbuffered output for better logging
+      PYTHONUNBUFFERED: "1"
+
+      # Set development environment so generated Swagger spec includes http scheme
+      ENVIRONMENT: development
 
       # Flask Configuration
       FLASK_HOST: 0.0.0.0
       FLASK_PORT: 5000
       FLASK_DEBUG: "False"
       FLASK_USE_SSL: "False"
+      # Use HTTP scheme for local direct access on port 5000
+      APP_SCHEME: http
+      APP_DOMAIN: localhost:5000
       SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
 
       # Dartboard Configuration
@@ -187,21 +209,20 @@ services:
       WSO2_IS_INTERNAL_URL: https://darts-wso2is:9443
       WSO2_CLIENT_ID: ${WSO2_CLIENT_ID:-your_client_id_here}
       WSO2_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-your_client_secret_here}
-      # Use dynamic redirect URIs - these are fallbacks only, app will use X-Forwarded headers
-      WSO2_REDIRECT_URI: ${WSO2_REDIRECT_URI:-https://letsplaydarts.eu/callback}
-      WSO2_POST_LOGOUT_REDIRECT_URI: ${WSO2_POST_LOGOUT_REDIRECT_URI:-https://letsplaydarts.eu/}
+      # Match nginx-facing HTTPS origin for local dev callbacks
+      WSO2_REDIRECT_URI: ${WSO2_REDIRECT_URI:-https://localhost/callback}
+      WSO2_POST_LOGOUT_REDIRECT_URI: ${WSO2_POST_LOGOUT_REDIRECT_URI:-https://localhost/}
       WSO2_IS_VERIFY_SSL: "False"
       JWT_VALIDATION_MODE: introspection
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
       WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin} # pragma: allowlist secret
-      SESSION_COOKIE_SECURE: "True" # Enable secure cookies for HTTPS
+      SESSION_COOKIE_SECURE: "False" # Disable for local HTTP development
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      wso2is:
-        condition: service_healthy
+      # wso2is dependency removed temporarily to allow app to start for local testing
     restart: unless-stopped
     networks:
       - darts-network
@@ -230,6 +251,7 @@ volumes:
   rabbitmq_data:
   wso2is_data:
   wso2apim_data:
+
 
 networks:
   darts-network:

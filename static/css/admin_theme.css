@@ -1,0 +1,1380 @@
+/* Central admin/theme stylesheet extracted from admin_dartboard_testing.html */
+/* Base resets and layout */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+}
+
+.container {
+    max-width: 1600px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    padding: 30px;
+}
+
+/* Header and status */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    border-bottom: 3px solid #667eea;
+    padding-bottom: 20px;
+}
+
+.header h1 {
+    color: #333;
+    font-size: 28px;
+}
+
+.header .status {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 20px;
+    background: #f0f0f0;
+    border-radius: 6px;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ccc;
+}
+
+.status-dot.active {
+    background: #4CAF50;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Grid & sections */
+.main-grid {
+    display: grid;
+    /* left column is flexible, right column reserved for sidebar/actions */
+    grid-template-columns: 1fr auto;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.section {
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.section h2 {
+    color: #333;
+    font-size: 18px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section h2::before {
+    content: '';
+    width: 4px;
+    height: 20px;
+    background: #667eea;
+    border-radius: 2px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    color: #555;
+    font-weight: 600;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+/* Checkbox label alignment */
+.form-group label:has(input[type="checkbox"]) {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+    cursor: pointer;
+}
+
+.form-group select,
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.form-group select:focus,
+.form-group input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #5568d3;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.btn-secondary:hover {
+    background: #e0e0e0;
+}
+
+.btn-success {
+    background: #4CAF50;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #45a049;
+}
+
+.btn-danger {
+    background: #f44336;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #da190b;
+}
+
+/* Search box styling (from admin user management) */
+.search-box {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.search-box input {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    transition: border-color 0.3s ease;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.search-box button {
+    padding: 12px 20px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.search-box button:hover {
+    background: #5568d3;
+    transform: translateY(-1px);
+}
+
+/* Player management styling */
+.players-list-container {
+    min-height: 40px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.empty-players {
+    color: #6c757d;
+    font-style: italic;
+    text-align: center;
+}
+
+.search-results-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    background: white;
+    display: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Control panel grid layout */
+.control-grid-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.control-grid-row.three-column {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+.control-grid-row .section {
+    display: flex;
+    flex-direction: column;
+    /* Use an aspect-ratio so the card's height matches its width (square-like)
+       while still allowing the content to flow. On very narrow screens the
+       min-height ensures usability. */
+    aspect-ratio: 1 / 1;
+    min-height: 180px;
+    max-height: 60vh;
+    /* prevent cards from becoming excessively tall */
+    overflow: hidden;
+    align-items: stretch;
+    justify-content: flex-start;
+}
+
+.control-grid-row .section.full-width {
+    grid-column: 1 / -1;
+    /* Full-width row should keep a reasonable height but can expand vertically */
+    aspect-ratio: auto;
+    min-height: 260px;
+    max-height: 80vh;
+}
+
+/* Ensure the main content inside sections grows and scrolls if necessary */
+.control-grid-row .section>*:not(h2) {
+    flex: 1 1 auto;
+    min-height: 0;
+    /* enable proper flexbox overflow behaviour */
+    overflow: auto;
+}
+
+/* Make elements inside the section lay out in a single row where suitable
+   (useful for compact cards like game/player cards). If a section explicitly
+   needs column layout it can override with `.column-layout`. */
+.control-grid-row .section .row-inline,
+.control-grid-row .section .game-card,
+.control-grid-row .section .player-card {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Button auto-width sizing */
+.btn-auto-width {
+    width: auto;
+    min-width: fit-content;
+    padding: 8px 16px;
+    flex: none;
+}
+
+/* Responsive adjustments for control panel */
+@media (max-width: 1024px) {
+    .control-grid-row {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .control-grid-row.three-column {
+        grid-template-columns: 1fr;
+    }
+
+    .control-grid-row .section {
+        min-height: auto;
+        /* Allow natural height on mobile */
+    }
+}
+
+/* Matrix, logs and helpers */
+.matrix-container {
+    background: white;
+    border-radius: 6px;
+    padding: 15px;
+    overflow-x: auto;
+}
+
+/* Games list card styling */
+.games-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.game-card {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    gap: 12px;
+    align-items: start;
+    background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+    border: 1px solid rgba(15, 76, 129, 0.08);
+    border-radius: 8px;
+    padding: 12px 14px;
+    box-shadow: 0 6px 18px rgba(15, 76, 129, 0.03);
+}
+
+.game-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(15, 76, 129, 0.08);
+}
+
+/* Compact summary cards for dashboard: reduce height/padding to ~25% of previous size */
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    align-items: start;
+}
+
+.summary-cards .summary-card {
+    background: #ffffff;
+    border: 1px solid #e6eefb;
+    border-radius: 6px;
+    padding: 8px 10px;
+    height: 56px;
+    /* compact height */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    box-shadow: none;
+}
+
+.summary-cards .summary-card h3 {
+    margin: 0;
+    font-size: 12px;
+    color: #666;
+    font-weight: 600;
+}
+
+.summary-cards .summary-card .stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f4c81;
+    margin-top: 4px;
+}
+
+@media (max-width: 900px) {
+    .summary-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+
+.game-icon {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    background: #eef8ff;
+    color: #0f4c81;
+    border-radius: 8px;
+}
+
+.game-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.game-header {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.game-type {
+    font-weight: 700;
+    color: #0f4c81;
+}
+
+.game-date {
+    color: #6c757d;
+    font-size: 13px;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+}
+
+.status-completed {
+    background: #e6f6ec;
+    color: #137a3f;
+}
+
+.status-incomplete {
+    background: #fff4e6;
+    color: #8a4b00;
+}
+
+/* Game card action buttons styles */
+.game-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+}
+
+.game-actions .action-btn {
+    background: #f0f4ff;
+    border: 1px solid rgba(15, 76, 129, 0.06);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: #0f4c81;
+    /* default action text color (matches Details) */
+}
+
+.game-actions .view-btn {
+    background: #eef7ff;
+    color: #0f4c81;
+}
+
+.game-actions .resume-btn {
+    background: #e6ffef;
+    color: #137a3f;
+}
+
+/* Make remove button share the same typography and default color as Details/Resume buttons */
+.game-actions .remove-btn {
+    background: #fff5f5;
+    color: #0f4c81;
+    /* match Details color */
+    border-color: rgba(15, 76, 129, 0.06);
+}
+
+/* Player detail modal cards: size to content */
+.players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    align-items: start;
+}
+
+.player-card {
+    background: #fff;
+    border: 1px solid #e9eef6;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: auto;
+    min-height: 0;
+    box-shadow: none;
+}
+
+.player-card .player-stats .stat-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+/* Training status specific adjustments
+   - Use a dedicated section class to override fixed card height and allow responsive scaling
+   - Ensure the inner status container can scroll when content exceeds available space
+*/
+.control-grid-row .section.training-status-section {
+    /* override the default fixed height for this section */
+    height: auto;
+    min-height: 180px;
+    max-height: 60vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.control-grid-row .section.training-status-section .status-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    /* allow flex children to shrink properly */
+    overflow: auto;
+    padding: 8px 4px;
+}
+
+/* Small screens: let the training status expand naturally but keep reasonable max */
+@media (max-width: 768px) {
+    .control-grid-row .section.training-status-section {
+        max-height: none;
+        min-height: auto;
+    }
+}
+
+.game-details {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.detail-item {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    color: #333;
+    font-size: 14px;
+}
+
+.option-badge {
+    display: inline-block;
+    background: rgba(102, 126, 234, 0.08);
+    color: #3344aa;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-top: 6px;
+}
+
+.game-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.action-btn {
+    background: transparent;
+    border: 1px solid rgba(15, 76, 129, 0.08);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+
+    .summary-cards .summary-card {
+        background: #ffffff;
+        border: 1px solid #e6eefb;
+        border-radius: 6px;
+        padding: 6px 10px;
+        /* small padding so cards stay compact */
+        height: auto;
+        /* allow card to grow with content */
+        min-height: 40px;
+        /* reasonable minimum */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        box-shadow: none;
+    }
+}
+
+.view-btn:hover {
+    background: #f2f8ff;
+}
+
+/* Player cards inside modal details */
+.player-card {
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    border: 1px solid rgba(15, 76, 129, 0.06);
+    border-radius: 8px;
+    padding: 10px;
+    margin: 8px;
+}
+
+.players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+/* Card contrast: ensure active card text is white and inactive cards are black
+   This addresses low-contrast current-target/value visibility on the main page. */
+.player-card.active,
+.game-card.active {
+    color: #ffffff !important;
+}
+
+.player-card.active .stat-value,
+.game-card.active .stat-value,
+.player-card.active .player-name,
+.game-card.active .player-name {
+    color: #ffffff !important;
+}
+
+.player-card:not(.active),
+.game-card:not(.active) {
+    color: #000000 !important;
+}
+
+.player-card:not(.active) .stat-value,
+.game-card:not(.active) .stat-value {
+    color: #000000 !important;
+}
+
+/* Current target label/value contrast rules: cover common class names used
+   for the current target display on game/player cards. */
+.player-card .current-target,
+.game-card .current-target,
+.current-target-label,
+.current-target-value,
+.current-target .label,
+.current-target .value {
+    color: inherit !important;
+}
+
+/* Ensure active cards show the current target in white */
+.player-card.active .current-target,
+.game-card.active .current-target,
+.player-card.active .current-target-value,
+.game-card.active .current-target-value,
+.player-card.active .current-target-label,
+.game-card.active .current-target-label {
+    color: #ffffff !important;
+}
+
+/* Inactive cards: current target should be black for legibility */
+.player-card:not(.active) .current-target,
+.game-card:not(.active) .current-target,
+.player-card:not(.active) .current-target-value,
+.game-card:not(.active) .current-target-value,
+.player-card:not(.active) .current-target-label,
+.game-card:not(.active) .current-target-label {
+    color: #000000 !important;
+}
+
+
+.matrix {
+    display: inline-block;
+    background: white;
+}
+
+.matrix-header {
+    display: flex;
+    margin-left: 50px;
+    margin-bottom: 0;
+    gap: 0;
+}
+
+.matrix-col-header {
+    width: 60px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #667eea;
+    font-size: 12px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.matrix-row {
+    display: flex;
+    gap: 0;
+    margin-bottom: 0;
+}
+
+.matrix-row-header {
+    width: 50px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #667eea;
+    font-size: 12px;
+    border-right: 2px solid #e0e0e0;
+}
+
+.matrix-cell {
+    width: 60px;
+    height: 60px;
+    border: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: white;
+    font-size: 11px;
+    text-align: center;
+    padding: 2px;
+}
+
+.matrix-cell:hover {
+    background: #f5f5f5;
+    border-color: #667eea;
+}
+
+.matrix-cell.mapped {
+    background: #e3f2fd;
+    border-color: #667eea;
+    font-weight: 600;
+}
+
+.matrix-cell.selected {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+.cell-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.cell-zone {
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.cell-mult {
+    font-size: 9px;
+    opacity: 0.7;
+}
+
+.message-log {
+    background: #1e1e1e;
+    color: #00ff00;
+    border-radius: 6px;
+    padding: 15px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    height: 250px;
+    overflow-y: auto;
+    border: 1px solid #333;
+}
+
+.log-entry {
+    margin-bottom: 8px;
+    padding: 8px;
+    background: rgba(0, 255, 0, 0.05);
+    border-left: 3px solid #00ff00;
+    border-radius: 2px;
+}
+
+.log-timestamp {
+    color: #888;
+    margin-right: 10px;
+}
+
+.log-raw {
+    color: #00ff00;
+}
+
+.log-mapping {
+    color: #ffff00;
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid #444;
+}
+
+/* Mapping form layout */
+.mapping-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.mapping-form .form-group {
+    margin-bottom: 0;
+}
+
+.mapping-form.full-width {
+    grid-column: 1 / -1;
+}
+
+.csv-upload {
+    border: 2px dashed #667eea;
+    border-radius: 6px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.csv-upload:hover {
+    background: rgba(102, 126, 234, 0.1);
+    border-color: #5568d3;
+}
+
+.csv-upload input[type="file"] {
+    display: none;
+}
+
+.csv-upload .upload-icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+}
+
+.csv-upload .upload-text {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.csv-upload .upload-subtext {
+    color: #999;
+    font-size: 12px;
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    border-left: 4px solid;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.alert.success {
+    background: #e8f5e9;
+    border-color: #4CAF50;
+    color: #2e7d32;
+}
+
+.alert.error {
+    background: #ffebee;
+    border-color: #f44336;
+    color: #c62828;
+}
+
+.alert.info {
+    background: #e3f2fd;
+    border-color: #2196F3;
+    color: #1565c0;
+}
+
+.alert button {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0;
+    width: auto;
+}
+
+.full-width {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 1200px) {
+    .main-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mapping-form {
+        grid-template-columns: 1fr;
+    }
+}
+
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.info-text {
+    background: #e3f2fd;
+    border-left: 4px solid #2196F3;
+    padding: 12px;
+    border-radius: 4px;
+    color: #1565c0;
+    font-size: 13px;
+    margin-bottom: 15px;
+}
+
+.cell-highlight-animation {
+    animation: cellFlash 0.6s ease-out;
+}
+
+@keyframes cellFlash {
+    0% {
+        background: #ffeb3b;
+        transform: scale(1.05);
+    }
+
+    100% {
+        background: inherit;
+        transform: scale(1);
+    }
+}
+
+.pin-selection {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.pin-selection h4 {
+    color: #333;
+    font-size: 14px;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.pin-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pin-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 13px;
+}
+
+.pin-checkbox:hover {
+    background: #e3f2fd;
+    border-color: #667eea;
+}
+
+.pin-checkbox input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.pin-checkbox input[type="checkbox"]:checked+span {
+    color: #667eea;
+    font-weight: 600;
+}
+
+.pin-checkbox.selected {
+    background: #e3f2fd;
+    border-color: #667eea;
+}
+
+/* User header (shared) */
+.user-info-header {
+    text-align: center;
+    margin-bottom: 10px;
+    padding: 20px;
+    position: relative;
+}
+
+.user-info {
+    position: absolute;
+    top: 5px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9em;
+}
+
+.username {
+    padding: 5px 12px;
+}
+
+.username-link {
+    text-decoration: none;
+    color: #222 !important;
+    transition: background 0.3s, transform 0.2s;
+    display: inline-block;
+}
+
+.username-link:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+    cursor: pointer;
+}
+
+.user-roles {
+    display: flex;
+    gap: 5px;
+}
+
+.role-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.role-admin {
+    background: #dc3545;
+    color: white;
+}
+
+.role-gamemaster {
+    background: #ffc107;
+    color: #333;
+}
+
+.role-player {
+    background: #28a745;
+    color: white;
+}
+
+.logout-btn {
+    padding: 6px 15px;
+    background: rgba(220, 53, 69, 0.8);
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    transition: background 0.3s;
+}
+
+.logout-btn:hover {
+    background: rgba(220, 53, 69, 1);
+}
+
+/* Player card overrides for improved contrast and layout */
+.player-card {
+    background: #ffffff;
+    color: #222;
+    border-radius: 10px;
+    padding: 20px;
+    transition: all 0.25s ease;
+    border: 3px solid transparent;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.player-card.active {
+    border-color: #1565c0;
+    background: linear-gradient(135deg, #1e88e5, #1565c0);
+    color: #fff;
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 10px 30px rgba(21, 101, 192, 0.25);
+}
+
+.player-card.winner {
+    border-color: #b8860b;
+    background: linear-gradient(135deg, #ffd54f, #ffb300);
+    color: #222;
+    animation: pulse 1.2s infinite;
+}
+
+.player-name {
+    color: inherit;
+}
+
+.player-score {
+    color: inherit;
+    text-shadow: none;
+}
+
+/* Players container responsive placement rules by player count */
+.players-container {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    width: 100%;
+}
+
+/* Ensure the left column stacks and stretches its children */
+.main-grid>div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Reserve width for a populated right column, but allow it to collapse when empty */
+.main-grid>div:last-child {
+    width: 100%;
+}
+
+.message-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.players-container.players-count-1 {
+    grid-template-columns: 1fr;
+}
+
+.players-container.players-count-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.players-container.players-count-3 {
+    /* Use minmax(0,1fr) to allow proper shrinking and to avoid overflow
+       so three RTC player cards always fit the app container width */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.players-container.players-count-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Ensure player cards stretch to fill their grid cell and match heights
+   so three cards look balanced and fit the app container cleanly. */
+.players-container {
+    align-items: stretch;
+    grid-auto-rows: 1fr;
+}
+
+.players-container>.player-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+    /* allow flex children to shrink inside grid cell */
+}
+
+/* On narrower screens, fall back to stacked layout but keep balanced heights */
+@media (max-width: 900px) {
+    .players-container.players-count-3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.nav-links a.nav-link {
+    padding: 10px 14px;
+    background: #f5f5f5;
+    color: #333;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.nav-links a.nav-link:hover {
+    background: #eef2ff;
+}
+
+/* Games sidebar styling to match .section */
+.games-sidebar {
+    width: 320px;
+    margin-right: 20px;
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.games-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.game-item {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 10px;
+    border: 1px solid #e6e6e6;
+    color: #222;
+    cursor: pointer;
+}
+
+.game-item .game-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.game-item .game-item-type {
+    font-weight: 700;
+    color: #333;
+}
+
+.game-item .game-item-players {
+    font-size: 0.9em;
+    color: #555;
+}
+
+.game-item.active {
+    background: linear-gradient(135deg, #1e88e5, #1565c0);
+    color: #fff;
+    border-color: rgba(21, 101, 192, 0.4);
+    box-shadow: 0 8px 24px rgba(21, 101, 192, 0.12);
+}
+
+.game-item.active .game-item-type,
+.game-item.active .game-item-players {
+    color: #fff;
+}
+
+/* Per-card throw advice */
+.card-throw-advice {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 6px;
+    font-size: 2.0em;
+    color: inherit;
+}
+
+/* per-card throw info and button */
+.card-throw-info {
+    font-size: 0.95em;
+    color: inherit;
+    opacity: 0.9;
+    margin-top: 8px;
+}
+
+.card-button-container {
+    margin-top: 12px;
+}
+
+.btn-card-next {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-weight: 700;
+}
+
+/* Small utilities */
+.info-text small {
+    color: #666;
+}
+
+/* small responsive tweaks reused from admin template */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+
+    .header h1 {
+        font-size: 1.8em;
+    }
+
+    .main-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* RTC (round-the-clock) widget styles — appended to the end for clarity */
+/* Match admin/game-card visuals and improve inactive backgrounds */
+.rtc-container {
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    border: 1px solid rgba(15, 76, 129, 0.06);
+    border-radius: 8px;
+    padding: 10px;
+    color: #000;
+}
+
+.rtc-container.active {
+    background: linear-gradient(180deg, #2b5aa6 0%, #1f3f7a 100%);
+    border-color: rgba(15, 76, 129, 0.16);
+    color: #ffffff;
+    box-shadow: 0 8px 20px rgba(31, 63, 122, 0.18);
+}
+
+/* Target label/value inherit container color, with stronger weight for legibility */
+.rtc-current-target,
+.rtc-target-label,
+.rtc-target-value {
+    color: inherit !important;
+    font-weight: 700;
+}
+
+.rtc-container.active .rtc-target-value,
+.rtc-container.active .rtc-target-label {
+    color: #ffffff !important;
+}
+
+.rtc-container:not(.active) .rtc-target-value,
+.rtc-container:not(.active) .rtc-target-label {
+    color: #0b0b0b !important;
+}
+
+/* Dartboard visual container: subtle paper-like background when inactive */
+.rtc-dartboard-container {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border: 1px solid rgba(15, 76, 129, 0.04);
+    border-radius: 8px;
+    padding: 6px;
+}
+
+.rtc-container.active .rtc-dartboard-container {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+/* Highlighting helpers for RTC SVG elements */
+.rtc-current-segment {
+    stroke: #ffcc00;
+    stroke-width: 2px;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.12));
+}
+
+.rtc-current-number {
+    fill: #0f4c81;
+    font-weight: 800;
+}

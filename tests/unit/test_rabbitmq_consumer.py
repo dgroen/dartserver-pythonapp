@@ -3,9 +3,9 @@
 import json
 from unittest.mock import MagicMock, Mock, patch
 
+import pika
 import pytest
-
-from src.core.rabbitmq_consumer import RabbitMQConsumer
+from dartserver_services import RabbitMQConsumer
 
 
 @pytest.fixture
@@ -192,8 +192,6 @@ class TestRabbitMQConsumer:
     @patch("rabbitmq_consumer.time.sleep")
     def test_start_with_amqp_connection_error(self, mock_sleep, mock_connection, consumer):
         """Test start with AMQP connection error."""
-        import pika
-
         # Setup
         mock_connection.side_effect = [
             pika.exceptions.AMQPConnectionError("Connection failed"),

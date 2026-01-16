@@ -1,9 +1,9 @@
 """Integration tests for complete game scenarios."""
 
 import pytest
-
-from src.app.game_manager import GameManager
-from src.core.database_service import DatabaseService
+from dartserver_app import GameManager
+from dartserver_core import Player
+from dartserver_core.database_service import DatabaseService
 
 
 @pytest.fixture
@@ -23,8 +23,6 @@ def db_service():
 
 def get_player_ids(names, db_service):
     """Convert player names to player IDs for testing."""
-    from src.core.database_models import Player
-
     player_ids = []
     session = db_service.db_manager.get_session()
     for name in names:
