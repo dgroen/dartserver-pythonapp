@@ -367,7 +367,6 @@ def get_openapi_spec():
     try:
         # Prefer centralized project root openapi.json/openapi.yaml when present
         root_spec_json = Path(__file__).resolve().parents[2] / "openapi.json"
-        _root_spec_yaml: Path = Path(__file__).resolve().parents[2] / "openapi.yaml"
         if root_spec_json.exists():
             # If JSON exists at project root, convert to YAML for legacy endpoints
             with root_spec_json.open() as fh:
@@ -445,84 +444,6 @@ def get_openapi_spec_json():
             return o
 
         spec_dict = _deep_replace(spec_dict)
-
-        # If OpenAPI 3 spec detected, convert to Swagger 2.0 style to maintain
-        # compatibility with tools that expect top-level 'swagger' field.
-        def _convert_openapi3_to_swagger2(spec: dict) -> dict:
-            try:
-                if not isinstance(spec, dict) or "openapi" not in spec:
-                    return spec
-                # Remove openapi key
-                spec.pop("openapi", None)
-                comps = spec.get("components") or {}
-                schemas = comps.get("schemas")
-                if schemas:
-                    spec["definitions"] = schemas
-                sec = comps.get("securitySchemes")
-                if sec:
-                    spec["securityDefinitions"] = sec
-                if "components" in spec:
-                    spec.pop("components", None)
-                spec.setdefault("swagger", "2.0")
-
-                def _replace_refs(o):
-                    if isinstance(o, dict):
-                        for k, v in list(o.items()):
-                            if isinstance(v, str) and v.startswith("#/components/schemas/"):
-                                o[k] = v.replace("#/components/schemas/", "#/definitions/")
-                            else:
-                                _replace_refs(v)
-                    elif isinstance(o, list):
-                        for item in o:
-                            _replace_refs(item)
-
-                paths = spec.get("paths") or {}
-                for _path, methods in list(paths.items()):
-                    if not isinstance(methods, dict):
-                        continue
-                    for _method, op in list(methods.items()):
-                        if not isinstance(op, dict):
-                            continue
-                        rb = op.pop("requestBody", None)
-                        if rb:
-                            required = rb.get("required", False)
-                            content = rb.get("content", {}) or {}
-                            schema = None
-                            for _media, media_val in content.items():
-                                if isinstance(media_val, dict) and "schema" in media_val:
-                                    schema = media_val["schema"]
-                                    break
-                            if schema is not None:
-                                params = op.get("parameters", [])
-                                params.append(
-                                    {
-                                        "in": "body",
-                                        "name": "body",
-                                        "required": required,
-                                        "schema": schema,
-                                    },
-                                )
-                                op["parameters"] = params
-                        responses = op.get("responses", {})
-                        for code, resp in list(responses.items()):
-                            if isinstance(resp, dict):
-                                content = resp.pop("content", None)
-                                if content and isinstance(content, dict):
-                                    for _media, media_val in content.items():
-                                        if isinstance(media_val, dict) and "schema" in media_val:
-                                            resp["schema"] = media_val["schema"]
-                                            break
-                                    responses[code] = resp
-                        _replace_refs(op)
-                _replace_refs(spec)
-            except Exception:
-                # If conversion fails, return original spec
-                logger.exception(
-                    "Error converting OpenAPI 3 spec to Swagger 2.0, return original spec.",
-                )
-            return spec
-
-        spec_dict = _convert_openapi3_to_swagger2(spec_dict)
 
         return jsonify(spec_dict)
     except Exception:
