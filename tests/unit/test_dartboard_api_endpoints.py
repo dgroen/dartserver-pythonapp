@@ -933,8 +933,9 @@ class TestCreateDartboardTypeWithPins:
         assert response.status_code == 201
         data = json.loads(response.data)
         assert data["status"] == "success"
-        # Verify pins were passed to service
-        call_kwargs = mock_service.register_dartboard_type.call_args[1]
+        # Verify pins were passed to update_dartboard_pins service
+        mock_service.update_dartboard_pins.assert_called_once()
+        call_kwargs = mock_service.update_dartboard_pins.call_args[1]
         assert call_kwargs["master_pins"] == [2, 4, 5, 16, 17, 18, 19]
         assert call_kwargs["slave_pins"] == [12, 13, 14, 25, 26, 27, 32, 33]
 
@@ -969,3 +970,48 @@ class TestGetAvailablePinsEndpoint:
         assert isinstance(data["pins"], list)
         assert 2 in data["pins"]  # Common ESP32 GPIO pin
         assert 4 in data["pins"]
+
+
+class TestImportDartboardMappingsEndpoint:
+    """Test /api/admin/dartboard/import endpoint"""
+
+    @pytest.fixture
+    def admin_client(self, flask_app):
+        """Create test client with admin authentication"""
+        flask_app.config["TESTING"] = True
+        with flask_app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["access_token"] = "test-admin-token"
+            yield client
+
+    @patch("dartserver_core.auth.validate_token")
+    def test_import_rejects_placeholder_board_type(self, mock_validate, admin_client):
+        """Test that __new__ placeholder board type is rejected"""
+        mock_validate.return_value = {
+            "sub": "admin-user",
+            "username": "admin",
+            "groups": ["admin"],
+        }
+
+        response = admin_client.post(
+            "/api/admin/dartboard/import",
+            json={
+                "boardType": "__new__",
+                "mappings": [
+                    {
+                        "masterPin": 4,
+                        "slavePin": 13,
+                        "zoneNumber": 20,
+                        "multiplierType": "TRIPLE",
+                        "baseValue": 20,
+                    },
+                ],
+            },
+            content_type="application/json",
+        )
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert data["status"] == "error"
+        assert "__new__" in data["message"]
+        assert "Invalid boardType" in data["message"]
