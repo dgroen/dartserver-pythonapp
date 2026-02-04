@@ -813,11 +813,11 @@
     "servers": [
         {
             "description": "Production server",
-            "url": "https://api.dartsapp.example.com"
+            "url": "https://letsplaydarts.eu"
         },
         {
             "description": "Test server",
-            "url": "https://test-api.dartsapp.example.com"
+            "url": "https://test.letsplaydarts.eu"
         },
         {
             "description": "Development server",

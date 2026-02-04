@@ -35,9 +35,9 @@ info:
     url: https://opensource.org/licenses/MIT
 
 servers:
-  - url: https://api.dartsapp.example.com
+  - url: https://letsplaydarts.eu
     description: Production server
-  - url: https://test-api.dartsapp.example.com
+  - url: https://test.letsplaydarts.eu
     description: Test server
   - url: http://localhost:8080
     description: Development server
