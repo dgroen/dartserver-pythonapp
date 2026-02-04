@@ -197,3 +197,27 @@ class TestMultiGameManager:
 
         assert info["player_count"] == 2
         assert info["players"] == ["Alice", "Bob"]
+
+    def test_list_games_excludes_finished_games(self, multi_manager):
+        """Test that finished games are excluded from list_games"""
+        # Create two games
+        multi_manager.create_game("game-1")
+        multi_manager.create_game("game-2")
+
+        # Start both games
+        game1 = multi_manager.get_game("game-1")
+        game1.new_game("301", ["Alice", "Bob"])
+
+        game2 = multi_manager.get_game("game-2")
+        game2.new_game("501", ["Charlie", "Dave"])
+
+        # Mark game-1 as finished
+        game1.is_finished = True
+
+        # List games should only include game-2 (active game)
+        games_list = multi_manager.list_games()
+
+        assert len(games_list) == 1
+        assert games_list[0]["game_id"] == "game-2"
+        assert games_list[0]["game_type"] == "501"
+        assert games_list[0]["players"] == ["Charlie", "Dave"]

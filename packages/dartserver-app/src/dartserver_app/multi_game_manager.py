@@ -112,14 +112,20 @@ class MultiGameManager:
 
     def list_games(self) -> list:
         """
-        List all game sessions with their basic info
+        List all active game sessions with their basic info
+        Excludes finished games (games where is_finished is True)
 
         Returns:
-            List of game info dictionaries
+            List of active game info dictionaries
         """
         games_list = []
         for game_id, game_manager in self.games.items():
             state = game_manager.get_game_state()
+            
+            # Skip finished games
+            if state.get("is_finished"):
+                continue
+                
             players = state.get("players", [])
 
             # Prefer authoritative player list from game_data replay when present
