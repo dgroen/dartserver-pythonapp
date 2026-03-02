@@ -117,8 +117,12 @@ jobs:
             echo "❌ /tmp/dartserver-config.tgz not found"
             exit 1
           fi
-          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            /tmp/dartserver-config.tgz test-server:/tmp/dartserver-config.tgz
+            echo "📤 Uploading config bundle to test-server..."
+            scp -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=no \
+              -o UserKnownHostsFile=/dev/null \
+              -o ProxyCommand='ssh -i ~/.ssh/jumphost_key -W %h:%p -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${{ secrets.JUMPHOST_USER }}@${{ secrets.JUMPHOST_HOST }}' \
+              /tmp/dartserver-config.tgz ${{ secrets.TEST_SERVER_USER }}@${{ secrets.TEST_SERVER_HOST }}:/tmp/dartserver-config.tgz
           echo "✅ Test config bundle uploaded to test-server"
 
       - name: Deploy to Test Server
@@ -448,8 +452,12 @@ jobs:
             echo "❌ /tmp/dartserver-config.tgz not found"
             exit 1
           fi
-          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            /tmp/dartserver-config.tgz prod-server:/tmp/dartserver-config.tgz
+          echo "📤 Uploading config bundle to prod-server..."
+          scp -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o ProxyCommand='ssh -i ~/.ssh/jumphost_key -W %h:%p -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${{ secrets.JUMPHOST_USER }}@${{ secrets.JUMPHOST_HOST }}' \
+            /tmp/dartserver-config.tgz ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }}:/tmp/dartserver-config.tgz
           echo "✅ Production config bundle uploaded to prod-server"
 
       - name: Merge to Production Branch
