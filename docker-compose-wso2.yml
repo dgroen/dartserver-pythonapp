@@ -13,6 +13,7 @@ services:
       POSTGRES_DB: dartsdb
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-postgres-wso2.sql:/docker-entrypoint-initdb.d/01-init-wso2-dbs.sql:ro
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
@@ -113,6 +114,9 @@ services:
       # Introspection credentials (required for token validation)
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
       WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin}
+
+      # Default scopes when introspection omits scope field
+      WSO2_IS_DEFAULT_SCOPES: ${WSO2_IS_DEFAULT_SCOPES:-dartboard:write dartboard:read game:write game:control score:write player:write}
 
       # JWT Validation Mode: 'jwks' or 'introspection'
       JWT_VALIDATION_MODE: introspection

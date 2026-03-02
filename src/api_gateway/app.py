@@ -57,6 +57,11 @@ WSO2_IS_CLIENT_SECRET = os.getenv("WSO2_IS_CLIENT_SECRET", "")
 WSO2_IS_INTROSPECT_USER = os.getenv("WSO2_IS_INTROSPECT_USER", "admin")
 WSO2_IS_INTROSPECT_PASSWORD = os.getenv("WSO2_IS_INTROSPECT_PASSWORD", "admin")
 WSO2_IS_VERIFY_SSL = os.getenv("WSO2_IS_VERIFY_SSL", "False").lower() == "true"
+WSO2_IS_DEFAULT_SCOPES = os.getenv(
+    "WSO2_IS_DEFAULT_SCOPES",
+    "openid profile email dartboard:write dartboard:read "
+    "game:write game:control score:write player:write",
+)
 
 # RabbitMQ Configuration
 RABBITMQ_CONFIG = {
@@ -196,6 +201,33 @@ class _LazyRabbitMQPublisher:
 rabbitmq_publisher: _LazyRabbitMQPublisher = _LazyRabbitMQPublisher(RABBITMQ_CONFIG)
 
 
+def _normalize_scopes(*scope_sources: Any) -> set[str]:
+    """Normalize mixed scope representations into a canonical set."""
+    normalized_scopes: set[str] = set()
+    for source in scope_sources:
+        if not source:
+            continue
+        if isinstance(source, str):
+            chunks = source.replace(",", " ").split()
+            normalized_scopes.update(scope for scope in chunks if scope)
+            continue
+        if isinstance(source, (list, tuple, set)):
+            for item in source:
+                if isinstance(item, str):
+                    chunks = item.replace(",", " ").split()
+                    normalized_scopes.update(scope for scope in chunks if scope)
+    return normalized_scopes
+
+
+def _extract_claim_scopes(claims: dict[str, Any]) -> set[str]:
+    """Extract scopes from common claim keys used by OAuth/OIDC providers."""
+    return _normalize_scopes(
+        claims.get("scope"),
+        claims.get("scopes"),
+        claims.get("scp"),
+    )
+
+
 def validate_jwt_token(token: str) -> dict[str, Any] | None:
     """
     Validate JWT token using JWKS or introspection
@@ -246,18 +278,20 @@ def validate_jwt_token(token: str) -> dict[str, Any] | None:
                         f"Token validated via introspection for client: "
                         f"{introspection_result.get('client_id', 'unknown')}",
                     )
-                    # WSO2 introspection may not return scopes,
-                    # so add them from configured client scopes
-                    # Map of client_id -> scopes for clients created via DCR
-                    client_scopes = {
-                        "qGUe7mARfB_rbEn09jWJtTyi9uMa": (
-                            "openid profile email dartboard:write dartboard:read "
-                            "game:write game:control score:write player:write"
-                        ),
-                    }
                     client_id = introspection_result.get("client_id", "")
-                    if "scope" not in introspection_result and client_id in client_scopes:
-                        introspection_result["scope"] = client_scopes[client_id]
+                    scopes = _extract_claim_scopes(introspection_result)
+                    if (
+                        not scopes
+                        and client_id
+                        and WSO2_IS_CLIENT_ID
+                        and client_id == WSO2_IS_CLIENT_ID
+                    ):
+                        default_scopes = _normalize_scopes(WSO2_IS_DEFAULT_SCOPES)
+                        if default_scopes:
+                            introspection_result["scope"] = " ".join(sorted(default_scopes))
+                            scopes = default_scopes
+                    if scopes:
+                        introspection_result["scope"] = " ".join(sorted(scopes))
                     result = introspection_result
                 else:
                     logger.warning(f"Token is not active: {introspection_result}")
@@ -325,7 +359,7 @@ def require_auth(required_scopes: list | None = None):
 
             # Check required scopes
             if required_scopes:
-                token_scopes = claims.get("scope", "").split()
+                token_scopes = _extract_claim_scopes(claims)
                 if not any(scope in token_scopes for scope in required_scopes):
                     return (
                         jsonify(

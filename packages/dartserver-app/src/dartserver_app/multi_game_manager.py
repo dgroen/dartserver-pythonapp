@@ -121,11 +121,11 @@ class MultiGameManager:
         games_list = []
         for game_id, game_manager in self.games.items():
             state = game_manager.get_game_state()
-            
+
             # Skip finished games
             if state.get("is_finished"):
                 continue
-                
+
             players = state.get("players", [])
 
             # Prefer authoritative player list from game_data replay when present
