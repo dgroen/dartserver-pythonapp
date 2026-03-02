@@ -115,6 +115,9 @@ services:
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
       WSO2_IS_INTROSPECT_PASSWORD: ${WSO2_IS_INTROSPECT_PASSWORD:-admin}
 
+      # Default scopes when introspection omits scope field
+      WSO2_IS_DEFAULT_SCOPES: ${WSO2_IS_DEFAULT_SCOPES:-dartboard:write dartboard:read game:write game:control score:write player:write}
+
       # JWT Validation Mode: 'jwks' or 'introspection'
       JWT_VALIDATION_MODE: introspection
 
