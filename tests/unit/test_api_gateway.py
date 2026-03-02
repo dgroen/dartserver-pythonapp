@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
+import src.api_gateway.app as gateway_module
 from src.api_gateway.app import app as gateway_app
 from src.api_gateway.app import rabbitmq_publisher
 
@@ -491,3 +492,48 @@ class TestOpenAPIEndpoints:
         response = client.get("/api-docs")
         assert response.status_code == 200
         assert b"swagger-ui" in response.data
+
+
+class TestAuthorizationScopes:
+    """Test authorization scope parsing and fallback behavior"""
+
+    def test_submit_score_accepts_comma_separated_scope(self, client, mock_rabbitmq):
+        """Token scope provided as comma-separated string should be accepted"""
+        with patch("src.api_gateway.app.validate_jwt_token") as mock_validate:
+            mock_validate.return_value = {
+                "sub": "test-user",
+                "client_id": "dartboard-001",
+                "scope": "score:write,game:write",
+            }
+
+            response = client.post(
+                "/api/v1/scores",
+                json={"score": 15, "multiplier": "SINGLE"},
+                headers={"Authorization": "Bearer test-token-123"},
+                content_type="application/json",
+            )
+
+        assert response.status_code == 201
+
+    def test_introspection_uses_default_scopes_for_configured_client(self):
+        """Configured client should receive default scopes when introspection omits scopes"""
+
+        class MockResponse:
+            status_code = 200
+            text = '{"active": true, "client_id": "darts_api_gateway"}'
+
+            @staticmethod
+            def json():
+                return {"active": True, "client_id": "darts_api_gateway"}
+
+        with (
+            patch("src.api_gateway.app.JWT_VALIDATION_MODE", "introspection"),
+            patch("src.api_gateway.app.WSO2_IS_CLIENT_ID", "darts_api_gateway"),
+            patch("src.api_gateway.app.WSO2_IS_DEFAULT_SCOPES", "score:write game:write"),
+            patch("src.api_gateway.app.requests.post", return_value=MockResponse()),
+        ):
+            claims = gateway_module.validate_jwt_token("opaque-test-token")
+
+        assert claims is not None
+        assert "score:write" in claims["scope"]
+        assert "game:write" in claims["scope"]

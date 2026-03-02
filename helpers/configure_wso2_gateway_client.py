@@ -142,9 +142,12 @@ def main() -> int:  # noqa: PLR0911
     if resp.status_code == 200:
         client = resp.json()
         print("Found existing client configuration")
-    elif resp.status_code == 404:
+    elif resp.status_code in (401, 403, 404):
         client = None
-        print("Client not found, will attempt to create")
+        print(
+            "Client lookup unavailable or not found "
+            f"(status {resp.status_code}); will attempt to create",
+        )
     else:
         print(f"Failed to fetch client: {resp.status_code} {resp.text}")
         return 4
@@ -183,8 +186,8 @@ def main() -> int:  # noqa: PLR0911
         # ensure required fields for creation
         payload = {
             "client_name": os.getenv("SWAGGER_CLIENT_NAME", "DartsApiGateway"),
-            "client_id": client_id,
-            "client_secret": client_secret or "",
+            "ext_param_client_id": client_id,
+            "ext_param_client_secret": client_secret or "",
             "grant_types": desired["grant_types"],
             "redirect_uris": desired.get("redirect_uris", []),
             "token_endpoint_auth_method": desired.get("token_endpoint_auth_method"),
@@ -192,8 +195,25 @@ def main() -> int:  # noqa: PLR0911
         print("Registering new client via DCR...")
         r = dcr_post(wso2_is_url, payload, admin_user, admin_pass)
         if r.status_code not in (200, 201):
-            print(f"Failed to register client: {r.status_code} {r.text}")
-            return 5
+            if client_secret:
+                print(
+                    "DCR create failed "
+                    f"({r.status_code}); checking whether client already exists",
+                )
+                token_check = request_token(
+                    wso2_is_url,
+                    client_id,
+                    client_secret,
+                    args.scope,
+                )
+                if token_check.status_code == 200:
+                    print("Client already usable; continuing")
+                else:
+                    print(f"Failed to register client: {r.status_code} {r.text}")
+                    return 5
+            else:
+                print(f"Failed to register client: {r.status_code} {r.text}")
+                return 5
         print("Client registered")
     else:
         print("Updating existing client via DCR...")
