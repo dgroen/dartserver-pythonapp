@@ -85,6 +85,7 @@ jobs:
             HostName ${{ secrets.JUMPHOST_HOST }}
             User ${{ secrets.JUMPHOST_USER }}
             IdentityFile ~/.ssh/jumphost_key
+            IdentitiesOnly yes
             StrictHostKeyChecking no
             UserKnownHostsFile /dev/null
             PubkeyAcceptedKeyTypes +ssh-rsa
@@ -97,6 +98,7 @@ jobs:
             Port ${{ secrets.TEST_SERVER_PORT }}
             User ${{ secrets.TEST_SERVER_USER }}
             IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
             ProxyJump jumphost
             StrictHostKeyChecking no
             UserKnownHostsFile /dev/null
@@ -117,7 +119,8 @@ jobs:
             echo "❌ /tmp/dartserver-config.tgz not found"
             exit 1
           fi
-          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+          scp -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             /tmp/dartserver-config.tgz test-server:/tmp/dartserver-config.tgz
           echo "✅ Test config bundle uploaded to test-server"
 
