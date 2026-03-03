@@ -110,9 +110,29 @@ jobs:
 
       - name: Test SSH Connectivity
         run: |
-          echo "=== Key fingerprints ==="
-          ssh-keygen -l -f ~/.ssh/jumphost_key || echo "WARNING: could not read jumphost_key fingerprint"
-          ssh-keygen -l -f ~/.ssh/deploy_key   || echo "WARNING: could not read deploy_key fingerprint"
+          echo "=== Key info: jumphost_key ==="
+          echo "-- Type / fingerprint (SHA256) --"
+          ssh-keygen -l -f ~/.ssh/jumphost_key \
+            || echo "WARNING: could not read jumphost_key fingerprint"
+          echo "-- Fingerprint (MD5) --"
+          ssh-keygen -l -E md5 -f ~/.ssh/jumphost_key \
+            || echo "WARNING: could not compute MD5 fingerprint"
+          echo "-- Derived public key (safe to share) --"
+          ssh-keygen -y -f ~/.ssh/jumphost_key \
+            || echo "WARNING: could not derive public key from jumphost_key"
+
+          echo ""
+          echo "=== Key info: deploy_key ==="
+          echo "-- Type / fingerprint (SHA256) --"
+          ssh-keygen -l -f ~/.ssh/deploy_key \
+            || echo "WARNING: could not read deploy_key fingerprint"
+          echo "-- Fingerprint (MD5) --"
+          ssh-keygen -l -E md5 -f ~/.ssh/deploy_key \
+            || echo "WARNING: could not compute MD5 fingerprint"
+          echo "-- Derived public key (safe to share) --"
+          echo ">>> Copy this line and compare it with authorized_keys on the test server <<<"
+          ssh-keygen -y -f ~/.ssh/deploy_key \
+            || echo "WARNING: could not derive public key from deploy_key"
 
           echo ""
           echo "=== Resolved SSH config ==="
