@@ -75,27 +75,9 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          write_ssh_key() {
-            local key_material="$1"
-            local output_path="$2"
-
-            if printf '%s' "$key_material" | grep -q "BEGIN .*PRIVATE KEY"; then
-              printf '%b' "$key_material" | tr -d '\r' > "$output_path"
-            elif printf '%s' "$key_material" | base64 -d > "$output_path" 2>/dev/null; then
-              :
-            else
-              printf '%b' "$key_material" | tr -d '\r' > "$output_path"
-            fi
-
-            chmod 600 "$output_path"
-            if ! ssh-keygen -y -f "$output_path" >/dev/null 2>&1; then
-              echo "❌ Invalid SSH private key material in secret for $output_path"
-              exit 1
-            fi
-          }
-
-          write_ssh_key "${{ secrets.TEST_SERVER_SSH_KEY }}" ~/.ssh/deploy_key
-          write_ssh_key "${{ secrets.JUMPHOST_SSH_KEY }}" ~/.ssh/jumphost_key
+          echo "${{ secrets.TEST_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.JUMPHOST_SSH_KEY }}" > ~/.ssh/jumphost_key
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/jumphost_key
 
           # Configure SSH config for jumphost setup
           cat > ~/.ssh/config << 'SSHCONFIG'
@@ -115,12 +97,9 @@ jobs:
             Port ${{ secrets.TEST_SERVER_PORT }}
             User ${{ secrets.TEST_SERVER_USER }}
             IdentityFile ~/.ssh/deploy_key
-            IdentitiesOnly yes
             ProxyJump jumphost
             StrictHostKeyChecking no
             UserKnownHostsFile /dev/null
-            PubkeyAcceptedKeyTypes +ssh-rsa
-            HostKeyAlgorithms +ssh-rsa
             PasswordAuthentication no
             LogLevel FATAL
           SSHCONFIG
@@ -132,18 +111,13 @@ jobs:
           ls -la dartserver-config
           find dartserver-config -maxdepth 3 -type d
 
-      - name: Verify SSH path to test server
-        run: |
-          ssh -F ~/.ssh/config -o BatchMode=yes -o ConnectTimeout=20 test-server 'echo "✅ SSH to test-server works"'
-
       - name: Send config bundle to test server
         run: |
           if [ ! -f /tmp/dartserver-config.tgz ]; then
             echo "❌ /tmp/dartserver-config.tgz not found"
             exit 1
           fi
-          echo "📤 Uploading config bundle to test-server..."
-          scp -F ~/.ssh/config -i ~/.ssh/deploy_key -o IdentitiesOnly=yes \
+          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             /tmp/dartserver-config.tgz test-server:/tmp/dartserver-config.tgz
           echo "✅ Test config bundle uploaded to test-server"
 
@@ -283,27 +257,9 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          write_ssh_key() {
-            local key_material="$1"
-            local output_path="$2"
-
-            if printf '%s' "$key_material" | grep -q "BEGIN .*PRIVATE KEY"; then
-              printf '%b' "$key_material" | tr -d '\r' > "$output_path"
-            elif printf '%s' "$key_material" | base64 -d > "$output_path" 2>/dev/null; then
-              :
-            else
-              printf '%b' "$key_material" | tr -d '\r' > "$output_path"
-            fi
-
-            chmod 600 "$output_path"
-            if ! ssh-keygen -y -f "$output_path" >/dev/null 2>&1; then
-              echo "❌ Invalid SSH private key material in secret for $output_path"
-              exit 1
-            fi
-          }
-
-          write_ssh_key "${{ secrets.PROD_SERVER_SSH_KEY }}" ~/.ssh/deploy_key
-          write_ssh_key "${{ secrets.JUMPHOST_SSH_KEY }}" ~/.ssh/jumphost_key
+          echo "${{ secrets.PROD_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.JUMPHOST_SSH_KEY }}" > ~/.ssh/jumphost_key
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/jumphost_key
 
           cat > ~/.ssh/config << 'SSHCONFIG'
           Host jumphost
@@ -322,12 +278,9 @@ jobs:
             Port ${{ secrets.PROD_SERVER_PORT }}
             User ${{ secrets.PROD_SERVER_USER }}
             IdentityFile ~/.ssh/deploy_key
-            IdentitiesOnly yes
             ProxyJump jumphost
             StrictHostKeyChecking no
             UserKnownHostsFile /dev/null
-            PubkeyAcceptedKeyTypes +ssh-rsa
-            HostKeyAlgorithms +ssh-rsa
             PasswordAuthentication no
             LogLevel FATAL
           SSHCONFIG
@@ -459,27 +412,9 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          write_ssh_key() {
-            local key_material="$1"
-            local output_path="$2"
-
-            if printf '%s' "$key_material" | grep -q "BEGIN .*PRIVATE KEY"; then
-              printf '%b' "$key_material" | tr -d '\r' > "$output_path"
-            elif printf '%s' "$key_material" | base64 -d > "$output_path" 2>/dev/null; then
-              :
-            else
-              printf '%b' "$key_material" | tr -d '\r' > "$output_path"
-            fi
-
-            chmod 600 "$output_path"
-            if ! ssh-keygen -y -f "$output_path" >/dev/null 2>&1; then
-              echo "❌ Invalid SSH private key material in secret for $output_path"
-              exit 1
-            fi
-          }
-
-          write_ssh_key "${{ secrets.PROD_SERVER_SSH_KEY }}" ~/.ssh/deploy_key
-          write_ssh_key "${{ secrets.JUMPHOST_SSH_KEY }}" ~/.ssh/jumphost_key
+          echo "${{ secrets.PROD_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.JUMPHOST_SSH_KEY }}" > ~/.ssh/jumphost_key
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/jumphost_key
 
           cat > ~/.ssh/config << 'SSHCONFIG'
           Host jumphost
@@ -498,21 +433,14 @@ jobs:
             Port ${{ secrets.PROD_SERVER_PORT }}
             User ${{ secrets.PROD_SERVER_USER }}
             IdentityFile ~/.ssh/deploy_key
-            IdentitiesOnly yes
             ProxyJump jumphost
             StrictHostKeyChecking no
             UserKnownHostsFile /dev/null
-            PubkeyAcceptedKeyTypes +ssh-rsa
-            HostKeyAlgorithms +ssh-rsa
             PasswordAuthentication no
             LogLevel FATAL
           SSHCONFIG
 
           chmod 600 ~/.ssh/config
-
-      - name: Verify SSH path to production server
-        run: |
-          ssh -F ~/.ssh/config -o BatchMode=yes -o ConnectTimeout=20 prod-server 'echo "✅ SSH to prod-server works"'
 
       - name: Send config bundle to production server
         run: |
@@ -520,8 +448,7 @@ jobs:
             echo "❌ /tmp/dartserver-config.tgz not found"
             exit 1
           fi
-          echo "📤 Uploading config bundle to prod-server..."
-          scp -F ~/.ssh/config -i ~/.ssh/deploy_key -o IdentitiesOnly=yes \
+          scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             /tmp/dartserver-config.tgz prod-server:/tmp/dartserver-config.tgz
           echo "✅ Production config bundle uploaded to prod-server"
 
@@ -700,27 +627,9 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          write_ssh_key() {
-            local key_material="$1"
-            local output_path="$2"
-
-            if printf '%s' "$key_material" | grep -q "BEGIN .*PRIVATE KEY"; then
-              printf '%b' "$key_material" | tr -d '\r' > "$output_path"
-            elif printf '%s' "$key_material" | base64 -d > "$output_path" 2>/dev/null; then
-              :
-            else
-              printf '%b' "$key_material" | tr -d '\r' > "$output_path"
-            fi
-
-            chmod 600 "$output_path"
-            if ! ssh-keygen -y -f "$output_path" >/dev/null 2>&1; then
-              echo "❌ Invalid SSH private key material in secret for $output_path"
-              exit 1
-            fi
-          }
-
-          write_ssh_key "${{ secrets.PROD_SERVER_SSH_KEY }}" ~/.ssh/deploy_key
-          write_ssh_key "${{ secrets.JUMPHOST_SSH_KEY }}" ~/.ssh/jumphost_key
+          echo "${{ secrets.PROD_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.JUMPHOST_SSH_KEY }}" > ~/.ssh/jumphost_key
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/jumphost_key
 
           cat > ~/.ssh/config << 'SSHCONFIG'
           Host jumphost
@@ -739,12 +648,9 @@ jobs:
             Port ${{ secrets.PROD_SERVER_PORT }}
             User ${{ secrets.PROD_SERVER_USER }}
             IdentityFile ~/.ssh/deploy_key
-            IdentitiesOnly yes
             ProxyJump jumphost
             StrictHostKeyChecking no
             UserKnownHostsFile /dev/null
-            PubkeyAcceptedKeyTypes +ssh-rsa
-            HostKeyAlgorithms +ssh-rsa
             PasswordAuthentication no
             LogLevel FATAL
           SSHCONFIG
@@ -886,27 +792,9 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          write_ssh_key() {
-            local key_material="$1"
-            local output_path="$2"
-
-            if printf '%s' "$key_material" | grep -q "BEGIN .*PRIVATE KEY"; then
-              printf '%b' "$key_material" | tr -d '\r' > "$output_path"
-            elif printf '%s' "$key_material" | base64 -d > "$output_path" 2>/dev/null; then
-              :
-            else
-              printf '%b' "$key_material" | tr -d '\r' > "$output_path"
-            fi
-
-            chmod 600 "$output_path"
-            if ! ssh-keygen -y -f "$output_path" >/dev/null 2>&1; then
-              echo "❌ Invalid SSH private key material in secret for $output_path"
-              exit 1
-            fi
-          }
-
-          write_ssh_key "${{ secrets.PROD_SERVER_SSH_KEY }}" ~/.ssh/deploy_key
-          write_ssh_key "${{ secrets.JUMPHOST_SSH_KEY }}" ~/.ssh/jumphost_key
+          echo "${{ secrets.PROD_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.JUMPHOST_SSH_KEY }}" > ~/.ssh/jumphost_key
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/jumphost_key
 
           cat > ~/.ssh/config << 'SSHCONFIG'
           Host jumphost
@@ -925,12 +813,9 @@ jobs:
             Port ${{ secrets.PROD_SERVER_PORT }}
             User ${{ secrets.PROD_SERVER_USER }}
             IdentityFile ~/.ssh/deploy_key
-            IdentitiesOnly yes
             ProxyJump jumphost
             StrictHostKeyChecking no
             UserKnownHostsFile /dev/null
-            PubkeyAcceptedKeyTypes +ssh-rsa
-            HostKeyAlgorithms +ssh-rsa
             PasswordAuthentication no
             LogLevel FATAL
           SSHCONFIG
