@@ -108,6 +108,55 @@ jobs:
 
           chmod 600 ~/.ssh/config
 
+      - name: Test SSH Connectivity
+        run: |
+          echo "=== Key fingerprints ==="
+          ssh-keygen -l -f ~/.ssh/jumphost_key || echo "WARNING: could not read jumphost_key fingerprint"
+          ssh-keygen -l -f ~/.ssh/deploy_key   || echo "WARNING: could not read deploy_key fingerprint"
+
+          echo ""
+          echo "=== Resolved SSH config ==="
+          cat ~/.ssh/config
+
+          echo ""
+          echo "=== Testing jumphost connectivity ==="
+          ssh -vvv -o BatchMode=yes jumphost echo "jumphost reachable" 2>&1 \
+            && echo "✅ Jumphost OK" \
+            || { echo "❌ Jumphost connection FAILED (see verbose output above)"; exit 1; }
+
+          echo ""
+          echo "=== Testing test-server connectivity via jumphost ==="
+          ssh -vvv -o BatchMode=yes test-server echo "test-server reachable" 2>&1 \
+            && echo "✅ test-server OK" \
+            || { echo "❌ test-server connection FAILED (see verbose output above)"; exit 1; }
+
+          echo ""
+          echo "=== Local testing guide ==="
+          echo "Replicate this test locally (fill in your actual secret values):"
+          echo ""
+          echo "  # 1. Write the keys"
+          echo "  echo '<JUMPHOST_SSH_KEY>' > /tmp/jumphost_key && chmod 600 /tmp/jumphost_key"
+          echo "  echo '<TEST_SERVER_SSH_KEY>' > /tmp/deploy_key && chmod 600 /tmp/deploy_key"
+          echo ""
+          echo "  # 2. Test jumphost connection"
+          echo "  ssh -vvv -i /tmp/jumphost_key \\"
+          echo "    -o IdentitiesOnly=yes \\"
+          echo "    -o StrictHostKeyChecking=no \\"
+          echo "    -o UserKnownHostsFile=/dev/null \\"
+          echo "    -o PubkeyAcceptedKeyTypes=+ssh-rsa \\"
+          echo "    -o HostKeyAlgorithms=+ssh-rsa \\"
+          echo "    -o BatchMode=yes \\"
+          echo "    <JUMPHOST_USER>@<JUMPHOST_HOST> echo OK"
+          echo ""
+          echo "  # 3. Test test-server connection via jumphost"
+          echo "  ssh -vvv -i /tmp/deploy_key \\"
+          echo "    -o IdentitiesOnly=yes \\"
+          echo "    -o StrictHostKeyChecking=no \\"
+          echo "    -o UserKnownHostsFile=/dev/null \\"
+          echo "    -o BatchMode=yes \\"
+          echo "    -o 'ProxyCommand=ssh -i /tmp/jumphost_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PubkeyAcceptedKeyTypes=+ssh-rsa -o HostKeyAlgorithms=+ssh-rsa -W %h:%p <JUMPHOST_USER>@<JUMPHOST_HOST>' \\"
+          echo "    -p <TEST_SERVER_PORT> <TEST_SERVER_USER>@<TEST_SERVER_HOST> echo OK"
+
       - name: Inspect config repo layout
         run: |
           ls -la dartserver-config
