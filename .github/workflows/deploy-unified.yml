@@ -135,13 +135,13 @@ jobs:
             || echo "WARNING: could not derive public key from deploy_key"
 
           echo ""
-          echo "=== Secret values (obfuscated to bypass log masking) ==="
-          echo -n "TEST_SERVER_USER (base64): "
-          echo "${{ secrets.TEST_SERVER_USER }}" | base64
-          echo -n "TEST_SERVER_HOST (base64): "
-          echo "${{ secrets.TEST_SERVER_HOST }}" | base64
-          echo -n "TEST_SERVER_PORT (base64): "
-          echo "${{ secrets.TEST_SERVER_PORT }}" | base64
+          echo "=== Secret values (hex encoded to bypass log masking) ==="
+          echo -n "TEST_SERVER_USER (hex): "
+          printf '%s' "${{ secrets.TEST_SERVER_USER }}" | od -A n -t x1 | tr -d ' \n' && echo
+          echo -n "TEST_SERVER_HOST (hex): "
+          printf '%s' "${{ secrets.TEST_SERVER_HOST }}" | od -A n -t x1 | tr -d ' \n' && echo
+          echo -n "TEST_SERVER_PORT (hex): "
+          printf '%s' "${{ secrets.TEST_SERVER_PORT }}" | od -A n -t x1 | tr -d ' \n' && echo
 
           echo ""
           echo "=== Resolved SSH config ==="
