@@ -834,7 +834,31 @@ class DatabaseService:
             total_games = len(all_game_results)
             wins = sum(1 for gr in all_game_results if gr.is_winner is True)
             losses = total_games - wins
-            average_score = sum(gr.final_score or 0 for gr in all_game_results) / total_games
+
+            # Calculate average score per turn across all games
+            # A turn consists of up to 3 darts; bust turns contribute 0 (bust throws are excluded)
+            game_result_ids = [gr.id for gr in all_game_results]
+
+            total_points = (
+                session.query(func.sum(Score.actual_score))
+                .filter(
+                    Score.game_result_id.in_(game_result_ids),
+                    Score.is_bust.is_(False),
+                )
+                .scalar()
+            ) or 0
+
+            total_turns_subq = (
+                session.query(Score.game_result_id, Score.turn_number)
+                .filter(Score.game_result_id.in_(game_result_ids))
+                .distinct()
+                .subquery()
+            )
+            total_turns = (
+                session.query(func.count()).select_from(total_turns_subq).scalar()
+            ) or 0
+
+            average_score = round(total_points / total_turns, 1) if total_turns > 0 else 0
 
             # Stats by game type
             by_game_type: dict[str, dict[str, int | float | list[int]]] = {}
@@ -848,23 +872,39 @@ class DatabaseService:
                         "wins": 0,
                         "losses": 0,
                         "average_score": 0,
-                        "scores": [],
+                        "result_ids": [],
                     }
 
                 by_game_type[game_type_name]["games"] += 1  # type: ignore
                 by_game_type[game_type_name]["wins"] += 1 if gr.is_winner is True else 0  # type: ignore
                 by_game_type[game_type_name]["losses"] += 0 if gr.is_winner is True else 1  # type: ignore
-                by_game_type[game_type_name]["scores"].append(gr.final_score or 0)  # type: ignore
+                by_game_type[game_type_name]["result_ids"].append(gr.id)  # type: ignore
 
-            # Calculate averages per game type
+            # Calculate average score per turn for each game type
             for _game_type_name, stats in by_game_type.items():
-                if stats["scores"]:
-                    scores_list = stats["scores"]
-                    if isinstance(scores_list, list):
-                        score_sum = sum(scores_list)
-                        score_count = len(scores_list)
-                        stats["average_score"] = score_sum / score_count
-                del stats["scores"]  # Remove scores list from final output
+                result_ids = stats.get("result_ids", [])
+                if result_ids and isinstance(result_ids, list):
+                    gt_points = (
+                        session.query(func.sum(Score.actual_score))
+                        .filter(
+                            Score.game_result_id.in_(result_ids),
+                            Score.is_bust.is_(False),
+                        )
+                        .scalar()
+                    ) or 0
+
+                    gt_turns_subq = (
+                        session.query(Score.game_result_id, Score.turn_number)
+                        .filter(Score.game_result_id.in_(result_ids))
+                        .distinct()
+                        .subquery()
+                    )
+                    gt_turns = (
+                        session.query(func.count()).select_from(gt_turns_subq).scalar()
+                    ) or 0
+
+                    stats["average_score"] = round(gt_points / gt_turns, 1) if gt_turns > 0 else 0
+                del stats["result_ids"]  # Remove result_ids list from final output
 
             return {
                 "player_id": player_id,
@@ -873,7 +913,7 @@ class DatabaseService:
                 "wins": wins,
                 "losses": losses,
                 "win_rate": round((wins / total_games * 100), 1) if total_games > 0 else 0,
-                "average_score": round(average_score, 1),
+                "average_score": average_score,
                 "by_game_type": by_game_type,
             }
 
