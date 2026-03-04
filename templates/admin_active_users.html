@@ -231,7 +231,7 @@
         <div class="section">
             <h2>Real-Time Session Monitor</h2>
             <div class="info-text">
-                📡 Live monitoring of currently logged-in users. Updates automatically via Socket.IO.
+                📡 Live monitoring of currently logged-in users via WSO2 Identity Server. Updates automatically via Socket.IO.
                 <span id="connectionStatus" class="connection-status">
                     <span class="status-indicator"></span>
                     Connected
@@ -337,6 +337,8 @@
                             <th>Login Time</th>
                             <th>Last Activity</th>
                             <th>Duration</th>
+                            <th>IP Address</th>
+                            <th>Applications</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -346,6 +348,9 @@
                 const loginTime = session.login_time ? new Date(session.login_time) : null;
                 const lastActivity = session.last_activity ? new Date(session.last_activity) : null;
                 const duration = loginTime ? formatDuration(Date.now() - loginTime.getTime()) : '-';
+                const apps = (session.applications && session.applications.length > 0)
+                    ? session.applications.join(', ')
+                    : '-';
 
                 html += `
                     <tr>
@@ -354,6 +359,8 @@
                         <td>${loginTime ? loginTime.toLocaleString() : '-'}</td>
                         <td>${lastActivity ? lastActivity.toLocaleString() : '-'}</td>
                         <td>${duration}</td>
+                        <td>${session.ip || '-'}</td>
+                        <td>${apps}</td>
                     </tr>
                 `;
             });

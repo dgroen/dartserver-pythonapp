@@ -8,6 +8,7 @@ from datetime import datetime
 
 import requests
 from dartserver_core.auth import (
+    get_wso2_active_sessions,
     get_wso2_user_info,
     login_required,
     role_required,
@@ -939,7 +940,7 @@ def get_active_sessions():
     tags:
       - Admin
     summary: Get active sessions
-    description: Get list of currently active user sessions
+    description: Get list of currently active user sessions from WSO2 Identity Server
     responses:
       200:
         description: List of active sessions
@@ -956,31 +957,28 @@ def get_active_sessions():
                 properties:
                   username:
                     type: string
+                  session_id:
+                    type: string
                   login_time:
                     type: string
                   last_activity:
                     type: string
+                  ip:
+                    type: string
+                  user_agent:
+                    type: string
+                  applications:
+                    type: array
+                    items:
+                      type: string
     """
     try:
-        # Note: This is a placeholder implementation
-        # In a real application, you would track sessions in a database table or cache (Redis)
-        # For now, return mock data or integrate with your session management system
-
-        sessions = []
-
-        # You could implement session tracking by:
-        # 1. Creating a UserSession table in the database
-        # 2. Using Flask session with a backend store
-        # 3. Using Redis to track active sessions
-        # 4. Tracking Socket.IO connections
-
-        # Example placeholder response:
-        logger.info("Retrieved active sessions")
+        sessions = get_wso2_active_sessions()
+        logger.info(f"Retrieved {len(sessions)} active sessions from WSO2 IS")
         return jsonify(
             {
                 "status": "success",
                 "sessions": sessions,
-                "message": "Session tracking not yet implemented. Integrate with your session store.",
             },
         )
     except Exception as e:

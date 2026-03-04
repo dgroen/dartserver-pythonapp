@@ -964,6 +964,69 @@ def get_wso2_user_info(username: str, access_token: str | None = None) -> dict |
         return None
 
 
+def get_wso2_active_sessions() -> list[dict]:
+    """
+    Retrieve all active user sessions from WSO2 Identity Server.
+
+    Uses the WSO2 IS Session Management REST API:
+    GET {WSO2_IS_INTERNAL_URL}/api/server/v1/sessions
+
+    Requires admin credentials (WSO2_IS_INTROSPECT_USER / WSO2_IS_INTROSPECT_PASSWORD).
+
+    Returns:
+        List of session dictionaries, each containing:
+            - username: the authenticated username
+            - session_id: unique session identifier
+            - login_time: ISO 8601 timestamp of session start
+            - last_activity: ISO 8601 timestamp of last access
+            - ip: client IP address
+            - user_agent: client user agent string
+            - applications: list of applications accessed in this session
+    """
+    try:
+        sessions_url = f"{WSO2_IS_INTERNAL_URL}/api/server/v1/sessions"
+        auth_credentials = (WSO2_IS_INTROSPECT_USER, WSO2_IS_INTROSPECT_PASSWORD)
+
+        response = requests.get(
+            sessions_url,
+            auth=auth_credentials,
+            verify=WSO2_IS_VERIFY_SSL,
+            timeout=10,
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            sessions = []
+
+            for session in data.get("sessions", []):
+                session_info = {
+                    "username": session.get("userId", ""),
+                    "session_id": session.get("id", ""),
+                    "login_time": session.get("loginTime", ""),
+                    "last_activity": session.get("lastAccessTime", ""),
+                    "ip": session.get("ip", ""),
+                    "user_agent": session.get("userAgent", ""),
+                    # Extract application names for display; appId is omitted as it is
+                    # not needed for admin session monitoring.
+                    "applications": [
+                        app.get("appName", "") for app in session.get("applications", [])
+                    ],
+                }
+                sessions.append(session_info)
+
+            logger.info(f"Retrieved {len(sessions)} active sessions from WSO2 IS")
+            return sessions
+
+        logger.warning(
+            f"Failed to get active sessions from WSO2 IS: "
+            f"status={response.status_code}, response={response.text}",
+        )
+        return []
+    except Exception:
+        logger.exception("Error retrieving active sessions from WSO2 IS")
+        return []
+
+
 def logout_user(id_token: str | None = None) -> str:
     """
     Generate logout URL for WSO2 IS
