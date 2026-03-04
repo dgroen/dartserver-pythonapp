@@ -276,3 +276,128 @@ class TestSearchWso2Users:
 
             assert len(users) == 1
             assert users[0]["active"] is True  # Should default to True
+
+
+class TestGetWso2ActiveSessions:
+    """Tests for the get_wso2_active_sessions function"""
+
+    @pytest.fixture(autouse=True)
+    def mock_wso2_config(self):
+        """Patch WSO2 IS connection settings for all tests in this class."""
+        with (
+            patch.object(auth, "WSO2_IS_INTROSPECT_USER", "admin"),
+            patch.object(auth, "WSO2_IS_INTROSPECT_PASSWORD", "pass"),
+            patch.object(auth, "WSO2_IS_INTERNAL_URL", "https://test"),
+            patch.object(auth, "WSO2_IS_VERIFY_SSL", False),
+        ):
+            yield
+
+    def test_returns_sessions_on_success(self):
+        """Test that active sessions are returned when WSO2 IS responds successfully"""
+        with patch.object(auth, "requests") as mock_requests:
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {
+                "sessions": [
+                    {
+                        "userId": "admin",
+                        "id": "session-abc123",
+                        "loginTime": "2024-01-15T10:00:00.000Z",
+                        "lastAccessTime": "2024-01-15T10:30:00.000Z",
+                        "ip": "192.168.1.1",
+                        "userAgent": "Mozilla/5.0",
+                        "applications": [
+                            {"appName": "Darts App", "appId": "darts-app-id"},
+                        ],
+                    },
+                ],
+            }
+            mock_requests.get.return_value = mock_response
+
+            sessions = auth.get_wso2_active_sessions()
+
+        assert len(sessions) == 1
+        assert sessions[0]["username"] == "admin"
+        assert sessions[0]["session_id"] == "session-abc123"
+        assert sessions[0]["login_time"] == "2024-01-15T10:00:00.000Z"
+        assert sessions[0]["last_activity"] == "2024-01-15T10:30:00.000Z"
+        assert sessions[0]["ip"] == "192.168.1.1"
+        assert sessions[0]["user_agent"] == "Mozilla/5.0"
+        assert sessions[0]["applications"] == ["Darts App"]
+
+    def test_returns_empty_list_on_error_status(self):
+        """Test that an empty list is returned when WSO2 IS returns an error status"""
+        with patch.object(auth, "requests") as mock_requests:
+            mock_response = MagicMock()
+            mock_response.status_code = 403
+            mock_response.text = "Forbidden"
+            mock_requests.get.return_value = mock_response
+
+            sessions = auth.get_wso2_active_sessions()
+
+        assert sessions == []
+
+    def test_returns_empty_list_on_exception(self):
+        """Test that an empty list is returned when a network exception occurs"""
+        with patch.object(auth, "requests") as mock_requests:
+            mock_requests.get.side_effect = ConnectionError("Connection refused")
+
+            sessions = auth.get_wso2_active_sessions()
+
+        assert sessions == []
+
+    def test_uses_correct_endpoint(self):
+        """Test that the correct WSO2 IS session management API endpoint is called"""
+        with patch.object(auth, "requests") as mock_requests, patch.object(
+            auth, "WSO2_IS_INTERNAL_URL", "https://wso2-test"
+        ):
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {"sessions": []}
+            mock_requests.get.return_value = mock_response
+
+            auth.get_wso2_active_sessions()
+
+        mock_requests.get.assert_called_once()
+        call_args = mock_requests.get.call_args
+        assert call_args[0][0] == "https://wso2-test/api/server/v1/sessions"
+        assert call_args[1]["auth"] == ("admin", "pass")
+
+    def test_handles_empty_sessions_list(self):
+        """Test that an empty sessions list is handled gracefully"""
+        with patch.object(auth, "requests") as mock_requests:
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {"sessions": []}
+            mock_requests.get.return_value = mock_response
+
+            sessions = auth.get_wso2_active_sessions()
+
+        assert sessions == []
+
+    def test_handles_missing_optional_fields(self):
+        """Test that sessions with missing optional fields are handled gracefully"""
+        with patch.object(auth, "requests") as mock_requests:
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {
+                "sessions": [
+                    {
+                        "userId": "testuser",
+                        # Missing: id, loginTime, lastAccessTime, ip, userAgent, applications
+                    },
+                ],
+            }
+            mock_requests.get.return_value = mock_response
+
+            sessions = auth.get_wso2_active_sessions()
+
+        assert len(sessions) == 1
+        assert sessions[0]["username"] == "testuser"
+        assert sessions[0]["session_id"] == ""
+        assert sessions[0]["login_time"] == ""
+        assert sessions[0]["last_activity"] == ""
+        assert sessions[0]["ip"] == ""
+        assert sessions[0]["user_agent"] == ""
+        assert sessions[0]["applications"] == []
+
