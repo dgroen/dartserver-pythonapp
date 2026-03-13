@@ -1,0 +1,35 @@
+{
+  "lang": {
+    "dutch": "Niederländisch",
+    "english": "Englisch",
+    "spanish": "Spanisch",
+    "german": "Deutsch",
+    "finnish": "Finnisch"
+  },
+  "hero": {
+    "title": "Willkommen bei DART Server",
+    "subtitle": "Ein leistungsstarker Server für Ihre Bedürfnisse"
+  },
+  "features": {
+    "title": "Funktionen",
+    "performance": {
+      "title": "Hohe Leistung",
+      "description": "Schnell und zuverlässig für all Ihre Projekte"
+    },
+    "security": {
+      "title": "Sicher",
+      "description": "Der Schutz Ihrer Daten ist unsere Priorität"
+    },
+    "flexible": {
+      "title": "Flexibel",
+      "description": "Konfigurieren Sie es nach Ihren Wünschen"
+    }
+  },
+  "about": {
+    "title": "Über DART Server",
+    "description": "DART Server wurde entwickelt, um leistungsstarke und flexible Serverlösungen für moderne Anwendungen bereitzustellen. Unsere Technologie ist mit Skalierbarkeit und Zuverlässigkeit im Sinn gebaut."
+  },
+  "footer": {
+    "copyright": "© 2025 DART Server. Alle Rechte vorbehalten."
+  }
+}
