@@ -270,7 +270,7 @@ jobs:
           else
             echo "  → Cloning dartserver-website..."
             rm -rf "\${WEBSITE_DIR}"
-            git clone https://x-access-token:${{ secrets.CONFIG_REPO_TOKEN }}@github.com/${{ github.repository_owner }}/dartserver-website.git "\${WEBSITE_DIR}"
+            git clone https://github.com/${{ github.repository_owner }}/dartserver-website.git "\${WEBSITE_DIR}"
           fi
 
           # Rebuild containers (build services individually to avoid context issues)
