@@ -412,9 +412,10 @@ function displayGameDetails(gameData) {
     const playerStats = gameData.players.map(player => {
         const playerThrows = gameData.throws.filter(t => t.player_order === player.player_order);
 
-        const totalScore = playerThrows.reduce((sum, t) => sum + t.actual_score, 0);
+        const totalScore = playerThrows.filter(t => !t.is_bust).reduce((sum, t) => sum + t.actual_score, 0);
         const throwCount = playerThrows.length;
-        const avgScore = throwCount > 0 ? (totalScore / throwCount).toFixed(2) : '0.00';
+        const turnCount = new Set(playerThrows.map(t => t.turn_number)).size;
+        const avgScore = turnCount > 0 ? (totalScore / turnCount).toFixed(2) : '0.00';
 
         const doubles = playerThrows.filter(t => t.multiplier === 'DOUBLE').length;
         const triples = playerThrows.filter(t => t.multiplier === 'TRIPLE').length;
@@ -465,7 +466,7 @@ function displayGameDetails(gameData) {
                                 <strong>${player.throwCount}</strong>
                             </div>
                             <div class="stat-row">
-                                <span>Average Score:</span>
+                                <span>Avg Score/Turn:</span>
                                 <strong>${player.avgScore}</strong>
                             </div>
                             <div class="stat-row">
