@@ -270,9 +270,8 @@ jobs:
           else
             echo "  → Cloning dartserver-website..."
             rm -rf "\${WEBSITE_DIR}"
-            git clone https://github.com/${{ github.repository_owner }}/dartserver-website.git "\${WEBSITE_DIR}"
+            git clone git@github.com:${{ github.repository_owner }}/dartserver-website.git "\${WEBSITE_DIR}"
           fi
-
           # Rebuild containers (build services individually to avoid context issues)
           echo "🔨 Rebuilding containers..."
           docker-compose -f docker-compose-wso2.yml build --no-cache darts-app
