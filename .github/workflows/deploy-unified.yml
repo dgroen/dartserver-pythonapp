@@ -30,13 +30,6 @@ jobs:
           path: dartserver-config
           token: ${{ secrets.CONFIG_REPO_TOKEN }}
 
-      - name: Checkout website repository
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.repository_owner }}/dartserver-website
-          path: dartserver-website
-          token: ${{ secrets.CONFIG_REPO_TOKEN }}          
-
       - name: Unlock git-crypt (config repo)
         env:
           GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
@@ -268,15 +261,15 @@ jobs:
 
           # Clone or update dartserver-website (sibling directory)
           echo "📦 Setting up dartserver-website..."
-          WEBSITE_DIR="$(dirname $(pwd))/dartserver-website"
-          if [ -d "${WEBSITE_DIR}/.git" ]; then
+          WEBSITE_DIR="\$(dirname \$(pwd))/dartserver-website"
+          if [ -d "\${WEBSITE_DIR}/.git" ]; then
             echo "  → Pulling latest dartserver-website..."
-            git -C "${WEBSITE_DIR}" fetch origin
-            git -C "${WEBSITE_DIR}" checkout main
-            git -C "${WEBSITE_DIR}" pull origin main
+            git -C "\${WEBSITE_DIR}" fetch origin
+            git -C "\${WEBSITE_DIR}" checkout main
+            git -C "\${WEBSITE_DIR}" pull origin main
           else
             echo "  → Cloning dartserver-website..."
-            git clone https://github.com/${{ github.repository_owner }}/dartserver-website.git "${WEBSITE_DIR}"
+            git clone https://github.com/${{ github.repository_owner }}/dartserver-website.git "\${WEBSITE_DIR}"
           fi
 
           # Rebuild containers (build services individually to avoid context issues)
@@ -632,15 +625,15 @@ jobs:
 
           # Clone or update dartserver-website (sibling directory)
           echo "📦 Setting up dartserver-website..."
-          WEBSITE_DIR="$(dirname $(pwd))/dartserver-website"
-          if [ -d "${WEBSITE_DIR}/.git" ]; then
+          WEBSITE_DIR="\$(dirname \$(pwd))/dartserver-website"
+          if [ -d "\${WEBSITE_DIR}/.git" ]; then
             echo "  → Pulling latest dartserver-website..."
-            git -C "${WEBSITE_DIR}" fetch origin
-            git -C "${WEBSITE_DIR}" checkout main
-            git -C "${WEBSITE_DIR}" pull origin main
+            git -C "\${WEBSITE_DIR}" fetch origin
+            git -C "\${WEBSITE_DIR}" checkout main
+            git -C "\${WEBSITE_DIR}" pull origin main
           else
             echo "  → Cloning dartserver-website..."
-            git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository_owner }}/dartserver-website.git "${WEBSITE_DIR}"
+            git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository_owner }}/dartserver-website.git "\${WEBSITE_DIR}"
           fi
 
           # Rebuild containers (build services individually to avoid context issues)
