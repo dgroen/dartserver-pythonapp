@@ -239,6 +239,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/nginx.crt:/etc/nginx/nginx.crt:ro
       - ./nginx/nginx.key:/etc/nginx/nginx.key:ro
+      - ../dartserver-website:/usr/share/nginx/html/website:ro
     depends_on:
       - api-gateway
       - darts-app
