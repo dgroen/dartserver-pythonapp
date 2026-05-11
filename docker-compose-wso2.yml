@@ -56,6 +56,7 @@ services:
     volumes:
       - wso2is_data:/home/wso2carbon/wso2is-7.1.0
       - ./wso2is-7-config/deployment.toml:/home/wso2carbon/wso2is-7.1.0/repository/conf/deployment.toml:ro
+      - ./drivers/postgresql.jar:/home/wso2carbon/wso2is-7.1.0/repository/components/lib/postgresql-42.7.3.jar:ro
     healthcheck:
       test: [ "CMD", "curl", "-k", "-f", "https://localhost:9443/api/health-check/v1.0/health" ]
       interval: 30s
