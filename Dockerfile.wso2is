@@ -4,33 +4,42 @@ FROM wso2/wso2is:7.1.0
 # Switch to root to install packages
 USER root
 
-# Install wget to download the PostgreSQL driver
+# Install curl and wget as fallbacks
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends wget && \
+    apt-get install -y --no-install-recommends curl wget ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# Download PostgreSQL JDBC driver and place in multiple WSO2 lib locations
-RUN WSO2_HOME=/home/wso2carbon/wso2is-7.1.0 && \
-    echo "Downloading PostgreSQL JDBC driver..." && \
-    wget --no-verbose https://jdbc.postgresql.org/download/postgresql-42.7.2.jar \
-      -O /tmp/postgresql-42.7.2.jar && \
-    echo "✅ Download successful" && \
+# Download PostgreSQL JDBC driver to multiple locations WSO2 might check
+RUN set -e && \
+    WSO2_HOME="/home/wso2carbon/wso2is-7.1.0" && \
+    DRIVER_JAR="postgresql-42.7.2.jar" && \
+    DRIVER_URL="https://jdbc.postgresql.org/download/${DRIVER_JAR}" && \
+    echo "Attempting to download PostgreSQL JDBC driver from: $DRIVER_URL" && \
     \
-    echo "Installing driver to repository/components/lib..." && \
-    mkdir -p $WSO2_HOME/repository/components/lib && \
-    cp /tmp/postgresql-42.7.2.jar $WSO2_HOME/repository/components/lib/ && \
-    chmod 644 $WSO2_HOME/repository/components/lib/postgresql-42.7.2.jar && \
+    TMP_JAR="/tmp/${DRIVER_JAR}" && \
+    if curl -f -L --max-time 30 "$DRIVER_URL" -o "$TMP_JAR"; then \
+        echo "✅ Download successful"; \
+    elif wget -q --timeout=30 "$DRIVER_URL" -O "$TMP_JAR"; then \
+        echo "✅ Download successful (via wget)"; \
+    else \
+        echo "❌ Failed to download driver"; exit 1; \
+    fi && \
     \
-    echo "Installing driver to lib..." && \
-    mkdir -p $WSO2_HOME/lib && \
-    cp /tmp/postgresql-42.7.2.jar $WSO2_HOME/lib/ && \
-    chmod 644 $WSO2_HOME/lib/postgresql-42.7.2.jar && \
+    echo "Installing driver to multiple locations..." && \
+    for DIR in \
+        "$WSO2_HOME/repository/components/lib" \
+        "$WSO2_HOME/lib" \
+        "$WSO2_HOME/wso2/components/lib"; \
+    do \
+        if [ -d "$DIR" ] || mkdir -p "$DIR"; then \
+            cp "$TMP_JAR" "$DIR/${DRIVER_JAR}" 2>/dev/null && \
+            chmod 644 "$DIR/${DRIVER_JAR}" && \
+            echo "✅ Installed to $DIR"; \
+        fi; \
+    done && \
     \
-    echo "Verifying installations:" && \
-    ls -lh $WSO2_HOME/repository/components/lib/postgresql-42.7.2.jar && \
-    ls -lh $WSO2_HOME/lib/postgresql-42.7.2.jar && \
-    rm /tmp/postgresql-42.7.2.jar && \
-    echo "✅ PostgreSQL driver installed successfully in both locations"
+    rm -f "$TMP_JAR" && \
+    echo "✅ PostgreSQL JDBC driver installation complete"
 
 # Copy custom entrypoint that ensures PostgreSQL driver is available at runtime
 COPY wso2is-entrypoint.sh /home/wso2carbon/wso2is-entrypoint.sh
