@@ -239,7 +239,19 @@ jobs:
             tar xzf /tmp/dartserver-config.tgz -C dartserver-config
           fi
 
+          # Stop existing containers first (to release file locks)
+          echo "🛑 Stopping existing containers..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml down || true
+
+          # Pull latest code BEFORE copying config files, so there are no local
+          # modifications that would cause git checkout to fail
+          echo "📥 Pulling latest changes from test branch..."
+          git fetch origin
+          git checkout test
+          git pull origin test
+
           # Copy configuration files from config repository (fresh bundle)
+          # This intentionally overrides tracked files (nginx.conf, SSL certs, etc.)
           echo "📝 Copying configuration files from config repository..."
           cp dartserver-config/environments/test/.env ./.env
           cp -r dartserver-config/environments/test/wso2is-config ./wso2is-7-config
@@ -248,16 +260,6 @@ jobs:
 
           echo "🔧 Normalizing .env encoding to UTF-8 (strip BOM, convert Latin-1 if needed)..."
           normalize_env ".env"
-
-          # Stop existing containers first (to release file locks)
-          echo "🛑 Stopping existing containers..."
-          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml down || true
-
-          # Pull latest changes first so we don't have the files clobbered by git
-          echo "📥 Pulling latest changes from test branch..."
-          git fetch origin
-          git checkout test
-          git pull origin test
 
           # Clone or update dartserver-website (sibling directory)
           echo "📦 Setting up dartserver-website..."
@@ -603,7 +605,18 @@ jobs:
             tar xzf /tmp/dartserver-config.tgz -C dartserver-config
           fi
 
+          # Stop existing containers
+          echo "🛑 Stopping existing containers..."
+          docker-compose -f docker-compose-wso2.yml down || true
+
+          # Pull latest code BEFORE copying config files
+          echo "📥 Pulling latest changes from main branch..."
+          git fetch origin
+          git checkout main
+          git pull origin main
+
           # Copy configuration files from config repository (fresh bundle)
+          # This intentionally overrides tracked files (nginx.conf, SSL certs, etc.)
           echo "📝 Copying configuration files from config repository..."
           cp dartserver-config/environments/production/.env ./.env
           cp -r dartserver-config/environments/production/wso2is-config ./wso2is-7-config
@@ -612,16 +625,6 @@ jobs:
 
           echo "🔧 Normalizing .env encoding to UTF-8 (strip BOM, convert Latin-1 if needed)..."
           normalize_env ".env"
-
-          # Stop existing containers
-          echo "🛑 Stopping existing containers..."
-          docker-compose -f docker-compose-wso2.yml down || true
-
-          # Pull latest changes from main branch
-          echo "📥 Pulling latest changes from main branch..."
-          git fetch origin
-          git checkout main
-          git pull origin main
 
           # Clone or update dartserver-website (sibling directory)
           echo "📦 Setting up dartserver-website..."
