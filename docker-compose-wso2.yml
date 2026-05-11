@@ -44,7 +44,9 @@ services:
 
   # WSO2 Identity Server
   wso2is:
-    image: wso2/wso2is:7.1.0
+    build:
+      context: .
+      dockerfile: Dockerfile.wso2is
     container_name: darts-wso2is
     ports:
       - "9443:9443" # HTTPS port
