@@ -213,7 +213,7 @@ jobs:
           echo "🚀 Starting deployment to test environment..."
 
           # Navigate to application directory
-          cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp || \
+          cd /opt/dartserver-pythonapp || \
             { echo "❌ Application directory not found"; exit 1; }
 
           normalize_env() {
@@ -247,9 +247,9 @@ jobs:
           # modifications that would cause git checkout to fail
           echo "📥 Pulling latest changes from test branch..."
           TARGET_BRANCH="test"
-          git fetch origin "$TARGET_BRANCH"
-          git checkout -B "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
-          git reset --hard "origin/$TARGET_BRANCH"
+          git fetch origin test
+          git checkout -B test "origin/test"
+          git reset --hard "origin/test"
           echo "✅ Active branch: $(git branch --show-current)"
           echo "✅ Active commit: $(git rev-parse --short HEAD)"
 
