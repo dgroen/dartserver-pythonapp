@@ -208,50 +208,50 @@ jobs:
           TEST_SERVER_USER: ${{ secrets.TEST_SERVER_USER }}
           GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
         run: |
+          ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} bash -s << ENDSSH
+          set -e
+          echo "🚀 Starting deployment to test environment..."
 
-          ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} bash -s << 'ENDSSH'
-TARGET_BRANCH="test"
-set -e
-echo "🚀 Starting deployment to test environment..."
+          # Navigate to application directory
+          cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp || \
+            { echo "❌ Application directory not found"; exit 1; }
 
-# Navigate to application directory
-cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp || { echo "❌ Application directory not found"; exit 1; }
+          normalize_env() {
+            ENV_PATH="$1"
+            if [ -f "$ENV_PATH" ]; then
+              TMP_ENV=$(mktemp)
+              if iconv -f UTF-8 -t UTF-8 "$ENV_PATH" > "$TMP_ENV" 2>/dev/null; then
+                :
+              elif iconv -f ISO-8859-1 -t UTF-8 "$ENV_PATH" > "$TMP_ENV" 2>/dev/null; then
+                :
+              else
+                cp "$ENV_PATH" "$TMP_ENV"
+              fi
+              perl -0777 -pe 's/^\xEF\xBB\xBF//' "$TMP_ENV" > "$ENV_PATH"
+              rm -f "$TMP_ENV"
+            fi
+          }
 
-normalize_env() {
-  ENV_PATH="$1"
-  if [ -f "$ENV_PATH" ]; then
-    TMP_ENV=$(mktemp)
-    if iconv -f UTF-8 -t UTF-8 "$ENV_PATH" > "$TMP_ENV" 2>/dev/null; then
-      :
-    elif iconv -f ISO-8859-1 -t UTF-8 "$ENV_PATH" > "$TMP_ENV" 2>/dev/null; then
-      :
-    else
-      cp "$ENV_PATH" "$TMP_ENV"
-    fi
-    perl -0777 -pe 's/^\xEF\xBB\xBF//' "$TMP_ENV" > "$ENV_PATH"
-    rm -f "$TMP_ENV"
-  fi
-}
+          # Refresh config bundle from runner
+          if [ -f /tmp/dartserver-config.tgz ]; then
+            rm -rf dartserver-config
+            mkdir -p dartserver-config
+            tar xzf /tmp/dartserver-config.tgz -C dartserver-config
+          fi
 
-# Refresh config bundle from runner
-if [ -f /tmp/dartserver-config.tgz ]; then
-  rm -rf dartserver-config
-  mkdir -p dartserver-config
-  tar xzf /tmp/dartserver-config.tgz -C dartserver-config
-fi
+          # Stop existing containers first (to release file locks)
+          echo "🛑 Stopping existing containers..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml down || true
 
-# Stop existing containers first (to release file locks)
-echo "🛑 Stopping existing containers..."
-docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml down || true
-
-# Pull latest code BEFORE copying config files, so there are no local
-# modifications that would cause git checkout to fail
-echo "📥 Pulling latest changes from test branch..."
-git fetch origin "$TARGET_BRANCH"
-git checkout -B "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
-git reset --hard "origin/$TARGET_BRANCH"
-echo "✅ Active branch: $(git branch --show-current)"
-echo "✅ Active commit: $(git rev-parse --short HEAD)"
+          # Pull latest code BEFORE copying config files, so there are no local
+          # modifications that would cause git checkout to fail
+          echo "📥 Pulling latest changes from test branch..."
+          TARGET_BRANCH="test"
+          git fetch origin "$TARGET_BRANCH"
+          git checkout -B "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
+          git reset --hard "origin/$TARGET_BRANCH"
+          echo "✅ Active branch: $(git branch --show-current)"
+          echo "✅ Active commit: $(git rev-parse --short HEAD)"
 
           # Copy configuration files from config repository (fresh bundle)
           # This intentionally overrides tracked files (nginx.conf, SSL certs, etc.)
@@ -266,19 +266,19 @@ echo "✅ Active commit: $(git rev-parse --short HEAD)"
           echo "🔧 Normalizing .env encoding to UTF-8 (strip BOM, convert Latin-1 if needed)..."
           normalize_env ".env"
 
-          # Clone or update dartserver-website (sibling directory)
-          echo "📦 Setting up dartserver-website..."
-          WEBSITE_DIR="$(dirname $(pwd))/dartserver-website"
-          if git -C "${WEBSITE_DIR}" rev-parse --git-dir > /dev/null 2>&1; then
-            echo "  → Pulling latest dartserver-website..."
-            git -C "${WEBSITE_DIR}" fetch origin
-            git -C "${WEBSITE_DIR}" checkout main
-            git -C "${WEBSITE_DIR}" pull origin main
-          else
-            echo "  → Cloning dartserver-website..."
-            rm -rf "${WEBSITE_DIR}"
-            git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository_owner }}/dartserver-website.git "${WEBSITE_DIR}"
-          fi
+          # # Clone or update dartserver-website (sibling directory)
+          # echo "📦 Setting up dartserver-website..."
+          # WEBSITE_DIR="$(dirname $(pwd))/dartserver-website"
+          # if git -C "${WEBSITE_DIR}" rev-parse --git-dir > /dev/null 2>&1; then
+          #   echo "  → Pulling latest dartserver-website..."
+          #   git -C "${WEBSITE_DIR}" fetch origin
+          #   git -C "${WEBSITE_DIR}" checkout main
+          #   git -C "${WEBSITE_DIR}" pull origin main
+          # else
+          #   echo "  → Cloning dartserver-website..."
+          #   rm -rf "${WEBSITE_DIR}"
+          #   git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository_owner }}/dartserver-website.git "${WEBSITE_DIR}"
+          # fi
           # Rebuild containers (build services individually to avoid context issues)
           echo "🔨 Rebuilding containers..."
           docker-compose -f docker-compose-wso2.yml build --no-cache darts-app
