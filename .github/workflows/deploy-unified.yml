@@ -246,17 +246,22 @@ jobs:
           # Pull latest code BEFORE copying config files, so there are no local
           # modifications that would cause git checkout to fail
           echo "📥 Pulling latest changes from test branch..."
-          git fetch origin
-          git checkout test
-          git pull origin test
+          TARGET_BRANCH="test"
+          git fetch origin "${TARGET_BRANCH}"
+          git checkout -B "${TARGET_BRANCH}" "origin/${TARGET_BRANCH}"
+          git reset --hard "origin/${TARGET_BRANCH}"
+          echo "✅ Active branch: $(git branch --show-current)"
+          echo "✅ Active commit: $(git rev-parse --short HEAD)"
 
           # Copy configuration files from config repository (fresh bundle)
           # This intentionally overrides tracked files (nginx.conf, SSL certs, etc.)
           echo "📝 Copying configuration files from config repository..."
+          rm -rf ./wso2is-7-config ./ssl ./nginx
           cp dartserver-config/environments/test/.env ./.env
-          cp -r dartserver-config/environments/test/wso2is-config ./wso2is-7-config
-          cp -r dartserver-config/environments/test/ssl ./ssl
-          cp -r dartserver-config/environments/test/nginx ./nginx
+          mkdir -p ./wso2is-7-config ./ssl ./nginx
+          cp -r dartserver-config/environments/test/wso2is-config/. ./wso2is-7-config/
+          cp -r dartserver-config/environments/test/ssl/. ./ssl/
+          cp -r dartserver-config/environments/test/nginx/. ./nginx/
 
           echo "🔧 Normalizing .env encoding to UTF-8 (strip BOM, convert Latin-1 if needed)..."
           normalize_env ".env"
@@ -304,6 +309,9 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} << 'ENDSSH'
             cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
+
+            echo "Branch: $(git branch --show-current)"
+            echo "Commit: $(git rev-parse --short HEAD)"
 
             # Check if containers are running
             RUNNING_CONTAINERS=$(docker-compose -f docker-compose-wso2.yml \
