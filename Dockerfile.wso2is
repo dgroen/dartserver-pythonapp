@@ -9,18 +9,25 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends wget && \
     rm -rf /var/lib/apt/lists/*
 
-# Download and install PostgreSQL JDBC driver (postgresql-42.7.2.jar)
-# Place it in the WSO2IS lib directory so it's available on the classpath
-RUN mkdir -p /home/wso2carbon/wso2is-7.1.0/lib && \
-    wget -q https://jdbc.postgresql.org/download/postgresql-42.7.2.jar \
-    -O /home/wso2carbon/wso2is-7.1.0/lib/postgresql-42.7.2.jar && \
-    chmod 644 /home/wso2carbon/wso2is-7.1.0/lib/postgresql-42.7.2.jar
-
-# Verify the driver was installed
-RUN ls -lh /home/wso2carbon/wso2is-7.1.0/lib/postgresql*.jar || echo "WARNING: PostgreSQL driver not found"
-
-# Switch back to wso2carbon user
-USER wso2carbon
-
-# Use the default entrypoint from the base image
-ENTRYPOINT ["/home/wso2carbon/docker-entrypoint.sh"]
+# Download PostgreSQL JDBC driver and place in multiple WSO2 lib locations
+RUN WSO2_HOME=/home/wso2carbon/wso2is-7.1.0 && \
+    echo "Downloading PostgreSQL JDBC driver..." && \
+    wget --no-verbose https://jdbc.postgresql.org/download/postgresql-42.7.2.jar \
+      -O /tmp/postgresql-42.7.2.jar && \
+    echo "✅ Download successful" && \
+    \
+    echo "Installing driver to repository/components/lib..." && \
+    mkdir -p $WSO2_HOME/repository/components/lib && \
+    cp /tmp/postgresql-42.7.2.jar $WSO2_HOME/repository/components/lib/ && \
+    chmod 644 $WSO2_HOME/repository/components/lib/postgresql-42.7.2.jar && \
+    \
+    echo "Installing driver to lib..." && \
+    mkdir -p $WSO2_HOME/lib && \
+    cp /tmp/postgresql-42.7.2.jar $WSO2_HOME/lib/ && \
+    chmod 644 $WSO2_HOME/lib/postgresql-42.7.2.jar && \
+    \
+    echo "Verifying installations:" && \
+    ls -lh $WSO2_HOME/repository/components/lib/postgresql-42.7.2.jar && \
+    ls -lh $WSO2_HOME/lib/postgresql-42.7.2.jar && \
+    rm /tmp/postgresql-42.7.2.jar && \
+    echo "✅ PostgreSQL driver installed successfully in both locations"
