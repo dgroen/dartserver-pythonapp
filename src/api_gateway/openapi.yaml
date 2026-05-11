@@ -4,29 +4,29 @@ info:
   version: 1.0.0
   description: |
     Secure REST API Gateway for the Darts Game System
-    
+
     This API provides secure endpoints for:
     - Dartboard hardware integration with client credentials authentication
     - Game management and control
     - Score submission and tracking
     - Player management
-    
+
     ## Authentication
-    
+
     All endpoints require OAuth2 authentication via WSO2 Identity Server.
-    
+
     ### For Dartboards (Hardware Clients)
     Use the Client Credentials grant type:
-    
+
     ```bash
     curl -X POST https://wso2-is:9443/oauth2/token \
       -u CLIENT_ID:CLIENT_SECRET \
       -d "grant_type=client_credentials&scope=dartboard:write"
     ```
-    
+
     ### For Users
     Use the Authorization Code grant type through the web interface.
-    
+
   contact:
     name: API Support
     email: support@dartsapp.example.com
@@ -238,10 +238,10 @@ paths:
       summary: Submit dartboard throw
       description: |
         Submit a dart throw from a dartboard hardware device.
-        
+
         This is the secure replacement for the legacy `/api/Throw/zone` endpoint.
         Requires client credentials authentication with `dartboard:write` scope.
-        
+
         The dartboard sends GPIO pin information which is mapped to score values
         by the backend.
       operationId: submitDartboardThrow

@@ -7,6 +7,132 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
+ensure_wso2_schema() {
+    local pg_container
+    pg_container=$(docker ps --format '{{.Names}}' | grep -E '^darts-postgres$|postgres' | head -n 1)
+
+    if [ -z "$pg_container" ]; then
+        echo "⚠ Warning: PostgreSQL Docker container not found. Skipping WSO2 schema verification."
+        return
+    fi
+
+    echo "Using PostgreSQL container: $pg_container"
+
+    # Ensure required WSO2 databases exist.
+    docker exec "$pg_container" psql -U postgres -d postgres -tc "SELECT 1 FROM pg_database WHERE datname='wso2is_identity'" | grep -q 1 || \
+    docker exec "$pg_container" psql -U postgres -d postgres -c "CREATE DATABASE wso2is_identity;" >/dev/null
+
+    docker exec "$pg_container" psql -U postgres -d postgres -tc "SELECT 1 FROM pg_database WHERE datname='wso2is_shared'" | grep -q 1 || \
+    docker exec "$pg_container" psql -U postgres -d postgres -c "CREATE DATABASE wso2is_shared;" >/dev/null
+
+    local um_domain_exists
+    um_domain_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_identity -tAc "SELECT to_regclass('public.um_domain');")
+
+    if [ "$um_domain_exists" = "um_domain" ]; then
+        echo "✓ WSO2 user store schema already present (um_domain exists)"
+        return
+    fi
+
+    echo "⚠ WSO2 user store schema is missing; creating required tables..."
+
+    docker exec -i "$pg_container" psql -U postgres -d wso2is_identity <<'SQL'
+CREATE TABLE IF NOT EXISTS um_domain (
+    UM_DOMAIN_ID SERIAL NOT NULL,
+    UM_DOMAIN_NAME VARCHAR(255) NOT NULL UNIQUE,
+    UM_CREATED_DATE BIGINT,
+    PRIMARY KEY (UM_DOMAIN_ID)
+);
+
+CREATE TABLE IF NOT EXISTS um_tenant (
+    UM_ID SERIAL NOT NULL,
+    UM_DOMAIN_NAME VARCHAR(255) NOT NULL,
+    UM_CREATED_DATE BIGINT,
+    UM_EMAIL VARCHAR(255),
+    UM_ACTIVE BOOLEAN,
+    PRIMARY KEY (UM_ID),
+    FOREIGN KEY (UM_DOMAIN_NAME) REFERENCES um_domain(UM_DOMAIN_NAME)
+);
+
+CREATE TABLE IF NOT EXISTS um_user (
+    UM_ID INTEGER NOT NULL,
+    UM_USER_ID VARCHAR(255) NOT NULL,
+    UM_USER_NAME VARCHAR(255) NOT NULL,
+    UM_DOMAIN_ID INTEGER,
+    UM_TENANT_ID INTEGER,
+    PRIMARY KEY (UM_ID),
+    UNIQUE (UM_USER_NAME, UM_TENANT_ID)
+);
+
+CREATE TABLE IF NOT EXISTS um_user_password (
+    UM_ID SERIAL NOT NULL,
+    UM_USER_ID VARCHAR(255) NOT NULL,
+    UM_PASSWORD VARCHAR(255),
+    UM_SALT_VALUE VARCHAR(31),
+    UM_REQUIRE_CHANGE BOOLEAN,
+    UM_CHANGED_TIME BIGINT,
+    UM_TENANT_ID INTEGER,
+    PRIMARY KEY (UM_ID),
+    UNIQUE (UM_USER_ID, UM_TENANT_ID)
+);
+
+CREATE TABLE IF NOT EXISTS um_role (
+    UM_ID SERIAL NOT NULL,
+    UM_ROLE_ID VARCHAR(255) NOT NULL,
+    UM_ROLE_NAME VARCHAR(255) NOT NULL,
+    UM_TENANT_ID INTEGER,
+    PRIMARY KEY (UM_ID),
+    UNIQUE (UM_ROLE_NAME, UM_TENANT_ID)
+);
+
+CREATE TABLE IF NOT EXISTS um_user_role (
+    UM_ID SERIAL NOT NULL,
+    UM_USER_ID VARCHAR(255),
+    UM_ROLE_ID VARCHAR(255),
+    UM_TENANT_ID INTEGER,
+    PRIMARY KEY (UM_ID)
+);
+
+CREATE TABLE IF NOT EXISTS um_permission (
+    UM_ID SERIAL NOT NULL,
+    UM_RESOURCE_ID VARCHAR(255) NOT NULL,
+    UM_ACTION VARCHAR(255) NOT NULL,
+    UM_TENANT_ID INTEGER,
+    PRIMARY KEY (UM_ID),
+    UNIQUE (UM_RESOURCE_ID, UM_ACTION, UM_TENANT_ID)
+);
+
+CREATE TABLE IF NOT EXISTS um_role_permission (
+    UM_ID SERIAL NOT NULL,
+    UM_PERMISSION_ID INTEGER,
+    UM_ROLE_ID VARCHAR(255),
+    UM_TENANT_ID INTEGER,
+    PRIMARY KEY (UM_ID)
+);
+
+CREATE TABLE IF NOT EXISTS um_user_attribute (
+    UM_ID SERIAL NOT NULL,
+    UM_USER_ID VARCHAR(255),
+    UM_ATTR_NAME VARCHAR(255),
+    UM_ATTR_VALUE TEXT,
+    UM_PROFILE_ID VARCHAR(255),
+    UM_TENANT_ID INTEGER,
+    PRIMARY KEY (UM_ID)
+);
+SQL
+
+    docker exec -i "$pg_container" psql -U postgres -d wso2is_shared <<'SQL'
+CREATE TABLE IF NOT EXISTS shared_user (
+    UM_ID SERIAL NOT NULL,
+    UM_USER_ID VARCHAR(255) NOT NULL,
+    UM_USER_NAME VARCHAR(255) NOT NULL,
+    UM_TENANT_ID INTEGER,
+    PRIMARY KEY (UM_ID)
+);
+SQL
+
+    echo "✓ WSO2 schema repair completed"
+}
+
 echo "=== Setting up Test Environment ==="
 echo ""
 
@@ -36,6 +162,15 @@ else
     echo "  To start PostgreSQL (if using Docker):"
     echo "    docker-compose -f docker-compose-wso2.yml up -d postgres"
     exit 1
+fi
+
+# Step 2b: Verify and repair WSO2 schema in PostgreSQL (if Docker PostgreSQL is present)
+echo ""
+echo "Step 2b: Verifying WSO2 schema (um_domain)..."
+if command -v docker &> /dev/null; then
+    ensure_wso2_schema
+else
+    echo "⚠ Warning: docker command not found. Skipping WSO2 schema verification."
 fi
 
 # Create test database

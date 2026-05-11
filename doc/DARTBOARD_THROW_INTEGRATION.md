@@ -212,7 +212,7 @@ Score processed: 20 TRIPLE
 
 3. **Check zone mappings exist:**
    ```sql
-   SELECT * FROM dartboard_zone_mapping 
+   SELECT * FROM dartboard_zone_mapping
    WHERE dartboard_type_id = (
      SELECT id FROM dartboard_type WHERE name = 'carromco'
    );
