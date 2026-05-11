@@ -31,3 +31,14 @@ RUN WSO2_HOME=/home/wso2carbon/wso2is-7.1.0 && \
     ls -lh $WSO2_HOME/lib/postgresql-42.7.2.jar && \
     rm /tmp/postgresql-42.7.2.jar && \
     echo "✅ PostgreSQL driver installed successfully in both locations"
+
+# Copy custom entrypoint that ensures PostgreSQL driver is available at runtime
+COPY wso2is-entrypoint.sh /home/wso2carbon/wso2is-entrypoint.sh
+RUN chmod +x /home/wso2carbon/wso2is-entrypoint.sh && \
+    chown wso2carbon:wso2carbon /home/wso2carbon/wso2is-entrypoint.sh
+
+# Switch back to wso2carbon user
+USER wso2carbon
+
+# Use the custom entrypoint that ensures the driver is present
+ENTRYPOINT ["/home/wso2carbon/wso2is-entrypoint.sh"]
