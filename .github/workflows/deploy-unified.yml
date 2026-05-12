@@ -284,20 +284,18 @@ jobs:
           docker-compose -f docker-compose-wso2.yml build --no-cache darts-app
           docker-compose -f docker-compose-wso2.yml build --no-cache api-gateway
 
+          # Ensure WSO2 user-store schema exists in test PostgreSQL BEFORE starting containers
+          echo "🛠️  Verifying and repairing WSO2 PostgreSQL schema (idempotent)..."
+          if [ -f helpers/setup-test-environment.sh ]; then
+            bash helpers/setup-test-environment.sh || { echo "❌ WSO2 schema repair failed"; exit 1; }
+          else
+            echo "❌ helpers/setup-test-environment.sh not found! Cannot repair WSO2 schema."
+            exit 1
+          fi
+
           # Start containers
           echo "▶️  Starting containers..."
           docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d
-
-            # Ensure WSO2 user-store schema exists in test PostgreSQL.
-            # This protects deployments when postgres volumes already exist and
-            # docker-entrypoint init scripts are not re-executed.
-            echo "🛠️  Verifying WSO2 PostgreSQL schema..."
-            for attempt in 1 2 3 4 5; do
-            if docker exec darts-postgres psql -U postgres -d postgres -tAc "SELECT 1" >/dev/null 2>&1; then
-              break
-            fi
-            echo "PostgreSQL not ready yet (attempt $attempt/5), retrying..."
-            sleep 5
             done
 
             docker exec darts-postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/01-init-wso2-dbs.sql || true

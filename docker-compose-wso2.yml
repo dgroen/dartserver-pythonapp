@@ -14,6 +14,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-postgres-wso2.sql:/docker-entrypoint-initdb.d/01-init-wso2-dbs.sql:ro
+      - ./wso2is-7-config/postgresql-shared.sql:/docker-entrypoint-initdb.d/02-wso2-shared-postgresql.sql:ro
+      - ./wso2is-7-config/postgresql-identity.sql:/docker-entrypoint-initdb.d/03-wso2-identity-postgresql.sql:ro
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s

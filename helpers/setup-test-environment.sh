@@ -26,109 +26,23 @@ ensure_wso2_schema() {
     docker exec "$pg_container" psql -U postgres -d postgres -c "CREATE DATABASE wso2is_shared;" >/dev/null
 
     local um_domain_exists
-    um_domain_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_identity -tAc "SELECT to_regclass('public.um_domain');")
+    um_domain_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT to_regclass('public.um_domain');")
 
     if [ "$um_domain_exists" = "um_domain" ]; then
         echo "✓ WSO2 user store schema already present (um_domain exists)"
         return
     fi
 
-    echo "⚠ WSO2 user store schema is missing; creating required tables..."
+    echo "⚠ WSO2 user store schema is missing; applying official WSO2 PostgreSQL scripts..."
 
-    docker exec -i "$pg_container" psql -U postgres -d wso2is_identity <<'SQL'
-CREATE TABLE IF NOT EXISTS um_domain (
-    UM_DOMAIN_ID SERIAL NOT NULL,
-    UM_DOMAIN_NAME VARCHAR(255) NOT NULL UNIQUE,
-    UM_CREATED_DATE BIGINT,
-    PRIMARY KEY (UM_DOMAIN_ID)
-);
+    if [ ! -f "$PROJECT_ROOT/wso2is-7-config/postgresql-shared.sql" ] || [ ! -f "$PROJECT_ROOT/wso2is-7-config/postgresql-identity.sql" ]; then
+        echo "✗ Missing required SQL scripts in wso2is-7-config/."
+        echo "  Expected files: postgresql-shared.sql and postgresql-identity.sql"
+        return 1
+    fi
 
-CREATE TABLE IF NOT EXISTS um_tenant (
-    UM_ID SERIAL NOT NULL,
-    UM_DOMAIN_NAME VARCHAR(255) NOT NULL,
-    UM_CREATED_DATE BIGINT,
-    UM_EMAIL VARCHAR(255),
-    UM_ACTIVE BOOLEAN,
-    PRIMARY KEY (UM_ID),
-    FOREIGN KEY (UM_DOMAIN_NAME) REFERENCES um_domain(UM_DOMAIN_NAME)
-);
-
-CREATE TABLE IF NOT EXISTS um_user (
-    UM_ID INTEGER NOT NULL,
-    UM_USER_ID VARCHAR(255) NOT NULL,
-    UM_USER_NAME VARCHAR(255) NOT NULL,
-    UM_DOMAIN_ID INTEGER,
-    UM_TENANT_ID INTEGER,
-    PRIMARY KEY (UM_ID),
-    UNIQUE (UM_USER_NAME, UM_TENANT_ID)
-);
-
-CREATE TABLE IF NOT EXISTS um_user_password (
-    UM_ID SERIAL NOT NULL,
-    UM_USER_ID VARCHAR(255) NOT NULL,
-    UM_PASSWORD VARCHAR(255),
-    UM_SALT_VALUE VARCHAR(31),
-    UM_REQUIRE_CHANGE BOOLEAN,
-    UM_CHANGED_TIME BIGINT,
-    UM_TENANT_ID INTEGER,
-    PRIMARY KEY (UM_ID),
-    UNIQUE (UM_USER_ID, UM_TENANT_ID)
-);
-
-CREATE TABLE IF NOT EXISTS um_role (
-    UM_ID SERIAL NOT NULL,
-    UM_ROLE_ID VARCHAR(255) NOT NULL,
-    UM_ROLE_NAME VARCHAR(255) NOT NULL,
-    UM_TENANT_ID INTEGER,
-    PRIMARY KEY (UM_ID),
-    UNIQUE (UM_ROLE_NAME, UM_TENANT_ID)
-);
-
-CREATE TABLE IF NOT EXISTS um_user_role (
-    UM_ID SERIAL NOT NULL,
-    UM_USER_ID VARCHAR(255),
-    UM_ROLE_ID VARCHAR(255),
-    UM_TENANT_ID INTEGER,
-    PRIMARY KEY (UM_ID)
-);
-
-CREATE TABLE IF NOT EXISTS um_permission (
-    UM_ID SERIAL NOT NULL,
-    UM_RESOURCE_ID VARCHAR(255) NOT NULL,
-    UM_ACTION VARCHAR(255) NOT NULL,
-    UM_TENANT_ID INTEGER,
-    PRIMARY KEY (UM_ID),
-    UNIQUE (UM_RESOURCE_ID, UM_ACTION, UM_TENANT_ID)
-);
-
-CREATE TABLE IF NOT EXISTS um_role_permission (
-    UM_ID SERIAL NOT NULL,
-    UM_PERMISSION_ID INTEGER,
-    UM_ROLE_ID VARCHAR(255),
-    UM_TENANT_ID INTEGER,
-    PRIMARY KEY (UM_ID)
-);
-
-CREATE TABLE IF NOT EXISTS um_user_attribute (
-    UM_ID SERIAL NOT NULL,
-    UM_USER_ID VARCHAR(255),
-    UM_ATTR_NAME VARCHAR(255),
-    UM_ATTR_VALUE TEXT,
-    UM_PROFILE_ID VARCHAR(255),
-    UM_TENANT_ID INTEGER,
-    PRIMARY KEY (UM_ID)
-);
-SQL
-
-    docker exec -i "$pg_container" psql -U postgres -d wso2is_shared <<'SQL'
-CREATE TABLE IF NOT EXISTS shared_user (
-    UM_ID SERIAL NOT NULL,
-    UM_USER_ID VARCHAR(255) NOT NULL,
-    UM_USER_NAME VARCHAR(255) NOT NULL,
-    UM_TENANT_ID INTEGER,
-    PRIMARY KEY (UM_ID)
-);
-SQL
+    cat "$PROJECT_ROOT/wso2is-7-config/postgresql-shared.sql" | docker exec -i "$pg_container" psql -v ON_ERROR_STOP=1 -U postgres -d wso2is_shared >/dev/null
+    cat "$PROJECT_ROOT/wso2is-7-config/postgresql-identity.sql" | docker exec -i "$pg_container" psql -v ON_ERROR_STOP=1 -U postgres -d wso2is_identity >/dev/null
 
     echo "✓ WSO2 schema repair completed"
 }
@@ -277,3 +191,6 @@ echo "  # With test environment loaded"
 echo "  export \$(cat .env.test | grep -v '^#' | xargs)"
 echo "  pytest tests/"
 echo ""
+
+sudo chown -R $(whoami):$(whoami) /data/dartserver-pythonapp/.git
+chmod -R u+rwX /data/dartserver-pythonapp/.git
