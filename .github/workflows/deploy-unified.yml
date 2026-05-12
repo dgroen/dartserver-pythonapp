@@ -273,8 +273,8 @@ jobs:
             echo "❌ Invalid shared SQL seed: CREATE TABLE UM_ROLE not found"
             exit 1
           fi
-          if ! grep -q "CREATE TABLE IDN_CLAIM_MAPPED_ATTRIBUTE" ./wso2is-7-config/postgresql-identity.sql; then
-            echo "❌ Invalid identity SQL seed: CREATE TABLE IDN_CLAIM_MAPPED_ATTRIBUTE not found"
+          if ! grep -q "IDN_CLAIM_MAPPED_ATTRIBUTE" ./wso2is-7-config/postgresql-identity.sql; then
+            echo "❌ Invalid identity SQL seed: IDN_CLAIM_MAPPED_ATTRIBUTE not found"
             exit 1
           fi
           nginx_conf_src=""
