@@ -191,6 +191,3 @@ echo "  # With test environment loaded"
 echo "  export \$(cat .env.test | grep -v '^#' | xargs)"
 echo "  pytest tests/"
 echo ""
-
-sudo chown -R $(whoami):$(whoami) /data/dartserver-pythonapp/.git
-chmod -R u+rwX /data/dartserver-pythonapp/.git
