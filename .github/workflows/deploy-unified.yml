@@ -261,29 +261,9 @@ jobs:
           mkdir -p ./wso2is-7-config ./ssl ./nginx
           cp -r dartserver-config/environments/test/wso2is-config/. ./wso2is-7-config/
           cp -r dartserver-config/environments/test/ssl/. ./ssl/
-          find_first_file() {
-            for candidate in "$@"; do
-              if [ -f "${candidate}" ]; then
-                echo "${candidate}"
-                return 0
-              fi
-            done
-            return 1
-          }
-
-          nginx_conf_src=$(find_first_file \
-            dartserver-config/environments/test/nginx/nginx.conf \
-            dartserver-config/environments/test/nginx/nginx/nginx.conf)
-          nginx_crt_src=$(find_first_file \
-            dartserver-config/environments/test/nginx/nginx.crt \
-            dartserver-config/environments/test/nginx/cert.pem \
-            dartserver-config/environments/test/nginx/nginx/nginx.crt \
-            dartserver-config/environments/test/nginx/nginx/cert.pem)
-          nginx_key_src=$(find_first_file \
-            dartserver-config/environments/test/nginx/nginx.key \
-            dartserver-config/environments/test/nginx/key.pem \
-            dartserver-config/environments/test/nginx/nginx/nginx.key \
-            dartserver-config/environments/test/nginx/nginx/key.pem)
+          nginx_conf_src=$(find dartserver-config/environments/test/nginx -type f -name 'nginx.conf' | sort | head -n 1)
+          nginx_crt_src=$(find dartserver-config/environments/test/nginx -type f \( -name 'nginx.crt' -o -name 'cert.pem' \) | sort | head -n 1)
+          nginx_key_src=$(find dartserver-config/environments/test/nginx -type f \( -name 'nginx.key' -o -name 'key.pem' \) | sort | head -n 1)
 
           if [ -z "${nginx_conf_src}" ] || [ -z "${nginx_crt_src}" ] || [ -z "${nginx_key_src}" ]; then
             echo "❌ Could not resolve nginx asset files from config bundle"
@@ -291,6 +271,8 @@ jobs:
             find dartserver-config/environments/test/nginx -maxdepth 4 -mindepth 1 -ls || true
             exit 1
           fi
+
+          echo "ℹ️ Using nginx assets: conf='${nginx_conf_src}', crt='${nginx_crt_src}', key='${nginx_key_src}'"
 
           install -m 0644 "${nginx_conf_src}" ./nginx/nginx.conf
           install -m 0644 "${nginx_crt_src}" ./nginx/nginx.crt
@@ -321,26 +303,25 @@ jobs:
           # Start containers
           echo "▶️  Starting containers..."
           docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d
-            done
 
-            docker exec darts-postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/01-init-wso2-dbs.sql || true
+          docker exec darts-postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/01-init-wso2-dbs.sql || true
 
-            # Ensure WSO2 user-store schema exists in test PostgreSQL BEFORE starting containers
-            echo "🛠️  Verifying and repairing WSO2 PostgreSQL schema (idempotent)..."
-            if [ -f helpers/setup-test-environment.sh ]; then
-              bash helpers/setup-test-environment.sh || { echo "❌ WSO2 schema repair failed"; exit 1; }
-            else
-              echo "❌ helpers/setup-test-environment.sh not found! Cannot repair WSO2 schema."
-              exit 1
-            fi
+          # Ensure WSO2 user-store schema exists in test PostgreSQL BEFORE starting containers
+          echo "🛠️  Verifying and repairing WSO2 PostgreSQL schema (idempotent)..."
+          if [ -f helpers/setup-test-environment.sh ]; then
+            bash helpers/setup-test-environment.sh || { echo "❌ WSO2 schema repair failed"; exit 1; }
+          else
+            echo "❌ helpers/setup-test-environment.sh not found! Cannot repair WSO2 schema."
+            exit 1
+          fi
 
-            if ! docker exec darts-postgres psql -U postgres -d wso2is_identity -tAc "SELECT to_regclass('public.um_domain');" | grep -q "um_domain"; then
-              echo "❌ WSO2 schema verification failed: table um_domain is missing"
-              exit 1
-            fi
+          if ! docker exec darts-postgres psql -U postgres -d wso2is_identity -tAc "SELECT to_regclass('public.um_domain');" | grep -q "um_domain"; then
+            echo "❌ WSO2 schema verification failed: table um_domain is missing"
+            exit 1
+          fi
 
-            echo "🔄 Restarting WSO2 services after schema verification..."
-            docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml restart wso2is wso2apim
+          echo "🔄 Restarting WSO2 services after schema verification..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml restart wso2is wso2apim
 
           # Wait for services to be healthy
           echo "⏳ Waiting for services to be healthy..."
@@ -686,29 +667,9 @@ jobs:
           cp -r dartserver-config/environments/production/wso2is-config/. ./wso2is-7-config/
           cp -r dartserver-config/environments/production/ssl/. ./ssl/
 
-          find_first_file() {
-            for candidate in "$@"; do
-              if [ -f "${candidate}" ]; then
-                echo "${candidate}"
-                return 0
-              fi
-            done
-            return 1
-          }
-
-          nginx_conf_src=$(find_first_file \
-            dartserver-config/environments/production/nginx/nginx.conf \
-            dartserver-config/environments/production/nginx/nginx/nginx.conf)
-          nginx_crt_src=$(find_first_file \
-            dartserver-config/environments/production/nginx/nginx.crt \
-            dartserver-config/environments/production/nginx/cert.pem \
-            dartserver-config/environments/production/nginx/nginx/nginx.crt \
-            dartserver-config/environments/production/nginx/nginx/cert.pem)
-          nginx_key_src=$(find_first_file \
-            dartserver-config/environments/production/nginx/nginx.key \
-            dartserver-config/environments/production/nginx/key.pem \
-            dartserver-config/environments/production/nginx/nginx/nginx.key \
-            dartserver-config/environments/production/nginx/nginx/key.pem)
+          nginx_conf_src=$(find dartserver-config/environments/production/nginx -type f -name 'nginx.conf' | sort | head -n 1)
+          nginx_crt_src=$(find dartserver-config/environments/production/nginx -type f \( -name 'nginx.crt' -o -name 'cert.pem' \) | sort | head -n 1)
+          nginx_key_src=$(find dartserver-config/environments/production/nginx -type f \( -name 'nginx.key' -o -name 'key.pem' \) | sort | head -n 1)
 
           if [ -z "${nginx_conf_src}" ] || [ -z "${nginx_crt_src}" ] || [ -z "${nginx_key_src}" ]; then
             echo "❌ Could not resolve nginx asset files from config bundle"
@@ -716,6 +677,8 @@ jobs:
             find dartserver-config/environments/production/nginx -maxdepth 4 -mindepth 1 -ls || true
             exit 1
           fi
+
+          echo "ℹ️ Using nginx assets: conf='${nginx_conf_src}', crt='${nginx_crt_src}', key='${nginx_key_src}'"
 
           install -m 0644 "${nginx_conf_src}" ./nginx/nginx.conf
           install -m 0644 "${nginx_crt_src}" ./nginx/nginx.crt
