@@ -261,18 +261,40 @@ jobs:
           mkdir -p ./wso2is-7-config ./ssl ./nginx
           cp -r dartserver-config/environments/test/wso2is-config/. ./wso2is-7-config/
           cp -r dartserver-config/environments/test/ssl/. ./ssl/
-          for nginx_asset in nginx.conf nginx.crt nginx.key; do
-            source_path="dartserver-config/environments/test/nginx/${nginx_asset}"
-            target_path="./nginx/${nginx_asset}"
+          find_first_file() {
+            for candidate in "$@"; do
+              if [ -f "${candidate}" ]; then
+                echo "${candidate}"
+                return 0
+              fi
+            done
+            return 1
+          }
 
-            if [ ! -f "${source_path}" ]; then
-              echo "❌ Expected nginx asset is missing or not a regular file: ${source_path}"
-              find dartserver-config/environments/test/nginx -maxdepth 2 -mindepth 1 -ls || true
-              exit 1
-            fi
+          nginx_conf_src=$(find_first_file \
+            dartserver-config/environments/test/nginx/nginx.conf \
+            dartserver-config/environments/test/nginx/nginx/nginx.conf)
+          nginx_crt_src=$(find_first_file \
+            dartserver-config/environments/test/nginx/nginx.crt \
+            dartserver-config/environments/test/nginx/cert.pem \
+            dartserver-config/environments/test/nginx/nginx/nginx.crt \
+            dartserver-config/environments/test/nginx/nginx/cert.pem)
+          nginx_key_src=$(find_first_file \
+            dartserver-config/environments/test/nginx/nginx.key \
+            dartserver-config/environments/test/nginx/key.pem \
+            dartserver-config/environments/test/nginx/nginx/nginx.key \
+            dartserver-config/environments/test/nginx/nginx/key.pem)
 
-            install -m 0644 "${source_path}" "${target_path}"
-          done
+          if [ -z "${nginx_conf_src}" ] || [ -z "${nginx_crt_src}" ] || [ -z "${nginx_key_src}" ]; then
+            echo "❌ Could not resolve nginx asset files from config bundle"
+            echo "Resolved values: nginx_conf_src='${nginx_conf_src}', nginx_crt_src='${nginx_crt_src}', nginx_key_src='${nginx_key_src}'"
+            find dartserver-config/environments/test/nginx -maxdepth 4 -mindepth 1 -ls || true
+            exit 1
+          fi
+
+          install -m 0644 "${nginx_conf_src}" ./nginx/nginx.conf
+          install -m 0644 "${nginx_crt_src}" ./nginx/nginx.crt
+          install -m 0644 "${nginx_key_src}" ./nginx/nginx.key
           chmod 0600 ./nginx/nginx.key
 
           echo "🔧 Normalizing .env encoding to UTF-8 (strip BOM, convert Latin-1 if needed)..."
@@ -658,10 +680,47 @@ jobs:
           # Copy configuration files from config repository (fresh bundle)
           # This intentionally overrides tracked files (nginx.conf, SSL certs, etc.)
           echo "📝 Copying configuration files from config repository..."
+          rm -rf ./wso2is-7-config ./ssl ./nginx
           cp dartserver-config/environments/production/.env ./.env
-          cp -r dartserver-config/environments/production/wso2is-config ./wso2is-7-config
-          cp -r dartserver-config/environments/production/ssl ./ssl
-          cp -r dartserver-config/environments/production/nginx ./nginx
+          mkdir -p ./wso2is-7-config ./ssl ./nginx
+          cp -r dartserver-config/environments/production/wso2is-config/. ./wso2is-7-config/
+          cp -r dartserver-config/environments/production/ssl/. ./ssl/
+
+          find_first_file() {
+            for candidate in "$@"; do
+              if [ -f "${candidate}" ]; then
+                echo "${candidate}"
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          nginx_conf_src=$(find_first_file \
+            dartserver-config/environments/production/nginx/nginx.conf \
+            dartserver-config/environments/production/nginx/nginx/nginx.conf)
+          nginx_crt_src=$(find_first_file \
+            dartserver-config/environments/production/nginx/nginx.crt \
+            dartserver-config/environments/production/nginx/cert.pem \
+            dartserver-config/environments/production/nginx/nginx/nginx.crt \
+            dartserver-config/environments/production/nginx/nginx/cert.pem)
+          nginx_key_src=$(find_first_file \
+            dartserver-config/environments/production/nginx/nginx.key \
+            dartserver-config/environments/production/nginx/key.pem \
+            dartserver-config/environments/production/nginx/nginx/nginx.key \
+            dartserver-config/environments/production/nginx/nginx/key.pem)
+
+          if [ -z "${nginx_conf_src}" ] || [ -z "${nginx_crt_src}" ] || [ -z "${nginx_key_src}" ]; then
+            echo "❌ Could not resolve nginx asset files from config bundle"
+            echo "Resolved values: nginx_conf_src='${nginx_conf_src}', nginx_crt_src='${nginx_crt_src}', nginx_key_src='${nginx_key_src}'"
+            find dartserver-config/environments/production/nginx -maxdepth 4 -mindepth 1 -ls || true
+            exit 1
+          fi
+
+          install -m 0644 "${nginx_conf_src}" ./nginx/nginx.conf
+          install -m 0644 "${nginx_crt_src}" ./nginx/nginx.crt
+          install -m 0644 "${nginx_key_src}" ./nginx/nginx.key
+          chmod 0600 ./nginx/nginx.key
 
           echo "🔧 Normalizing .env encoding to UTF-8 (strip BOM, convert Latin-1 if needed)..."
           normalize_env ".env"
