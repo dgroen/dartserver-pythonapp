@@ -1,0 +1,100 @@
+# Test WSO2 Bootstrap
+
+Use these scripts on the test server after the WSO2 databases and services are up. Run them one by one and verify the output after each step.
+
+## 0. Load the test environment
+
+```bash
+cd /opt/dartserver-pythonapp
+export $(grep -v '^#' .env | xargs)
+```
+
+## 1. Register the test-server OAuth client
+
+```bash
+python3 helpers/register_wso2_test_client.py
+```
+
+Verify:
+- The script reports that the client was found or registered.
+- It prints a successful token request.
+
+## 2. Configure redirect URIs on the application
+
+```bash
+python3 helpers/configure_wso2_redirects.py
+```
+
+Verify:
+- The script reports the application was found.
+- It shows the updated callback URLs.
+
+## 3. Provision the player account
+
+```bash
+python3 helpers/test_wso2_provision_user.py \
+  --username player \
+  --password playerpass \
+  --role player \
+  --display-name Player
+```
+
+## 4. Provision the game master account
+
+```bash
+python3 helpers/test_wso2_provision_user.py \
+  --username master \
+  --password masterpass \
+  --role gamemaster \
+  --display-name Master
+```
+
+## 5. Provision the admin account
+
+```bash
+python3 helpers/test_wso2_provision_user.py \
+  --username Dennis \
+  --password 'DwvDG=8k' \
+  --role admin \
+  --display-name Dennis
+```
+
+Verify for each user:
+- The user is created or updated successfully.
+- The requested role appears in the final role list.
+
+## 6. Configure the gateway client
+
+```bash
+python3 helpers/configure_wso2_gateway_client.py \
+  --ws-url "$WSO2_IS_URL" \
+  --admin-user "$WSO2_IS_INTROSPECT_USER" \
+  --admin-pass "$WSO2_IS_INTROSPECT_PASSWORD" \
+  --client-id "$WSO2_IS_CLIENT_ID" \
+  --client-secret "$WSO2_IS_CLIENT_SECRET" \
+  --redirect-uris "$WSO2_REDIRECT_URI"
+```
+
+Verify:
+- The client lookup or update succeeds.
+- The script prints a successful token request.
+
+## 7. Optional validation
+
+```bash
+docker exec -i darts-postgres psql -U postgres -d wso2is_shared -c "
+SELECT um_role_name FROM um_role WHERE um_role_name IN ('admin','everyone');
+"
+
+docker exec -i darts-postgres psql -U postgres -d wso2is_identity -c "
+SELECT c.claim_uri, m.user_store_domain_name, m.attribute_name
+FROM idn_claim c
+LEFT JOIN idn_claim_mapped_attribute m
+  ON m.local_claim_id = c.id AND m.tenant_id = c.tenant_id
+WHERE c.claim_uri IN ('http://wso2.org/claims/username','http://wso2.org/claims/addresses');
+"
+```
+
+## Next step
+
+Once the manual run succeeds end to end, these same steps can be added to the deployment pipeline so the test environment self-heals on deploy.

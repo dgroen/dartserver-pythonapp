@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
-Script to configure WSO2 Identity Server OAuth2 Application Redirect URIs
-This script updates the service provider to include both callback and post-logout redirect URIs
+Configure WSO2 Identity Server OAuth2 application redirect URIs for test.
+
+This script updates the application through the WSO2 Applications API and
+works on the test server with default test values.
 """
 
+from __future__ import annotations
+
+import argparse
 import os
 import sys
 import time
@@ -18,18 +23,17 @@ requests.packages.urllib3.disable_warnings()  # type: ignore
 load_dotenv()
 
 # WSO2 IS Configuration
-WSO2_IS_URL = os.getenv("WSO2_IS_URL", "https://letsplaydarts.eu/auth")
+WSO2_IS_URL = os.getenv("WSO2_IS_URL", "https://test.letsplaydarts.eu/auth")
 WSO2_CLIENT_ID = os.getenv("WSO2_CLIENT_ID", "")
 WSO2_CLIENT_SECRET = os.getenv("WSO2_CLIENT_SECRET", "")
-WSO2_ADMIN_USERNAME = os.getenv("WSO2_ADMIN_USERNAME", "admin")
-WSO2_ADMIN_PASSWORD = os.getenv("WSO2_ADMIN_PASSWORD", "admin")
+WSO2_ADMIN_USERNAME = os.getenv("WSO2_ADMIN_USERNAME", os.getenv("WSO2_ADMIN_USER", "admin"))
+WSO2_ADMIN_PASSWORD = os.getenv("WSO2_ADMIN_PASSWORD", os.getenv("WSO2_ADMIN_PASS", "admin"))
 WSO2_IS_VERIFY_SSL = os.getenv("WSO2_IS_VERIFY_SSL", "False").lower() == "true"
 
 # Redirect URIs to register
 CALLBACK_URI = os.getenv("WSO2_REDIRECT_URI", "https://letsplaydarts.eu/callback")
 POST_LOGOUT_URI = os.getenv("WSO2_POST_LOGOUT_REDIRECT_URI", "https://letsplaydarts.eu/")
 
-# API endpoints
 API_BASE = f"{WSO2_IS_URL}/api/server/v1"
 APPLICATIONS_ENDPOINT = f"{API_BASE}/applications"
 
@@ -128,16 +132,11 @@ def update_application_redirect_uris(access_token, app_id):
         current_callbacks = oauth_config.get("callbackURLs", [])
         print(f"\n📋 Current callback URLs: {current_callbacks}")
 
-        # Create regex pattern for both URIs
-        # This allows both callback and post-logout URIs
-        new_callback_pattern = "regexp=https://letsplaydarts\\.eu(/callback|/)"
+        oauth_config["callbackURLs"] = [CALLBACK_URI, POST_LOGOUT_URI]
 
-        # Alternative: comma-separated list
-        # new_callbacks = f"{CALLBACK_URI},{POST_LOGOUT_URI}"
-
-        oauth_config["callbackURLs"] = [new_callback_pattern]
-
-        print(f"✅ New callback pattern: {new_callback_pattern}")
+        print("✅ New callback URLs:")
+        print(f"   - {CALLBACK_URI}")
+        print(f"   - {POST_LOGOUT_URI}")
 
         # Update the application
         update_response = requests.put(
@@ -166,6 +165,38 @@ def update_application_redirect_uris(access_token, app_id):
 
 def main():
     """Main function"""
+    parser = argparse.ArgumentParser(
+        description="Configure WSO2 application redirect URIs for test",
+    )
+    parser.add_argument("--ws-url", help="WSO2 base URL")
+    parser.add_argument("--client-id", help="OAuth2 client ID")
+    parser.add_argument("--client-secret", help="OAuth2 client secret")
+    parser.add_argument("--admin-user", help="WSO2 admin username")
+    parser.add_argument("--admin-pass", help="WSO2 admin password")
+    parser.add_argument("--callback-uri", help="Callback URI")
+    parser.add_argument("--post-logout-uri", help="Post logout redirect URI")
+    args = parser.parse_args()
+
+    global WSO2_IS_URL, WSO2_CLIENT_ID, WSO2_CLIENT_SECRET
+    global WSO2_ADMIN_USERNAME, WSO2_ADMIN_PASSWORD
+    global CALLBACK_URI, POST_LOGOUT_URI, API_BASE, APPLICATIONS_ENDPOINT
+    if args.ws_url:
+        WSO2_IS_URL = args.ws_url
+    if args.client_id:
+        WSO2_CLIENT_ID = args.client_id
+    if args.client_secret:
+        WSO2_CLIENT_SECRET = args.client_secret
+    if args.admin_user:
+        WSO2_ADMIN_USERNAME = args.admin_user
+    if args.admin_pass:
+        WSO2_ADMIN_PASSWORD = args.admin_pass
+    if args.callback_uri:
+        CALLBACK_URI = args.callback_uri
+    if args.post_logout_uri:
+        POST_LOGOUT_URI = args.post_logout_uri
+    API_BASE = f"{WSO2_IS_URL}/api/server/v1"
+    APPLICATIONS_ENDPOINT = f"{API_BASE}/applications"
+
     print("=" * 60)
     print("WSO2 Identity Server - Configure Redirect URIs")
     print("=" * 60)
@@ -211,22 +242,27 @@ def main():
 
     # Note: The REST API approach requires proper authentication
     # For now, we'll provide manual instructions
-    print("⚠️  Note: WSO2 IS REST API requires proper authentication setup.")
-    print("Please follow the manual steps in FIX_REDIRECT_URIS.md")
-    print()
-    print("Manual Steps:")
-    print("1. Navigate to: https://letsplaydarts.eu/auth/carbon")
-    print("2. Login with admin/admin")
-    print("3. Go to: Main → Identity → Service Providers → List")
-    print("4. Edit your application")
-    print("5. In OAuth/OpenID Connect Configuration, update Callback Url to:")
-    print("   regexp=https://letsplaydarts\\.eu(/callback|/)")
-    print("6. Click Update twice to save")
-    print()
-    print("This will allow both:")
-    print(f"   ✓ {CALLBACK_URI} (for login)")
-    print(f"   ✓ {POST_LOGOUT_URI} (for logout)")
-    print()
+    print("🔧 Attempting redirect update via WSO2 Applications API...")
+    access_token = get_access_token()
+    if not access_token:
+        print("❌ Could not obtain access token")
+        sys.exit(1)
+
+    app = get_application_by_client_id(access_token)
+    if not app:
+        print("❌ Failed to find application")
+        sys.exit(1)
+
+    success = update_application_redirect_uris(access_token, app.get("id"))
+    if success:
+        print()
+        print("✅ Redirect URIs updated successfully")
+        print(f"   - {CALLBACK_URI}")
+        print(f"   - {POST_LOGOUT_URI}")
+        sys.exit(0)
+
+    print("❌ Failed to update redirect URIs")
+    sys.exit(1)
 
 
 if __name__ == "__main__":
