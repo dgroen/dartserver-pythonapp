@@ -348,8 +348,13 @@ class TestGetWso2ActiveSessions:
 
     def test_uses_correct_endpoint(self):
         """Test that the correct WSO2 IS session management API endpoint is called"""
-        with patch.object(auth, "requests") as mock_requests, patch.object(
-            auth, "WSO2_IS_INTERNAL_URL", "https://wso2-test"
+        with (
+            patch.object(auth, "requests") as mock_requests,
+            patch.object(
+                auth,
+                "WSO2_IS_INTERNAL_URL",
+                "https://wso2-test",
+            ),
         ):
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -400,4 +405,3 @@ class TestGetWso2ActiveSessions:
         assert sessions[0]["ip"] == ""
         assert sessions[0]["user_agent"] == ""
         assert sessions[0]["applications"] == []
-

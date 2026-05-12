@@ -7,6 +7,46 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
+ensure_wso2_schema() {
+    local pg_container
+    pg_container=$(docker ps --format '{{.Names}}' | grep -E '^darts-postgres$|postgres' | head -n 1)
+
+    if [ -z "$pg_container" ]; then
+        echo "⚠ Warning: PostgreSQL Docker container not found. Skipping WSO2 schema verification."
+        return
+    fi
+
+    echo "Using PostgreSQL container: $pg_container"
+
+    # Ensure required WSO2 databases exist.
+    docker exec "$pg_container" psql -U postgres -d postgres -tc "SELECT 1 FROM pg_database WHERE datname='wso2is_identity'" | grep -q 1 || \
+    docker exec "$pg_container" psql -U postgres -d postgres -c "CREATE DATABASE wso2is_identity;" >/dev/null
+
+    docker exec "$pg_container" psql -U postgres -d postgres -tc "SELECT 1 FROM pg_database WHERE datname='wso2is_shared'" | grep -q 1 || \
+    docker exec "$pg_container" psql -U postgres -d postgres -c "CREATE DATABASE wso2is_shared;" >/dev/null
+
+    local um_domain_exists
+    um_domain_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT to_regclass('public.um_domain');")
+
+    if [ "$um_domain_exists" = "um_domain" ]; then
+        echo "✓ WSO2 user store schema already present (um_domain exists)"
+        return
+    fi
+
+    echo "⚠ WSO2 user store schema is missing; applying official WSO2 PostgreSQL scripts..."
+
+    if [ ! -f "$PROJECT_ROOT/wso2is-7-config/postgresql-shared.sql" ] || [ ! -f "$PROJECT_ROOT/wso2is-7-config/postgresql-identity.sql" ]; then
+        echo "✗ Missing required SQL scripts in wso2is-7-config/."
+        echo "  Expected files: postgresql-shared.sql and postgresql-identity.sql"
+        return 1
+    fi
+
+    cat "$PROJECT_ROOT/wso2is-7-config/postgresql-shared.sql" | docker exec -i "$pg_container" psql -v ON_ERROR_STOP=1 -U postgres -d wso2is_shared >/dev/null
+    cat "$PROJECT_ROOT/wso2is-7-config/postgresql-identity.sql" | docker exec -i "$pg_container" psql -v ON_ERROR_STOP=1 -U postgres -d wso2is_identity >/dev/null
+
+    echo "✓ WSO2 schema repair completed"
+}
+
 echo "=== Setting up Test Environment ==="
 echo ""
 
@@ -36,6 +76,15 @@ else
     echo "  To start PostgreSQL (if using Docker):"
     echo "    docker-compose -f docker-compose-wso2.yml up -d postgres"
     exit 1
+fi
+
+# Step 2b: Verify and repair WSO2 schema in PostgreSQL (if Docker PostgreSQL is present)
+echo ""
+echo "Step 2b: Verifying WSO2 schema (um_domain)..."
+if command -v docker &> /dev/null; then
+    ensure_wso2_schema
+else
+    echo "⚠ Warning: docker command not found. Skipping WSO2 schema verification."
 fi
 
 # Create test database

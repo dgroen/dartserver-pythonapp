@@ -854,9 +854,7 @@ class DatabaseService:
                 .distinct()
                 .subquery()
             )
-            total_turns = (
-                session.query(func.count()).select_from(total_turns_subq).scalar()
-            ) or 0
+            total_turns = (session.query(func.count()).select_from(total_turns_subq).scalar()) or 0
 
             average_score = round(total_points / total_turns, 1) if total_turns > 0 else 0
 

@@ -29,7 +29,7 @@ Options:
 
 Example:
   $SCRIPT_NAME --scope dartboard:write --app DartsApp --host https://localhost:9443 --insecure
-  
+
 For container startup, use:
   $SCRIPT_NAME --wait-for-wso2 --insecure --host https://darts-wso2is:9443
 EOF
@@ -118,15 +118,15 @@ fi
 
 if [ -n "$API_RESOURCE_EXISTING_ID" ]; then
   echo "API Resource '$API_RESOURCE_NAME' already exists (id=$API_RESOURCE_EXISTING_ID)" | WINDENT
-  
+
   # Fetch the full API resource to check scopes
   resp=$(run_curl "$API_RESOURCES_ENDPOINT/$API_RESOURCE_EXISTING_ID")
   http=$(echo "$resp" | sed -n '1p')
   body=$(echo "$resp" | sed -n '2,$p')
-  
+
   if [ "$http" = "200" ]; then
     SCOPE_EXISTS=$(echo "$body" | jq -r --arg scope "$SCOPE_NAME" '.scopes[]? | select(.name == $scope) | .name // empty' 2>/dev/null) || true
-    
+
     if [ -n "$SCOPE_EXISTS" ]; then
       echo "Scope '$SCOPE_NAME' already exists in API Resource" | WINDENT
     else
@@ -147,7 +147,7 @@ else
     resp=$(run_curl -X POST -d "$api_payload" "$API_RESOURCES_ENDPOINT")
     http=$(echo "$resp" | sed -n '1p')
     body=$(echo "$resp" | sed -n '2,$p')
-    
+
     if [ "$http" = "201" ] || [ "$http" = "200" ]; then
       API_RESOURCE_UUID=$(echo "$body" | jq -r '.id // empty')
       echo "API Resource created (id=$API_RESOURCE_UUID)" | WINDENT
@@ -199,7 +199,7 @@ body=$(echo "$resp" | sed -n '2,$p')
 
 if [ "$http" = "200" ]; then
   ALREADY_AUTHORIZED=$(echo "$body" | jq -r --arg id "$API_RESOURCE_UUID" '.authorizedAPIs[]? | select(.id == $id) | .id // empty' 2>/dev/null) || true
-  
+
   if [ -n "$ALREADY_AUTHORIZED" ]; then
     echo "API Resource already authorized for $APP_NAME" | WINDENT
   else
@@ -210,7 +210,7 @@ if [ "$http" = "200" ]; then
       auth_payload="{\"id\":\"$API_RESOURCE_UUID\",\"policyIdentifier\":\"RBAC\",\"scopes\":[\"$SCOPE_NAME\"]}"
       resp=$(run_curl -X POST -d "$auth_payload" "$API_APPS_ENDPOINT/$APP_ID/authorized-apis")
       http=$(echo "$resp" | sed -n '1p')
-      
+
       if [ "$http" = "201" ] || [ "$http" = "200" ]; then
         echo "API Resource authorized successfully" | WINDENT
       elif [ "$http" = "409" ]; then

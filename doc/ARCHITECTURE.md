@@ -9,16 +9,16 @@ graph TB
     Dartboards["Dartboard Hardware<br/>(OAuth2 Client)"]
     Client["Web Clients<br/>(Browser)"]
     Mobile["Mobile Clients"]
-    
+
     WSO2_APIM["WSO2 API Manager<br/>(API Gateway)"]
     API_Gateway["Darts API Gateway<br/>(Port 8080)"]
-    
+
     RMQ["RabbitMQ<br/>(Score Queue)"]
-    
+
     Dartboards -->|HTTPS + OAuth2| WSO2_APIM
     Client -->|HTTP/WebSocket| Flask["Flask App<br/>(Port 5000)"]
     Mobile -->|HTTP/WebSocket| Flask
-    
+
     WSO2_APIM -->|Forwards| API_Gateway
     API_Gateway -->|Publishes| RMQ
     RMQ -->|Consumer| Flask
@@ -212,20 +212,20 @@ sequenceDiagram
 
     Note over Dartboard: Dart hits the board
     Dartboard->>Dartboard: Detect GPIO pins activated
-    
+
     Note over Dartboard: First request or token expired
     Dartboard->>APIM: POST /oauth2/token<br/>(client_credentials)
     APIM->>Dartboard: Access Token (expires in 3600s)
-    
+
     Dartboard->>APIM: POST /api/v1/dartboard/throw<br/>Bearer token + pin data
     APIM->>APIM: Validate token & rate limit
     APIM->>Gateway: Forward request
-    
+
     Gateway->>Gateway: Validate JWT token
     Gateway->>Gateway: Check scopes (dartboard:write)
     Gateway->>RMQ: Publish to darts.dartboard.throw
     Gateway->>Dartboard: 201 Success
-    
+
     RMQ->>Flask: Consume message
     Flask->>Flask: Map pins to score
     Flask->>DB: Save throw

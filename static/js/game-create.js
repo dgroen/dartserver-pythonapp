@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     await loadGameTypes(document.getElementById('game-type'));
     setupEventListeners();
     handleGameTypeChange(); // Initialize hard mode visibility
-    
+
     // Check for pre-filled players from query parameters
     const urlParams = new URLSearchParams(window.location.search);
     const playersParam = urlParams.get('players');

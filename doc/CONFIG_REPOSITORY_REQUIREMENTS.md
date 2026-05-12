@@ -41,11 +41,11 @@ The deployment pipeline pulls environment-specific configuration from the privat
 - **Required**: Yes (as of PR #182)
 - **Format**: Space-separated or comma-separated list of scopes
 - **Default**: `"dartboard:write dartboard:read game:write game:control score:write player:write"`
-- **Purpose**: 
+- **Purpose**:
   - Fallback when WSO2 introspection returns tokens without scope field
   - Only applied when `client_id` matches `WSO2_IS_CLIENT_ID`
   - Enables scope-based authorization even when introspection omits scopes
-- **Example**: 
+- **Example**:
   ```dotenv
   WSO2_IS_DEFAULT_SCOPES="dartboard:write dartboard:read game:write game:control score:write player:write"
   ```
