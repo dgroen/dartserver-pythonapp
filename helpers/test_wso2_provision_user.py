@@ -116,6 +116,18 @@ class WSO2SCIMClient:
         return None
 
     def add_user_to_group(self, user_id: str, user_name: str, group_id: str) -> bool:
+        group_response = requests.get(
+            f"{self.base_url}/scim2/Groups/{group_id}",
+            auth=self.auth,
+            headers=self.headers,
+            verify=False,
+            timeout=15,
+        )
+        if group_response.status_code == 200:
+            members = group_response.json().get("members", [])
+            if any(member.get("value") == user_id for member in members):
+                return True
+
         payload = {
             "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
             "Operations": [

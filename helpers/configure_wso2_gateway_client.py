@@ -13,6 +13,7 @@ redirect URIs if provided. It verifies the change by requesting a token.
 from __future__ import annotations
 
 import argparse
+import builtins
 import json
 import os
 import sys
@@ -98,8 +99,22 @@ def main() -> int:  # noqa: PLR0911
     p.add_argument("--client-secret", help="OAuth2 client secret")
     p.add_argument("--redirect-uris", help="Comma-separated redirect URIs to set (optional)")
     p.add_argument("--scope", help="Scope to test token request with (optional)")
+    p.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit only a JSON object on stdout when successful",
+    )
     p.add_argument("--dry-run", action="store_true", help="Show actions without applying")
     args = p.parse_args()
+
+    orig_print = print
+    if args.json:
+
+        def stderr_print(*values, **kwargs):
+            kwargs.setdefault("file", sys.stderr)
+            return orig_print(*values, **kwargs)
+
+        builtins.print = stderr_print
 
     wso2_is_url = get_env_or(args.ws_url, "WSO2_IS_URL", "https://localhost:9443")
     admin_user = get_env_or(
@@ -233,11 +248,31 @@ def main() -> int:  # noqa: PLR0911
                 print(json.dumps(t.json(), indent=2))
             except Exception:
                 print(t.text)
+            if args.json:
+                orig_print(
+                    json.dumps(
+                        {
+                            "client_id": client_id,
+                            "client_secret": client_secret,
+                            "redirect_uris": desired.get("redirect_uris", []),
+                        },
+                    ),
+                )
             return 0
         print(f"Token request failed: {t.status_code} {t.text}")
         return 7
 
     print("No CLIENT_SECRET provided; update applied but token verification skipped.")
+    if args.json:
+        orig_print(
+            json.dumps(
+                {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uris": desired.get("redirect_uris", []),
+                },
+            ),
+        )
     return 0
 
 

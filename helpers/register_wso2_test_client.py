@@ -9,6 +9,7 @@ through the deployment pipeline and also be executed manually.
 from __future__ import annotations
 
 import argparse
+import builtins
 import json
 import os
 import sys
@@ -187,7 +188,21 @@ def main():
         action="append",
         help="Redirect URI to include; can be repeated",
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit only a JSON object on stdout when successful",
+    )
     args = parser.parse_args()
+
+    orig_print = print
+    if args.json:
+
+        def stderr_print(*values, **kwargs):
+            kwargs.setdefault("file", sys.stderr)
+            return orig_print(*values, **kwargs)
+
+        builtins.print = stderr_print
 
     global WSO2_IS_URL, WSO2_ADMIN_USER, WSO2_ADMIN_PASS
     global CLIENT_ID, CLIENT_SECRET, CLIENT_NAME, REDIRECT_URIS
@@ -223,6 +238,17 @@ def main():
     success = update_client(existing_client) if existing_client else register_new_client()
 
     if success:
+        if args.json:
+            orig_print(
+                json.dumps(
+                    {
+                        "client_id": CLIENT_ID,
+                        "client_secret": CLIENT_SECRET,
+                        "client_name": CLIENT_NAME,
+                        "redirect_uris": REDIRECT_URIS,
+                    },
+                ),
+            )
         print("\n" + "=" * 70)
         print("✅ SUCCESS - Test Server OAuth2 Client is configured!")
         print("=" * 70)
