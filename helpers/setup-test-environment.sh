@@ -28,12 +28,31 @@ ensure_wso2_schema() {
     local um_domain_exists
     um_domain_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT to_regclass('public.um_domain');")
 
-    if [ "$um_domain_exists" = "um_domain" ]; then
-        echo "✓ WSO2 user store schema already present (um_domain exists)"
-        return
-    fi
+    local um_role_exists
+    um_role_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT to_regclass('public.um_role');")
 
-    echo "⚠ WSO2 user store schema is missing; applying official WSO2 PostgreSQL scripts..."
+    local role_count
+    role_count=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT COUNT(*) FROM um_role WHERE um_role_name IN ('admin', 'everyone');" 2>/dev/null || echo "0")
+
+    local username_mapping_count
+    username_mapping_count=$(docker exec "$pg_container" psql -U postgres -d wso2is_identity -tAc "
+        SELECT COUNT(*)
+        FROM idn_claim c
+        JOIN idn_claim_mapped_attribute m
+            ON m.local_claim_id = c.id AND m.tenant_id = c.tenant_id
+        WHERE c.claim_uri = 'http://wso2.org/claims/username'
+          AND m.user_store_domain_name = 'PRIMARY';
+    " 2>/dev/null || echo "0")
+
+    local addresses_mapping_count
+    addresses_mapping_count=$(docker exec "$pg_container" psql -U postgres -d wso2is_identity -tAc "
+        SELECT COUNT(*)
+        FROM idn_claim c
+        JOIN idn_claim_mapped_attribute m
+            ON m.local_claim_id = c.id AND m.tenant_id = c.tenant_id
+        WHERE c.claim_uri = 'http://wso2.org/claims/addresses'
+          AND m.user_store_domain_name = 'PRIMARY';
+    " 2>/dev/null || echo "0")
 
     if [ ! -f "$PROJECT_ROOT/wso2is-7-config/postgresql-shared.sql" ] || [ ! -f "$PROJECT_ROOT/wso2is-7-config/postgresql-identity.sql" ]; then
         echo "✗ Missing required SQL scripts in wso2is-7-config/."
@@ -41,10 +60,63 @@ ensure_wso2_schema() {
         return 1
     fi
 
-    cat "$PROJECT_ROOT/wso2is-7-config/postgresql-shared.sql" | docker exec -i "$pg_container" psql -v ON_ERROR_STOP=1 -U postgres -d wso2is_shared >/dev/null
-    cat "$PROJECT_ROOT/wso2is-7-config/postgresql-identity.sql" | docker exec -i "$pg_container" psql -v ON_ERROR_STOP=1 -U postgres -d wso2is_identity >/dev/null
+    if [ "$um_domain_exists" = "um_domain" ] && [ "$um_role_exists" = "um_role" ] && [ "$role_count" -ge 1 ]; then
+        echo "✓ WSO2 user store schema is present and core roles exist"
+    else
+        echo "⚠ WSO2 schema/role bootstrap is incomplete"
+        echo "  - um_domain table: $um_domain_exists"
+        echo "  - um_role table: $um_role_exists"
+        echo "  - core role count (admin/everyone): $role_count"
+        if [ "${ALLOW_WSO2_RESEED:-false}" != "true" ]; then
+            echo "✗ Refusing to reseed WSO2 databases (set ALLOW_WSO2_RESEED=true to auto-repair)"
+            return 1
+        fi
+        echo "⚠ Reseeding WSO2 shared/identity databases from SQL scripts..."
+        docker exec "$pg_container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname IN ('wso2is_shared', 'wso2is_identity');" >/dev/null
+        docker exec "$pg_container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS wso2is_shared;" >/dev/null
+        docker exec "$pg_container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS wso2is_identity;" >/dev/null
+        docker exec "$pg_container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE wso2is_shared;" >/dev/null
+        docker exec "$pg_container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE wso2is_identity;" >/dev/null
+        cat "$PROJECT_ROOT/wso2is-7-config/postgresql-shared.sql" | docker exec -i "$pg_container" psql -v ON_ERROR_STOP=1 -U postgres -d wso2is_shared >/dev/null
+        cat "$PROJECT_ROOT/wso2is-7-config/postgresql-identity.sql" | docker exec -i "$pg_container" psql -v ON_ERROR_STOP=1 -U postgres -d wso2is_identity >/dev/null
+        echo "✓ WSO2 database reseed completed"
+        username_mapping_count=0
+        addresses_mapping_count=0
+    fi
 
-    echo "✓ WSO2 schema repair completed"
+    if [ "$username_mapping_count" -lt 1 ] || [ "$addresses_mapping_count" -lt 1 ]; then
+        echo "⚠ Required claim mappings are missing; applying idempotent claim mapping repair..."
+        docker exec -i "$pg_container" psql -U postgres -d wso2is_identity -v ON_ERROR_STOP=1 >/dev/null <<'SQL'
+INSERT INTO idn_claim_mapped_attribute (local_claim_id, user_store_domain_name, attribute_name, tenant_id)
+SELECT c.id, 'PRIMARY', 'uid', c.tenant_id
+FROM idn_claim c
+WHERE c.claim_uri = 'http://wso2.org/claims/username'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM idn_claim_mapped_attribute m
+    WHERE m.local_claim_id = c.id
+      AND m.user_store_domain_name = 'PRIMARY'
+      AND m.tenant_id = c.tenant_id
+  );
+
+INSERT INTO idn_claim_mapped_attribute (local_claim_id, user_store_domain_name, attribute_name, tenant_id)
+SELECT c.id, 'PRIMARY', 'addresses', c.tenant_id
+FROM idn_claim c
+WHERE c.claim_uri = 'http://wso2.org/claims/addresses'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM idn_claim_mapped_attribute m
+    WHERE m.local_claim_id = c.id
+      AND m.user_store_domain_name = 'PRIMARY'
+      AND m.tenant_id = c.tenant_id
+  );
+SQL
+        echo "✓ WSO2 claim mapping repair completed"
+    else
+        echo "✓ WSO2 claim mappings for username/addresses are present"
+    fi
+
+    return
 }
 
 echo "=== Setting up Test Environment ==="

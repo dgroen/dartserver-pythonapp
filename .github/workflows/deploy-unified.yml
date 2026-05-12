@@ -261,6 +261,22 @@ jobs:
           mkdir -p ./wso2is-7-config ./ssl ./nginx
           cp -r dartserver-config/environments/test/wso2is-config/. ./wso2is-7-config/
           cp -r dartserver-config/environments/test/ssl/. ./ssl/
+
+          # Fail fast if required WSO2 SQL seed files are missing/invalid.
+          for required_sql in ./wso2is-7-config/postgresql-shared.sql ./wso2is-7-config/postgresql-identity.sql; do
+            if [ ! -s "${required_sql}" ]; then
+              echo "❌ Missing or empty required WSO2 SQL file: ${required_sql}"
+              exit 1
+            fi
+          done
+          if ! grep -q "CREATE TABLE UM_ROLE" ./wso2is-7-config/postgresql-shared.sql; then
+            echo "❌ Invalid shared SQL seed: CREATE TABLE UM_ROLE not found"
+            exit 1
+          fi
+          if ! grep -q "CREATE TABLE IDN_CLAIM_MAPPED_ATTRIBUTE" ./wso2is-7-config/postgresql-identity.sql; then
+            echo "❌ Invalid identity SQL seed: CREATE TABLE IDN_CLAIM_MAPPED_ATTRIBUTE not found"
+            exit 1
+          fi
           nginx_conf_src=""
           for candidate in \
             dartserver-config/environments/test/nginx/nginx.conf \
@@ -343,14 +359,14 @@ jobs:
           # Ensure WSO2 user-store schema exists in test PostgreSQL BEFORE starting containers
           echo "🛠️  Verifying and repairing WSO2 PostgreSQL schema (idempotent)..."
           if [ -f helpers/setup-test-environment.sh ]; then
-            bash helpers/setup-test-environment.sh || { echo "❌ WSO2 schema repair failed"; exit 1; }
+            ALLOW_WSO2_RESEED=true bash helpers/setup-test-environment.sh || { echo "❌ WSO2 schema repair failed"; exit 1; }
           else
             echo "❌ helpers/setup-test-environment.sh not found! Cannot repair WSO2 schema."
             exit 1
           fi
 
-          if ! docker exec darts-postgres psql -U postgres -d wso2is_identity -tAc "SELECT to_regclass('public.um_domain');" | grep -q "um_domain"; then
-            echo "❌ WSO2 schema verification failed: table um_domain is missing"
+          if ! docker exec darts-postgres psql -U postgres -d wso2is_shared -tAc "SELECT to_regclass('public.um_domain');" | grep -q "um_domain"; then
+            echo "❌ WSO2 schema verification failed: table um_domain is missing in wso2is_shared"
             exit 1
           fi
 
@@ -360,6 +376,36 @@ jobs:
           # Wait for services to be healthy
           echo "⏳ Waiting for services to be healthy..."
           sleep 30
+
+          echo "🔎 Validating WSO2 baseline data (roles and claim mappings)..."
+          CORE_ROLE_COUNT=$(docker exec darts-postgres psql -U postgres -d wso2is_shared -tAc "SELECT COUNT(*) FROM um_role WHERE um_role_name IN ('admin','everyone');" | tr -d '[:space:]')
+          USERNAME_MAPPING_COUNT=$(docker exec darts-postgres psql -U postgres -d wso2is_identity -tAc "
+            SELECT COUNT(*)
+            FROM idn_claim c
+            JOIN idn_claim_mapped_attribute m
+              ON m.local_claim_id = c.id AND m.tenant_id = c.tenant_id
+            WHERE c.claim_uri = 'http://wso2.org/claims/username'
+              AND m.user_store_domain_name = 'PRIMARY';
+          " | tr -d '[:space:]')
+          ADDRESSES_MAPPING_COUNT=$(docker exec darts-postgres psql -U postgres -d wso2is_identity -tAc "
+            SELECT COUNT(*)
+            FROM idn_claim c
+            JOIN idn_claim_mapped_attribute m
+              ON m.local_claim_id = c.id AND m.tenant_id = c.tenant_id
+            WHERE c.claim_uri = 'http://wso2.org/claims/addresses'
+              AND m.user_store_domain_name = 'PRIMARY';
+          " | tr -d '[:space:]')
+
+          if [ "${CORE_ROLE_COUNT}" -lt 1 ] || [ "${USERNAME_MAPPING_COUNT}" -lt 1 ] || [ "${ADDRESSES_MAPPING_COUNT}" -lt 1 ]; then
+            echo "❌ WSO2 baseline validation failed"
+            echo "  - core roles(admin/everyone): ${CORE_ROLE_COUNT}"
+            echo "  - username claim mappings: ${USERNAME_MAPPING_COUNT}"
+            echo "  - addresses claim mappings: ${ADDRESSES_MAPPING_COUNT}"
+            echo "  Recent WSO2 logs:"
+            docker logs --tail 200 darts-wso2is || true
+            exit 1
+          fi
+          echo "✅ WSO2 baseline data validation passed"
 
           # Upgrade database schema
           echo "🗄️  Upgrading database schema to latest migration..."
