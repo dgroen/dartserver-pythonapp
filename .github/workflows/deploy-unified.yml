@@ -377,6 +377,14 @@ jobs:
           echo "⏳ Waiting for services to be healthy..."
           sleep 30
 
+          echo "🛠️  Repairing WSO2 claim mappings after startup..."
+          if [ -f helpers/setup-test-environment.sh ]; then
+            WSO2_POST_START_REPAIR=true bash helpers/setup-test-environment.sh || { echo "❌ WSO2 claim repair failed"; exit 1; }
+          else
+            echo "❌ helpers/setup-test-environment.sh not found! Cannot repair WSO2 claim mappings."
+            exit 1
+          fi
+
           echo "🔎 Validating WSO2 baseline data (roles and claim mappings)..."
           CORE_ROLE_COUNT=$(docker exec darts-postgres psql -U postgres -d wso2is_shared -tAc "SELECT COUNT(*) FROM um_role WHERE um_role_name IN ('admin','everyone');" | tr -d '[:space:]')
           USERNAME_MAPPING_COUNT=$(docker exec darts-postgres psql -U postgres -d wso2is_identity -tAc "

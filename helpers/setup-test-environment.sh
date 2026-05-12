@@ -7,6 +7,69 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
+repair_wso2_claim_mappings() {
+        local pg_container
+        pg_container=$(docker ps --format '{{.Names}}' | grep -E '^darts-postgres$|postgres' | head -n 1)
+
+        if [ -z "$pg_container" ]; then
+                echo "⚠ Warning: PostgreSQL Docker container not found. Skipping WSO2 claim repair."
+                return
+        fi
+
+        echo "Using PostgreSQL container for claim repair: $pg_container"
+
+        echo "⏳ Waiting for WSO2 claim rows to become available..."
+        local claim_wait_max=60
+        local claim_wait_count=0
+        local username_claim_ready=0
+        local addresses_claim_ready=0
+
+        while [ "$claim_wait_count" -lt "$claim_wait_max" ]; do
+                username_claim_ready=$(docker exec "$pg_container" psql -U postgres -d wso2is_identity -tAc "SELECT COUNT(*) FROM idn_claim WHERE claim_uri = 'http://wso2.org/claims/username';" | tr -d '[:space:]')
+                addresses_claim_ready=$(docker exec "$pg_container" psql -U postgres -d wso2is_identity -tAc "SELECT COUNT(*) FROM idn_claim WHERE claim_uri = 'http://wso2.org/claims/addresses';" | tr -d '[:space:]')
+                if [ "$username_claim_ready" -ge 1 ] && [ "$addresses_claim_ready" -ge 1 ]; then
+                        break
+                fi
+                claim_wait_count=$((claim_wait_count + 1))
+                sleep 1
+        done
+
+        if [ "$username_claim_ready" -lt 1 ] || [ "$addresses_claim_ready" -lt 1 ]; then
+                echo "✗ WSO2 claim rows did not become available in time"
+                echo "  - username claim rows: $username_claim_ready"
+                echo "  - addresses claim rows: $addresses_claim_ready"
+                return 1
+        fi
+
+        echo "🛠️  Repairing WSO2 claim mappings..."
+        docker exec -i "$pg_container" psql -U postgres -d wso2is_identity -v ON_ERROR_STOP=1 >/dev/null <<'SQL'
+INSERT INTO idn_claim_mapped_attribute (local_claim_id, user_store_domain_name, attribute_name, tenant_id)
+SELECT c.id, 'PRIMARY', 'uid', c.tenant_id
+FROM idn_claim c
+WHERE c.claim_uri = 'http://wso2.org/claims/username'
+    AND NOT EXISTS (
+        SELECT 1
+        FROM idn_claim_mapped_attribute m
+        WHERE m.local_claim_id = c.id
+            AND m.user_store_domain_name = 'PRIMARY'
+            AND m.tenant_id = c.tenant_id
+    );
+
+INSERT INTO idn_claim_mapped_attribute (local_claim_id, user_store_domain_name, attribute_name, tenant_id)
+SELECT c.id, 'PRIMARY', 'addresses', c.tenant_id
+FROM idn_claim c
+WHERE c.claim_uri = 'http://wso2.org/claims/addresses'
+    AND NOT EXISTS (
+        SELECT 1
+        FROM idn_claim_mapped_attribute m
+        WHERE m.local_claim_id = c.id
+            AND m.user_store_domain_name = 'PRIMARY'
+            AND m.tenant_id = c.tenant_id
+    );
+SQL
+        echo "✓ WSO2 claim mappings repaired"
+}
+
 ensure_wso2_schema() {
     local pg_container
     pg_container=$(docker ps --format '{{.Names}}' | grep -E '^darts-postgres$|postgres' | head -n 1)
@@ -34,26 +97,6 @@ ensure_wso2_schema() {
     local role_count
     role_count=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT COUNT(*) FROM um_role WHERE um_role_name IN ('admin', 'everyone');" 2>/dev/null || echo "0")
 
-    local username_mapping_count
-    username_mapping_count=$(docker exec "$pg_container" psql -U postgres -d wso2is_identity -tAc "
-        SELECT COUNT(*)
-        FROM idn_claim c
-        JOIN idn_claim_mapped_attribute m
-            ON m.local_claim_id = c.id AND m.tenant_id = c.tenant_id
-        WHERE c.claim_uri = 'http://wso2.org/claims/username'
-          AND m.user_store_domain_name = 'PRIMARY';
-    " 2>/dev/null || echo "0")
-
-    local addresses_mapping_count
-    addresses_mapping_count=$(docker exec "$pg_container" psql -U postgres -d wso2is_identity -tAc "
-        SELECT COUNT(*)
-        FROM idn_claim c
-        JOIN idn_claim_mapped_attribute m
-            ON m.local_claim_id = c.id AND m.tenant_id = c.tenant_id
-        WHERE c.claim_uri = 'http://wso2.org/claims/addresses'
-          AND m.user_store_domain_name = 'PRIMARY';
-    " 2>/dev/null || echo "0")
-
     if [ ! -f "$PROJECT_ROOT/wso2is-7-config/postgresql-shared.sql" ] || [ ! -f "$PROJECT_ROOT/wso2is-7-config/postgresql-identity.sql" ]; then
         echo "✗ Missing required SQL scripts in wso2is-7-config/."
         echo "  Expected files: postgresql-shared.sql and postgresql-identity.sql"
@@ -80,44 +123,15 @@ ensure_wso2_schema() {
         cat "$PROJECT_ROOT/wso2is-7-config/postgresql-shared.sql" | docker exec -i "$pg_container" psql -v ON_ERROR_STOP=1 -U postgres -d wso2is_shared >/dev/null
         cat "$PROJECT_ROOT/wso2is-7-config/postgresql-identity.sql" | docker exec -i "$pg_container" psql -v ON_ERROR_STOP=1 -U postgres -d wso2is_identity >/dev/null
         echo "✓ WSO2 database reseed completed"
-        username_mapping_count=0
-        addresses_mapping_count=0
-    fi
-
-    if [ "$username_mapping_count" -lt 1 ] || [ "$addresses_mapping_count" -lt 1 ]; then
-        echo "⚠ Required claim mappings are missing; applying idempotent claim mapping repair..."
-        docker exec -i "$pg_container" psql -U postgres -d wso2is_identity -v ON_ERROR_STOP=1 >/dev/null <<'SQL'
-INSERT INTO idn_claim_mapped_attribute (local_claim_id, user_store_domain_name, attribute_name, tenant_id)
-SELECT c.id, 'PRIMARY', 'uid', c.tenant_id
-FROM idn_claim c
-WHERE c.claim_uri = 'http://wso2.org/claims/username'
-  AND NOT EXISTS (
-    SELECT 1
-    FROM idn_claim_mapped_attribute m
-    WHERE m.local_claim_id = c.id
-      AND m.user_store_domain_name = 'PRIMARY'
-      AND m.tenant_id = c.tenant_id
-  );
-
-INSERT INTO idn_claim_mapped_attribute (local_claim_id, user_store_domain_name, attribute_name, tenant_id)
-SELECT c.id, 'PRIMARY', 'addresses', c.tenant_id
-FROM idn_claim c
-WHERE c.claim_uri = 'http://wso2.org/claims/addresses'
-  AND NOT EXISTS (
-    SELECT 1
-    FROM idn_claim_mapped_attribute m
-    WHERE m.local_claim_id = c.id
-      AND m.user_store_domain_name = 'PRIMARY'
-      AND m.tenant_id = c.tenant_id
-  );
-SQL
-        echo "✓ WSO2 claim mapping repair completed"
-    else
-        echo "✓ WSO2 claim mappings for username/addresses are present"
     fi
 
     return
 }
+
+if [ "${WSO2_POST_START_REPAIR:-false}" = "true" ]; then
+        repair_wso2_claim_mappings
+        exit 0
+fi
 
 echo "=== Setting up Test Environment ==="
 echo ""
