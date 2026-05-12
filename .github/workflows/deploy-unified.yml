@@ -208,7 +208,7 @@ jobs:
           TEST_SERVER_USER: ${{ secrets.TEST_SERVER_USER }}
           GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
         run: |
-          ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} bash -s << ENDSSH
+          ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} bash -s << 'ENDSSH'
           set -e
           echo "🚀 Starting deployment to test environment..."
 
@@ -468,7 +468,7 @@ jobs:
           BACKUP_DATE=$(date +%Y-%m-%d)
           BACKUP_TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
 
-          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} bash -s << ENDSSH
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} bash -s << 'ENDSSH'
           set -e
           cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
 
@@ -652,7 +652,7 @@ jobs:
           PROD_SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
           GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
         run: |
-          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} bash -s << ENDSSH
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} bash -s << 'ENDSSH'
           set -e
           echo "🚀 Starting deployment to production environment..."
 
@@ -758,16 +758,16 @@ jobs:
 
           # Clone or update dartserver-website (sibling directory)
           echo "📦 Setting up dartserver-website..."
-          WEBSITE_DIR="\$(dirname \$(pwd))/dartserver-website"
-          if git -C "\${WEBSITE_DIR}" rev-parse --git-dir > /dev/null 2>&1; then
+          WEBSITE_DIR="$(dirname $(pwd))/dartserver-website"
+          if git -C "${WEBSITE_DIR}" rev-parse --git-dir > /dev/null 2>&1; then
             echo "  → Pulling latest dartserver-website..."
-            git -C "\${WEBSITE_DIR}" fetch origin
-            git -C "\${WEBSITE_DIR}" checkout main
-            git -C "\${WEBSITE_DIR}" pull origin main
+            git -C "${WEBSITE_DIR}" fetch origin
+            git -C "${WEBSITE_DIR}" checkout main
+            git -C "${WEBSITE_DIR}" pull origin main
           else
             echo "  → Cloning dartserver-website..."
-            rm -rf "\${WEBSITE_DIR}"
-            git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository_owner }}/dartserver-website.git "\${WEBSITE_DIR}"
+            rm -rf "${WEBSITE_DIR}"
+            git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository_owner }}/dartserver-website.git "${WEBSITE_DIR}"
           fi
 
           # Rebuild containers (build services individually to avoid context issues)
