@@ -65,6 +65,12 @@ run_wso2_bootstrap() {
     echo "Running WSO2 bootstrap workflow..."
     (
         cd "$PROJECT_ROOT"
+        if [ -f .env ]; then
+            set -a
+            # shellcheck disable=SC1091
+            source .env
+            set +a
+        fi
         bash "$bootstrap_script"
     )
     echo "✓ WSO2 bootstrap completed"

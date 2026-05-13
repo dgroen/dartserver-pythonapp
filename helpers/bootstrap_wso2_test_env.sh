@@ -5,6 +5,25 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+if [[ -f .env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env
+  set +a
+fi
+
+if [[ -n "${WSO2_ADMIN_USER:-}" ]]; then
+  export WSO2_ADMIN_USER="${WSO2_ADMIN_USER}"
+elif [[ -n "${BOOTSTRAP_WSO2_ADMIN_USER:-}" ]]; then
+  export WSO2_ADMIN_USER="${BOOTSTRAP_WSO2_ADMIN_USER}"
+fi
+
+if [[ -n "${WSO2_ADMIN_PASSWORD:-}" ]]; then
+  export WSO2_ADMIN_PASS="${WSO2_ADMIN_PASSWORD}"
+elif [[ -n "${BOOTSTRAP_WSO2_ADMIN_PASS:-}" ]]; then
+  export WSO2_ADMIN_PASS="${BOOTSTRAP_WSO2_ADMIN_PASS}"
+fi
+
 ENV_FILE=".env"
 
 ensure_env_file() {

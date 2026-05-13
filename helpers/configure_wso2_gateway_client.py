@@ -24,6 +24,58 @@ import urllib3
 
 urllib3.disable_warnings()
 
+DCR_AUTH_MODE = os.getenv("WSO2_DCR_AUTH_MODE", "auto").lower()
+DCR_BEARER_TOKEN = os.getenv("WSO2_DCR_BEARER_TOKEN", "")
+
+
+def _dcr_headers(include_json: bool = False) -> dict[str, str]:
+    headers: dict[str, str] = {"Accept": "application/json"}
+    if include_json:
+        headers["Content-Type"] = "application/json"
+    if DCR_AUTH_MODE == "bearer" and DCR_BEARER_TOKEN:
+        headers["Authorization"] = f"Bearer {DCR_BEARER_TOKEN}"
+    return headers
+
+
+def _dcr_request(
+    method: str,
+    url: str,
+    admin_user: str,
+    admin_pass: str,
+    payload: dict[str, Any] | None = None,
+) -> requests.Response:
+    headers = _dcr_headers(include_json=payload is not None)
+    auth = None if "Authorization" in headers else (admin_user, admin_pass)
+
+    response = requests.request(
+        method,
+        url,
+        auth=auth,
+        headers=headers,
+        json=payload,
+        verify=False,
+        timeout=10,
+    )
+
+    if (
+        response.status_code == 401
+        and DCR_AUTH_MODE == "auto"
+        and DCR_BEARER_TOKEN
+        and "Authorization" not in headers
+    ):
+        retry_headers = _dcr_headers(include_json=payload is not None)
+        retry_headers["Authorization"] = f"Bearer {DCR_BEARER_TOKEN}"
+        return requests.request(
+            method,
+            url,
+            headers=retry_headers,
+            json=payload,
+            verify=False,
+            timeout=10,
+        )
+
+    return response
+
 
 def get_env_or(arg_val: str | None, env_name: str, default: str | None = None) -> str:
     if arg_val:
@@ -33,13 +85,7 @@ def get_env_or(arg_val: str | None, env_name: str, default: str | None = None) -
 
 def dcr_get(ws_url: str, client_id: str, admin_user: str, admin_pass: str) -> requests.Response:
     url = f"{ws_url.rstrip('/')}/api/identity/oauth2/dcr/v1.1/register/{client_id}"
-    return requests.get(
-        url,
-        auth=(admin_user, admin_pass),
-        headers={"Accept": "application/json"},
-        verify=False,
-        timeout=10,
-    )
+    return _dcr_request("GET", url, admin_user, admin_pass)
 
 
 def dcr_post(
@@ -49,14 +95,7 @@ def dcr_post(
     admin_pass: str,
 ) -> requests.Response:
     url = f"{ws_url.rstrip('/')}/api/identity/oauth2/dcr/v1.1/register"
-    return requests.post(
-        url,
-        auth=(admin_user, admin_pass),
-        headers={"Content-Type": "application/json", "Accept": "application/json"},
-        json=payload,
-        verify=False,
-        timeout=10,
-    )
+    return _dcr_request("POST", url, admin_user, admin_pass, payload=payload)
 
 
 def dcr_put(
@@ -67,14 +106,7 @@ def dcr_put(
     admin_pass: str,
 ) -> requests.Response:
     url = f"{ws_url.rstrip('/')}/api/identity/oauth2/dcr/v1.1/register/{client_id}"
-    return requests.put(
-        url,
-        auth=(admin_user, admin_pass),
-        headers={"Content-Type": "application/json", "Accept": "application/json"},
-        json=payload,
-        verify=False,
-        timeout=10,
-    )
+    return _dcr_request("PUT", url, admin_user, admin_pass, payload=payload)
 
 
 def request_token(
@@ -120,12 +152,24 @@ def main() -> int:  # noqa: PLR0911
     admin_user = get_env_or(
         args.admin_user,
         "WSO2_IS_ADMIN_USER",
-        os.getenv("WSO2_IS_INTROSPECT_USER", "admin"),
+        os.getenv(
+            "WSO2_ADMIN_USER",
+            os.getenv(
+                "WSO2_ADMIN_USERNAME",
+                os.getenv("WSO2_IS_INTROSPECT_USER", "admin"),
+            ),
+        ),
     )
     admin_pass = get_env_or(
         args.admin_pass,
         "WSO2_IS_ADMIN_PASS",
-        os.getenv("WSO2_IS_INTROSPECT_PASSWORD", "admin"),
+        os.getenv(
+            "WSO2_ADMIN_PASS",
+            os.getenv(
+                "WSO2_ADMIN_PASSWORD",
+                os.getenv("WSO2_IS_INTROSPECT_PASSWORD", "admin"),
+            ),
+        ),
     )
     client_id = get_env_or(args.client_id, "WSO2_CLIENT_ID", os.getenv("WSO2_CLIENT_ID", ""))
     client_secret = get_env_or(
@@ -146,6 +190,7 @@ def main() -> int:  # noqa: PLR0911
 
     print(f"Using WSO2 URL: {wso2_is_url}")
     print(f"Client ID: {client_id}")
+    print(f"DCR auth mode: {DCR_AUTH_MODE}")
 
     # Fetch existing client
     try:

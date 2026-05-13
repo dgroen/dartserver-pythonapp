@@ -14,6 +14,7 @@ import json
 import os
 import sys
 import traceback
+from typing import Any
 
 import requests
 import urllib3
@@ -23,11 +24,20 @@ urllib3.disable_warnings()
 
 # Configuration for test server
 WSO2_IS_URL = os.getenv("WSO2_IS_URL", "https://test.letsplaydarts.eu/auth")
-WSO2_ADMIN_USER = os.getenv("WSO2_ADMIN_USER", os.getenv("WSO2_IS_INTROSPECT_USER", "admin"))
+WSO2_ADMIN_USER = os.getenv(
+    "WSO2_ADMIN_USER",
+    os.getenv("WSO2_ADMIN_USERNAME", os.getenv("WSO2_IS_INTROSPECT_USER", "admin")),
+)
 WSO2_ADMIN_PASS = os.getenv(
     "WSO2_ADMIN_PASS",
-    os.getenv("WSO2_IS_INTROSPECT_PASSWORD", "admin"),
+    os.getenv(
+        "WSO2_ADMIN_PASSWORD",
+        os.getenv("WSO2_IS_INTROSPECT_PASSWORD", "admin"),
+    ),
 )  # pragma: allowlist secret
+
+WSO2_DCR_AUTH_MODE = os.getenv("WSO2_DCR_AUTH_MODE", "auto").lower()
+WSO2_DCR_BEARER_TOKEN = os.getenv("WSO2_DCR_BEARER_TOKEN", "")
 
 # Test server OAuth2 credentials (from test env)
 CLIENT_ID = os.getenv("WSO2_CLIENT_ID", "QG32mHju2Gs5JJTh4RO60982cxsa")
@@ -48,18 +58,80 @@ DCR_REGISTER_ENDPOINT = f"{WSO2_IS_URL}/api/identity/oauth2/dcr/v1.1/register"
 DCR_CLIENT_ENDPOINT = f"{WSO2_IS_URL}/api/identity/oauth2/dcr/v1.1/register/{CLIENT_ID}"
 
 
+def _build_dcr_headers(include_json: bool = False) -> dict[str, str]:
+    headers: dict[str, str] = {"Accept": "application/json"}
+    if include_json:
+        headers["Content-Type"] = "application/json"
+    if WSO2_DCR_AUTH_MODE == "bearer" and WSO2_DCR_BEARER_TOKEN:
+        headers["Authorization"] = f"Bearer {WSO2_DCR_BEARER_TOKEN}"
+    return headers
+
+
+def _dcr_request(
+    method: str,
+    url: str,
+    json_payload: dict[str, Any] | None = None,
+) -> requests.Response:
+    headers = _build_dcr_headers(include_json=json_payload is not None)
+    auth = None if "Authorization" in headers else (WSO2_ADMIN_USER, WSO2_ADMIN_PASS)
+
+    # pylint: disable=S501
+    response = requests.request(
+        method,
+        url,
+        auth=auth,
+        headers=headers,
+        json=json_payload,
+        verify=False,
+        timeout=10,
+    )
+
+    if (
+        response.status_code == 401
+        and WSO2_DCR_AUTH_MODE == "auto"
+        and WSO2_DCR_BEARER_TOKEN
+        and "Authorization" not in headers
+    ):
+        retry_headers = _build_dcr_headers(include_json=json_payload is not None)
+        retry_headers["Authorization"] = f"Bearer {WSO2_DCR_BEARER_TOKEN}"
+        # pylint: disable=S501
+        return requests.request(
+            method,
+            url,
+            headers=retry_headers,
+            json=json_payload,
+            verify=False,
+            timeout=10,
+        )
+
+    return response
+
+
+def _check_admin_auth() -> tuple[bool, str]:
+    if WSO2_DCR_AUTH_MODE == "bearer" or WSO2_DCR_BEARER_TOKEN:
+        return True, "bearer auth configured"
+
+    # pylint: disable=S501
+    response = requests.get(
+        f"{WSO2_IS_URL}/scim2/Users",
+        auth=(WSO2_ADMIN_USER, WSO2_ADMIN_PASS),
+        headers={"Accept": "application/scim+json"},
+        params={"startIndex": 1, "count": 1},
+        verify=False,
+        timeout=10,
+    )
+    if response.status_code == 200:
+        return True, "ok"
+    if response.status_code == 401:
+        return False, "Admin credentials are not accepted by WSO2 management APIs (401)."
+    return False, f"Unexpected admin auth response from WSO2: {response.status_code}"
+
+
 def check_existing_client():
     """Check if client already exists"""
     try:
         print("🔍 Checking if client already exists...")
-        # pylint: disable=S501
-        response = requests.get(
-            DCR_CLIENT_ENDPOINT,
-            auth=(WSO2_ADMIN_USER, WSO2_ADMIN_PASS),
-            headers={"Accept": "application/json"},
-            verify=False,
-            timeout=10,
-        )
+        response = _dcr_request("GET", DCR_CLIENT_ENDPOINT)
 
         if response.status_code == 200:
             data = response.json()
@@ -99,15 +171,7 @@ def register_new_client():
         for uri in REDIRECT_URIS:
             print(f"      - {uri}")
 
-        # pylint: disable=S501
-        response = requests.post(
-            DCR_REGISTER_ENDPOINT,
-            auth=(WSO2_ADMIN_USER, WSO2_ADMIN_PASS),
-            headers={"Content-Type": "application/json", "Accept": "application/json"},
-            json=payload,
-            verify=False,
-            timeout=10,
-        )
+        response = _dcr_request("POST", DCR_REGISTER_ENDPOINT, json_payload=payload)
 
         if response.status_code in [200, 201]:
             data = response.json()
@@ -145,15 +209,7 @@ def update_client(client_data):
         for uri in REDIRECT_URIS:
             print(f"      - {uri}")
 
-        # pylint: disable=S501
-        response = requests.put(
-            DCR_CLIENT_ENDPOINT,
-            auth=(WSO2_ADMIN_USER, WSO2_ADMIN_PASS),
-            headers={"Content-Type": "application/json", "Accept": "application/json"},
-            json=client_data,
-            verify=False,
-            timeout=10,
-        )
+        response = _dcr_request("PUT", DCR_CLIENT_ENDPOINT, json_payload=client_data)
 
         if response.status_code in [200, 201]:
             print("✅ OAuth2 client updated successfully!")
@@ -230,7 +286,22 @@ def main():
     print(f"   Client ID: {CLIENT_ID}")
     print(f"   Client Name: {CLIENT_NAME}")
     print(f"   Redirect URIs: {REDIRECT_URIS}")
+    print(f"   DCR Auth Mode: {WSO2_DCR_AUTH_MODE}")
     print()
+
+    admin_auth_ok, admin_auth_message = _check_admin_auth()
+    if not admin_auth_ok:
+        print("❌ WSO2 admin auth preflight failed")
+        print(f"   {admin_auth_message}")
+        print("\n🛠️  Recovery options:")
+        print("   1. Set valid WSO2 admin credentials (WSO2_ADMIN_USER / WSO2_ADMIN_PASS)")
+        print("   2. If this is a disposable test stack, reseed WSO2 DB and restart services:")
+        print("      ALLOW_WSO2_RESEED=true bash helpers/setup-test-environment.sh")
+        print(
+            "   3. If DCR is token-only, set WSO2_DCR_BEARER_TOKEN and optionally "
+            "WSO2_DCR_AUTH_MODE=bearer",
+        )
+        sys.exit(1)
 
     # Check if client exists
     existing_client = check_existing_client()
