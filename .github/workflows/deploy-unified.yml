@@ -248,9 +248,13 @@ jobs:
           # modifications that would cause git checkout to fail
           echo "📥 Pulling latest changes from test branch..."
           TARGET_BRANCH="test"
-          git fetch origin test
-          git checkout -B test "origin/test"
-          git reset --hard "origin/test"
+          git fetch origin "${TARGET_BRANCH}"
+          # Force-clean local modifications left by previous/manual runs.
+          git reset --hard
+          git clean -fd
+          git checkout -f -B "${TARGET_BRANCH}" "origin/${TARGET_BRANCH}"
+          git reset --hard "origin/${TARGET_BRANCH}"
+          git clean -fd
           echo "✅ Active branch: $(git branch --show-current)"
           echo "✅ Active commit: $(git rev-parse --short HEAD)"
 
@@ -351,18 +355,18 @@ jobs:
           docker-compose -f docker-compose-wso2.yml build --no-cache darts-app
           docker-compose -f docker-compose-wso2.yml build --no-cache api-gateway
 
-          # Start containers
-          echo "▶️  Starting containers..."
-          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d
+          # Start infrastructure first so bootstrap can create or repair WSO2 state
+          echo "▶️  Starting infrastructure services..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d postgres rabbitmq wso2is wso2apim
 
           docker exec darts-postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/01-init-wso2-dbs.sql || true
 
-          # Ensure WSO2 user-store schema exists in test PostgreSQL BEFORE starting containers
-          echo "🛠️  Verifying and repairing WSO2 PostgreSQL schema (idempotent)..."
+          # Ensure WSO2 user-store schema and bootstrap data exist before the apps start
+          echo "🛠️  Verifying and repairing WSO2 PostgreSQL schema and bootstrap data..."
           if [ -f helpers/setup-test-environment.sh ]; then
-            ALLOW_WSO2_RESEED=true bash helpers/setup-test-environment.sh || { echo "❌ WSO2 schema repair failed"; exit 1; }
+            ALLOW_WSO2_RESEED=true STRICT_WSO2_BOOTSTRAP=true bash helpers/setup-test-environment.sh || { echo "❌ WSO2 bootstrap failed"; exit 1; }
           else
-            echo "❌ helpers/setup-test-environment.sh not found! Cannot repair WSO2 schema."
+            echo "❌ helpers/setup-test-environment.sh not found! Cannot bootstrap WSO2 test environment."
             exit 1
           fi
 
@@ -370,13 +374,6 @@ jobs:
             echo "❌ WSO2 schema verification failed: table um_domain is missing in wso2is_shared"
             exit 1
           fi
-
-          echo "🔄 Restarting WSO2 services after schema verification..."
-          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml restart wso2is wso2apim
-
-          # Wait for services to be healthy
-          echo "⏳ Waiting for services to be healthy..."
-          sleep 30
 
           echo "🛠️  Repairing WSO2 claim mappings after startup..."
           if [ -f helpers/setup-test-environment.sh ]; then
@@ -416,9 +413,13 @@ jobs:
           fi
           echo "✅ WSO2 baseline data validation passed"
 
-          # Upgrade database schema
+          # Upgrade database schema before the public apps are started
           echo "🗄️  Upgrading database schema to latest migration..."
-          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml exec -T darts-app alembic upgrade head
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml run --rm --no-deps darts-app alembic upgrade head
+
+          # Start the public application services once, after bootstrap and migration use the final env
+          echo "▶️  Starting darts app, gateway, and nginx..."
+          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d darts-app api-gateway nginx
 
           # Check container status
           echo "✅ Checking container status..."
@@ -743,9 +744,14 @@ jobs:
 
           # Pull latest code BEFORE copying config files
           echo "📥 Pulling latest changes from main branch..."
-          git fetch origin
-          git checkout main
-          git pull origin main
+          TARGET_BRANCH="main"
+          git fetch origin "${TARGET_BRANCH}"
+          # Force-clean local modifications left by previous/manual runs.
+          git reset --hard
+          git clean -fd
+          git checkout -f -B "${TARGET_BRANCH}" "origin/${TARGET_BRANCH}"
+          git reset --hard "origin/${TARGET_BRANCH}"
+          git clean -fd
 
           # Copy configuration files from config repository (fresh bundle)
           # This intentionally overrides tracked files (nginx.conf, SSL certs, etc.)

@@ -6,6 +6,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+WSO2_SCHEMA_RESEEDED=false
 
 sync_test_env_file() {
     local env_test_file="$PROJECT_ROOT/.env.test"
@@ -39,6 +40,8 @@ sync_test_env_file() {
 run_wso2_bootstrap() {
     local bootstrap_script="$SCRIPT_DIR/bootstrap_wso2_test_env.sh"
     local wso2_url="${WSO2_IS_URL:-https://localhost:9443}"
+    local health_ready=false
+    local attempt
 
     if [ "${SKIP_WSO2_BOOTSTRAP:-false}" = "true" ]; then
         echo "ℹ Skipping WSO2 bootstrap because SKIP_WSO2_BOOTSTRAP=true"
@@ -56,7 +59,23 @@ run_wso2_bootstrap() {
         return
     fi
 
-    if ! curl -k -s -f "${wso2_url%/}/api/health-check/v1.0/health" > /dev/null 2>&1; then
+    if [ "$WSO2_SCHEMA_RESEEDED" = "true" ]; then
+        echo "ℹ WSO2 databases were reseeded; restarting WSO2 services to reload schema..."
+        docker restart darts-wso2is >/dev/null
+        if docker ps --format '{{.Names}}' | grep -q '^darts-wso2apim$'; then
+            docker restart darts-wso2apim >/dev/null
+        fi
+    fi
+
+    for attempt in $(seq 1 60); do
+        if curl -k -s -f "${wso2_url%/}/api/health-check/v1.0/health" > /dev/null 2>&1; then
+            health_ready=true
+            break
+        fi
+        sleep 2
+    done
+
+    if [ "$health_ready" != "true" ]; then
         echo "⚠ Warning: WSO2 health endpoint not ready at ${wso2_url}. Skipping automatic bootstrap."
         echo "  Re-run later, or set SKIP_WSO2_BOOTSTRAP=true to suppress this check."
         return
@@ -192,6 +211,7 @@ ensure_wso2_schema() {
         cat "$PROJECT_ROOT/wso2is-7-config/postgresql-shared.sql" | docker exec -i "$pg_container" psql -v ON_ERROR_STOP=1 -U postgres -d wso2is_shared >/dev/null
         cat "$PROJECT_ROOT/wso2is-7-config/postgresql-identity.sql" | docker exec -i "$pg_container" psql -v ON_ERROR_STOP=1 -U postgres -d wso2is_identity >/dev/null
         echo "✓ WSO2 database reseed completed"
+        WSO2_SCHEMA_RESEEDED=true
     fi
 
     return

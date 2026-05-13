@@ -6,7 +6,14 @@ Use these scripts on the test server after the WSO2 databases and services are u
 
 ```bash
 cd /opt/dartserver-pythonapp
-export $(grep -v '^#' .env | xargs)
+while IFS= read -r line; do
+  line="${line#export }"
+  [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+  line="${line%%[[:space:]]#*}"
+  key="${line%%=*}"
+  value="${line#*=}"
+  export "$key=$value"
+done < .env
 ```
 
 ## 1. Register the test-server OAuth client
@@ -34,7 +41,7 @@ Verify:
 ```bash
 python3 helpers/test_wso2_provision_user.py \
   --username player \
-  --password playerpass \
+  --password Playerpass1 \
   --role player \
   --display-name Player
 ```
@@ -44,7 +51,7 @@ python3 helpers/test_wso2_provision_user.py \
 ```bash
 python3 helpers/test_wso2_provision_user.py \
   --username master \
-  --password masterpass \
+  --password Masterpass1 \
   --role gamemaster \
   --display-name Master
 ```
@@ -130,4 +137,18 @@ Expected results:
 
 ## Next step
 
-Once the manual run succeeds end to end, these same steps can be added to the deployment pipeline so the test environment self-heals on deploy.
+These same checks are now suitable for the deployment pipeline as an idempotent bootstrap flow:
+
+- Reseed WSO2 only when the shared or identity databases are incomplete.
+- Verify each bootstrap element and create or update it only when missing or drifted.
+- Start the public `darts-app` and `api-gateway` services only after bootstrap and migration complete, so they use the final OAuth configuration on first start.
+
+The pipeline should therefore follow this order:
+
+```bash
+docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d postgres rabbitmq wso2is wso2apim
+ALLOW_WSO2_RESEED=true STRICT_WSO2_BOOTSTRAP=true bash helpers/setup-test-environment.sh
+WSO2_POST_START_REPAIR=true bash helpers/setup-test-environment.sh
+docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml run --rm --no-deps darts-app alembic upgrade head
+docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d darts-app api-gateway nginx
+```

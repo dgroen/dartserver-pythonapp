@@ -13,6 +13,7 @@ import builtins
 import json
 import os
 import sys
+import time
 import traceback
 from typing import Any
 
@@ -55,7 +56,10 @@ REDIRECT_URIS = [
 
 # DCR API endpoints
 DCR_REGISTER_ENDPOINT = f"{WSO2_IS_URL}/api/identity/oauth2/dcr/v1.1/register"
-DCR_CLIENT_ENDPOINT = f"{WSO2_IS_URL}/api/identity/oauth2/dcr/v1.1/register/{CLIENT_ID}"
+
+
+def _dcr_client_endpoint(client_id: str) -> str:
+    return f"{WSO2_IS_URL}/api/identity/oauth2/dcr/v1.1/register/{client_id}"
 
 
 def _build_dcr_headers(include_json: bool = False) -> dict[str, str]:
@@ -72,19 +76,33 @@ def _dcr_request(
     url: str,
     json_payload: dict[str, Any] | None = None,
 ) -> requests.Response:
+    def _send_request(
+        request_headers: dict[str, str],
+        request_auth: tuple[str, str] | None,
+    ) -> requests.Response:
+        response: requests.Response | None = None
+        for attempt in range(5):
+            # pylint: disable=S501
+            response = requests.request(
+                method,
+                url,
+                auth=request_auth,
+                headers=request_headers,
+                json=json_payload,
+                verify=False,
+                timeout=10,
+            )
+            if response.status_code not in (502, 503, 504):
+                break
+            if attempt < 4:
+                time.sleep(2)
+        assert response is not None
+        return response
+
     headers = _build_dcr_headers(include_json=json_payload is not None)
     auth = None if "Authorization" in headers else (WSO2_ADMIN_USER, WSO2_ADMIN_PASS)
 
-    # pylint: disable=S501
-    response = requests.request(
-        method,
-        url,
-        auth=auth,
-        headers=headers,
-        json=json_payload,
-        verify=False,
-        timeout=10,
-    )
+    response = _send_request(headers, auth)
 
     if (
         response.status_code == 401
@@ -94,15 +112,7 @@ def _dcr_request(
     ):
         retry_headers = _build_dcr_headers(include_json=json_payload is not None)
         retry_headers["Authorization"] = f"Bearer {WSO2_DCR_BEARER_TOKEN}"
-        # pylint: disable=S501
-        return requests.request(
-            method,
-            url,
-            headers=retry_headers,
-            json=json_payload,
-            verify=False,
-            timeout=10,
-        )
+        return _send_request(retry_headers, None)
 
     return response
 
@@ -131,7 +141,7 @@ def check_existing_client():
     """Check if client already exists"""
     try:
         print("🔍 Checking if client already exists...")
-        response = _dcr_request("GET", DCR_CLIENT_ENDPOINT)
+        response = _dcr_request("GET", _dcr_client_endpoint(CLIENT_ID))
 
         if response.status_code == 200:
             data = response.json()
@@ -149,7 +159,7 @@ def check_existing_client():
         return None
 
 
-def register_new_client():
+def register_new_client() -> dict[str, Any] | None:
     """Register new OAuth2 client using DCR API"""
     try:
         print("\n📤 Registering new OAuth2 client...")
@@ -158,7 +168,12 @@ def register_new_client():
             "client_name": CLIENT_NAME,
             "client_id": CLIENT_ID,
             "client_secret": CLIENT_SECRET,
-            "grant_types": ["authorization_code", "refresh_token", "password"],
+            "grant_types": [
+                "authorization_code",
+                "refresh_token",
+                "password",
+                "client_credentials",
+            ],
             "redirect_uris": REDIRECT_URIS,
             "token_endpoint_auth_method": "client_secret_basic",
             "require_auth_time": False,
@@ -178,19 +193,39 @@ def register_new_client():
             print("✅ OAuth2 client registered successfully!")
             print("\n📋 Client Details:")
             print(json.dumps(data, indent=2))
-            return True
+            return data
+
+        if (
+            response.status_code == 400
+            and "already exist" in response.text.lower()
+            and payload.get("client_name") == CLIENT_NAME
+        ):
+            fallback_name = f"{CLIENT_NAME}-{int(time.time())}"
+            payload["client_name"] = fallback_name
+            print(
+                "⚠️  Client name already exists; retrying registration with unique "
+                f"name: {fallback_name}",
+            )
+            retry_response = _dcr_request("POST", DCR_REGISTER_ENDPOINT, json_payload=payload)
+            if retry_response.status_code in [200, 201]:
+                data = retry_response.json()
+                print("✅ OAuth2 client registered successfully with fallback name!")
+                print("\n📋 Client Details:")
+                print(json.dumps(data, indent=2))
+                return data
+            print(f"❌ Fallback registration failed: {retry_response.status_code}")
+            print(f"   Response: {retry_response.text}")
+            return None
 
         print(f"❌ Failed to register client: {response.status_code}")
         print(f"   Response: {response.text}")
-        return False
+        return None
 
     except Exception as e:
         print(f"❌ Error registering client: {e}")
         traceback.print_exc()
-        return False
-
-
-def update_client(client_data):
+        return None
+def update_client(client_data) -> dict[str, Any] | None:
     """Update existing OAuth2 client"""
     try:
         print("\n✏️  Updating OAuth2 client configuration...")
@@ -199,33 +234,35 @@ def update_client(client_data):
         client_data["redirect_uris"] = REDIRECT_URIS
         client_data["client_name"] = CLIENT_NAME
 
-        if "grant_types" not in client_data or "authorization_code" not in client_data.get(
-            "grant_types",
-            [],
-        ):
-            client_data["grant_types"] = ["authorization_code", "refresh_token", "password"]
+        grant_types = set(client_data.get("grant_types", []))
+        grant_types.update(["authorization_code", "refresh_token", "password", "client_credentials"])
+        client_data["grant_types"] = sorted(grant_types)
 
         print("   Redirect URIs:")
         for uri in REDIRECT_URIS:
             print(f"      - {uri}")
 
-        response = _dcr_request("PUT", DCR_CLIENT_ENDPOINT, json_payload=client_data)
+        response = _dcr_request(
+            "PUT",
+            _dcr_client_endpoint(CLIENT_ID),
+            json_payload=client_data,
+        )
 
         if response.status_code in [200, 201]:
             print("✅ OAuth2 client updated successfully!")
             data = response.json()
             print("\n📋 Updated Client Details:")
             print(json.dumps(data, indent=2))
-            return True
+            return data
 
         print(f"❌ Failed to update client: {response.status_code}")
         print(f"   Response: {response.text}")
-        return False
+        return None
 
     except Exception as e:
         print(f"❌ Error updating client: {e}")
         traceback.print_exc()
-        return False
+        return None
 
 
 def main():
@@ -306,9 +343,14 @@ def main():
     # Check if client exists
     existing_client = check_existing_client()
 
-    success = update_client(existing_client) if existing_client else register_new_client()
+    result = update_client(existing_client) if existing_client else register_new_client()
 
-    if success:
+    if result:
+        CLIENT_ID = result.get("client_id", CLIENT_ID)
+        CLIENT_SECRET = result.get("client_secret", CLIENT_SECRET)
+        CLIENT_NAME = result.get("client_name", CLIENT_NAME)
+        REDIRECT_URIS = result.get("redirect_uris", REDIRECT_URIS)
+
         if args.json:
             orig_print(
                 json.dumps(
