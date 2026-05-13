@@ -359,7 +359,9 @@ jobs:
           echo "▶️  Starting infrastructure services..."
           docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d postgres rabbitmq wso2is wso2apim
 
-          docker exec darts-postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/01-init-wso2-dbs.sql || true
+          # Do not re-run docker-entrypoint init SQL on existing databases.
+          # Those scripts contain DROP statements and are only safe during first-time
+          # initialization of a fresh PostgreSQL data directory.
 
           # Ensure WSO2 user-store schema and bootstrap data exist before the apps start
           echo "🛠️  Verifying and repairing WSO2 PostgreSQL schema and bootstrap data..."

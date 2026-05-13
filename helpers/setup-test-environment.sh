@@ -178,22 +178,6 @@ ensure_wso2_schema() {
 
     echo "Using PostgreSQL container: $pg_container"
 
-    best_effort_apply_schema() {
-        local target_db="$1"
-        local sql_file="$2"
-        local label="$3"
-
-        if [ ! -f "$sql_file" ]; then
-            echo "⚠ Warning: Cannot repair ${label}; SQL file is missing: $sql_file"
-            return
-        fi
-
-        echo "⚠ Attempting non-destructive best-effort repair for ${label}..."
-        # Do not stop on errors: existing entities may already be present.
-        # This tries to create only what is missing and leaves existing data intact.
-        cat "$sql_file" | docker exec -i "$pg_container" psql -U postgres -d "$target_db" >/dev/null 2>&1 || true
-    }
-
     # Ensure required WSO2 databases exist (non-destructive).
     shared_db_exists=$(docker exec "$pg_container" psql -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='wso2is_shared';" | tr -d '[:space:]')
     identity_db_exists=$(docker exec "$pg_container" psql -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='wso2is_identity';" | tr -d '[:space:]')
@@ -242,7 +226,7 @@ ensure_wso2_schema() {
             echo "⚠ Existing wso2is_shared database is partially initialized."
             echo "  - table count: $shared_table_count"
             echo "  - um_domain table: $um_domain_exists"
-            best_effort_apply_schema "wso2is_shared" "$PROJECT_ROOT/wso2is-7-config/postgresql-shared.sql" "wso2is_shared"
+            echo "⚠ Skipping full SQL replay for safety (contains DROP statements)."
             um_domain_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT to_regclass('public.um_domain');")
             um_role_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT to_regclass('public.um_role');")
             role_count=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT COUNT(*) FROM um_role WHERE um_role_name IN ('admin', 'everyone');" 2>/dev/null || echo "0")
@@ -258,7 +242,7 @@ ensure_wso2_schema() {
             echo "⚠ Existing wso2is_identity database is partially initialized."
             echo "  - table count: $identity_table_count"
             echo "  - idn_claim table: $idn_claim_exists"
-            best_effort_apply_schema "wso2is_identity" "$PROJECT_ROOT/wso2is-7-config/postgresql-identity.sql" "wso2is_identity"
+            echo "⚠ Skipping full SQL replay for safety (contains DROP statements)."
             idn_claim_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_identity -tAc "SELECT to_regclass('public.idn_claim');")
         fi
     fi
