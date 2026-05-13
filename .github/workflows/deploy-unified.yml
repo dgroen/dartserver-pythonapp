@@ -417,11 +417,8 @@ jobs:
           fi
           echo "✅ WSO2 baseline data validation passed"
 
-          # Upgrade database schema before the public apps are started
-          echo "🗄️  Upgrading database schema to latest migration..."
-          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml run --rm --no-deps darts-app alembic upgrade head
-
           # Start the public application services once, after bootstrap and migration use the final env
+          # Note: docker-entrypoint.sh runs alembic upgrade head automatically on startup.
           echo "▶️  Starting darts app, gateway, and nginx..."
           docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d darts-app api-gateway nginx
 

@@ -60,19 +60,14 @@ fi
 # Verify database schema
 echo "Verifying database schema..."
 python -c "
-from src.core.database_service import DatabaseService
-db = DatabaseService()
-with db.get_session() as session:
-    result = session.execute('SELECT current_database()')
-    db_name = result.scalar()
+from sqlalchemy import create_engine, text
+import os
+engine = create_engine(os.environ['DATABASE_URL'])
+with engine.connect() as conn:
+    db_name = conn.execute(text('SELECT current_database()')).scalar()
     print(f'✓ Connected to database: {db_name}')
-
-    # Check if gameresults table exists and has required columns
-    result = session.execute(
-        \"SELECT column_name FROM information_schema.columns
-         WHERE table_name = 'gameresults' AND column_name = 'reset_on_miss'\"
-    )
-    if result.scalar():
+    col = conn.execute(text(\"SELECT column_name FROM information_schema.columns WHERE table_name = 'gameresults' AND column_name = 'reset_on_miss'\")).scalar()
+    if col:
         print('✓ Schema verified: reset_on_miss column exists')
     else:
         print('⚠ Warning: reset_on_miss column not found')
