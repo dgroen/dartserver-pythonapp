@@ -182,6 +182,8 @@ The following secrets must be configured in the GitHub repository:
 | `TEST_SERVER_SSH_KEY` | Private SSH key for test server authentication | Contents of `~/.ssh/id_rsa` |
 | `TEST_WSO2IS_DEPLOYMENT_TOML` | Complete deployment.toml configuration for WSO2 IS test instance | File contents of `wso2is-7-config/deployment.toml` |
 | `TEST_ENV` | Environment variables for test deployment (e.g., database URL, API keys) | Contents of `.env` file for test environment |
+| `WSO2_IS_INTROSPECT_USER` | WSO2 admin username used for bootstrap (OAuth client registration, user provisioning) | `admin` |
+| `WSO2_IS_INTROSPECT_PASSWORD` | WSO2 admin password used for bootstrap | your WSO2 admin password |
 
 #### Production Environment Secrets
 

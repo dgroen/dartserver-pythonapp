@@ -212,8 +212,8 @@ jobs:
           WSO2_IS_INTROSPECT_USER: ${{ secrets.WSO2_ADMIN_INTROSPECT_USER }}
           WSO2_IS_INTROSPECT_PASSWORD: ${{ secrets.WSO2_ADMIN_INTROSPECT_PASSWORD }}
         run: |
-          if [ -z "${WSO2_ADMIN_USER:-}" ] || [ -z "${WSO2_ADMIN_PASSWORD:-}" ]; then
-            echo "❌ Missing WSO2 bootstrap secrets: WSO2_ADMIN_USER / WSO2_ADMIN_PASSWORD"
+          if [ -z "${WSO2_IS_INTROSPECT_USER:-}" ] || [ -z "${WSO2_IS_INTROSPECT_PASSWORD:-}" ]; then
+            echo "❌ Missing WSO2 bootstrap secrets: WSO2_IS_INTROSPECT_USER / WSO2_IS_INTROSPECT_PASSWORD"
             exit 1;
           fi
 
