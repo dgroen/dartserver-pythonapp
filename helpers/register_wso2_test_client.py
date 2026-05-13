@@ -13,7 +13,6 @@ import builtins
 import json
 import os
 import sys
-import time
 import traceback
 from typing import Any
 
@@ -54,12 +53,12 @@ REDIRECT_URIS = [
     os.getenv("WSO2_POST_LOGOUT_REDIRECT_URI", "https://test.letsplaydarts.eu/"),
 ]
 
-# DCR API endpoints
-DCR_REGISTER_ENDPOINT = f"{WSO2_IS_URL}/api/identity/oauth2/dcr/v1.1/register"
+def _dcr_register_endpoint() -> str:
+    return f"{WSO2_IS_URL.rstrip('/')}/api/identity/oauth2/dcr/v1.1/register"
 
 
 def _dcr_client_endpoint(client_id: str) -> str:
-    return f"{WSO2_IS_URL}/api/identity/oauth2/dcr/v1.1/register/{client_id}"
+    return f"{WSO2_IS_URL.rstrip('/')}/api/identity/oauth2/dcr/v1.1/register/{client_id}"
 
 
 def _build_dcr_headers(include_json: bool = False) -> dict[str, str]:
@@ -137,7 +136,7 @@ def _check_admin_auth() -> tuple[bool, str]:
     return False, f"Unexpected admin auth response from WSO2: {response.status_code}"
 
 
-def check_existing_client():
+def check_existing_client() -> tuple[dict[str, Any] | None, bool]:
     """Check if client already exists"""
     try:
         print("🔍 Checking if client already exists...")
@@ -146,17 +145,17 @@ def check_existing_client():
         if response.status_code == 200:
             data = response.json()
             print(f"✅ Found existing client: {data.get('client_name', 'Unknown')}")
-            return data
+            return data, True
         if response.status_code == 404:
             print("ℹ️  Client does not exist - will create new one")
-            return None
+            return None, True
         print(f"⚠️  Error checking client: {response.status_code}")
         print(f"   Response: {response.text}")
-        return None
+        return None, False
 
     except Exception as e:
         print(f"⚠️  Error checking client: {e}")
-        return None
+        return None, False
 
 
 def register_new_client() -> dict[str, Any] | None:
@@ -166,8 +165,8 @@ def register_new_client() -> dict[str, Any] | None:
 
         payload = {
             "client_name": CLIENT_NAME,
-            "client_id": CLIENT_ID,
-            "client_secret": CLIENT_SECRET,
+            "ext_param_client_id": CLIENT_ID,
+            "ext_param_client_secret": CLIENT_SECRET,
             "grant_types": [
                 "authorization_code",
                 "refresh_token",
@@ -186,7 +185,7 @@ def register_new_client() -> dict[str, Any] | None:
         for uri in REDIRECT_URIS:
             print(f"      - {uri}")
 
-        response = _dcr_request("POST", DCR_REGISTER_ENDPOINT, json_payload=payload)
+        response = _dcr_request("POST", _dcr_register_endpoint(), json_payload=payload)
 
         if response.status_code in [200, 201]:
             data = response.json()
@@ -194,28 +193,6 @@ def register_new_client() -> dict[str, Any] | None:
             print("\n📋 Client Details:")
             print(json.dumps(data, indent=2))
             return data
-
-        if (
-            response.status_code == 400
-            and "already exist" in response.text.lower()
-            and payload.get("client_name") == CLIENT_NAME
-        ):
-            fallback_name = f"{CLIENT_NAME}-{int(time.time())}"
-            payload["client_name"] = fallback_name
-            print(
-                "⚠️  Client name already exists; retrying registration with unique "
-                f"name: {fallback_name}",
-            )
-            retry_response = _dcr_request("POST", DCR_REGISTER_ENDPOINT, json_payload=payload)
-            if retry_response.status_code in [200, 201]:
-                data = retry_response.json()
-                print("✅ OAuth2 client registered successfully with fallback name!")
-                print("\n📋 Client Details:")
-                print(json.dumps(data, indent=2))
-                return data
-            print(f"❌ Fallback registration failed: {retry_response.status_code}")
-            print(f"   Response: {retry_response.text}")
-            return None
 
         print(f"❌ Failed to register client: {response.status_code}")
         print(f"   Response: {response.text}")
@@ -341,7 +318,10 @@ def main():
         sys.exit(1)
 
     # Check if client exists
-    existing_client = check_existing_client()
+    existing_client, lookup_ok = check_existing_client()
+    if not lookup_ok:
+        print("❌ Unable to verify existing application state. Refusing to create a new client.")
+        sys.exit(1)
 
     result = update_client(existing_client) if existing_client else register_new_client()
 

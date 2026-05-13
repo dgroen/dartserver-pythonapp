@@ -206,12 +206,16 @@ def main() -> int:  # noqa: PLR0911
     if resp.status_code == 200:
         client = resp.json()
         print("Found existing client configuration")
-    elif resp.status_code in (401, 403, 404):
+    elif resp.status_code == 404:
         client = None
+        print("Client not found (404); will attempt to create")
+    elif resp.status_code in (401, 403):
         print(
-            "Client lookup unavailable or not found "
-            f"(status {resp.status_code}); will attempt to create",
+            "Failed to lookup existing client due authorization error "
+            f"(status {resp.status_code}); refusing to create a new client",
         )
+        print(f"Response: {resp.text}")
+        return 4
     else:
         print(f"Failed to fetch client: {resp.status_code} {resp.text}")
         return 4
