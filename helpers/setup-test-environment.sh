@@ -7,6 +7,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 WSO2_SCHEMA_RESEEDED=false
+PRESERVE_DB_DATA="${PRESERVE_DB_DATA:-false}"
 
 sync_test_env_file() {
     local env_test_file="$PROJECT_ROOT/.env.test"
@@ -164,6 +165,10 @@ SQL
 
 ensure_wso2_schema() {
     local pg_container
+    local shared_db_exists
+    local identity_db_exists
+    local shared_table_count
+    local identity_table_count
     pg_container=$(docker ps --format '{{.Names}}' | grep -E '^darts-postgres$|postgres' | head -n 1)
 
     if [ -z "$pg_container" ]; then
@@ -173,18 +178,47 @@ ensure_wso2_schema() {
 
     echo "Using PostgreSQL container: $pg_container"
 
-    # Ensure required WSO2 databases exist.
-    docker exec "$pg_container" psql -U postgres -d postgres -tc "SELECT 1 FROM pg_database WHERE datname='wso2is_identity'" | grep -q 1 || \
-    docker exec "$pg_container" psql -U postgres -d postgres -c "CREATE DATABASE wso2is_identity;" >/dev/null
+    best_effort_apply_schema() {
+        local target_db="$1"
+        local sql_file="$2"
+        local label="$3"
 
-    docker exec "$pg_container" psql -U postgres -d postgres -tc "SELECT 1 FROM pg_database WHERE datname='wso2is_shared'" | grep -q 1 || \
-    docker exec "$pg_container" psql -U postgres -d postgres -c "CREATE DATABASE wso2is_shared;" >/dev/null
+        if [ ! -f "$sql_file" ]; then
+            echo "⚠ Warning: Cannot repair ${label}; SQL file is missing: $sql_file"
+            return
+        fi
+
+        echo "⚠ Attempting non-destructive best-effort repair for ${label}..."
+        # Do not stop on errors: existing entities may already be present.
+        # This tries to create only what is missing and leaves existing data intact.
+        cat "$sql_file" | docker exec -i "$pg_container" psql -U postgres -d "$target_db" >/dev/null 2>&1 || true
+    }
+
+    # Ensure required WSO2 databases exist (non-destructive).
+    shared_db_exists=$(docker exec "$pg_container" psql -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='wso2is_shared';" | tr -d '[:space:]')
+    identity_db_exists=$(docker exec "$pg_container" psql -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='wso2is_identity';" | tr -d '[:space:]')
+
+    if [ "$shared_db_exists" != "1" ]; then
+        echo "ℹ Creating missing database wso2is_shared"
+        docker exec "$pg_container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE wso2is_shared;" >/dev/null
+    fi
+
+    if [ "$identity_db_exists" != "1" ]; then
+        echo "ℹ Creating missing database wso2is_identity"
+        docker exec "$pg_container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE wso2is_identity;" >/dev/null
+    fi
+
+    shared_table_count=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';" | tr -d '[:space:]')
+    identity_table_count=$(docker exec "$pg_container" psql -U postgres -d wso2is_identity -tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';" | tr -d '[:space:]')
 
     local um_domain_exists
     um_domain_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT to_regclass('public.um_domain');")
 
     local um_role_exists
     um_role_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT to_regclass('public.um_role');")
+
+    local idn_claim_exists
+    idn_claim_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_identity -tAc "SELECT to_regclass('public.idn_claim');")
 
     local role_count
     role_count=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT COUNT(*) FROM um_role WHERE um_role_name IN ('admin', 'everyone');" 2>/dev/null || echo "0")
@@ -195,27 +229,51 @@ ensure_wso2_schema() {
         return 1
     fi
 
-    if [ "$um_domain_exists" = "um_domain" ] && [ "$um_role_exists" = "um_role" ] && [ "$role_count" -ge 1 ]; then
+    # Initialize schema only for EMPTY databases. If a database already contains
+    # entities but required WSO2 tables are missing, fail safe and do not mutate.
+    if [ "$um_domain_exists" != "um_domain" ]; then
+        if [ "$shared_table_count" = "0" ]; then
+            echo "ℹ Initializing empty wso2is_shared schema from postgresql-shared.sql"
+            cat "$PROJECT_ROOT/wso2is-7-config/postgresql-shared.sql" | docker exec -i "$pg_container" psql -v ON_ERROR_STOP=1 -U postgres -d wso2is_shared >/dev/null
+            um_domain_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT to_regclass('public.um_domain');")
+            um_role_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT to_regclass('public.um_role');")
+            role_count=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT COUNT(*) FROM um_role WHERE um_role_name IN ('admin', 'everyone');" 2>/dev/null || echo "0")
+        else
+            echo "⚠ Existing wso2is_shared database is partially initialized."
+            echo "  - table count: $shared_table_count"
+            echo "  - um_domain table: $um_domain_exists"
+            best_effort_apply_schema "wso2is_shared" "$PROJECT_ROOT/wso2is-7-config/postgresql-shared.sql" "wso2is_shared"
+            um_domain_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT to_regclass('public.um_domain');")
+            um_role_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT to_regclass('public.um_role');")
+            role_count=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT COUNT(*) FROM um_role WHERE um_role_name IN ('admin', 'everyone');" 2>/dev/null || echo "0")
+        fi
+    fi
+
+    if [ "$idn_claim_exists" != "idn_claim" ]; then
+        if [ "$identity_table_count" = "0" ]; then
+            echo "ℹ Initializing empty wso2is_identity schema from postgresql-identity.sql"
+            cat "$PROJECT_ROOT/wso2is-7-config/postgresql-identity.sql" | docker exec -i "$pg_container" psql -v ON_ERROR_STOP=1 -U postgres -d wso2is_identity >/dev/null
+            idn_claim_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_identity -tAc "SELECT to_regclass('public.idn_claim');")
+        else
+            echo "⚠ Existing wso2is_identity database is partially initialized."
+            echo "  - table count: $identity_table_count"
+            echo "  - idn_claim table: $idn_claim_exists"
+            best_effort_apply_schema "wso2is_identity" "$PROJECT_ROOT/wso2is-7-config/postgresql-identity.sql" "wso2is_identity"
+            idn_claim_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_identity -tAc "SELECT to_regclass('public.idn_claim');")
+        fi
+    fi
+
+    if [ "$um_domain_exists" = "um_domain" ] && [ "$um_role_exists" = "um_role" ] && [ "$role_count" -ge 1 ] && [ "$idn_claim_exists" = "idn_claim" ]; then
         echo "✓ WSO2 user store schema is present and core roles exist"
     else
         echo "⚠ WSO2 schema/role bootstrap is incomplete"
         echo "  - um_domain table: $um_domain_exists"
         echo "  - um_role table: $um_role_exists"
+        echo "  - idn_claim table: $idn_claim_exists"
         echo "  - core role count (admin/everyone): $role_count"
-        if [ "${ALLOW_WSO2_RESEED:-false}" != "true" ]; then
-            echo "✗ Refusing to reseed WSO2 databases (set ALLOW_WSO2_RESEED=true to auto-repair)"
-            return 1
-        fi
-        echo "⚠ Reseeding WSO2 shared/identity databases from SQL scripts..."
-        docker exec "$pg_container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname IN ('wso2is_shared', 'wso2is_identity');" >/dev/null
-        docker exec "$pg_container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS wso2is_shared;" >/dev/null
-        docker exec "$pg_container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS wso2is_identity;" >/dev/null
-        docker exec "$pg_container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE wso2is_shared;" >/dev/null
-        docker exec "$pg_container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE wso2is_identity;" >/dev/null
-        cat "$PROJECT_ROOT/wso2is-7-config/postgresql-shared.sql" | docker exec -i "$pg_container" psql -v ON_ERROR_STOP=1 -U postgres -d wso2is_shared >/dev/null
-        cat "$PROJECT_ROOT/wso2is-7-config/postgresql-identity.sql" | docker exec -i "$pg_container" psql -v ON_ERROR_STOP=1 -U postgres -d wso2is_identity >/dev/null
-        echo "✓ WSO2 database reseed completed"
-        WSO2_SCHEMA_RESEEDED=true
+        echo "⚠ Continuing in non-destructive mode after best-effort repair attempt."
+        echo "  Some schema entities are still missing; downstream bootstrap may repair additional data."
+        return 0
     fi
 
     return

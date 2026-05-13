@@ -364,7 +364,9 @@ jobs:
           # Ensure WSO2 user-store schema and bootstrap data exist before the apps start
           echo "🛠️  Verifying and repairing WSO2 PostgreSQL schema and bootstrap data..."
           if [ -f helpers/setup-test-environment.sh ]; then
-            ALLOW_WSO2_RESEED=true STRICT_WSO2_BOOTSTRAP=true bash helpers/setup-test-environment.sh || { echo "❌ WSO2 bootstrap failed"; exit 1; }
+            # setup-test-environment.sh is non-destructive: it only initializes
+            # missing databases/schemas and never drops existing entities.
+            STRICT_WSO2_BOOTSTRAP=true WSO2_IS_INTERNAL_URL=https://localhost:9443 bash helpers/setup-test-environment.sh || { echo "❌ WSO2 bootstrap failed"; exit 1; }
           else
             echo "❌ helpers/setup-test-environment.sh not found! Cannot bootstrap WSO2 test environment."
             exit 1
@@ -377,7 +379,7 @@ jobs:
 
           echo "🛠️  Repairing WSO2 claim mappings after startup..."
           if [ -f helpers/setup-test-environment.sh ]; then
-            WSO2_POST_START_REPAIR=true bash helpers/setup-test-environment.sh || { echo "❌ WSO2 claim repair failed"; exit 1; }
+            WSO2_POST_START_REPAIR=true WSO2_IS_INTERNAL_URL=https://localhost:9443 bash helpers/setup-test-environment.sh || { echo "❌ WSO2 claim repair failed"; exit 1; }
           else
             echo "❌ helpers/setup-test-environment.sh not found! Cannot repair WSO2 claim mappings."
             exit 1
