@@ -209,6 +209,8 @@ jobs:
           GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
           WSO2_ADMIN_USER: ${{ secrets.WSO2_ADMIN_USER }}
           WSO2_ADMIN_PASSWORD: ${{ secrets.WSO2_ADMIN_PASSWORD }}
+          WSO2_IS_INTROSPECT_USER: ${{ secrets.WSO2_ADMIN_INTROSPECT_USER }}
+          WSO2_IS_INTROSPECT_PASSWORD: ${{ secrets.WSO2_ADMIN_INTROSPECT_PASSWORD }}
         run: |
           if [ -z "${WSO2_ADMIN_USER:-}" ] || [ -z "${WSO2_ADMIN_PASSWORD:-}" ]; then
             echo "❌ Missing WSO2 bootstrap secrets: WSO2_ADMIN_USER / WSO2_ADMIN_PASSWORD"
@@ -217,9 +219,11 @@ jobs:
 
           WSO2_ADMIN_USER_ESCAPED=$(printf '%q' "${WSO2_ADMIN_USER}")
           WSO2_ADMIN_PASSWORD_ESCAPED=$(printf '%q' "${WSO2_ADMIN_PASSWORD}")
+          WSO2_IS_INTROSPECT_USER_ESCAPED=$(printf '%q' "${WSO2_IS_INTROSPECT_USER}")
+          WSO2_IS_INTROSPECT_PASSWORD_ESCAPED=$(printf '%q' "${WSO2_IS_INTROSPECT_PASSWORD}")
 
           ssh -i ~/.ssh/deploy_key ${TEST_SERVER_HOST} \
-            "WSO2_ADMIN_USER=${WSO2_ADMIN_USER_ESCAPED} WSO2_ADMIN_PASSWORD=${WSO2_ADMIN_PASSWORD_ESCAPED} bash -s" << 'ENDSSH'
+            "WSO2_ADMIN_USER=${WSO2_ADMIN_USER_ESCAPED} WSO2_ADMIN_PASSWORD=${WSO2_ADMIN_PASSWORD_ESCAPED} WSO2_IS_INTROSPECT_USER=${WSO2_IS_INTROSPECT_USER_ESCAPED} WSO2_IS_INTROSPECT_PASSWORD=${WSO2_IS_INTROSPECT_PASSWORD_ESCAPED} bash -s" << 'ENDSSH'
           set -e
           echo "🚀 Starting deployment to test environment..."
 

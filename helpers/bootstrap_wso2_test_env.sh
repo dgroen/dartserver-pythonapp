@@ -24,6 +24,14 @@ elif [[ -n "${BOOTSTRAP_WSO2_ADMIN_PASS:-}" ]]; then
   export WSO2_ADMIN_PASS="${BOOTSTRAP_WSO2_ADMIN_PASS}"
 fi
 
+if [[ -z "${WSO2_IS_INTROSPECT_USER:-}" && -n "${WSO2_ADMIN_USER:-}" ]]; then
+  export WSO2_IS_INTROSPECT_USER="${WSO2_ADMIN_USER}"
+fi
+
+if [[ -z "${WSO2_IS_INTROSPECT_PASSWORD:-}" && -n "${WSO2_ADMIN_PASSWORD:-}" ]]; then
+  export WSO2_IS_INTROSPECT_PASSWORD="${WSO2_ADMIN_PASSWORD}"
+fi
+
 ENV_FILE=".env"
 
 ensure_env_file() {
