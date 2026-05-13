@@ -95,6 +95,39 @@ WHERE c.claim_uri IN ('http://wso2.org/claims/username','http://wso2.org/claims/
 "
 ```
 
+## Troubleshooting: relation "um_domain" does not exist
+
+If WSO2 fails during startup with an error like `ERROR: relation "um_domain" does not exist`, the shared WSO2 schema was not seeded (or was partially seeded) in PostgreSQL.
+
+From the project root, run:
+
+```bash
+cd /opt/dartserver-pythonapp
+ALLOW_WSO2_RESEED=true bash helpers/setup-test-environment.sh
+```
+
+What this does:
+- Verifies `wso2is_shared` and `wso2is_identity` databases.
+- Drops and recreates those two databases if the user store bootstrap is incomplete.
+- Reimports `wso2is-7-config/postgresql-shared.sql` and `wso2is-7-config/postgresql-identity.sql`.
+
+Then restart WSO2 services:
+
+```bash
+docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml restart wso2is wso2apim
+```
+
+Quick checks:
+
+```bash
+docker exec -i darts-postgres psql -U postgres -d wso2is_shared -tAc "SELECT to_regclass('public.um_domain');"
+docker exec -i darts-postgres psql -U postgres -d wso2is_shared -tAc "SELECT COUNT(*) FROM um_role WHERE um_role_name IN ('admin','everyone');"
+```
+
+Expected results:
+- First query returns `um_domain`.
+- Second query returns `2` or higher.
+
 ## Next step
 
 Once the manual run succeeds end to end, these same steps can be added to the deployment pipeline so the test environment self-heals on deploy.

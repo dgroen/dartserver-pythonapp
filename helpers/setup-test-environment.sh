@@ -7,6 +7,69 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
+sync_test_env_file() {
+    local env_test_file="$PROJECT_ROOT/.env.test"
+    local env_file="$PROJECT_ROOT/.env"
+
+    if [ "${APPLY_TEST_ENV_FILE:-false}" != "true" ]; then
+        echo "ℹ Skipping .env.test -> .env sync (set APPLY_TEST_ENV_FILE=true to enable for local unit/integration tests)"
+        return
+    fi
+
+    if [ ! -f "$env_test_file" ]; then
+        echo "✗ Test environment file not found: .env.test"
+        echo "Please create .env.test based on .env.example"
+        return 1
+    fi
+
+    if [ -f "$env_file" ] && [ "${OVERWRITE_ENV_FILE:-false}" != "true" ]; then
+        echo "ℹ Keeping existing .env (set OVERWRITE_ENV_FILE=true to replace it from .env.test)"
+    else
+        cp "$env_test_file" "$env_file"
+        echo "✓ Applied .env.test to .env"
+    fi
+
+    # Export .env values so helper scripts can use them in this shell session.
+    set -a
+    # shellcheck disable=SC1091
+    source "$env_file"
+    set +a
+}
+
+run_wso2_bootstrap() {
+    local bootstrap_script="$SCRIPT_DIR/bootstrap_wso2_test_env.sh"
+    local wso2_url="${WSO2_IS_URL:-https://localhost:9443}"
+
+    if [ "${SKIP_WSO2_BOOTSTRAP:-false}" = "true" ]; then
+        echo "ℹ Skipping WSO2 bootstrap because SKIP_WSO2_BOOTSTRAP=true"
+        return
+    fi
+
+    if [ ! -f "$bootstrap_script" ]; then
+        echo "⚠ Warning: bootstrap script not found: $bootstrap_script"
+        return
+    fi
+
+    if ! command -v docker &> /dev/null || ! docker ps --format '{{.Names}}' | grep -q '^darts-wso2is$'; then
+        echo "⚠ Warning: darts-wso2is container is not running. Skipping automatic WSO2 bootstrap."
+        echo "  Start it with: docker-compose -f docker-compose-wso2.yml up -d wso2is"
+        return
+    fi
+
+    if ! curl -k -s -f "${wso2_url%/}/api/health-check/v1.0/health" > /dev/null 2>&1; then
+        echo "⚠ Warning: WSO2 health endpoint not ready at ${wso2_url}. Skipping automatic bootstrap."
+        echo "  Re-run later, or set SKIP_WSO2_BOOTSTRAP=true to suppress this check."
+        return
+    fi
+
+    echo "Running WSO2 bootstrap workflow..."
+    (
+        cd "$PROJECT_ROOT"
+        bash "$bootstrap_script"
+    )
+    echo "✓ WSO2 bootstrap completed"
+}
+
 repair_wso2_claim_mappings() {
         local pg_container
         pg_container=$(docker ps --format '{{.Names}}' | grep -E '^darts-postgres$|postgres' | head -n 1)
@@ -224,38 +287,15 @@ else
     bash "$SCRIPT_DIR/generate_ssl_certs.sh" localhost
 fi
 
-# Step 5: WSO2 Configuration
+# Step 5: Environment file (optional, for local test runs)
 echo ""
-echo "Step 5: WSO2 Identity Server Configuration (Optional)..."
-echo ""
-echo "For full integration testing with WSO2, you need to:"
-echo "1. Start WSO2 Identity Server:"
-echo "   docker-compose -f docker-compose-wso2.yml up -d wso2is"
-echo ""
-echo "2. Wait for WSO2 to start (may take 2-3 minutes)"
-echo ""
-echo "3. Configure OAuth2 client for testing:"
-echo "   bash helpers/configure-wso2.sh"
-echo ""
-echo "4. Update WSO2_CLIENT_ID and WSO2_CLIENT_SECRET in .env.test with the generated credentials"
-echo ""
-echo "Note: For unit tests, WSO2 is typically mocked and this step can be skipped."
-echo ""
+echo "Step 5: Applying test environment file (optional)..."
+sync_test_env_file
 
-# Step 6: Environment file
+# Step 6: WSO2 Configuration
 echo ""
-echo "Step 6: Test environment file..."
-if [ -f "$PROJECT_ROOT/.env.test" ]; then
-    echo "✓ Test environment file found: .env.test"
-    echo ""
-    echo "To use this configuration, run:"
-    echo "  cp .env.test .env"
-    echo "  # or"
-    echo "  export \$(cat .env.test | grep -v '^#' | xargs)"
-else
-    echo "✗ Test environment file not found: .env.test"
-    echo "Please create .env.test based on .env.example"
-fi
+echo "Step 6: Applying WSO2 Identity Server bootstrap..."
+run_wso2_bootstrap
 
 echo ""
 echo "=== Test Environment Setup Complete ==="
@@ -263,8 +303,8 @@ echo ""
 echo "Summary:"
 echo "  - Database: dartsdbtest (PostgreSQL)"
 echo "  - SSL Certificates: ssl/ directory"
-echo "  - WSO2 Config: .env.test (client_id: test_client_id)"
-echo "  - Environment File: .env.test"
+echo "  - WSO2 Config: bootstrap_wso2_test_env.sh (if WSO2 is reachable)"
+echo "  - Environment File: .env.test is unit-test only; apply to .env only with APPLY_TEST_ENV_FILE=true"
 echo ""
 echo "To run tests:"
 echo "  # Using pytest directly"
