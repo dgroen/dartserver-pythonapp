@@ -46,21 +46,26 @@ resolve_wso2_admin_credentials() {
       "${base_url%/}/scim2/Users?startIndex=1&count=1"
   }
 
+  # creds_accepted: 200 = OK; 400 = authenticated but server-side error (e.g.
+  # broken WSO2 role state — credentials are valid, request processing failed).
+  # 401/403 = wrong credentials.
+  creds_accepted() { [[ "$1" == "200" || "$1" == "400" ]]; }
+
   echo "[WSO2 Bootstrap] Verifying admin credentials..."
   http_code=$(check_creds "$primary_user" "$primary_pass")
-  if [[ "$http_code" == "200" ]]; then
+  if creds_accepted "$http_code"; then
     export BOOTSTRAP_ADMIN_USER="$primary_user"
     export BOOTSTRAP_ADMIN_PASS="$primary_pass"
-    echo "[WSO2 Bootstrap] Using configured admin user: ${BOOTSTRAP_ADMIN_USER}"
+    echo "[WSO2 Bootstrap] Using configured admin user: ${BOOTSTRAP_ADMIN_USER} (HTTP ${http_code})"
     return
   fi
 
   echo "[WSO2 Bootstrap] Configured admin credentials returned HTTP ${http_code}."
   http_code=$(check_creds "admin" "admin")
-  if [[ "$http_code" == "200" ]]; then
+  if creds_accepted "$http_code"; then
     export BOOTSTRAP_ADMIN_USER="admin"
     export BOOTSTRAP_ADMIN_PASS="admin"
-    echo "[WSO2 Bootstrap] Falling back to default admin/admin credentials after reseed."
+    echo "[WSO2 Bootstrap] Falling back to default admin/admin credentials after reseed (HTTP ${http_code})."
     return
   fi
 

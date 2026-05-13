@@ -247,6 +247,45 @@ ensure_wso2_schema() {
         fi
     fi
 
+    # Non-destructive repair: ensure um_hybrid_role_audience has an entry for every
+    # row in um_hybrid_role. WSO2 IS 7.x JOINs these tables to resolve role audiences;
+    # if um_hybrid_role_audience is empty while um_hybrid_role has entries, WSO2 cannot
+    # find the everyone role → AuthorizationHandler fails → all SCIM calls return 400.
+    if [ "$um_role_exists" = "um_role" ]; then
+        local hybrid_role_table_exists
+        hybrid_role_table_exists=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT to_regclass('public.um_hybrid_role_audience');")
+        if [ "$hybrid_role_table_exists" = "um_hybrid_role_audience" ]; then
+            local audience_count
+            audience_count=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT COUNT(*) FROM um_hybrid_role_audience;" | tr -d '[:space:]')
+            local hybrid_role_count
+            hybrid_role_count=$(docker exec "$pg_container" psql -U postgres -d wso2is_shared -tAc "SELECT COUNT(*) FROM um_hybrid_role;" | tr -d '[:space:]')
+            if [ "$audience_count" = "0" ] && [ "$hybrid_role_count" -gt "0" ]; then
+                echo "⚠ Detected empty um_hybrid_role_audience with $hybrid_role_count orphaned hybrid roles — repairing..."
+                docker exec "$pg_container" psql -U postgres -d wso2is_shared -v ON_ERROR_STOP=1 <<'REPAIR_SQL'
+DO $$
+DECLARE
+  v_org_id TEXT;
+BEGIN
+  SELECT um_id INTO v_org_id FROM um_org WHERE um_org_name = 'Super' AND um_org_type = 'TENANT' LIMIT 1;
+  IF v_org_id IS NULL THEN
+    RAISE WARNING 'Super org not found in um_org; skipping um_hybrid_role_audience repair';
+  ELSE
+    INSERT INTO um_hybrid_role_audience (um_id, um_audience, um_audience_id)
+    SELECT r.um_audience_ref_id, 'organization', v_org_id
+    FROM um_hybrid_role r
+    WHERE NOT EXISTS (
+      SELECT 1 FROM um_hybrid_role_audience a WHERE a.um_id = r.um_audience_ref_id
+    )
+    GROUP BY r.um_audience_ref_id;
+    RAISE NOTICE 'um_hybrid_role_audience repair complete';
+  END IF;
+END $$;
+REPAIR_SQL
+                echo "✓ um_hybrid_role_audience repaired"
+            fi
+        fi
+    fi
+
     if [ "$um_domain_exists" = "um_domain" ] && [ "$um_role_exists" = "um_role" ] && [ "$role_count" -ge 1 ] && [ "$idn_claim_exists" = "idn_claim" ]; then
         echo "✓ WSO2 user store schema is present and core roles exist"
     else
