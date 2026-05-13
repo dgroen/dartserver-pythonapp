@@ -171,11 +171,15 @@ def main() -> int:  # noqa: PLR0911
             ),
         ),
     )
-    client_id = get_env_or(args.client_id, "WSO2_CLIENT_ID", os.getenv("WSO2_CLIENT_ID", ""))
+    client_id = get_env_or(
+        args.client_id,
+        "WSO2_IS_CLIENT_ID",
+        os.getenv("WSO2_GATEWAY_CLIENT_ID", os.getenv("WSO2_CLIENT_ID", "")),
+    )
     client_secret = get_env_or(
         args.client_secret,
-        "WSO2_CLIENT_SECRET",
-        os.getenv("WSO2_CLIENT_SECRET", ""),
+        "WSO2_IS_CLIENT_SECRET",
+        os.getenv("WSO2_GATEWAY_CLIENT_SECRET", os.getenv("WSO2_CLIENT_SECRET", "")),
     )
     redirect_uris = []
     if args.redirect_uris:

@@ -416,6 +416,15 @@ jobs:
           fi
           echo "✅ WSO2 baseline data validation passed"
 
+          echo "🧩 Running WSO2 bootstrap (clients/users/groups)..."
+          if [ -f helpers/bootstrap_wso2_test_env.sh ]; then
+            bash helpers/bootstrap_wso2_test_env.sh || { echo "❌ WSO2 bootstrap failed"; exit 1; }
+          else
+            echo "❌ helpers/bootstrap_wso2_test_env.sh not found! Cannot bootstrap WSO2 test env."
+            exit 1
+          fi
+          echo "✅ WSO2 bootstrap completed"
+
           # Upgrade database schema
           echo "🗄️  Upgrading database schema to latest migration..."
           docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml exec -T darts-app alembic upgrade head
