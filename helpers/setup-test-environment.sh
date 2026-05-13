@@ -39,7 +39,9 @@ sync_test_env_file() {
 
 run_wso2_bootstrap() {
     local bootstrap_script="$SCRIPT_DIR/bootstrap_wso2_test_env.sh"
-    local wso2_url="${WSO2_IS_URL:-https://localhost:9443}"
+    # Prefer direct localhost port for health checks so Docker-internal hostnames
+    # (e.g. wso2is:9443) do not cause indefinite hangs when run from the host.
+    local wso2_url="https://localhost:9443"
     local health_ready=false
     local attempt
 
@@ -68,7 +70,7 @@ run_wso2_bootstrap() {
     fi
 
     for attempt in $(seq 1 60); do
-        if curl -k -s -f "${wso2_url%/}/api/health-check/v1.0/health" > /dev/null 2>&1; then
+        if curl -k -s -f --connect-timeout 3 --max-time 8 "${wso2_url%/}/api/health-check/v1.0/health" > /dev/null 2>&1; then
             health_ready=true
             break
         fi
@@ -90,7 +92,9 @@ run_wso2_bootstrap() {
             source .env
             set +a
         fi
-        bash "$bootstrap_script"
+        # Force localhost for management API calls so Docker-internal hostnames
+        # (wso2is:9443) are not used when the script runs on the host.
+        WSO2_IS_INTERNAL_URL=https://localhost:9443 bash "$bootstrap_script"
     )
     echo "✓ WSO2 bootstrap completed"
 }

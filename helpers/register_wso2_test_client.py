@@ -137,10 +137,17 @@ def _check_admin_auth() -> tuple[bool, str]:
 
 
 def check_existing_client() -> tuple[dict[str, Any] | None, bool]:
-    """Check if client already exists"""
+    """Check if client already exists.
+
+    Tries admin Basic auth first. In WSO2 IS 7.x the DCR GET endpoint follows
+    RFC 7592 and returns 401 when admin credentials are used (only the client's
+    own credentials or a registration access token are accepted).  When that
+    happens we retry with CLIENT_ID:CLIENT_SECRET so idempotent re-runs work.
+    """
     try:
         print("🔍 Checking if client already exists...")
-        response = _dcr_request("GET", _dcr_client_endpoint(CLIENT_ID))
+        url = _dcr_client_endpoint(CLIENT_ID)
+        response = _dcr_request("GET", url)
 
         if response.status_code == 200:
             data = response.json()
@@ -149,6 +156,38 @@ def check_existing_client() -> tuple[dict[str, Any] | None, bool]:
         if response.status_code == 404:
             print("ℹ️  Client does not exist - will create new one")
             return None, True
+
+        # WSO2 IS 7.x DCR GET requires the client's own credentials (RFC 7592).
+        # Admin Basic auth returns 401 for this endpoint — retry with client creds.
+        if response.status_code == 401 and CLIENT_SECRET:
+            print(
+                f"   ℹ️  Admin auth returned 401 on DCR GET (WSO2 IS 7.x behaviour); "
+                "retrying with client credentials..."
+            )
+            # pylint: disable=S501
+            retry = requests.get(
+                url,
+                auth=(CLIENT_ID, CLIENT_SECRET),
+                headers={"Accept": "application/json"},
+                verify=False,
+                timeout=10,
+            )
+            if retry.status_code == 200:
+                data = retry.json()
+                print(f"✅ Found existing client: {data.get('client_name', 'Unknown')}")
+                return data, True
+            if retry.status_code == 404:
+                print("ℹ️  Client does not exist - will create new one")
+                return None, True
+            # 401 with client creds means client genuinely doesn't exist yet
+            # (WSO2 returns 401 instead of 404 when the client_id is unknown)
+            if retry.status_code == 401:
+                print("ℹ️  Client does not exist (401 on client-credential DCR GET) - will create new one")
+                return None, True
+            print(f"⚠️  Error checking client (client-cred retry): {retry.status_code}")
+            print(f"   Response: {retry.text}")
+            return None, False
+
         print(f"⚠️  Error checking client: {response.status_code}")
         print(f"   Response: {response.text}")
         return None, False

@@ -83,9 +83,26 @@ def get_env_or(arg_val: str | None, env_name: str, default: str | None = None) -
     return os.getenv(env_name, default or "")
 
 
-def dcr_get(ws_url: str, client_id: str, admin_user: str, admin_pass: str) -> requests.Response:
+def dcr_get(ws_url: str, client_id: str, admin_user: str, admin_pass: str, client_secret: str = "") -> requests.Response:
     url = f"{ws_url.rstrip('/')}/api/identity/oauth2/dcr/v1.1/register/{client_id}"
-    return _dcr_request("GET", url, admin_user, admin_pass)
+    resp = _dcr_request("GET", url, admin_user, admin_pass)
+    # WSO2 IS 7.x DCR GET follows RFC 7592 and returns 401 for admin Basic auth.
+    # Retry with client credentials (client_id:client_secret) so idempotent runs work.
+    if resp.status_code == 401 and client_secret:
+        print(
+            "   ℹ️  Admin auth returned 401 on DCR GET (WSO2 IS 7.x behaviour); "
+            "retrying with client credentials..."
+        )
+        url2 = url  # same URL
+        resp2 = requests.get(
+            url2,
+            auth=(client_id, client_secret),
+            headers={"Accept": "application/json"},
+            verify=False,
+            timeout=10,
+        )
+        return resp2
+    return resp
 
 
 def dcr_post(
@@ -198,7 +215,7 @@ def main() -> int:  # noqa: PLR0911
 
     # Fetch existing client
     try:
-        resp = dcr_get(wso2_is_url, client_id, admin_user, admin_pass)
+        resp = dcr_get(wso2_is_url, client_id, admin_user, admin_pass, client_secret)
     except Exception as e:
         print(f"ERROR: failed to contact WSO2 DCR endpoint: {e}")
         return 3
@@ -210,12 +227,18 @@ def main() -> int:  # noqa: PLR0911
         client = None
         print("Client not found (404); will attempt to create")
     elif resp.status_code in (401, 403):
-        print(
-            "Failed to lookup existing client due authorization error "
-            f"(status {resp.status_code}); refusing to create a new client",
-        )
-        print(f"Response: {resp.text}")
-        return 4
+        # WSO2 IS 7.x returns 401 (not 404) for unknown client_id when using client
+        # credentials — treat as "client not found" since admin SCIM auth is valid.
+        if resp.status_code == 401:
+            client = None
+            print("Client not found (401 on client-credential GET = unknown client_id); will attempt to create")
+        else:
+            print(
+                "Failed to lookup existing client due authorization error "
+                f"(status {resp.status_code}); refusing to create a new client",
+            )
+            print(f"Response: {resp.text}")
+            return 4
     else:
         print(f"Failed to fetch client: {resp.status_code} {resp.text}")
         return 4
