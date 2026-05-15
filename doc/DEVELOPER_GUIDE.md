@@ -20,7 +20,13 @@ cd dartserver-pythonapp
 python3.11 -m venv .venv
 source .venv/bin/activate
 
-# Install all dependencies (including dev tools)
+# Install runtime dependencies
+pip install -r requirements.txt
+
+# Install local monorepo packages (required for imports like dartserver_core)
+pip install -e packages/dartserver-core -e packages/dartserver-games -e packages/dartserver-services -e packages/dartserver-app
+
+# Optional: install dev tooling
 pip install -e ".[dev,lint,test]"
 
 # Start services
@@ -377,7 +383,7 @@ docker-compose up -d
 
 | Issue | Solution |
 |-------|----------|
-| Import errors | Verify virtual env activated |
+| Import errors | Activate .venv and install editable packages from packages/ (dartserver-core, dartserver-games, dartserver-services, dartserver-app) |
 | Database locked | Restart db container |
 | WebSocket fails | Check firewall/proxy |
 | Tests fail | Run with -v flag for details |

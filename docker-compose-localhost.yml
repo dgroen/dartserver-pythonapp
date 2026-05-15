@@ -72,30 +72,30 @@ services:
       - darts-network
 
   # WSO2 API Manager
-  wso2apim:
-    image: wso2/wso2am:4.0.0
-    container_name: darts-wso2apim
-    ports:
-      - "9444:9443" # HTTPS port (Publisher/DevPortal)
-      - "8280:8280" # HTTP Gateway
-      - "8243:8243" # HTTPS Gateway
-    environment:
-      - JAVA_OPTS=-Xms512m -Xmx1024m
-    volumes:
-      - wso2apim_data:/home/wso2carbon/wso2am-4.0.0
-      # deployment.toml mount disabled - let APIM start with default config first
-      # - ./wso2apim-4-config/deployment.toml:/home/wso2carbon/wso2am-4.0.0/repository/conf/deployment.toml
-    depends_on:
-      wso2is:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD", "curl", "-k", "-f", "https://localhost:9443/api/health-check/v1.0/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 120s
-    networks:
-      - darts-network
+  # wso2apim:
+  #   image: wso2/wso2am:4.0.0
+  #   container_name: darts-wso2apim
+  #   ports:
+  #     - "9444:9443" # HTTPS port (Publisher/DevPortal)
+  #     - "8280:8280" # HTTP Gateway
+  #     - "8243:8243" # HTTPS Gateway
+  #   environment:
+  #     - JAVA_OPTS=-Xms512m -Xmx1024m
+  #   volumes:
+  #     - wso2apim_data:/home/wso2carbon/wso2am-4.0.0
+  #     # deployment.toml mount disabled - let APIM start with default config first
+  #     # - ./wso2apim-4-config/deployment.toml:/home/wso2carbon/wso2am-4.0.0/repository/conf/deployment.toml
+  #   depends_on:
+  #     wso2is:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: [ "CMD", "curl", "-k", "-f", "https://localhost:9443/api/health-check/v1.0/health" ]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 120s
+  #   networks:
+  #     - darts-network
 
   # API Gateway Service
   api-gateway:
@@ -149,8 +149,8 @@ services:
         condition: service_healthy
       wso2is:
         condition: service_healthy
-      wso2apim:
-        condition: service_healthy
+      # wso2apim:
+      #   condition: service_healthy
     restart: unless-stopped
     networks:
       - darts-network
@@ -243,7 +243,7 @@ services:
     depends_on:
       - api-gateway
       - darts-app
-      - wso2apim
+      # - wso2apim
     networks:
       - darts-network
 
