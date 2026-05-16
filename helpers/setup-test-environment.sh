@@ -6,8 +6,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-WSO2_SCHEMA_RESEEDED=false
-PRESERVE_DB_DATA="${PRESERVE_DB_DATA:-false}"
+WSO2_SCHEMA_RESEEDED=true
+PRESERVE_DB_DATA="${PRESERVE_DB_DATA:-true}"
 
 sync_test_env_file() {
     local env_test_file="$PROJECT_ROOT/.env.test"
