@@ -28,7 +28,4 @@ services:
       ENVIRONMENT: production
       DOMAIN: letsplaydarts.eu
     volumes:
-      - ../dartserver-config/environments/production/nginx/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ../dartserver-config/environments/production/nginx/nginx/nginx.crt:/etc/nginx/nginx.crt:ro
-      - ../dartserver-config/environments/production/nginx/nginx/nginx.key:/etc/nginx/nginx.key:ro
       - ../dartserver-website:/usr/share/nginx/html/website:ro
