@@ -104,6 +104,12 @@ cp .env.example .env
 # With authentication (recommended)
 docker-compose -f docker-compose-wso2.yml up -d
 
+# Test environment (uses test nginx config + website /home route)
+docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d
+
+# Production environment (uses production nginx config + website /home route)
+docker-compose -f docker-compose-wso2.yml -f docker-compose-production.yml up -d
+
 # Without authentication (development only)
 docker-compose up -d
 ```
