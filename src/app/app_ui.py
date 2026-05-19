@@ -4,8 +4,21 @@ UI and page rendering endpoints
 
 from pathlib import Path
 
-from dartserver_core.auth import login_required, permission_required, role_required
-from flask import Blueprint, jsonify, render_template, request, send_from_directory
+from dartserver_core.auth import (
+    is_auth_disabled,
+    login_required,
+    permission_required,
+    role_required,
+)
+from flask import (
+    Blueprint,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    session,
+)
 
 ui_bp = Blueprint("ui", __name__)
 
@@ -15,22 +28,14 @@ _root_dir = _app_dir.parent.parent
 
 
 @ui_bp.route("/")
-@login_required
 def index():
-    """Main game board page
-    ---
-    tags:
-      - UI
-    summary: Main game board page
-    description: Renders the main game board interface for displaying the darts game
-    responses:
-      200:
-        description: HTML page rendered successfully
-        content:
-          text/html:
-            schema:
-              type: string
-    """
+    if "access_token" not in session and not is_auth_disabled():
+        return redirect("/home/")
+    return _index_auth()
+
+
+@login_required
+def _index_auth():
     user_roles = getattr(request, "user_roles", [])
     user_claims = getattr(request, "user_claims", {})
     return render_template("index.html", user_roles=user_roles, user_claims=user_claims)
