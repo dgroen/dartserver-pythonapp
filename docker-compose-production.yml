@@ -1,0 +1,34 @@
+version: "3.8"
+
+# Production Environment Override
+# Usage: docker-compose -f docker-compose-wso2.yml -f docker-compose-production.yml up -d
+
+services:
+  darts-app:
+    environment:
+      ENVIRONMENT: production
+      APP_DOMAIN: letsplaydarts.eu
+      APP_SCHEME: https
+      FLASK_DEBUG: "False"
+      FLASK_USE_SSL: "False"
+      SESSION_COOKIE_SECURE: "True"
+
+      WSO2_IS_URL: https://letsplaydarts.eu/auth
+      WSO2_REDIRECT_URI: https://letsplaydarts.eu/callback
+      WSO2_POST_LOGOUT_REDIRECT_URI: https://letsplaydarts.eu/
+
+  api-gateway:
+    environment:
+      FLASK_DEBUG: "False"
+      FLASK_ENV: production
+      SWAGGER_HOST: letsplaydarts.eu
+
+  nginx:
+    environment:
+      ENVIRONMENT: production
+      DOMAIN: letsplaydarts.eu
+    volumes:
+      - ../dartserver-config/environments/production/nginx/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../dartserver-config/environments/production/nginx/nginx/nginx.crt:/etc/nginx/nginx.crt:ro
+      - ../dartserver-config/environments/production/nginx/nginx/nginx.key:/etc/nginx/nginx.key:ro
+      - ../dartserver-website:/usr/share/nginx/html/website:ro

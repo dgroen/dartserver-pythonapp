@@ -122,3 +122,8 @@ services:
     environment:
       ENVIRONMENT: test
       DOMAIN: test.letsplaydarts.eu
+    volumes:
+      - ../dartserver-config/environments/test/nginx/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../dartserver-config/environments/test/nginx/nginx/nginx.crt:/etc/nginx/nginx.crt:ro
+      - ../dartserver-config/environments/test/nginx/nginx/nginx.key:/etc/nginx/nginx.key:ro
+      - ../dartserver-website:/usr/share/nginx/html/website:ro
