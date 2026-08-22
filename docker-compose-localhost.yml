@@ -14,6 +14,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-postgres-wso2.sql:/docker-entrypoint-initdb.d/01-init-wso2-dbs.sql:ro
+      # Seeds dartsdb with a snapshot of known-good local dev data on first
+      # boot (empty postgres_data volume only - see scripts/dump_dartsdb.sh
+      # to refresh this snapshot from the current running database).
+      - ./data/postgres/dartsdb-dump.sql:/docker-entrypoint-initdb.d/02-dartsdb-dump.sql:ro
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
@@ -124,8 +128,8 @@ services:
       WSO2_IS_URL: https://localhost:9443
       # Internal Docker network URL for backend calls from the api-gateway container
       WSO2_IS_INTERNAL_URL: https://darts-wso2is:9443
-      WSO2_IS_CLIENT_ID: ${WSO2_CLIENT_ID:-darts_api_gateway}
-      WSO2_IS_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-darts_api_gateway_secret}
+      WSO2_IS_CLIENT_ID: ${WSO2_CLIENT_ID:-qGUe7mARfB_rbEn09jWJtTyi9uMa}
+      WSO2_IS_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-HUgKyYNsXxfGAYHb2SYMFuX18Gmu9R9kE99EQkXOfKka}
 
       # Introspection credentials (required for token validation)
       WSO2_IS_INTROSPECT_USER: ${WSO2_IS_INTROSPECT_USER:-admin}
@@ -208,8 +212,8 @@ services:
       WSO2_IS_URL: https://localhost:9443
       # WSO2_IS_INTERNAL_URL: Internal Docker network URL for backend API calls
       WSO2_IS_INTERNAL_URL: https://darts-wso2is:9443
-      WSO2_CLIENT_ID: ${WSO2_CLIENT_ID:-darts_api_gateway}
-      WSO2_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-darts_api_gateway_secret}
+      WSO2_CLIENT_ID: ${WSO2_CLIENT_ID:-qGUe7mARfB_rbEn09jWJtTyi9uMa}
+      WSO2_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-HUgKyYNsXxfGAYHb2SYMFuX18Gmu9R9kE99EQkXOfKka}
       # Match nginx-facing HTTPS origin for local dev callbacks
       WSO2_REDIRECT_URI: ${WSO2_REDIRECT_URI:-https://localhost/callback}
       WSO2_POST_LOGOUT_REDIRECT_URI: ${WSO2_POST_LOGOUT_REDIRECT_URI:-https://localhost/}

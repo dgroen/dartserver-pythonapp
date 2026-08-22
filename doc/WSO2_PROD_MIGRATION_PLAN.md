@@ -3,10 +3,23 @@
 ## Objective
 Migrate production WSO2IS from H2 to PostgreSQL with no data loss, migrate all WSO2 configuration, and make the GitHub Actions deployment process generic for both test and production while keeping production rollout aligned with the test environment flow.
 
+## Status Update (2026-08-22)
+Re-verified against current repo/config state:
+- Production is confirmed still on H2 (`environments/production/wso2is-config/deployment.toml` in the config repo, `type = "h2"`). Test is already on PostgreSQL, so it remains a valid baseline for Phase 1.
+- **Phase 4 (generic GitHub Actions pipeline) is already implemented**, not future work — [.github/workflows/deploy-unified.yml](../.github/workflows/deploy-unified.yml) already has parameterized test/production jobs, a mandatory production approval gate, a `backup-production` job, a `restore-on-failure` job, and a `rollback-production` job. Treat Phase 4 below as done; remaining pipeline work is closing the gap noted below, not building it from scratch.
+- **Rollback is currently manual, not automatic.** The constraint below ("automatic rollback on failed verification") does not match the implemented pipeline: `restore-on-failure` and `rollback-production` both sit behind human-approval GitHub Environments (`production-restore-approval`, `production-rollback`). This is an open decision — either update the constraint to "manual approval-gated rollback" (current reality, arguably safer for a first H2->PG cutover) or treat automatic rollback as still-outstanding work. Not yet decided.
+- **Phase 2's core deliverable (H2 -> PostgreSQL export/import tooling) has not been started.** No migration-tool script or wrapper exists anywhere in the repo yet. This is the critical path item blocking everything else — nothing in Phases 5-7 can run until this exists and is tested.
+- No dry run/rehearsal (Phase 6) has been executed yet.
+
+## Execution Model
+- Environment provisioning and the deploy sequence itself run through the existing `deploy-unified.yml` GitHub Actions pipeline (test -> approval gate -> production), reusing its approval gates and backup/restore jobs rather than reimplementing them ad hoc.
+- One-time, migration-specific manual actions (e.g. the initial H2 export, PostgreSQL import/verification, any hand-run parity checks) are run remotely over SSH from the operator machine, outside the pipeline.
+- Open item: this machine currently has no SSH config or known jumphost/production host entries set up, so direct SSH access for those manual steps is not yet confirmed. Needs host/user/key details before any remote manual step can run from here.
+
 ## Confirmed Constraints
 - Current production WSO2IS backend: H2
 - Acceptable downtime window: up to 30 minutes
-- Rollback policy: automatic rollback on failed verification
+- Rollback policy: manual, approval-gated restore/rollback (see Status Update above — differs from original "automatic" constraint; pending decision)
 - Configuration source of truth: config repo + GitHub secrets
 
 ## Implementation Phases
@@ -19,7 +32,7 @@ Migrate production WSO2IS from H2 to PostgreSQL with no data loss, migrate all W
   - WSO2 baseline validation queries
 - Define production parity target: same deployment order and control points as test, unless explicitly documented for production-only infra differences.
 
-### 2. Production H2-to-PostgreSQL Migration Design
+### 2. Production H2-to-PostgreSQL Migration Design (Not Started — critical path)
 - Build a cutover runbook with explicit freeze and unfreeze points.
 - Define export/import mechanism for H2 -> PostgreSQL using official WSO2 migration tooling first, and fallback only if necessary.
 - Define migration scope and required parity checks for:
@@ -45,7 +58,7 @@ Migrate production WSO2IS from H2 to PostgreSQL with no data loss, migrate all W
   - auth smoke test failure
 - Implement automatic restore workflow and post-restore health verification.
 
-### 4. Generic GitHub Actions Pipeline
+### 4. Generic GitHub Actions Pipeline (Already Implemented — see Status Update)
 - Refactor deployment workflow to parameterize environment (test, production) rather than duplicate logic.
 - Parameterize:
   - branch
