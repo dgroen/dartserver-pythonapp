@@ -14,7 +14,32 @@ Re-verified against current repo/config state:
 ## Execution Model
 - Environment provisioning and the deploy sequence itself run through the existing `deploy-unified.yml` GitHub Actions pipeline (test -> approval gate -> production), reusing its approval gates and backup/restore jobs rather than reimplementing them ad hoc.
 - One-time, migration-specific manual actions (e.g. the initial H2 export, PostgreSQL import/verification, any hand-run parity checks) are run remotely over SSH from the operator machine, outside the pipeline.
-- Open item: this machine currently has no SSH config or known jumphost/production host entries set up, so direct SSH access for those manual steps is not yet confirmed. Needs host/user/key details before any remote manual step can run from here.
+- SSH access from the operator machine to production is now set up and confirmed working (jumphost `strato.vdi.prd` -> `strato.vdi.prd.dartserver`), via `~/.ssh/config` on that machine plus the `bto` keypair. Not used yet for anything against real production — see rehearsal below.
+
+## Phase 2/6 Local Rehearsal Results (2026-08-23)
+Built and ran the missing H2 -> PostgreSQL migration tool end-to-end against an isolated, disposable rehearsal stack (never touching the running dev stack or production):
+- `docker-compose-migration-rehearsal.yml` — throwaway H2-backed `wso2is-source`, PostgreSQL `postgres` (official WSO2 DDL from the test config), and PostgreSQL-backed `wso2is-target`.
+- `helpers/run_wso2_migration_rehearsal.sh` — orchestrates: seed representative data (reusing `helpers/register_wso2_test_client.py`, `helpers/configure_wso2_redirects.py`, `helpers/test_wso2_provision_user.py`), freeze + back up via `helpers/backup_docker_volumes.sh` (made project-scoped via a `PROJECT_NAME` env override, backward compatible), migrate, start target.
+- `helpers/migrate_wso2_h2_to_postgres.sh` — the actual Phase 2 deliverable: reads H2 files **from the backup tarball** (never a live volume, matching the plan's freeze-then-backup cutover sequence), exports every table generically via H2's `CSVWRITE`, loads into PostgreSQL via `\copy` with `session_replication_role = replica` (skips FK ordering), resyncs sequences afterward.
+- `helpers/verify_wso2_migration_parity.sh` — row-count diff per table plus functional checks (admin login, seeded users, OAuth token issuance + introspection).
+
+**Result: the migration mechanism works.** 36/39 tables matched exactly on row count, including every auth-relevant table (users, roles, role assignments, OAuth client, service providers, claims, scopes, IdP). All functional checks passed: admin SCIM login, all 3 seeded users present, OAuth token issuance and introspection both succeeded against the migrated PostgreSQL-backed target.
+
+**Three concrete gaps were found, and all three are now fixed and re-verified (2026-08-23, second rehearsal pass):**
+1. **Schema drift** — 10 consent-management tables (`CM_PURPOSE`, `CM_RECEIPT`, etc.) exist in WSO2IS 7.1.0's H2 schema but had no matching table in the official Postgres DDL in the config repo. Fixed by [helpers/migration-rehearsal/missing-wso2-identity-tables-postgresql.sql](../helpers/migration-rehearsal/missing-wso2-identity-tables-postgresql.sql) (DDL translated from a live H2 instance's schema, in the same style as the existing DDL). **This file still needs to be merged into `dartserver-config/environments/*/wso2is-config/postgresql-identity.sql` before a real production run** — it's currently only wired into the rehearsal compose file.
+2. **BLOB/CLOB CSV encoding gap** — `REG_CONTENT` (a real PNG image, stored as H2 `BINARY LARGE OBJECT`) failed to load entirely: H2's default CSVWRITE stringifies binary content unsafely. Fixed in `helpers/migrate_wso2_h2_to_postgres.sh`'s export step: BLOB/CLOB columns (detected generically per-table from `INFORMATION_SCHEMA.COLUMNS`, matching both the abbreviated and full H2 type names) are now hex-encoded as `\x<hex>`, PostgreSQL's native `bytea` text format, so the existing `\copy` loads them with no special-casing needed. Re-verified: 16/16 rows now match.
+3. **Baseline seed-data collisions** — a handful of tables throw PK conflicts because both H2 and the Postgres DDL insert the same default rows independently. Fixed by loading every table through an unconstrained `TEMP` staging table first, then `INSERT ... ON CONFLICT DO NOTHING` into the real table, instead of a raw `\copy` (which would abort the whole table's load, not just the duplicate row, on the first collision). Re-verified: no errors, all rows present.
+
+**Second rehearsal pass result: every table matched exactly except `REG_LOG` (298 vs 307)** — expected, not a defect: the target WSO2IS instance had already been running for several minutes handling its own health checks before verification ran, writing a handful of registry log entries of its own.
+
+Also found and fixed two infra bugs during the rehearsal, worth knowing about since they'd bite anyone else running these tools:
+- `helpers/backup_docker_volumes.sh`'s volume-existence prompt wasn't actually gated by `-y`/`--yes` (would hang non-interactively) — fixed.
+- `pg_isready` with no `-h` flag checks the local Unix socket, which can report "healthy" while postgres is still mid-initdb on its internal temp server, before the real TCP-listening server is up. The rehearsal compose file's healthcheck now forces `-h 127.0.0.1`; **`docker-compose-wso2.yml` (used by test/production) has the same latent issue and was intentionally left unchanged — still needs the same fix before this tooling is used for real.**
+- Spawning one throwaway `docker run` container per table (for both the loader and the row-count verifier) was found to destabilize/slow things badly under host load — once for the target postgres itself (container churn contributed to it being sent an unexpected shutdown mid-load), and separately made verification take 40+ minutes instead of seconds. Both now batch all tables into a single `psql` session per database.
+
+Rehearsal stack was fully torn down after each run (`docker compose down -v` equivalent); nothing from it persists.
+
+**Remaining before this is safe to point at production:** merge the missing-tables DDL into the real config repo, decide the automatic-vs-manual rollback question (see Status Update above), fix the `docker-compose-wso2.yml` healthcheck, and ideally rehearse once more against a larger/more production-shaped dataset before wiring this into `deploy-unified.yml`.
 
 ## Confirmed Constraints
 - Current production WSO2IS backend: H2
