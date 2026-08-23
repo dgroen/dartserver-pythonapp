@@ -13,7 +13,7 @@ services:
       POSTGRES_DB: dartsdb
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-postgres-wso2.sql:/docker-entrypoint-initdb.d/01-init-wso2-dbs.sql:ro
+      - ./init-postgres-wso2.sh:/docker-entrypoint-initdb.d/01-init-wso2-dbs.sh:ro
       # Seeds dartsdb with a snapshot of known-good local dev data on first
       # boot (empty postgres_data volume only - see scripts/dump_dartsdb.sh
       # to refresh this snapshot from the current running database).

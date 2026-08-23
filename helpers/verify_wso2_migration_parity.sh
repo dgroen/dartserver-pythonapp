@@ -17,47 +17,12 @@ pass() { echo "[verify] PASS: $*"; }
 fail() { echo "[verify] FAIL: $*"; FAIL=1; }
 
 # --- Row count parity ---
-# One psql session per database (a `docker run` per table was found during
-# rehearsal to make this take tens of minutes under host CPU contention -
-# same lesson as the loader in migrate_wso2_h2_to_postgres.sh).
 WORKDIR=$(cat "$STATE_DIR/h2_export_workdir.txt" 2>/dev/null || true)
 if [ -z "$WORKDIR" ] || [ ! -d "$WORKDIR" ]; then
   fail "H2 export workdir not found (${WORKDIR:-unset}); run the migration first."
 else
-  log "Comparing row counts using H2 export at ${WORKDIR}..."
-  for pair in "identity:wso2is_identity" "shared:wso2is_shared"; do
-    csv_subdir="${pair%%:*}"
-    pg_db="${pair##*:}"
-    declare -A h2_counts=()
-    query=""
-    for csv in "$WORKDIR/csv/${csv_subdir}"/*.csv; do
-      tbl=$(basename "$csv" .csv)
-      case "$tbl" in _columns) continue ;; esac
-      h2_rows=$(($(wc -l < "$csv") - 1))
-      [ "$h2_rows" -lt 0 ] && h2_rows=0
-      h2_counts["$tbl"]="$h2_rows"
-      clause="SELECT '${tbl}' AS t, (SELECT COUNT(*) FROM ${tbl}) AS n"
-      [ -z "$query" ] && query="$clause" || query="${query} UNION ALL ${clause}"
-    done
-    pg_output=$(PGPASSWORD=postgres docker run --rm -e PGPASSWORD=postgres --network host postgres:16-alpine \
-      psql -h localhost -p 15432 -U postgres -d "$pg_db" -t -A -F'|' -c "$query" 2>&1)
-    declare -A pg_counts=()
-    while IFS='|' read -r t n; do
-      [ -n "$t" ] && pg_counts["$t"]="$n"
-    done <<< "$pg_output"
-    for tbl in "${!h2_counts[@]}"; do
-      h2_rows="${h2_counts[$tbl]}"
-      pg_rows="${pg_counts[$tbl]:-}"
-      if [ -z "$pg_rows" ]; then
-        fail "${pg_db}.${tbl}: could not query PostgreSQL row count"
-      elif [ "$h2_rows" != "$pg_rows" ]; then
-        fail "${pg_db}.${tbl}: H2 had ${h2_rows} rows, PostgreSQL has ${pg_rows}"
-      elif [ "$h2_rows" -gt 0 ]; then
-        pass "${pg_db}.${tbl}: ${h2_rows} rows match"
-      fi
-    done
-    unset h2_counts pg_counts
-  done
+  helpers/verify_wso2_migration_row_counts.sh "$WORKDIR" localhost 15432 postgres postgres
+  [ $? -ne 0 ] && FAIL=1
 fi
 
 # --- Functional checks against wso2is-target ---

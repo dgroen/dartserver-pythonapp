@@ -7,7 +7,7 @@ Migrate production WSO2IS from H2 to PostgreSQL with no data loss, migrate all W
 Re-verified against current repo/config state:
 - Production is confirmed still on H2 (`environments/production/wso2is-config/deployment.toml` in the config repo, `type = "h2"`). Test is already on PostgreSQL, so it remains a valid baseline for Phase 1.
 - **Phase 4 (generic GitHub Actions pipeline) is already implemented**, not future work — [.github/workflows/deploy-unified.yml](../.github/workflows/deploy-unified.yml) already has parameterized test/production jobs, a mandatory production approval gate, a `backup-production` job, a `restore-on-failure` job, and a `rollback-production` job. Treat Phase 4 below as done; remaining pipeline work is closing the gap noted below, not building it from scratch.
-- **Rollback is currently manual, not automatic.** The constraint below ("automatic rollback on failed verification") does not match the implemented pipeline: `restore-on-failure` and `rollback-production` both sit behind human-approval GitHub Environments (`production-restore-approval`, `production-rollback`). This is an open decision — either update the constraint to "manual approval-gated rollback" (current reality, arguably safer for a first H2->PG cutover) or treat automatic rollback as still-outstanding work. Not yet decided.
+- **Decided: rollback stays manual, approval-gated — not automatic.** `restore-on-failure` and `rollback-production` sit behind human-approval GitHub Environments (`production-restore-approval`, `production-rollback`), which does not match the original "automatic rollback on failed verification" constraint. Keeping it manual rather than building automatic rollback now: this is a first-ever H2->PostgreSQL cutover for this system, the failure modes are still being discovered (see rehearsal findings below), and an unattended automatic restore of a production identity/auth database carries more risk than a short human-in-the-loop pause. The constraint below has been updated to reflect this as the decided policy, not a placeholder.
 - **Phase 2's core deliverable (H2 -> PostgreSQL export/import tooling) has not been started.** No migration-tool script or wrapper exists anywhere in the repo yet. This is the critical path item blocking everything else — nothing in Phases 5-7 can run until this exists and is tested.
 - No dry run/rehearsal (Phase 6) has been executed yet.
 
@@ -39,12 +39,42 @@ Also found and fixed two infra bugs during the rehearsal, worth knowing about si
 
 Rehearsal stack was fully torn down after each run (`docker compose down -v` equivalent); nothing from it persists.
 
-**Remaining before this is safe to point at production:** merge the missing-tables DDL into the real config repo, decide the automatic-vs-manual rollback question (see Status Update above), fix the `docker-compose-wso2.yml` healthcheck, and ideally rehearse once more against a larger/more production-shaped dataset before wiring this into `deploy-unified.yml`.
+## Follow-Up Fixes (2026-08-23, after the second rehearsal pass)
+- **DDL merged for real.** The `CM_*` table DDL is now appended to `dartserver-config/environments/test/wso2is-config/postgresql-identity.sql` (not just the rehearsal-only copy), and sanity-checked by loading both `postgresql-shared.sql` and the updated `postgresql-identity.sql` into a scratch PostgreSQL instance end-to-end with no errors. Production doesn't have its own copy of this file yet (still H2) — when production is provisioned for PostgreSQL, it should get this same, now-corrected, test config.
+- **Healthcheck race fixed in the real compose file.** `docker-compose-wso2.yml`'s `postgres` healthcheck now uses `pg_isready -h 127.0.0.1 -U postgres` (was socket-only), with a `start_period: 60s` added. `docker-compose-test.yml` inherits it (doesn't redefine the healthcheck). `docker-compose-localhost.yml` (local-dev-only, not part of the test/production deploy path) was left untouched.
+- **Rollback policy decided**, see Confirmed Constraints below.
+
+## Real Production Data Validation (2026-08-23)
+Validated the migration tool against actual production data (not synthetic seed data), read-only end to end:
+- Took a read-only backup of `dartserver-pythonapp_wso2is_data` **on the production host itself**, using the existing unmodified `helpers/backup_docker_volumes.sh` — the exact same mechanism `backup-production` already uses, so nothing new or risky was exercised against production. Production's live containers/data were never touched or modified.
+- Pulled only the `wso2is_data.tar.gz` backup down to a local scratchpad (never the repo), ran `helpers/migrate_wso2_h2_to_postgres.sh` unmodified against it into a disposable target, then immediately deleted the production backup copy from the production host and, after the check below, from local disk too.
+- **Result: 197/197 tables matched exactly** (137 identity + 60 shared) — including the partial-collision cases (some tables had a mix of pre-existing baseline rows and real data; `ON CONFLICT DO NOTHING` correctly kept only the real duplicates out while inserting everything else). `wso2is-target` booted healthy on the first attempt against this real, migrated data, with no schema errors.
+- No new bugs found — every fix from the synthetic rehearsal held up against ~3 months of real production data.
+- **Scope note:** verification here was structural only (row counts, target health) — no login, token issuance, or any check that would require real user credentials was attempted, and no actual row content was ever printed to logs. This is validation of the migration mechanism, not the actual production cutover; production's H2 backend is untouched.
+
+**Found but intentionally not touched:** `helpers/restore_docker_volumes.sh` is disconnected from the real pipeline (`deploy-unified.yml`'s `restore-on-failure`/`rollback-production` jobs have their own inline restore logic and don't call it) and is unsafe to run as-is for any kind of isolated test — `stop_containers()` runs bare `docker-compose -f docker-compose-wso2.yml down`, which without project scoping would take down the live `darts-*` dev stack, and `restore_configuration()` overwrites the real `.env`/`nginx`/`deployment.toml` in the repo root. Left unmodified; flagging so nobody runs it expecting it to be safely scoped like `backup_docker_volumes.sh` now is.
+
+## Critical Bug Found and Fixed: WSO2 Schema DDL Was Never Actually Loading (2026-08-23)
+While preparing the automated pipeline workflow (below), discovered that the CM_* DDL fix — and in fact the *entire* official WSO2 PostgreSQL DDL — was silently not taking effect through `docker-compose-wso2.yml` (the file test/production actually use):
+- `init-postgres-wso2.sql` was recently changed (separately, by the repo owner) to drop the `\c` + `\i` calls that used to load `postgresql-shared.sql`/`postgresql-identity.sql` into the correct `wso2is_shared`/`wso2is_identity` databases, on the assumption WSO2IS's own JDBC auto-provisioning covers everything.
+- But `docker-compose-wso2.yml` still mounted those two DDL files directly under `/docker-entrypoint-initdb.d/`, so postgres's own init-script scanner ran them **independently, against the default database** (`dartsdb`) — not `wso2is_shared`/`wso2is_identity`. Verified directly: a fresh instance ended up with `wso2is_identity`/`wso2is_shared` completely schema-less (0 tables from the DDL) and two stray WSO2 tables inside `dartsdb`.
+- Also directly confirmed WSO2IS's auto-provisioning **does not** create the `CM_*` tables on its own (0/136 tables on the currently-running, working test instance) — so relying on auto-provisioning alone permanently loses consent-receipt data, independent of the DDL-file bug above.
+
+**Fix:** replaced `init-postgres-wso2.sql` with `init-postgres-wso2.sh` (docker's init system supports conditional shell scripts, not just plain SQL). It creates the three databases, then loads the DDL **only if the schema files are mounted** (`docker-compose-wso2.yml` mounts them under a `wso2-schema/` subdirectory now, so postgres's scanner doesn't also pick them up independently; `docker-compose-localhost.yml` doesn't mount them at all and gets a clear log line explaining it's falling back to auto-provisioning, exactly as before). Verified both paths directly: with the schema mounted, `wso2is_identity` gets all 137 tables (including all 10 `CM_*`) with zero stray tables in `dartsdb`; without it mounted, behavior is unchanged from before (auto-provisioning only, graceful skip logged).
+
+## Pipeline Automation (2026-08-23)
+Added `.github/workflows/wso2-migration-rehearsal.yml` — `workflow_dispatch`-only, gated by a new `production-migration-approval` GitHub Environment (needs Required Reviewers configured in GitHub Settings, same as the other approval gates). Reuses the existing `PROD_SERVER_*`/`JUMPHOST_*` secrets and SSH pattern already used by `deploy-unified.yml`'s `deploy-production` job. Automates exactly what was proven manually above: read-only backup on the production host -> download just `wso2is_data.tar.gz` to the runner -> migrate into a disposable `postgres`+`wso2is` pair (from `docker-compose-wso2.yml`, isolated project name, destroyed at job end) -> row-count parity check (`helpers/verify_wso2_migration_row_counts.sh`, new — the row-count-only logic factored out of `helpers/verify_wso2_migration_parity.sh` so both share it) -> WSO2IS health check -> summary -> cleanup (removes the rehearsal backup from production and everything from the runner, `if: always()`).
+
+**Deliberately does not touch `deploy-unified.yml`** — that pipeline auto-runs `deploy-production` on every push to `test`, so embedding a migration step there would need heavy gating to avoid re-running on every routine deploy. This workflow is separate and manual-only. It is also **not the actual production cutover** (that still needs the freeze -> final backup -> migrate -> unfreeze sequence against production's own live `postgres` service, once the team schedules it) — this validates the tool against real data, repeatably, without ever modifying production.
+
+**Not yet done:**
+- The workflow has valid YAML and each underlying step's logic was proven individually (backup mechanism against real prod, migrate/verify scripts against a real backup) — but the fully assembled workflow has not been triggered end-to-end yet, since that requires the `production-migration-approval` GitHub Environment to be configured first.
+- No restore-from-backup has been exercised even in rehearsal — backups were taken but a simulated-failure recovery was never actually run end-to-end (`helpers/restore_docker_volumes.sh` is unsafe to use for this as-is, see above).
 
 ## Confirmed Constraints
 - Current production WSO2IS backend: H2
 - Acceptable downtime window: up to 30 minutes
-- Rollback policy: manual, approval-gated restore/rollback (see Status Update above — differs from original "automatic" constraint; pending decision)
+- Rollback policy: manual, approval-gated restore/rollback (decided 2026-08-23 — see Status Update above for rationale)
 - Configuration source of truth: config repo + GitHub secrets
 
 ## Implementation Phases
@@ -199,7 +229,7 @@ If zero downtime becomes mandatory, use this section instead of the maintenance-
 - .github/workflows/deploy-unified.yml
 - helpers/setup-test-environment.sh
 - helpers/bootstrap_wso2_test_env.sh
-- init-postgres-wso2.sql
+- init-postgres-wso2.sh
 - wso2is-7-config/deployment.toml
 - docker-compose-wso2.yml
 - docker-compose-test.yml
