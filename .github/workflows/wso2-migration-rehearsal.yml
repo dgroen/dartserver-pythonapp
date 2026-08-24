@@ -1,0 +1,181 @@
+name: WSO2 H2->PostgreSQL Migration Rehearsal
+
+# Manually-triggered only - this is a validation/rehearsal tool, not part of
+# the routine deploy path. It never modifies production: it takes a
+# read-only backup of production's wso2is_data volume, migrates that backup
+# into a disposable PostgreSQL+WSO2IS target on this runner (destroyed at
+# job end), checks row-count parity, and reports a summary. Production's
+# live H2 data and containers are never touched.
+#
+# See doc/WSO2_PROD_MIGRATION_PLAN.md for background. This is NOT the actual
+# production cutover (freeze -> final backup -> migrate -> unfreeze against
+# production's own postgres service) - that is a separate, later workflow.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  migration-rehearsal:
+    name: Rehearse Migration Against Real Production Data
+    runs-on: ubuntu-latest
+    environment:
+      name: production-migration-approval
+      # NOTE: This environment MUST be configured in GitHub Settings -> Environments
+      # with Required Reviewers enabled, or the workflow will not wait for approval.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Checkout config repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/dartserver-config
+          path: dartserver-config
+          token: ${{ secrets.CONFIG_REPO_TOKEN }}
+
+      - name: Install git-crypt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-crypt
+
+      - name: Unlock git-crypt (config repo)
+        env:
+          GIT_CRYPT_KEY: ${{ secrets.GIT_CRYPT_KEY }}
+        run: |
+          if [ -z "${GIT_CRYPT_KEY}" ]; then
+            echo "❌ GIT_CRYPT_KEY secret is missing; cannot decrypt config repository"
+            exit 1
+          fi
+          echo "${GIT_CRYPT_KEY}" | base64 -d > /tmp/git-crypt.key
+          cd dartserver-config
+          git-crypt unlock /tmp/git-crypt.key
+          rm -f /tmp/git-crypt.key
+
+      - name: Decrypt config repository
+        run: |
+          cd dartserver-config
+          chmod +x scripts/decrypt-configs.sh
+          ./scripts/decrypt-configs.sh
+
+      - name: Stage WSO2 PostgreSQL schema files
+        run: |
+          # docker-compose-wso2.yml expects these at ./wso2is-7-config/ - the
+          # normal deploy flow copies them in from the config repo the same way.
+          cp dartserver-config/environments/test/wso2is-config/postgresql-shared.sql wso2is-7-config/postgresql-shared.sql
+          cp dartserver-config/environments/test/wso2is-config/postgresql-identity.sql wso2is-7-config/postgresql-identity.sql
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.JUMPHOST_SSH_KEY }}" > ~/.ssh/jumphost_key
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/jumphost_key
+
+          cat > ~/.ssh/config << 'SSHCONFIG'
+          Host jumphost
+            HostName ${{ secrets.JUMPHOST_HOST }}
+            User ${{ secrets.JUMPHOST_USER }}
+            IdentityFile ~/.ssh/jumphost_key
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PubkeyAcceptedKeyTypes +ssh-rsa
+            HostKeyAlgorithms +ssh-rsa
+            LogLevel FATAL
+            PasswordAuthentication no
+
+          Host prod-server
+            HostName ${{ secrets.PROD_SERVER_HOST }}
+            Port ${{ secrets.PROD_SERVER_PORT }}
+            User ${{ secrets.PROD_SERVER_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            ProxyJump jumphost
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            PasswordAuthentication no
+            LogLevel FATAL
+          SSHCONFIG
+          chmod 600 ~/.ssh/config
+
+      - name: Read-only backup of production wso2is_data
+        id: backup
+        run: |
+          BACKUP_PATH=$(ssh prod-server bash -s << 'ENDSSH'
+            set -e
+            cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
+            chmod +x helpers/backup_docker_volumes.sh
+            ./helpers/backup_docker_volumes.sh -y >&2
+            realpath "$(ls -dt docker-backups/*/ | head -1)"
+          ENDSSH
+          )
+          echo "backup_path=${BACKUP_PATH}" >> "$GITHUB_OUTPUT"
+          echo "✅ Backup created on prod-server at ${BACKUP_PATH}"
+
+      - name: Download backup (wso2is_data only) to runner
+        run: |
+          mkdir -p /tmp/wso2-migration-check/backup_dir
+          scp "prod-server:${{ steps.backup.outputs.backup_path }}/wso2is_data.tar.gz" /tmp/wso2-migration-check/backup_dir/
+
+      - name: Remove rehearsal backup from production
+        if: always()
+        run: |
+          if [ -n "${{ steps.backup.outputs.backup_path }}" ]; then
+            ssh prod-server "rm -rf '${{ steps.backup.outputs.backup_path }}'" || true
+          fi
+
+      - name: Start disposable PostgreSQL target
+        run: |
+          docker-compose -p wso2-migration-check -f docker-compose-wso2.yml up -d postgres
+          for i in $(seq 1 30); do
+            STATUS=$(docker inspect -f '{{.State.Health.Status}}' darts-postgres 2>/dev/null || echo starting)
+            [ "$STATUS" = "healthy" ] && break
+            sleep 5
+          done
+          [ "$STATUS" = "healthy" ] || { echo "❌ postgres did not become healthy"; docker-compose -p wso2-migration-check -f docker-compose-wso2.yml logs postgres; exit 1; }
+
+      - name: Run migration tool against the real backup
+        run: |
+          chmod +x helpers/migrate_wso2_h2_to_postgres.sh helpers/verify_wso2_migration_row_counts.sh
+          ./helpers/migrate_wso2_h2_to_postgres.sh /tmp/wso2-migration-check/backup_dir wso2/wso2is:7.1.0 localhost 5432 postgres postgres \
+            | tee /tmp/wso2-migration-check/migrate.log
+          grep '^WORKDIR=' /tmp/wso2-migration-check/migrate.log | tail -1 | cut -d= -f2- > /tmp/wso2-migration-check/h2_export_workdir.txt
+
+      - name: Verify row-count parity
+        id: verify
+        run: |
+          WORKDIR=$(cat /tmp/wso2-migration-check/h2_export_workdir.txt)
+          ./helpers/verify_wso2_migration_row_counts.sh "$WORKDIR" localhost 5432 postgres postgres | tee /tmp/wso2-migration-check/verify.log
+
+      - name: Start WSO2IS target and check health
+        run: |
+          docker-compose -p wso2-migration-check -f docker-compose-wso2.yml up -d wso2is
+          for i in $(seq 1 30); do
+            STATUS=$(docker inspect -f '{{.State.Health.Status}}' darts-wso2is 2>/dev/null || echo starting)
+            [ "$STATUS" = "healthy" ] && break
+            sleep 10
+          done
+          [ "$STATUS" = "healthy" ] || { echo "❌ wso2is-target did not become healthy on migrated data"; docker-compose -p wso2-migration-check -f docker-compose-wso2.yml logs wso2is; exit 1; }
+          echo "✅ wso2is booted healthy against the migrated real production data"
+
+      - name: Post summary
+        if: always()
+        run: |
+          {
+            echo "## WSO2 H2->PostgreSQL Migration Rehearsal"
+            echo ""
+            echo "Row-count parity (H2 export vs migrated PostgreSQL), no data content shown:"
+            echo '```'
+            cat /tmp/wso2-migration-check/verify.log 2>/dev/null || echo "(no output captured)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose -p wso2-migration-check -f docker-compose-wso2.yml down -v || true
+          WORKDIR=$(cat /tmp/wso2-migration-check/h2_export_workdir.txt 2>/dev/null || true)
+          [ -n "$WORKDIR" ] && rm -rf "$WORKDIR"
+          rm -rf /tmp/wso2-migration-check
+          rm -f ~/.ssh/deploy_key ~/.ssh/jumphost_key

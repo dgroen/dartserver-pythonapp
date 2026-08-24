@@ -1,0 +1,111 @@
+version: "3.8"
+
+# Disposable H2 -> PostgreSQL migration rehearsal stack.
+# Fully isolated from the running darts-* dev stack: separate containers,
+# volumes, network, and ports. Always run with an explicit project name so
+# volume/network names don't collide with docker-compose-wso2.yml:
+#
+#   docker compose -p migration-rehearsal -f docker-compose-migration-rehearsal.yml up -d
+#
+# wso2is-source uses the H2 config that mirrors production's real
+# deployment.toml (wso2is-7-config/deployment.dev.example.toml).
+# postgres-target/wso2is-target reuse the same officially-schema'd PostgreSQL
+# setup already proven in the test environment.
+
+services:
+  # H2-backed WSO2IS - the rehearsal's stand-in for production's current state.
+  wso2is-source:
+    image: wso2/wso2is:7.1.0
+    container_name: migration-rehearsal-wso2is-source
+    ports:
+      - "19443:9443"
+    environment:
+      - JAVA_OPTS=-Xms512m -Xmx1024m
+    volumes:
+      - wso2is_source_data:/home/wso2carbon/wso2is-7.1.0
+      - ./wso2is-7-config/deployment.dev.example.toml:/home/wso2carbon/wso2is-7.1.0/repository/conf/deployment.toml:ro
+    healthcheck:
+      test: [ "CMD", "curl", "-k", "-f", "https://localhost:9443/api/health-check/v1.0/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - migration-rehearsal-network
+
+  # PostgreSQL target. Service name is "postgres" (network alias only,
+  # container_name is distinct) so wso2is-7-config/deployment.toml resolves
+  # unmodified inside this isolated network.
+  postgres:
+    image: postgres:16-alpine
+    container_name: migration-rehearsal-db-target
+    # fsync/synchronous_commit off: this is disposable rehearsal data, not
+    # durability-critical. Found (during rehearsal) that the schema-init
+    # checkpoint was hanging/timing out on this host's disk with fsync on,
+    # which made docker-entrypoint.sh give up and exit the container.
+    command: [ "postgres", "-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "full_page_writes=off" ]
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres # pragma: allowlist secret
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_target_data:/var/lib/postgresql/data
+      - ./helpers/migration-rehearsal/init-postgres-wso2-rehearsal.sql:/docker-entrypoint-initdb.d/01-init-wso2-dbs.sql:ro
+      - ../dartserver-config/environments/test/wso2is-config/postgresql-shared.sql:/docker-entrypoint-initdb.d/02-wso2-shared-postgresql.sql:ro
+      - ../dartserver-config/environments/test/wso2is-config/postgresql-identity.sql:/docker-entrypoint-initdb.d/03-wso2-identity-postgresql.sql:ro
+      - ./helpers/migration-rehearsal/missing-wso2-identity-tables-postgresql.sql:/docker-entrypoint-initdb.d/04-missing-wso2-identity-tables.sql:ro
+    healthcheck:
+      # -h forces a real TCP check. The socket-only default can report
+      # "healthy" while postgres is still mid-initdb on its temp server,
+      # before the real TCP-listening server has started (found during
+      # rehearsal - callers proceeding on that false-healthy raced the
+      # server and got "connection closed unexpectedly").
+      test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    networks:
+      - migration-rehearsal-network
+
+  # PostgreSQL-backed WSO2IS - migration target, started only after data load.
+  wso2is-target:
+    image: wso2/wso2is:7.1.0
+    container_name: migration-rehearsal-wso2is-target
+    ports:
+      - "29443:9443"
+    environment:
+      - JAVA_OPTS=-Xms512m -Xmx1024m
+    volumes:
+      - wso2is_target_data:/home/wso2carbon/wso2is-7.1.0
+      - ./wso2is-7-config/deployment.toml:/home/wso2carbon/wso2is-7.1.0/repository/conf/deployment.toml:ro
+      - ./drivers/postgresql.jar:/home/wso2carbon/wso2is-7.1.0/repository/components/lib/postgresql-42.7.3.jar:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-k", "-f", "https://localhost:9443/api/health-check/v1.0/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - migration-rehearsal-network
+
+volumes:
+  # Named explicitly to match backup_docker_volumes.sh's hardcoded VOLUMES
+  # entry "wso2is_data", so PROJECT_NAME=migration-rehearsal helpers/backup_docker_volumes.sh
+  # backs up this volume using the exact same mechanism production uses.
+  wso2is_source_data:
+    name: migration-rehearsal_wso2is_data
+  postgres_target_data:
+    name: migration-rehearsal_postgres_target_data
+  wso2is_target_data:
+    name: migration-rehearsal_wso2is_target_data
+
+networks:
+  migration-rehearsal-network:
+    name: migration-rehearsal-network
+    driver: bridge
