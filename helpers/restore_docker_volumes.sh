@@ -17,7 +17,8 @@ NC='\033[0m' # No Color
 
 # Configuration
 BACKUP_DIR="./docker-backups"
-PROJECT_NAME="dartserver-pythonapp"
+PROJECT_NAME="${PROJECT_NAME:-dartserver-pythonapp}"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose-wso2.yml}"
 AUTO_CONFIRM=false
 RESTORE_PATH=""
 
@@ -106,8 +107,8 @@ check_docker() {
 }
 
 stop_containers() {
-    print_step "Stopping containers..."
-    docker-compose -f docker-compose-wso2.yml down 2>/dev/null || docker-compose down 2>/dev/null || true
+    print_step "Stopping containers (project: ${PROJECT_NAME})..."
+    docker-compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" down 2>/dev/null || true
     print_success "Containers stopped"
 }
 
@@ -154,14 +155,18 @@ restore_postgres_dump() {
         return
     fi
 
-    print_step "Restoring PostgreSQL database from SQL dump..."
+    print_step "Restoring PostgreSQL database from SQL dump (project: ${PROJECT_NAME})..."
 
-    # Start only postgres temporarily
-    docker-compose -f docker-compose-wso2.yml up -d postgres 2>/dev/null || docker-compose up -d postgres 2>/dev/null
+    # Start only postgres temporarily, scoped to PROJECT_NAME/COMPOSE_FILE so
+    # this doesn't collide with an unrelated stack's own postgres container.
+    docker-compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" up -d postgres
     sleep 10
 
-    # Find postgres container
-    local postgres_container=$(docker ps --format '{{.Names}}' | grep -E "postgres|darts-postgres" | head -n 1)
+    # Find postgres container within this project specifically (COMPOSE_FILE
+    # may hardcode container_name, so don't just grep for "postgres" - that
+    # can ambiguously match an unrelated stack's container too).
+    local postgres_container
+    postgres_container=$(docker-compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" ps -q postgres)
 
     if [ -z "$postgres_container" ]; then
         print_error "PostgreSQL container not found"
@@ -179,7 +184,7 @@ restore_postgres_dump() {
     fi
 
     # Stop postgres
-    docker-compose -f docker-compose-wso2.yml down 2>/dev/null || docker-compose down 2>/dev/null
+    docker-compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" down 2>/dev/null || true
 }
 
 restore_configuration() {
@@ -192,23 +197,41 @@ restore_configuration() {
 
     print_step "Restoring configuration files..."
 
+    local safety_backup="./docker-backups/pre-restore-config-$(date +%Y-%m-%d_%H-%M-%S)"
+
     # Restore WSO2 IS configuration
     if [ -f "${config_dir}/wso2is-deployment.toml" ]; then
-        mkdir -p ./wso2is-config
-        cp "${config_dir}/wso2is-deployment.toml" ./wso2is-config/deployment.toml
+        if [ -f "./wso2is-7-config/deployment.toml" ]; then
+            mkdir -p "$safety_backup"
+            cp "./wso2is-7-config/deployment.toml" "${safety_backup}/deployment.toml"
+        fi
+        mkdir -p ./wso2is-7-config
+        cp "${config_dir}/wso2is-deployment.toml" ./wso2is-7-config/deployment.toml
         print_success "Restored WSO2 IS deployment.toml"
     fi
 
     # Restore .env file
     if [ -f "${config_dir}/.env" ]; then
+        if [ -f "./.env" ]; then
+            mkdir -p "$safety_backup"
+            cp "./.env" "${safety_backup}/.env"
+        fi
         cp "${config_dir}/.env" ./.env
         print_success "Restored .env file"
     fi
 
     # Restore nginx configuration
     if [ -d "${config_dir}/nginx" ]; then
+        if [ -d "./nginx" ]; then
+            mkdir -p "$safety_backup"
+            cp -r "./nginx" "${safety_backup}/nginx"
+        fi
         cp -r "${config_dir}/nginx" ./
         print_success "Restored nginx configuration"
+    fi
+
+    if [ -d "$safety_backup" ]; then
+        print_warning "Pre-restore config files that were overwritten are saved at: ${safety_backup}"
     fi
 }
 
@@ -222,10 +245,10 @@ print_summary() {
     echo ""
     echo -e "${YELLOW}Next steps:${NC}"
     echo "  1. Start the containers:"
-    echo "     docker-compose -f docker-compose-wso2.yml up -d"
+    echo "     docker-compose -p ${PROJECT_NAME} -f ${COMPOSE_FILE} up -d"
     echo ""
     echo "  2. Verify services are healthy:"
-    echo "     docker-compose -f docker-compose-wso2.yml ps"
+    echo "     docker-compose -p ${PROJECT_NAME} -f ${COMPOSE_FILE} ps"
     echo ""
 }
 

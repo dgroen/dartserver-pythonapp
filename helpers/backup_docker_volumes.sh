@@ -353,8 +353,8 @@ backup_configuration_files() {
     mkdir -p "$config_backup_dir"
 
     # Backup WSO2 IS configuration
-    if [ -f "./wso2is-config/deployment.toml" ]; then
-        cp "./wso2is-config/deployment.toml" "${config_backup_dir}/wso2is-deployment.toml"
+    if [ -f "./wso2is-7-config/deployment.toml" ]; then
+        cp "./wso2is-7-config/deployment.toml" "${config_backup_dir}/wso2is-deployment.toml"
         print_success "Backed up WSO2 IS deployment.toml"
     fi
 

@@ -69,7 +69,14 @@ Added `.github/workflows/wso2-migration-rehearsal.yml` — `workflow_dispatch`-o
 
 **Not yet done:**
 - The workflow has valid YAML and each underlying step's logic was proven individually (backup mechanism against real prod, migrate/verify scripts against a real backup) — but the fully assembled workflow has not been triggered end-to-end yet, since that requires the `production-migration-approval` GitHub Environment to be configured first.
-- No restore-from-backup has been exercised even in rehearsal — backups were taken but a simulated-failure recovery was never actually run end-to-end (`helpers/restore_docker_volumes.sh` is unsafe to use for this as-is, see above).
+
+## Restore Tooling Fixed (2026-08-24)
+`helpers/restore_docker_volumes.sh` (flagged above as unsafe-as-is) is now fixed and verified:
+- `PROJECT_NAME` and a new `COMPOSE_FILE` are both env-var-overridable (same backward-compatible pattern as `backup_docker_volumes.sh`), and every `docker-compose` call is scoped with `-p "$PROJECT_NAME" -f "$COMPOSE_FILE"` instead of bare `docker-compose -f docker-compose-wso2.yml down`/`up`, which previously would have taken down or collided with whatever stack happened to be running under the default project name.
+- `restore_configuration()` now backs up any config files it's about to overwrite (`.env`, `wso2is-7-config/deployment.toml`, `nginx/`) to a timestamped `docker-backups/pre-restore-config-.../` directory first, rather than silently clobbering them.
+- **Found and fixed a matching pre-existing bug**: both `backup_docker_volumes.sh` and `restore_docker_volumes.sh` referenced `./wso2is-config/deployment.toml` — a directory that has never existed (the real one is `./wso2is-7-config/`). This meant the WSO2 `deployment.toml` — the file that decides H2 vs. PostgreSQL — has never actually been included in any backup, and a restore would have written it to a location nothing reads. Fixed in both scripts.
+- Verified directly: restoring a synthetic backup into a throwaway `PROJECT_NAME` correctly creates a scoped volume with the right content, the real `darts-*` stack was completely unaffected throughout, and the config-overwrite safety-backup correctly preserves the pre-restore file content before replacing it.
+- Not yet exercised: an actual disaster-recovery drill (stop a real stack, restore into it, confirm it comes back up) — the above validates the mechanism in isolation, not a full simulated-failure recovery.
 
 ## Confirmed Constraints
 - Current production WSO2IS backend: H2
