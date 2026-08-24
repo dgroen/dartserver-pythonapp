@@ -525,7 +525,7 @@ jobs:
           BACKUP_DATE=$(date +%Y-%m-%d)
           BACKUP_TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
 
-          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} bash -s << 'ENDSSH'
+          ssh -i ~/.ssh/deploy_key ${PROD_SERVER_HOST} bash -s << ENDSSH
           set -e
           cd /opt/dartserver-pythonapp || cd ~/dartserver-pythonapp
 
