@@ -21,6 +21,7 @@ PROJECT_NAME="${PROJECT_NAME:-dartserver-pythonapp}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose-wso2.yml}"
 AUTO_CONFIRM=false
 RESTORE_PATH=""
+POSTGRES_VOLUME_RESTORED=false
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -141,6 +142,7 @@ restore_volume() {
 
     if [ $? -eq 0 ]; then
         print_success "Restored ${volume}"
+        [ "$volume" = "postgres_data" ] && POSTGRES_VOLUME_RESTORED=true
     else
         print_error "Failed to restore ${volume}"
         return 1
@@ -152,6 +154,16 @@ restore_postgres_dump() {
 
     if [ ! -f "$sql_dump" ]; then
         print_warning "PostgreSQL dump not found, skipping SQL restore"
+        return
+    fi
+
+    # The raw postgres_data volume tar (restored above, if present) already
+    # contains this same data - restoring the SQL dump on top of it is
+    # redundant and throws harmless-but-noisy "already exists"/"duplicate
+    # key" errors (found during a restore drill). Only needed as a fallback
+    # when the volume restore wasn't available.
+    if [ "$POSTGRES_VOLUME_RESTORED" = true ]; then
+        print_warning "postgres_data volume was already restored from its own backup; skipping redundant SQL dump restore"
         return
     fi
 
