@@ -160,7 +160,6 @@ restore_postgres_dump() {
     # Start only postgres temporarily, scoped to PROJECT_NAME/COMPOSE_FILE so
     # this doesn't collide with an unrelated stack's own postgres container.
     docker-compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" up -d postgres
-    sleep 10
 
     # Find postgres container within this project specifically (COMPOSE_FILE
     # may hardcode container_name, so don't just grep for "postgres" - that
@@ -172,6 +171,20 @@ restore_postgres_dump() {
         print_error "PostgreSQL container not found"
         return 1
     fi
+
+    # Wait for real readiness rather than a fixed sleep - a restored/first-boot
+    # volume's startup time is not predictable (found during a restore drill:
+    # a fixed sleep 10 was too short and the dump restore failed outright).
+    print_step "Waiting for postgres to accept connections..."
+    local waited=0
+    until docker exec "$postgres_container" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; do
+        waited=$((waited + 5))
+        if [ "$waited" -ge 300 ]; then
+            print_error "postgres did not become ready within 300s"
+            return 1
+        fi
+        sleep 5
+    done
 
     # Restore database
     gunzip -c "$sql_dump" | docker exec -i "$postgres_container" psql -U postgres dartsdb

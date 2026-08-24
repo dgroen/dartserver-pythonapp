@@ -11,6 +11,13 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres # pragma: allowlist secret
       POSTGRES_DB: dartsdb
+      # First-boot DDL load (official WSO2 schema, ~200 tables/indexes) was
+      # found (during a restore-drill rehearsal) to reliably exceed postgres's
+      # default 60s pg_ctl shutdown timeout on this host's disk while
+      # checkpointing the freshly-created schema, causing the container to
+      # exit fatally mid-init. PGCTLTIMEOUT is the officially supported knob
+      # for exactly this class of slow-disk/first-boot issue.
+      PGCTLTIMEOUT: "300"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-postgres-wso2.sh:/docker-entrypoint-initdb.d/01-init-wso2-dbs.sh:ro
@@ -30,7 +37,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 60s
+      # Generous enough to cover a first-boot DDL load plus the PGCTLTIMEOUT
+      # above without flapping unhealthy mid-init (see PGCTLTIMEOUT note).
+      start_period: 300s
     networks:
       - darts-network
 
