@@ -64,6 +64,13 @@ jobs:
         run: |
           # docker-compose-wso2.yml expects these at ./wso2is-7-config/ - the
           # normal deploy flow copies them in from the config repo the same way.
+          # wso2is-7-config/ is gitignored (populated only at deploy time), so
+          # it doesn't exist yet after checkout - create it first. Also need
+          # deployment.toml itself (also gitignored/never committed) - without
+          # it, Docker bind-mounts an empty directory at the container's
+          # config path instead of failing, and wso2is silently misconfigures.
+          mkdir -p wso2is-7-config
+          cp dartserver-config/environments/test/wso2is-config/deployment.toml wso2is-7-config/deployment.toml
           cp dartserver-config/environments/test/wso2is-config/postgresql-shared.sql wso2is-7-config/postgresql-shared.sql
           cp dartserver-config/environments/test/wso2is-config/postgresql-identity.sql wso2is-7-config/postgresql-identity.sql
 
