@@ -134,13 +134,13 @@ jobs:
 
       - name: Start disposable PostgreSQL target
         run: |
-          docker-compose -p wso2-migration-check -f docker-compose-wso2.yml up -d postgres
+          docker compose -p wso2-migration-check -f docker-compose-wso2.yml up -d postgres
           for i in $(seq 1 30); do
             STATUS=$(docker inspect -f '{{.State.Health.Status}}' darts-postgres 2>/dev/null || echo starting)
             [ "$STATUS" = "healthy" ] && break
             sleep 5
           done
-          [ "$STATUS" = "healthy" ] || { echo "❌ postgres did not become healthy"; docker-compose -p wso2-migration-check -f docker-compose-wso2.yml logs postgres; exit 1; }
+          [ "$STATUS" = "healthy" ] || { echo "❌ postgres did not become healthy"; docker compose -p wso2-migration-check -f docker-compose-wso2.yml logs postgres; exit 1; }
 
       - name: Run migration tool against the real backup
         run: |
@@ -157,13 +157,13 @@ jobs:
 
       - name: Start WSO2IS target and check health
         run: |
-          docker-compose -p wso2-migration-check -f docker-compose-wso2.yml up -d wso2is
+          docker compose -p wso2-migration-check -f docker-compose-wso2.yml up -d wso2is
           for i in $(seq 1 30); do
             STATUS=$(docker inspect -f '{{.State.Health.Status}}' darts-wso2is 2>/dev/null || echo starting)
             [ "$STATUS" = "healthy" ] && break
             sleep 10
           done
-          [ "$STATUS" = "healthy" ] || { echo "❌ wso2is-target did not become healthy on migrated data"; docker-compose -p wso2-migration-check -f docker-compose-wso2.yml logs wso2is; exit 1; }
+          [ "$STATUS" = "healthy" ] || { echo "❌ wso2is-target did not become healthy on migrated data"; docker compose -p wso2-migration-check -f docker-compose-wso2.yml logs wso2is; exit 1; }
           echo "✅ wso2is booted healthy against the migrated real production data"
 
       - name: Post summary
@@ -181,7 +181,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          docker-compose -p wso2-migration-check -f docker-compose-wso2.yml down -v || true
+          docker compose -p wso2-migration-check -f docker-compose-wso2.yml down -v || true
           WORKDIR=$(cat /tmp/wso2-migration-check/h2_export_workdir.txt 2>/dev/null || true)
           [ -n "$WORKDIR" ] && rm -rf "$WORKDIR"
           rm -rf /tmp/wso2-migration-check
