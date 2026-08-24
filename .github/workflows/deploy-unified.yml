@@ -233,13 +233,6 @@ jobs:
             fi
           }
 
-          # Refresh config bundle from runner
-          if [ -f /tmp/dartserver-config.tgz ]; then
-            rm -rf dartserver-config
-            mkdir -p dartserver-config
-            tar xzf /tmp/dartserver-config.tgz -C dartserver-config
-          fi
-
           # Stop existing containers first (to release file locks)
           echo "🛑 Stopping existing containers..."
           docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml down || true
@@ -257,6 +250,18 @@ jobs:
           git clean -fd
           echo "✅ Active branch: $(git branch --show-current)"
           echo "✅ Active commit: $(git rev-parse --short HEAD)"
+
+          # Refresh config bundle from runner - done AFTER the git clean above,
+          # not before: git clean -fd runs against whatever .gitignore was on
+          # the PREVIOUSLY checked-out commit (from the last deploy), which may
+          # predate a dartserver-config .gitignore entry added since - it would
+          # otherwise delete this freshly-extracted directory as "untracked"
+          # before the config-copy step below ever gets to use it.
+          if [ -f /tmp/dartserver-config.tgz ]; then
+            rm -rf dartserver-config
+            mkdir -p dartserver-config
+            tar xzf /tmp/dartserver-config.tgz -C dartserver-config
+          fi
 
           # Copy configuration files from config repository (fresh bundle)
           # This intentionally overrides tracked files (nginx.conf, SSL certs, etc.)
@@ -732,13 +737,6 @@ jobs:
             fi
           }
 
-          # Refresh config bundle from runner
-          if [ -f /tmp/dartserver-config.tgz ]; then
-            rm -rf dartserver-config
-            mkdir -p dartserver-config
-            tar xzf /tmp/dartserver-config.tgz -C dartserver-config
-          fi
-
           # Stop existing containers
           echo "🛑 Stopping existing containers..."
           docker-compose -f docker-compose-wso2.yml down || true
@@ -753,6 +751,20 @@ jobs:
           git checkout -f -B "${TARGET_BRANCH}" "origin/${TARGET_BRANCH}"
           git reset --hard "origin/${TARGET_BRANCH}"
           git clean -fd
+
+          # Refresh config bundle from runner - done AFTER the git clean above,
+          # not before: git clean -fd runs against whatever .gitignore was on
+          # the PREVIOUSLY checked-out commit (from the last deploy), which may
+          # predate a dartserver-config .gitignore entry added since - it would
+          # otherwise delete this freshly-extracted directory as "untracked"
+          # before the config-copy step below ever gets to use it. (Root cause
+          # of a real production deploy failure: "cp: cannot stat
+          # 'dartserver-config/.../wso2is-config/.': No such file or directory".)
+          if [ -f /tmp/dartserver-config.tgz ]; then
+            rm -rf dartserver-config
+            mkdir -p dartserver-config
+            tar xzf /tmp/dartserver-config.tgz -C dartserver-config
+          fi
 
           # Copy configuration files from config repository (fresh bundle)
           # This intentionally overrides tracked files (nginx.conf, SSL certs, etc.)
