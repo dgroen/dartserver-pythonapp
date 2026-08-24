@@ -351,9 +351,19 @@ jobs:
             git -C "${WEBSITE_DIR}" checkout main
             git -C "${WEBSITE_DIR}" pull origin main
           else
+            # Clone into a temp dir first, then sync contents into WEBSITE_DIR
+            # rather than deleting/recreating it: the deploy user typically
+            # only has write access to WEBSITE_DIR's own contents (pre-created
+            # once out of band), not to create new directories directly under
+            # its parent - an rm -rf + git clone here fails with "Permission
+            # denied" trying to recreate the directory itself.
             echo "  → Cloning dartserver-website..."
-            rm -rf "${WEBSITE_DIR}"
-            git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository_owner }}/dartserver-website.git "${WEBSITE_DIR}"
+            mkdir -p "${WEBSITE_DIR}"
+            TMP_WEBSITE_CLONE=$(mktemp -d)
+            git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository_owner }}/dartserver-website.git "${TMP_WEBSITE_CLONE}"
+            rm -rf "${WEBSITE_DIR:?}"/* "${WEBSITE_DIR:?}"/.[!.]* 2>/dev/null || true
+            cp -a "${TMP_WEBSITE_CLONE}/." "${WEBSITE_DIR}/"
+            rm -rf "${TMP_WEBSITE_CLONE}"
           fi
           # Rebuild containers (build services individually to avoid context issues)
           echo "🔨 Rebuilding containers..."
@@ -839,9 +849,21 @@ jobs:
             git -C "${WEBSITE_DIR}" checkout main
             git -C "${WEBSITE_DIR}" pull origin main
           else
+            # Clone into a temp dir first, then sync contents into WEBSITE_DIR
+            # rather than deleting/recreating it: the deploy user typically
+            # only has write access to WEBSITE_DIR's own contents (pre-created
+            # once out of band), not to create new directories directly under
+            # its parent - an rm -rf + git clone here fails with "Permission
+            # denied" trying to recreate the directory itself. (Real production
+            # failure this caused: "fatal: could not create work tree dir
+            # '/opt/dartserver-website': Permission denied".)
             echo "  → Cloning dartserver-website..."
-            rm -rf "${WEBSITE_DIR}"
-            git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository_owner }}/dartserver-website.git "${WEBSITE_DIR}"
+            mkdir -p "${WEBSITE_DIR}"
+            TMP_WEBSITE_CLONE=$(mktemp -d)
+            git clone https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository_owner }}/dartserver-website.git "${TMP_WEBSITE_CLONE}"
+            rm -rf "${WEBSITE_DIR:?}"/* "${WEBSITE_DIR:?}"/.[!.]* 2>/dev/null || true
+            cp -a "${TMP_WEBSITE_CLONE}/." "${WEBSITE_DIR}/"
+            rm -rf "${TMP_WEBSITE_CLONE}"
           fi
 
           # Rebuild containers (build services individually to avoid context issues)
