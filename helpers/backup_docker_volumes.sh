@@ -25,7 +25,7 @@ NC='\033[0m' # No Color
 BACKUP_DIR="./docker-backups"
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 BACKUP_PATH="${BACKUP_DIR}/${TIMESTAMP}"
-PROJECT_NAME="dartserver-pythonapp"
+PROJECT_NAME="${PROJECT_NAME:-dartserver-pythonapp}"
 AUTO_CONFIRM=false
 
 # Volume names (from docker-compose files)
@@ -113,11 +113,15 @@ check_volumes_exist() {
             echo "  - $vol"
         done
         echo ""
-        read -p "Continue with backup of existing volumes? (y/n): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            print_error "Backup cancelled"
-            exit 1
+        if [ "$AUTO_CONFIRM" = true ]; then
+            print_success "Auto-confirm enabled, continuing with backup of existing volumes..."
+        else
+            read -p "Continue with backup of existing volumes? (y/n): " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                print_error "Backup cancelled"
+                exit 1
+            fi
         fi
     else
         print_success "All volumes exist"
@@ -349,8 +353,8 @@ backup_configuration_files() {
     mkdir -p "$config_backup_dir"
 
     # Backup WSO2 IS configuration
-    if [ -f "./wso2is-config/deployment.toml" ]; then
-        cp "./wso2is-config/deployment.toml" "${config_backup_dir}/wso2is-deployment.toml"
+    if [ -f "./wso2is-7-config/deployment.toml" ]; then
+        cp "./wso2is-7-config/deployment.toml" "${config_backup_dir}/wso2is-deployment.toml"
         print_success "Backed up WSO2 IS deployment.toml"
     fi
 

@@ -11,16 +11,35 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres # pragma: allowlist secret
       POSTGRES_DB: dartsdb
+      # First-boot DDL load (official WSO2 schema, ~200 tables/indexes) was
+      # found (during a restore-drill rehearsal) to reliably exceed postgres's
+      # default 60s pg_ctl shutdown timeout on this host's disk while
+      # checkpointing the freshly-created schema, causing the container to
+      # exit fatally mid-init. PGCTLTIMEOUT is the officially supported knob
+      # for exactly this class of slow-disk/first-boot issue.
+      PGCTLTIMEOUT: "300"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-postgres-wso2.sql:/docker-entrypoint-initdb.d/01-init-wso2-dbs.sql:ro
-      - ./wso2is-7-config/postgresql-shared.sql:/docker-entrypoint-initdb.d/02-wso2-shared-postgresql.sql:ro
-      - ./wso2is-7-config/postgresql-identity.sql:/docker-entrypoint-initdb.d/03-wso2-identity-postgresql.sql:ro
+      - ./init-postgres-wso2.sh:/docker-entrypoint-initdb.d/01-init-wso2-dbs.sh:ro
+      # Mounted under a subdirectory (not directly in /docker-entrypoint-initdb.d/)
+      # so postgres's own init-script scanner doesn't also run these against
+      # the default database - only 01-init-wso2-dbs.sql's explicit \i does,
+      # after \c-ing into the correct wso2is_shared/wso2is_identity database.
+      - ./wso2is-7-config/postgresql-shared.sql:/docker-entrypoint-initdb.d/wso2-schema/postgresql-shared.sql:ro
+      - ./wso2is-7-config/postgresql-identity.sql:/docker-entrypoint-initdb.d/wso2-schema/postgresql-identity.sql:ro
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      # -h forces a real TCP check. The socket-only default can report
+      # "healthy" while postgres is still mid-initdb on its temp server,
+      # before the real TCP-listening server has started (found during the
+      # WSO2 H2->PostgreSQL migration rehearsal - callers proceeding on that
+      # false-healthy raced the server and got connections closed mid-query).
+      test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5
+      # Generous enough to cover a first-boot DDL load plus the PGCTLTIMEOUT
+      # above without flapping unhealthy mid-init (see PGCTLTIMEOUT note).
+      start_period: 300s
     networks:
       - darts-network
 

@@ -17,9 +17,11 @@ NC='\033[0m' # No Color
 
 # Configuration
 BACKUP_DIR="./docker-backups"
-PROJECT_NAME="dartserver-pythonapp"
+PROJECT_NAME="${PROJECT_NAME:-dartserver-pythonapp}"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose-wso2.yml}"
 AUTO_CONFIRM=false
 RESTORE_PATH=""
+POSTGRES_VOLUME_RESTORED=false
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -106,8 +108,8 @@ check_docker() {
 }
 
 stop_containers() {
-    print_step "Stopping containers..."
-    docker-compose -f docker-compose-wso2.yml down 2>/dev/null || docker-compose down 2>/dev/null || true
+    print_step "Stopping containers (project: ${PROJECT_NAME})..."
+    docker-compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" down 2>/dev/null || true
     print_success "Containers stopped"
 }
 
@@ -140,6 +142,7 @@ restore_volume() {
 
     if [ $? -eq 0 ]; then
         print_success "Restored ${volume}"
+        [ "$volume" = "postgres_data" ] && POSTGRES_VOLUME_RESTORED=true
     else
         print_error "Failed to restore ${volume}"
         return 1
@@ -154,19 +157,46 @@ restore_postgres_dump() {
         return
     fi
 
-    print_step "Restoring PostgreSQL database from SQL dump..."
+    # The raw postgres_data volume tar (restored above, if present) already
+    # contains this same data - restoring the SQL dump on top of it is
+    # redundant and throws harmless-but-noisy "already exists"/"duplicate
+    # key" errors (found during a restore drill). Only needed as a fallback
+    # when the volume restore wasn't available.
+    if [ "$POSTGRES_VOLUME_RESTORED" = true ]; then
+        print_warning "postgres_data volume was already restored from its own backup; skipping redundant SQL dump restore"
+        return
+    fi
 
-    # Start only postgres temporarily
-    docker-compose -f docker-compose-wso2.yml up -d postgres 2>/dev/null || docker-compose up -d postgres 2>/dev/null
-    sleep 10
+    print_step "Restoring PostgreSQL database from SQL dump (project: ${PROJECT_NAME})..."
 
-    # Find postgres container
-    local postgres_container=$(docker ps --format '{{.Names}}' | grep -E "postgres|darts-postgres" | head -n 1)
+    # Start only postgres temporarily, scoped to PROJECT_NAME/COMPOSE_FILE so
+    # this doesn't collide with an unrelated stack's own postgres container.
+    docker-compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" up -d postgres
+
+    # Find postgres container within this project specifically (COMPOSE_FILE
+    # may hardcode container_name, so don't just grep for "postgres" - that
+    # can ambiguously match an unrelated stack's container too).
+    local postgres_container
+    postgres_container=$(docker-compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" ps -q postgres)
 
     if [ -z "$postgres_container" ]; then
         print_error "PostgreSQL container not found"
         return 1
     fi
+
+    # Wait for real readiness rather than a fixed sleep - a restored/first-boot
+    # volume's startup time is not predictable (found during a restore drill:
+    # a fixed sleep 10 was too short and the dump restore failed outright).
+    print_step "Waiting for postgres to accept connections..."
+    local waited=0
+    until docker exec "$postgres_container" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; do
+        waited=$((waited + 5))
+        if [ "$waited" -ge 300 ]; then
+            print_error "postgres did not become ready within 300s"
+            return 1
+        fi
+        sleep 5
+    done
 
     # Restore database
     gunzip -c "$sql_dump" | docker exec -i "$postgres_container" psql -U postgres dartsdb
@@ -179,7 +209,7 @@ restore_postgres_dump() {
     fi
 
     # Stop postgres
-    docker-compose -f docker-compose-wso2.yml down 2>/dev/null || docker-compose down 2>/dev/null
+    docker-compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" down 2>/dev/null || true
 }
 
 restore_configuration() {
@@ -192,23 +222,41 @@ restore_configuration() {
 
     print_step "Restoring configuration files..."
 
+    local safety_backup="./docker-backups/pre-restore-config-$(date +%Y-%m-%d_%H-%M-%S)"
+
     # Restore WSO2 IS configuration
     if [ -f "${config_dir}/wso2is-deployment.toml" ]; then
-        mkdir -p ./wso2is-config
-        cp "${config_dir}/wso2is-deployment.toml" ./wso2is-config/deployment.toml
+        if [ -f "./wso2is-7-config/deployment.toml" ]; then
+            mkdir -p "$safety_backup"
+            cp "./wso2is-7-config/deployment.toml" "${safety_backup}/deployment.toml"
+        fi
+        mkdir -p ./wso2is-7-config
+        cp "${config_dir}/wso2is-deployment.toml" ./wso2is-7-config/deployment.toml
         print_success "Restored WSO2 IS deployment.toml"
     fi
 
     # Restore .env file
     if [ -f "${config_dir}/.env" ]; then
+        if [ -f "./.env" ]; then
+            mkdir -p "$safety_backup"
+            cp "./.env" "${safety_backup}/.env"
+        fi
         cp "${config_dir}/.env" ./.env
         print_success "Restored .env file"
     fi
 
     # Restore nginx configuration
     if [ -d "${config_dir}/nginx" ]; then
+        if [ -d "./nginx" ]; then
+            mkdir -p "$safety_backup"
+            cp -r "./nginx" "${safety_backup}/nginx"
+        fi
         cp -r "${config_dir}/nginx" ./
         print_success "Restored nginx configuration"
+    fi
+
+    if [ -d "$safety_backup" ]; then
+        print_warning "Pre-restore config files that were overwritten are saved at: ${safety_backup}"
     fi
 }
 
@@ -222,10 +270,10 @@ print_summary() {
     echo ""
     echo -e "${YELLOW}Next steps:${NC}"
     echo "  1. Start the containers:"
-    echo "     docker-compose -f docker-compose-wso2.yml up -d"
+    echo "     docker-compose -p ${PROJECT_NAME} -f ${COMPOSE_FILE} up -d"
     echo ""
     echo "  2. Verify services are healthy:"
-    echo "     docker-compose -f docker-compose-wso2.yml ps"
+    echo "     docker-compose -p ${PROJECT_NAME} -f ${COMPOSE_FILE} ps"
     echo ""
 }
 
