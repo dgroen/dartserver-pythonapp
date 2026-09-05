@@ -1,0 +1,44 @@
+version: "3.8"
+
+# Vision-Scoring Service - Test Environment Only
+#
+# Deliberately NOT part of docker-compose-wso2.yml (the shared base for both
+# test and production): vision-scoring is still being validated, so it is
+# only started when this file is explicitly included, which deploy-unified.yml
+# does for the test job only. Fold this into docker-compose-wso2.yml once the
+# feature is validated on test, so it stops needing a separate wiring pass.
+#
+# Usage: docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml -f docker-compose-vision-test.yml up -d
+
+services:
+  vision-scoring:
+    build:
+      context: ./vision-scoring
+    container_name: darts-vision-scoring
+    environment:
+      VISION_HOST: 0.0.0.0
+      VISION_PORT: 5901
+      VISION_CALIBRATION_DIR: /app/calibration
+      VISION_CONFIDENCE_THRESHOLD: ${VISION_CONFIDENCE_THRESHOLD:-0.6}
+      VISION_COUNTDOWN_SECONDS: ${VISION_COUNTDOWN_SECONDS:-3.0}
+      # Publishes resolved throws to the API Gateway, reusing the same
+      # shared WSO2 client credentials as the dartboard/manual-score paths.
+      # Requires the vision:write scope to be registered for this client in
+      # WSO2 on this environment (see scripts/wso2_manage_scope.sh) --
+      # publishing will fail with 403 until that's done, but the rest of the
+      # app is unaffected.
+      VISION_GATEWAY_CLIENT_ID: ${WSO2_CLIENT_ID} # pragma: allowlist secret
+      VISION_GATEWAY_CLIENT_SECRET: ${WSO2_CLIENT_SECRET} # pragma: allowlist secret
+      VISION_GATEWAY_TOKEN_URL: https://wso2is:9443/oauth2/token
+      VISION_GATEWAY_URL: http://api-gateway:8080
+      VISION_GATEWAY_VERIFY_SSL: "False"
+    volumes:
+      - vision_calibration_data:/app/calibration
+    depends_on:
+      - api-gateway
+    restart: unless-stopped
+    networks:
+      - darts-network
+
+volumes:
+  vision_calibration_data:

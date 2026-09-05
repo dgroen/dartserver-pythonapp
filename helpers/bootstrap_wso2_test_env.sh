@@ -123,6 +123,32 @@ fi
 export WSO2_CLIENT_ID="$CLIENT_ID"
 export WSO2_CLIENT_SECRET="$CLIENT_SECRET"
 
+# 1b. Ensure API-Resource scopes used by machine clients (dartboard/score/
+# vision throw submission, etc.) exist and are authorized for this same
+# application. wso2_manage_scope.sh is idempotent (safe to re-run every
+# bootstrap): it only creates the API Resource if missing and only
+# (re-)authorizes the application if not already authorized. Add new scopes
+# to this list as new machine-client integrations are introduced, rather
+# than registering them by hand once and relying on WSO2's persisted state.
+WSO2_TEST_CLIENT_NAME="${WSO2_CLIENT_NAME:-DartsTestServer}"
+declare -A WSO2_SCOPES_TO_ENSURE=(
+  ["vision:write"]="Vision API|vision"
+)
+for scope_name in "${!WSO2_SCOPES_TO_ENSURE[@]}"; do
+  IFS='|' read -r api_name api_id <<< "${WSO2_SCOPES_TO_ENSURE[$scope_name]}"
+  echo "[WSO2 Bootstrap] Ensuring scope '${scope_name}' is registered and authorized for ${WSO2_TEST_CLIENT_NAME}..."
+  if ! bash scripts/wso2_manage_scope.sh \
+    --scope "$scope_name" \
+    --app "$WSO2_TEST_CLIENT_NAME" \
+    --api-name "$api_name" \
+    --api-id "$api_id" \
+    --host "$WSO2_IS_URL" \
+    --admin "${BOOTSTRAP_ADMIN_USER}:${BOOTSTRAP_ADMIN_PASS}" \
+    --insecure; then
+    handle_step_failure "failed to ensure scope '${scope_name}' for ${WSO2_TEST_CLIENT_NAME}."
+  fi
+done
+
 # 2. Configure redirect URIs
 echo "[WSO2 Bootstrap] Configuring redirect URIs..."
 if ! python3 helpers/configure_wso2_redirects.py --ws-url "$WSO2_IS_URL" --admin-user "$BOOTSTRAP_ADMIN_USER" --admin-pass "$BOOTSTRAP_ADMIN_PASS"; then
