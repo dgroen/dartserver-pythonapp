@@ -60,7 +60,7 @@ WSO2_IS_VERIFY_SSL = os.getenv("WSO2_IS_VERIFY_SSL", "False").lower() == "true"
 WSO2_IS_DEFAULT_SCOPES = os.getenv(
     "WSO2_IS_DEFAULT_SCOPES",
     "openid profile email dartboard:write dartboard:read "
-    "game:write game:control score:write player:write",
+    "game:write game:control score:write player:write vision:write",
 )
 
 # RabbitMQ Configuration
@@ -1071,6 +1071,119 @@ def dartboard_throw():  # noqa: PLR0911
 
     except Exception as e:
         logger.exception("Error submitting dartboard throw")
+        return (
+            jsonify(
+                {
+                    "error": "Internal server error",
+                    "message": str(e),
+                },
+            ),
+            500,
+        )
+
+
+@app.route("/api/v1/vision/throw", methods=["POST"])
+@require_auth(required_scopes=["vision:write"])
+def vision_throw():  # noqa: PLR0911
+    """
+    Submit a camera-scored dart throw (vision-scoring service client).
+    Requires client credentials authentication with the vision:write scope.
+    """
+    try:
+        data = request.json
+        if not data:
+            return (
+                jsonify(
+                    {
+                        "error": "Invalid request",
+                        "message": "Request body must be JSON",
+                    },
+                ),
+                400,
+            )
+
+        # Validate required fields
+        required_fields = ["score", "multiplier"]
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            return (
+                jsonify(
+                    {
+                        "error": "Missing required fields",
+                        "message": f"Missing required fields: {', '.join(missing_fields)}",
+                    },
+                ),
+                400,
+            )
+
+        # Validate score value
+        score = data.get("score")
+        if not isinstance(score, int) or score < 0 or score > 60:
+            return (
+                jsonify(
+                    {
+                        "error": "Invalid score",
+                        "message": "Score must be an integer between 0 and 60",
+                    },
+                ),
+                400,
+            )
+
+        # Validate multiplier (matches GameManager._get_valid_multiplier's valid set)
+        valid_multipliers = ["SINGLE", "DOUBLE", "TRIPLE", "BULL", "DBLBULL"]
+        multiplier = str(data.get("multiplier", "SINGLE")).upper()
+        if multiplier not in valid_multipliers:
+            return (
+                jsonify(
+                    {
+                        "error": "Invalid multiplier",
+                        "message": f"Multiplier must be one of: {', '.join(valid_multipliers)}",
+                    },
+                ),
+                400,
+            )
+
+        # Add metadata; source="vision" is how message_router in src/app/app.py
+        # distinguishes this from manual-score and electronic-dartboard messages
+        message = {
+            "source": "vision",
+            "score": score,
+            "multiplier": multiplier,
+            "confidence": data.get("confidence"),
+            "sessionId": data.get("sessionId"),
+            "boardId": data.get("boardId"),
+            "confirmedByHuman": bool(data.get("confirmedByHuman", False)),
+            "client_id": request.user_claims.get("client_id", "unknown"),  # type: ignore
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Publish to RabbitMQ
+        routing_key = "darts.vision.throw"
+        success = rabbitmq_publisher.publish(routing_key, message)
+
+        if success:
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": "Throw submitted successfully",
+                        "data": message,
+                    },
+                ),
+                201,
+            )
+        return (
+            jsonify(
+                {
+                    "error": "Failed to submit throw",
+                    "message": "Unable to publish message to queue",
+                },
+            ),
+            500,
+        )
+
+    except Exception as e:
+        logger.exception("Error submitting vision throw")
         return (
             jsonify(
                 {

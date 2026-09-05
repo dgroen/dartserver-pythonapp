@@ -23,10 +23,22 @@ See `../doc/` for the full architecture plan.
   exposes that state machine as a small local Flask API;
   `scripts/live_pipeline.py` wires all of it into one runnable process.
   Not yet tested against a real phone/board (needs the physical setup).
-- **Phase C (full wire-up into Dartserver via the API Gateway): not started.**
-  This is also the first phase that will get deployed/tested against the
-  `test` branch's live test-server pipeline, once there's a `publisher.py`
-  actually talking to the API Gateway.
+- **Phase C (full wire-up into Dartserver via the API Gateway): done.**
+  `publisher.py` implements the OAuth2 client-credentials flow (mirrors
+  `scripts/dartboard_simulator.py`) and POSTs resolved throws to the new
+  `POST /api/v1/vision/throw` endpoint (`src/api_gateway/app.py`, scope
+  `vision:write`), which publishes to `darts_exchange` with routing key
+  `darts.vision.throw`. `src/app/app.py`'s `message_router` gained a
+  `source == "vision"` branch and `on_vision_throw_received()`, calling
+  `GameManager.process_score()` exactly like the other input methods --
+  `GameManager` and the game engines are unchanged. `live_pipeline.py` now
+  wires `ConfirmGate`'s `on_resolved` callback to the publisher (only when
+  `VISION_GATEWAY_*` env vars are set; otherwise resolved throws are logged
+  only, preserving Phase B's no-platform-wiring behavior).
+  Not yet deployed anywhere -- deploying/testing this against the real
+  `test` environment goes through a PR into the `test` branch (which
+  triggers `deploy-unified.yml`'s live test-server deployment), not a direct
+  merge.
 - **Phase D (robustness) / Phase E (optional YOLO upgrade): not started.**
 
 ## Development
@@ -46,7 +58,7 @@ pytest
 - `src/vision_scoring/confirm_state.py` - confidence-gated pending-throw state machine.
 - `src/vision_scoring/confirm_ui.py` - local Flask API wrapping the confirm state machine.
 - `src/vision_scoring/config.py` - env-driven configuration for the live pipeline.
-- `src/vision_scoring/publisher.py` - Phase C (not yet implemented): OAuth2 + POST to the API Gateway.
+- `src/vision_scoring/publisher.py` - OAuth2 client-credentials + POST to the API Gateway.
 - `scripts/score_from_image.py` - Phase A CLI harness.
-- `scripts/live_pipeline.py` - Phase B runnable process (capture -> detect -> score -> confirm UI).
+- `scripts/live_pipeline.py` - capture -> detect -> score -> confirm -> (optional) publish.
 - `calibration/` - per-board calibration JSON files (gitignored; generated locally).

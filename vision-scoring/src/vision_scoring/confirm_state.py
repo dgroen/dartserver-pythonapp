@@ -12,6 +12,7 @@ tested directly; confirm_ui.py wraps this in a small local web UI.
 """
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -37,9 +38,22 @@ class PendingThrow:
 
 
 class ConfirmGate:
-    def __init__(self, confidence_threshold: float = 0.6, countdown_seconds: float = 3.0):
+    def __init__(
+        self,
+        confidence_threshold: float = 0.6,
+        countdown_seconds: float = 3.0,
+        on_resolved: Callable[[PendingThrow], None] | None = None,
+    ):
+        """
+        Args:
+            on_resolved: called once, synchronously, whenever a throw reaches
+                ACCEPTED or CORRECTED (i.e. has a final_result ready to
+                publish) -- via auto-accept in tick(), or via confirm()/
+                correct(). Not called for CANCELLED throws.
+        """
         self._confidence_threshold = confidence_threshold
         self._countdown_seconds = countdown_seconds
+        self._on_resolved = on_resolved
         self._throws: dict[str, PendingThrow] = {}
         self._next_id = 0
 
@@ -71,18 +85,21 @@ class ConfirmGate:
                 pending.status = ThrowStatus.ACCEPTED
                 pending.final_result = pending.result
                 newly_accepted.append(pending)
+                self._notify_resolved(pending)
         return newly_accepted
 
     def confirm(self, throw_id: str) -> PendingThrow:
         pending = self._require(throw_id)
         pending.status = ThrowStatus.ACCEPTED
         pending.final_result = pending.result
+        self._notify_resolved(pending)
         return pending
 
     def correct(self, throw_id: str, corrected_result: ScoreResult) -> PendingThrow:
         pending = self._require(throw_id)
         pending.status = ThrowStatus.CORRECTED
         pending.final_result = corrected_result
+        self._notify_resolved(pending)
         return pending
 
     def cancel(self, throw_id: str) -> PendingThrow:
@@ -104,3 +121,7 @@ class ConfirmGate:
         if throw_id not in self._throws:
             raise KeyError(f"Unknown throw_id: {throw_id}")
         return self._throws[throw_id]
+
+    def _notify_resolved(self, pending: PendingThrow) -> None:
+        if self._on_resolved is not None:
+            self._on_resolved(pending)

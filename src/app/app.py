@@ -364,6 +364,22 @@ def on_dartboard_throw_received(throw_data):
         traceback.print_exc()
 
 
+def on_vision_throw_received(throw_data):
+    """Callback when a camera-scored (vision) throw is received from RabbitMQ"""
+    print(f"[VISION_HANDLER] Vision throw received: {throw_data}", flush=True)
+    sys.stdout.flush()
+
+    try:
+        score_data = {
+            "score": throw_data.get("score"),
+            "multiplier": throw_data.get("multiplier"),
+        }
+        app.game_manager.process_score(score_data)
+    except Exception as e:
+        print(f"Error processing vision throw: {e}")
+        traceback.print_exc()
+
+
 # ============================================================================
 # Routes have been moved to blueprint modules:
 # - app_ui.py: UI/page rendering endpoints
@@ -561,6 +577,11 @@ def start_rabbitmq_consumer():
             print("[MESSAGE_ROUTER] Routing to dartboard handler", flush=True)
             sys.stdout.flush()
             on_dartboard_throw_received(message)
+        elif message.get("source") == "vision":
+            # This is a camera-scored (vision) throw message
+            print("[MESSAGE_ROUTER] Routing to vision handler", flush=True)
+            sys.stdout.flush()
+            on_vision_throw_received(message)
         else:
             # This is a score message
             print("[MESSAGE_ROUTER] Routing to score handler", flush=True)

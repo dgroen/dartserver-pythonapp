@@ -88,3 +88,27 @@ def test_unknown_throw_id_raises_key_error():
     gate = ConfirmGate()
     with pytest.raises(KeyError):
         gate.confirm("does-not-exist")
+
+
+def test_on_resolved_called_on_auto_accept():
+    resolved = []
+    gate = ConfirmGate(confidence_threshold=0.6, countdown_seconds=3.0, on_resolved=resolved.append)
+    pending = gate.submit(_result(0.9), now=100.0)
+    gate.tick(now=103.5)
+    assert resolved == [pending]
+
+
+def test_on_resolved_called_on_confirm_and_correct_but_not_cancel():
+    resolved = []
+    gate = ConfirmGate(on_resolved=resolved.append)
+
+    confirmed = gate.submit(_result(0.1), now=100.0)
+    gate.confirm(confirmed.throw_id)
+
+    corrected = gate.submit(_result(0.1), now=100.0)
+    gate.correct(corrected.throw_id, _result(1.0))
+
+    cancelled = gate.submit(_result(0.1), now=100.0)
+    gate.cancel(cancelled.throw_id)
+
+    assert resolved == [confirmed, corrected]

@@ -14,6 +14,14 @@ class VisionScoringConfig:
     countdown_seconds: float = 3.0
     confirm_ui_host: str = "0.0.0.0"
     confirm_ui_port: int = 5900
+    board_id: str | None = None
+    # Publisher settings (Phase C). Left unset in Phase B usage (no platform
+    # wiring), required once live_pipeline.py is run with publishing enabled.
+    gateway_client_id: str | None = None
+    gateway_client_secret: str | None = None
+    gateway_token_url: str | None = None
+    gateway_url: str | None = None
+    gateway_verify_ssl: bool = True
 
     @classmethod
     def from_env(cls) -> "VisionScoringConfig":
@@ -28,6 +36,21 @@ class VisionScoringConfig:
             countdown_seconds=float(os.environ.get("VISION_COUNTDOWN_SECONDS", "3.0")),
             confirm_ui_host=os.environ.get("VISION_CONFIRM_UI_HOST", "0.0.0.0"),
             confirm_ui_port=int(os.environ.get("VISION_CONFIRM_UI_PORT", "5900")),
+            board_id=os.environ.get("VISION_BOARD_ID"),
+            gateway_client_id=os.environ.get("VISION_GATEWAY_CLIENT_ID"),
+            gateway_client_secret=os.environ.get("VISION_GATEWAY_CLIENT_SECRET"),
+            gateway_token_url=os.environ.get("VISION_GATEWAY_TOKEN_URL"),
+            gateway_url=os.environ.get("VISION_GATEWAY_URL"),
+            gateway_verify_ssl=os.environ.get("VISION_GATEWAY_VERIFY_SSL", "true").lower()
+            == "true",
+        )
+
+    def publishing_enabled(self) -> bool:
+        return bool(
+            self.gateway_client_id
+            and self.gateway_client_secret
+            and self.gateway_token_url
+            and self.gateway_url
         )
 
 

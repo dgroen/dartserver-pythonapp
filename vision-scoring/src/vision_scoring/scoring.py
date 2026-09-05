@@ -11,5 +11,13 @@ def score_pixel(calibration: Calibration, tip_pixel_xy: tuple[float, float]) -> 
 
 
 def to_throw_payload(result: ScoreResult) -> dict:
-    """Shape expected by GameManager.process_score / the existing platform."""
+    """Shape expected by GameManager.process_score / the existing platform.
+
+    MISS is normalized to {"score": 0, "multiplier": "SINGLE"} since the
+    platform's valid multiplier set (SINGLE/DOUBLE/TRIPLE/BULL/DBLBULL) has
+    no explicit "miss" concept -- a score of 0 is what actually counts as a
+    miss there.
+    """
+    if result.multiplier == "MISS":
+        return {"score": 0, "multiplier": "SINGLE"}
     return {"score": result.score, "multiplier": result.multiplier}
