@@ -235,7 +235,14 @@ jobs:
 
           # Stop existing containers first (to release file locks)
           echo "🛑 Stopping existing containers..."
-          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml down || true
+          # vision-scoring (docker-compose-vision-test.yml) may not exist yet on
+          # the very first deploy after it was added -- this runs against the
+          # PREVIOUSLY checked-out code, before the git checkout below.
+          if [ -f docker-compose-vision-test.yml ]; then
+            docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml -f docker-compose-vision-test.yml down || true
+          else
+            docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml down || true
+          fi
 
           # Pull latest code BEFORE copying config files, so there are no local
           # modifications that would cause git checkout to fail
@@ -369,6 +376,13 @@ jobs:
           echo "🔨 Rebuilding containers..."
           docker-compose -f docker-compose-wso2.yml build --no-cache darts-app
           docker-compose -f docker-compose-wso2.yml build --no-cache api-gateway
+          # vision-scoring is test-only for now (see docker-compose-vision-test.yml);
+          # it is not part of docker-compose-wso2.yml, so it is not built here on
+          # the very first deploy after this file was added -- only once this
+          # commit has been checked out will the file be present for later steps.
+          if [ -f docker-compose-vision-test.yml ]; then
+            docker-compose -f docker-compose-wso2.yml -f docker-compose-vision-test.yml build --no-cache vision-scoring
+          fi
 
           # Start infrastructure first so bootstrap can create or repair WSO2 state
           echo "▶️  Starting infrastructure services..."
@@ -436,10 +450,18 @@ jobs:
           # Note: docker-entrypoint.sh runs alembic upgrade head automatically on startup.
           echo "▶️  Starting darts app, gateway, and nginx..."
           docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d darts-app api-gateway nginx
+          if [ -f docker-compose-vision-test.yml ]; then
+            echo "▶️  Starting vision-scoring (test-only)..."
+            docker-compose -f docker-compose-wso2.yml -f docker-compose-vision-test.yml up -d vision-scoring
+          fi
 
           # Check container status
           echo "✅ Checking container status..."
-          docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml ps
+          if [ -f docker-compose-vision-test.yml ]; then
+            docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml -f docker-compose-vision-test.yml ps
+          else
+            docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml ps
+          fi
 
           echo "🎉 Deployment to test environment completed successfully!"
           ENDSSH
@@ -455,8 +477,12 @@ jobs:
             echo "Commit: $(git rev-parse --short HEAD)"
 
             # Check if containers are running
+            VISION_COMPOSE_ARG=""
+            if [ -f docker-compose-vision-test.yml ]; then
+              VISION_COMPOSE_ARG="-f docker-compose-vision-test.yml"
+            fi
             RUNNING_CONTAINERS=$(docker-compose -f docker-compose-wso2.yml \
-              -f docker-compose-test.yml ps --services --filter "status=running" | wc -l)
+              -f docker-compose-test.yml $VISION_COMPOSE_ARG ps --services --filter "status=running" | wc -l)
             echo "Running containers: $RUNNING_CONTAINERS"
 
             if [ "$RUNNING_CONTAINERS" -lt 1 ]; then
