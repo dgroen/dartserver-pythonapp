@@ -291,12 +291,14 @@ from src.app.app_auth import auth_bp
 from src.app.app_games import games_bp
 from src.app.app_services import services_bp
 from src.app.app_ui import ui_bp
+from src.app.app_vision import vision_bp
 
 app.register_blueprint(ui_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(games_bp)
 app.register_blueprint(api_bp)
 app.register_blueprint(services_bp)
+app.register_blueprint(vision_bp)
 app.register_blueprint(admin_bp)
 
 # Initialize RabbitMQ Consumer
@@ -361,6 +363,22 @@ def on_dartboard_throw_received(throw_data):
 
     except Exception as e:
         print(f"Error processing dartboard throw: {e}")
+        traceback.print_exc()
+
+
+def on_vision_throw_received(throw_data):
+    """Callback when a camera-scored (vision) throw is received from RabbitMQ"""
+    print(f"[VISION_HANDLER] Vision throw received: {throw_data}", flush=True)
+    sys.stdout.flush()
+
+    try:
+        score_data = {
+            "score": throw_data.get("score"),
+            "multiplier": throw_data.get("multiplier"),
+        }
+        app.game_manager.process_score(score_data)
+    except Exception as e:
+        print(f"Error processing vision throw: {e}")
         traceback.print_exc()
 
 
@@ -561,6 +579,11 @@ def start_rabbitmq_consumer():
             print("[MESSAGE_ROUTER] Routing to dartboard handler", flush=True)
             sys.stdout.flush()
             on_dartboard_throw_received(message)
+        elif message.get("source") == "vision":
+            # This is a camera-scored (vision) throw message
+            print("[MESSAGE_ROUTER] Routing to vision handler", flush=True)
+            sys.stdout.flush()
+            on_vision_throw_received(message)
         else:
             # This is a score message
             print("[MESSAGE_ROUTER] Routing to score handler", flush=True)

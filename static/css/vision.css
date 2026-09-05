@@ -1,0 +1,84 @@
+.vision-video {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 8px;
+    background: #000;
+    margin-bottom: 12px;
+}
+
+.vision-capture-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    margin-bottom: 12px;
+}
+
+.vision-capture-canvas {
+    max-width: 100%;
+    border-radius: 8px;
+    cursor: crosshair;
+    touch-action: none;
+}
+
+.vision-instruction {
+    font-weight: 600;
+    margin: 8px 0;
+}
+
+.vision-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.vision-controls .btn {
+    flex: 1 1 auto;
+}
+
+.vision-throw-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.vision-empty {
+    opacity: 0.7;
+    font-style: italic;
+}
+
+.vision-throw-card {
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.vision-throw-card .vision-throw-score {
+    font-size: 1.3em;
+    font-weight: 700;
+}
+
+.vision-throw-card .vision-throw-meta {
+    font-size: 0.85em;
+    opacity: 0.8;
+    margin: 4px 0 8px;
+}
+
+.vision-throw-card .vision-throw-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.vision-throw-card .vision-throw-actions .btn {
+    flex: 1 1 auto;
+}
+
+.vision-correct-form {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.vision-correct-form input[type="number"] {
+    width: 70px;
+}

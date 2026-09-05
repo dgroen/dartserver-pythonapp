@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="/static/manifest.json">
+    <title>Vision Calibration - Darts Mobile</title>
+    <link rel="stylesheet" href="/static/css/mobile.css">
+    <link rel="stylesheet" href="/static/css/vision.css">
+</head>
+<body>
+    <div class="mobile-app">
+        <header class="mobile-header">
+            <a href="/vision" class="back-btn">←</a>
+            <h1>📷 Camera Calibration</h1>
+        </header>
+
+        <main class="mobile-content">
+            <div class="card">
+                <h2>1. Point the camera at the board</h2>
+                <p>Mount the phone/laptop so the whole board is visible, then capture a frame.</p>
+                <div class="form-group">
+                    <label for="boardId">Board ID</label>
+                    <input type="text" id="boardId" placeholder="e.g. living-room-board">
+                </div>
+                <video id="video" class="vision-video" autoplay playsinline muted></video>
+                <button id="startCameraBtn" class="btn btn-secondary">Start Camera</button>
+                <button id="captureBtn" class="btn btn-primary" disabled>Capture Frame</button>
+            </div>
+
+            <div class="card" id="clickCard" hidden>
+                <h2>2. Click the 4 marked points</h2>
+                <p id="clickInstruction" class="vision-instruction"></p>
+                <div class="vision-capture-wrapper">
+                    <canvas id="captureCanvas" class="vision-capture-canvas"></canvas>
+                </div>
+                <button id="resetPointsBtn" class="btn btn-secondary btn-small">Start Over</button>
+            </div>
+
+            <div class="card" id="statusCard" hidden>
+                <p id="statusMessage"></p>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/vision-calibrate.js"></script>
+</body>
+</html>
