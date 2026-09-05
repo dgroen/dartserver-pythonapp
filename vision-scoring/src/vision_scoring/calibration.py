@@ -40,6 +40,16 @@ class Calibration:
         x_mm, y_mm = mapped[0, 0]
         return float(x_mm), float(y_mm)
 
+    def board_center_px(self) -> tuple[float, float]:
+        """Pixel location of the board center (board-plane mm (0, 0)), used by
+        the detector to pick the tip end of a new blob. Derived from the
+        homography's inverse rather than a separately-entered value."""
+        inverse_homography = np.linalg.inv(self.homography)
+        origin_mm = np.array([[(0.0, 0.0)]], dtype=np.float64)
+        mapped = cv2.perspectiveTransform(origin_mm, inverse_homography)
+        x_px, y_px = mapped[0, 0]
+        return float(x_px), float(y_px)
+
     def to_json(self) -> dict:
         return {
             "board_id": self.board_id,

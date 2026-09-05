@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="/static/manifest.json">
+    <title>Vision Scoring - Darts Mobile</title>
+    <link rel="stylesheet" href="/static/css/mobile.css">
+    <link rel="stylesheet" href="/static/css/vision.css">
+</head>
+<body>
+    <div class="mobile-app">
+        <header class="mobile-header">
+            <a href="/mobile" class="back-btn">←</a>
+            <h1>📷 Vision Scoring</h1>
+        </header>
+
+        <main class="mobile-content">
+            <div class="card">
+                <div class="form-group">
+                    <label for="boardId">Board ID</label>
+                    <input type="text" id="boardId" placeholder="e.g. living-room-board">
+                </div>
+                <p id="calibrationStatus" class="vision-instruction"></p>
+                <a href="/vision/calibrate" class="btn btn-secondary btn-small">Calibrate this board</a>
+            </div>
+
+            <div class="card">
+                <video id="video" class="vision-video" autoplay playsinline muted></video>
+                <canvas id="captureCanvas" hidden></canvas>
+                <div class="vision-controls">
+                    <button id="startCameraBtn" class="btn btn-secondary">Start Camera</button>
+                    <button id="startScoringBtn" class="btn btn-primary" disabled>Start Scoring</button>
+                    <button id="stopScoringBtn" class="btn btn-danger" disabled>Stop</button>
+                    <button id="newRoundBtn" class="btn btn-warning" disabled>New Round (darts pulled)</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Throws</h2>
+                <div id="pendingThrows" class="vision-throw-list">
+                    <p class="vision-empty">No throws detected yet.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/vision-scoring.js"></script>
+</body>
+</html>

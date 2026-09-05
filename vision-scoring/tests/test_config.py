@@ -1,38 +1,53 @@
-import pytest
 from vision_scoring.config import VisionScoringConfig
 
 
-def test_from_env_reads_required_and_defaults(monkeypatch):
-    monkeypatch.setenv("VISION_CAMERA_URL", "http://192.168.1.50:8080/video")
-    monkeypatch.setenv("VISION_CALIBRATION_PATH", "/tmp/board1.json")
-    monkeypatch.delenv("VISION_CONFIDENCE_THRESHOLD", raising=False)
+def test_from_env_uses_defaults_when_nothing_set(monkeypatch):
+    for var in (
+        "VISION_HOST",
+        "VISION_PORT",
+        "VISION_CALIBRATION_DIR",
+        "VISION_CONFIDENCE_THRESHOLD",
+        "VISION_COUNTDOWN_SECONDS",
+        "VISION_GATEWAY_CLIENT_ID",
+        "VISION_GATEWAY_CLIENT_SECRET",
+        "VISION_GATEWAY_TOKEN_URL",
+        "VISION_GATEWAY_URL",
+    ):
+        monkeypatch.delenv(var, raising=False)
 
     config = VisionScoringConfig.from_env()
 
-    assert config.camera_url == "http://192.168.1.50:8080/video"
-    assert str(config.calibration_path) == "/tmp/board1.json"
+    assert config.host == "0.0.0.0"
+    assert config.port == 5901
+    assert str(config.calibration_dir) == "calibration"
     assert config.confidence_threshold == 0.6
     assert config.countdown_seconds == 3.0
+    assert config.publishing_enabled() is False
 
 
 def test_from_env_reads_overridden_values(monkeypatch):
-    monkeypatch.setenv("VISION_CAMERA_URL", "http://phone/video")
-    monkeypatch.setenv("VISION_CALIBRATION_PATH", "/tmp/board1.json")
-    monkeypatch.setenv("VISION_BOARD_CENTER_X", "512")
-    monkeypatch.setenv("VISION_BOARD_CENTER_Y", "384")
+    monkeypatch.setenv("VISION_PORT", "6000")
     monkeypatch.setenv("VISION_CONFIDENCE_THRESHOLD", "0.8")
     monkeypatch.setenv("VISION_COUNTDOWN_SECONDS", "5")
+    monkeypatch.setenv("VISION_GATEWAY_CLIENT_ID", "client-1")
+    monkeypatch.setenv("VISION_GATEWAY_CLIENT_SECRET", "secret-1")
+    monkeypatch.setenv("VISION_GATEWAY_TOKEN_URL", "https://wso2is/oauth2/token")
+    monkeypatch.setenv("VISION_GATEWAY_URL", "https://api-gateway")
 
     config = VisionScoringConfig.from_env()
 
-    assert config.board_center_px == (512.0, 384.0)
+    assert config.port == 6000
     assert config.confidence_threshold == 0.8
     assert config.countdown_seconds == 5.0
+    assert config.publishing_enabled() is True
 
 
-def test_from_env_raises_when_required_var_missing(monkeypatch):
-    monkeypatch.delenv("VISION_CAMERA_URL", raising=False)
-    monkeypatch.delenv("VISION_CALIBRATION_PATH", raising=False)
+def test_publishing_enabled_false_when_partially_configured(monkeypatch):
+    monkeypatch.setenv("VISION_GATEWAY_CLIENT_ID", "client-1")
+    monkeypatch.delenv("VISION_GATEWAY_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("VISION_GATEWAY_TOKEN_URL", raising=False)
+    monkeypatch.delenv("VISION_GATEWAY_URL", raising=False)
 
-    with pytest.raises(RuntimeError):
-        VisionScoringConfig.from_env()
+    config = VisionScoringConfig.from_env()
+
+    assert config.publishing_enabled() is False

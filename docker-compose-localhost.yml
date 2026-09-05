@@ -232,6 +232,34 @@ services:
     networks:
       - darts-network
 
+  # Vision-Scoring Service (camera-based dart detection)
+  # Not exposed to the host: only darts-app talks to it, over the internal
+  # docker network, after authenticating the browser request itself.
+  vision-scoring:
+    build:
+      context: ./vision-scoring
+    container_name: darts-vision-scoring
+    environment:
+      VISION_HOST: 0.0.0.0
+      VISION_PORT: 5901
+      VISION_CALIBRATION_DIR: /app/calibration
+      VISION_CONFIDENCE_THRESHOLD: ${VISION_CONFIDENCE_THRESHOLD:-0.6}
+      VISION_COUNTDOWN_SECONDS: ${VISION_COUNTDOWN_SECONDS:-3.0}
+      # Publishes resolved throws to the API Gateway, reusing the same
+      # shared WSO2 client credentials as the dartboard/manual-score paths.
+      VISION_GATEWAY_CLIENT_ID: ${WSO2_CLIENT_ID:-qGUe7mARfB_rbEn09jWJtTyi9uMa}
+      VISION_GATEWAY_CLIENT_SECRET: ${WSO2_CLIENT_SECRET:-HUgKyYNsXxfGAYHb2SYMFuX18Gmu9R9kE99EQkXOfKka}
+      VISION_GATEWAY_TOKEN_URL: https://darts-wso2is:9443/oauth2/token
+      VISION_GATEWAY_URL: http://api-gateway:8080
+      VISION_GATEWAY_VERIFY_SSL: "False"
+    volumes:
+      - vision_calibration_data:/app/calibration
+    depends_on:
+      - api-gateway
+    restart: unless-stopped
+    networks:
+      - darts-network
+
   # Nginx Reverse Proxy (Optional)
   nginx:
     image: nginx:alpine
@@ -257,6 +285,7 @@ volumes:
   rabbitmq_data:
   wso2is_data:
   wso2apim_data:
+  vision_calibration_data:
 
 
 networks:

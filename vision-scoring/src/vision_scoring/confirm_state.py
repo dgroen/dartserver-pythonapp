@@ -8,7 +8,8 @@ A detected throw is never published immediately. Instead:
     confirmation" until an operator explicitly confirms or corrects them.
 
 This is pure state-machine logic (no Flask, no camera) so it can be unit
-tested directly; confirm_ui.py wraps this in a small local web UI.
+tested directly; server.py exposes it over HTTP, keyed per board_id by
+sessions.py.
 """
 
 import time

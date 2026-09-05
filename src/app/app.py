@@ -291,12 +291,14 @@ from src.app.app_auth import auth_bp
 from src.app.app_games import games_bp
 from src.app.app_services import services_bp
 from src.app.app_ui import ui_bp
+from src.app.app_vision import vision_bp
 
 app.register_blueprint(ui_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(games_bp)
 app.register_blueprint(api_bp)
 app.register_blueprint(services_bp)
+app.register_blueprint(vision_bp)
 app.register_blueprint(admin_bp)
 
 # Initialize RabbitMQ Consumer
