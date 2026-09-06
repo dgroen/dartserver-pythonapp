@@ -339,6 +339,65 @@ function updateGameDisplay(data) {
     displayGame(data.game);
 }
 
+/**
+ * Wire up the inline "edit last throw" form.
+ *
+ * Camera and electronic-board detections can be wrong: this either replaces the
+ * last recorded throw (SCD2-versioned server side) or registers the entered
+ * value as a brand-new throw. Same endpoint as the desktop dartboard visual.
+ */
+function initEditLastThrow() {
+    const toggle = document.getElementById('editLastThrowButton');
+    const form = document.getElementById('editThrowForm');
+    const status = document.getElementById('editThrowStatus');
+    if (!toggle || !form) {
+        return;
+    }
+
+    toggle.addEventListener('click', () => {
+        const showing = form.style.display !== 'none';
+        form.style.display = showing ? 'none' : 'block';
+        status.textContent = '';
+    });
+
+    async function submitCorrection(mode) {
+        const score = parseInt(document.getElementById('editThrowScore').value, 10);
+        const multiplier = document.getElementById('editThrowMultiplier').value;
+        if (Number.isNaN(score)) {
+            status.textContent = 'Enter a score first.';
+            status.classList.add('is-error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/game/throw/correct', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ score, multiplier, mode }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.message || 'Could not apply that throw');
+            }
+            status.classList.remove('is-error');
+            status.textContent = mode === 'replace' ? 'Last throw corrected.' : 'Throw registered.';
+            form.style.display = 'none';
+            loadCurrentGame();
+        } catch (e) {
+            status.classList.add('is-error');
+            status.textContent = e.message;
+        }
+    }
+
+    document.getElementById('editThrowReplaceButton')
+        .addEventListener('click', () => submitCorrection('replace'));
+    document.getElementById('editThrowNewButton')
+        .addEventListener('click', () => submitCorrection('new'));
+}
+
+document.addEventListener('DOMContentLoaded', initEditLastThrow);
+
 function updateScoreDisplay(data) {
     if (data.throw) {
         document.getElementById('lastThrow').style.display = 'block';

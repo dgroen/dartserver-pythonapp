@@ -1,0 +1,63 @@
+/* Last-throw correction UI - see static/js/throw_correction.js */
+
+.throw-correction-heading {
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #bbb;
+    text-align: center;
+}
+
+.throw-correction-board {
+    display: flex;
+    justify-content: center;
+}
+
+.throw-correction-status {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #8bc34a;
+    text-align: center;
+}
+
+.throw-correction-status.is-error {
+    color: #ff8080;
+}
+
+.throw-correction-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.throw-correction-dialog {
+    width: 100%;
+    max-width: 420px;
+    padding: 20px;
+    border-radius: 8px;
+    background: #1e1e1e;
+    color: #eee;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.throw-correction-dialog h3 {
+    margin: 0 0 8px;
+    font-size: 20px;
+}
+
+.throw-correction-error {
+    margin: 0 0 12px;
+    color: #ff8080;
+    font-size: 14px;
+}
+
+.throw-correction-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
