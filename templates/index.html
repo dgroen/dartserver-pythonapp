@@ -7,6 +7,8 @@
     <title>Darts Game Board</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_theme.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/board_picker.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/throw_correction.css') }}">
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 
@@ -56,11 +58,19 @@
                             <div id="alert-message" class="alert-message"></div>
                         </div>
                     </div>
+                    <!-- Which physical board this player throws from -->
+                    <div id="board-picker"></div>
+
                     <!-- Players Display -->
                     <div class="section">
                         <div class="players-container" id="players-container">
                             <!-- Players will be dynamically added here -->
                         </div>
+                    </div>
+
+                    <!-- Correct the last throw by clicking the real landing spot -->
+                    <div class="section">
+                        <div id="throw-correction"></div>
                     </div>
 
                 </div>
@@ -80,7 +90,16 @@
         </div>
     </div>
 
+    <script src="{{ url_for('static', filename='js/board_picker.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dartboard_visual.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/throw_correction.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            window.BoardPicker.init('board-picker');
+            window.ThrowCorrection.init('throw-correction');
+        });
+    </script>
 </body>
 
 </html>

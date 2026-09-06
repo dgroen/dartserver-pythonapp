@@ -305,6 +305,60 @@ app.register_blueprint(admin_bp)
 rabbitmq_consumer = None
 
 
+def _resolve_board(external_id, kind):
+    """Register (on first sight) and return the board an incoming throw came from.
+
+    Returns the board dict, or None when the message carries no usable identity.
+    """
+    if not external_id or external_id == "unknown":
+        logger.warning(f"{kind} throw carries no board identity; cannot attribute it")
+        return None
+    return app.game_manager.db_service.get_or_create_board(external_id, kind=kind)
+
+
+def _route_throw_to_game(board, score_data, kind):
+    """Deliver a board's throw to the (game, player) that board is locked to.
+
+    A throw from an unlocked board is dropped rather than guessed at: with
+    several concurrent games there is no safe default target.
+    """
+    lock = multi_game_manager.get_lock_for_board(board["id"])
+    if lock is None:
+        logger.warning(
+            f"Dropping {kind} throw from board '{board['external_id']}': "
+            "board is not confirmed for any player in any game",
+        )
+        return False
+
+    game_id, player_db_id = lock
+    game = multi_game_manager.get_game(game_id)
+    if game is None:
+        logger.warning(
+            f"Dropping {kind} throw from board '{board['external_id']}': "
+            f"locked game '{game_id}' no longer exists",
+        )
+        multi_game_manager.unlock_board_for_player(game_id)
+        return False
+
+    # The board belongs to one player -- only accept its throws on that player's turn
+    players = game.players or []
+    if not (0 <= game.current_player < len(players)):
+        logger.warning(f"Dropping {kind} throw: game '{game_id}' has no current player")
+        return False
+
+    current_db_id = players[game.current_player].get("db_id")
+    if current_db_id != player_db_id:
+        logger.warning(
+            f"Dropping {kind} throw from board '{board['external_id']}': "
+            f"it belongs to player {player_db_id}, but it is player "
+            f"{current_db_id}'s turn in game '{game_id}'",
+        )
+        return False
+
+    game.process_score(score_data, board_id=board["id"])
+    return True
+
+
 def on_score_received(score_data):
     """Callback when a score is received from RabbitMQ"""
     print(f"Score received: {score_data}")
@@ -355,8 +409,13 @@ def on_dartboard_throw_received(throw_data):
                 f"(zone {zone_info['zone_number']})",
             )
 
-            # Process through game manager
-            app.game_manager.process_score(score_data)
+            # Register the physical board this throw came from and route the
+            # throw to whichever (game, player) has that board confirmed.
+            board = _resolve_board(throw_data.get("client_id"), kind="electronic")
+            if board is None:
+                app.game_manager.process_score(score_data)
+            else:
+                _route_throw_to_game(board, score_data, kind="electronic")
 
         finally:
             session.close()
@@ -376,7 +435,17 @@ def on_vision_throw_received(throw_data):
             "score": throw_data.get("score"),
             "multiplier": throw_data.get("multiplier"),
         }
-        app.game_manager.process_score(score_data)
+
+        # boardId is the operator-chosen calibration id; client_id is the
+        # fallback identity for older publishers that don't send one.
+        board = _resolve_board(
+            throw_data.get("boardId") or throw_data.get("client_id"),
+            kind="vision",
+        )
+        if board is None:
+            app.game_manager.process_score(score_data)
+        else:
+            _route_throw_to_game(board, score_data, kind="vision")
     except Exception as e:
         print(f"Error processing vision throw: {e}")
         traceback.print_exc()

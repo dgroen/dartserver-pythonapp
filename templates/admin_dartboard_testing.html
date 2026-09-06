@@ -221,6 +221,7 @@
 
     <!-- Scripts -->
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/dartboard_visual.js') }}"></script>
     <script>
         // Socket.IO connection
         const socket = io();
@@ -532,7 +533,6 @@
         // ==================== Dartboard Visual Functions ====================
 
         // Dartboard numbers in clockwise order (standard sequence starting at top)
-        const DARTBOARD_NUMBERS = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 
         function analyzeMappings(matrix) {
             // Build a mapping of zone + multiplier -> count for detecting duplicates
@@ -574,118 +574,14 @@
             const container = document.getElementById('dartboardVisualContainer');
             const segmentMap = analyzeMappings(data.matrix);
 
-            // Create SVG dartboard
-            const svgNS = 'http://www.w3.org/2000/svg';
-            const svg = document.createElementNS(svgNS, 'svg');
-            svg.setAttribute('viewBox', '0 0 450 450');
-            svg.setAttribute('width', '350');
-            svg.setAttribute('height', '350');
-            svg.style.maxWidth = '100%';
-
-            const cx = 225;
-            const cy = 225;
-
-            // Color scheme
-            const colors = {
-                mapped: '#4CAF50',       // Green
-                unmapped: '#9e9e9e',     // Grey
-                faulty: '#f44336',       // Red
-                stroke: '#333',
-                text: '#000',
-                bullOuter: '#D4600C',    // Orange-red for outer bull
-                bullInner: '#D4A600',    // Gold for inner bull
-            };
-
-            // Ring radii
-            const radii = {
-                outerDouble: 185,
-                innerDouble: 170,
-                outerTriple: 135,
-                innerTriple: 120,
-                singleInner: 16,
-                bullOuter: 16,
-                bullInner: 8,
-            };
-
-            // Create segments for each number
-            DARTBOARD_NUMBERS.forEach((num, index) => {
-                const startAngle = (index - 0.5) * (360 / 20) - 90;
-                const endAngle = (index + 0.5) * (360 / 20) - 90;
-                const startRad = (startAngle * Math.PI) / 180;
-                const endRad = (endAngle * Math.PI) / 180;
-
-                // Double ring (outer)
-                createVisualSegment(svg, cx, cy, radii.innerDouble, radii.outerDouble, startRad, endRad,
-                    getSegmentStatus(num, 'DOUBLE', segmentMap), colors, svgNS);
-
-                // Single outer ring
-                createVisualSegment(svg, cx, cy, radii.outerTriple, radii.innerDouble, startRad, endRad,
-                    getSegmentStatus(num, 'SINGLE', segmentMap), colors, svgNS);
-
-                // Triple ring
-                createVisualSegment(svg, cx, cy, radii.innerTriple, radii.outerTriple, startRad, endRad,
-                    getSegmentStatus(num, 'TRIPLE', segmentMap), colors, svgNS);
-
-                // Single inner ring
-                createVisualSegment(svg, cx, cy, radii.singleInner, radii.innerTriple, startRad, endRad,
-                    getSegmentStatus(num, 'SINGLE', segmentMap), colors, svgNS);
-
-                // Number labels
-                const midAngle = (startAngle + endAngle) / 2;
-                const midRad = (midAngle * Math.PI) / 180;
-                const labelRadius = 205;
-                const labelX = cx + labelRadius * Math.cos(midRad);
-                const labelY = cy + labelRadius * Math.sin(midRad);
-
-                const text = document.createElementNS(svgNS, 'text');
-                text.setAttribute('x', labelX);
-                text.setAttribute('y', labelY);
-                text.setAttribute('text-anchor', 'middle');
-                text.setAttribute('dy', '0.3em');
-                text.setAttribute('fill', colors.text);
-                text.setAttribute('font-size', '16');
-                text.setAttribute('font-weight', 'bold');
-                text.textContent = num;
-                svg.appendChild(text);
+            // Read-only status view of the shared dartboard face
+            DartboardVisual.render(container, {
+                mode: 'status',
+                getStatus: (zone, multiplier) => getSegmentStatus(zone, multiplier, segmentMap),
             });
 
-            // Outer border
-            const outerRing = document.createElementNS(svgNS, 'circle');
-            outerRing.setAttribute('cx', cx);
-            outerRing.setAttribute('cy', cy);
-            outerRing.setAttribute('r', 190);
-            outerRing.setAttribute('fill', 'none');
-            outerRing.setAttribute('stroke', colors.stroke);
-            outerRing.setAttribute('stroke-width', '4');
-            svg.appendChild(outerRing);
-
-            // Bull's eye - Outer (BULL)
-            const bullStatus = getSegmentStatus(25, 'BULL', segmentMap);
-            const doubleBull = document.createElementNS(svgNS, 'circle');
-            doubleBull.setAttribute('cx', cx);
-            doubleBull.setAttribute('cy', cy);
-            doubleBull.setAttribute('r', radii.bullOuter);
-            doubleBull.setAttribute('fill', colors[bullStatus] || colors.bullOuter);
-            doubleBull.setAttribute('stroke', colors.stroke);
-            doubleBull.setAttribute('stroke-width', '2');
-            svg.appendChild(doubleBull);
-
-            // Bull's eye - Inner (DBLBULL)
-            const dblbullStatus = getSegmentStatus(25, 'DBLBULL', segmentMap);
-            const singleBull = document.createElementNS(svgNS, 'circle');
-            singleBull.setAttribute('cx', cx);
-            singleBull.setAttribute('cy', cy);
-            singleBull.setAttribute('r', radii.bullInner);
-            singleBull.setAttribute('fill', colors[dblbullStatus] || colors.bullInner);
-            singleBull.setAttribute('stroke', colors.stroke);
-            singleBull.setAttribute('stroke-width', '2');
-            svg.appendChild(singleBull);
-
-            // Update container
-            container.innerHTML = '';
-            container.appendChild(svg);
-
             // Add legend
+            const colors = DartboardVisual.STATUS_COLORS;
             const legend = document.createElement('div');
             legend.style.cssText = 'display: flex; gap: 15px; justify-content: center; margin-top: 10px; flex-wrap: wrap;';
 
@@ -703,38 +599,6 @@
             });
 
             container.appendChild(legend);
-        }
-
-        function createVisualSegment(svg, cx, cy, innerRadius, outerRadius, startAngle, endAngle, status, colors, svgNS) {
-            const x1 = cx + innerRadius * Math.cos(startAngle);
-            const y1 = cy + innerRadius * Math.sin(startAngle);
-            const x2 = cx + outerRadius * Math.cos(startAngle);
-            const y2 = cy + outerRadius * Math.sin(startAngle);
-            const x3 = cx + outerRadius * Math.cos(endAngle);
-            const y3 = cy + outerRadius * Math.sin(endAngle);
-            const x4 = cx + innerRadius * Math.cos(endAngle);
-            const y4 = cy + innerRadius * Math.sin(endAngle);
-
-            const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
-
-            const pathData = `M ${x1} ${y1} L ${x2} ${y2} A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${x3} ${y3} L ${x4} ${y4} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x1} ${y1} Z`;
-
-            const path = document.createElementNS(svgNS, 'path');
-            path.setAttribute('d', pathData);
-            path.setAttribute('fill', colors[status] || colors.unmapped);
-            path.setAttribute('stroke', colors.stroke);
-            path.setAttribute('stroke-width', '1');
-
-            // Add hover effect
-            path.style.transition = 'opacity 0.2s';
-            path.addEventListener('mouseenter', () => {
-                path.style.opacity = '0.8';
-            });
-            path.addEventListener('mouseleave', () => {
-                path.style.opacity = '1';
-            });
-
-            svg.appendChild(path);
         }
 
         function clearDartboardVisual() {

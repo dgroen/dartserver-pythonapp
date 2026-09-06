@@ -15,6 +15,7 @@ import os
 
 import requests
 from dartserver_core.auth import login_required
+from dartserver_core.database_service import get_database_service
 from flask import Blueprint, jsonify, render_template, request
 
 vision_bp = Blueprint("vision", __name__)
@@ -43,6 +44,21 @@ def vision_calibrate_page():
     return render_template("vision_calibrate.html")
 
 
+def _register_vision_board(board_id):
+    """Add a calibrated camera board to the board registry.
+
+    The vision-scoring container has no database access of its own, so this
+    proxy is where a vision board first becomes a known, persisted identity.
+    """
+    try:
+        db_service = get_database_service()
+        if db_service is not None:
+            db_service.get_or_create_board(board_id, kind="vision")
+    except Exception:
+        # Registration is best-effort; never fail a calibration save over it
+        logger.exception(f"Could not register vision board '{board_id}'")
+
+
 @vision_bp.route("/api/vision/<board_id>/calibration", methods=["GET", "POST"])
 @login_required
 def vision_calibration(board_id):
@@ -60,6 +76,10 @@ def vision_calibration(board_id):
             )
     except requests.RequestException as exc:
         return _proxy_error(exc)
+
+    if request.method == "POST" and response.status_code < 400:
+        _register_vision_board(board_id)
+
     return jsonify(response.json()), response.status_code
 
 

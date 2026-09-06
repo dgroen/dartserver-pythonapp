@@ -10,6 +10,7 @@
     <link rel="manifest" href="/static/manifest.json">
     <title>Gameplay - Darts Mobile</title>
     <link rel="stylesheet" href="/static/css/mobile.css">
+    <link rel="stylesheet" href="/static/css/board_picker.css">
 </head>
 
 <body>
@@ -69,10 +70,35 @@
                     <p class="button-hint" id="buttonHint">End turn early or continue to next player</p>
                 </div>
 
+                <!-- Which physical board this player throws from -->
+                <div id="board-picker"></div>
+
                 <!-- Last Throw -->
                 <div class="last-throw" id="lastThrow" style="display: none;">
                     <div class="card-header">Last Throw</div>
                     <div class="throw-display" id="throwDisplay">-</div>
+                    <button class="btn-secondary btn-small" id="editLastThrowButton" type="button">
+                        ✏️ Edit last throw
+                    </button>
+                    <div class="edit-throw-form" id="editThrowForm" style="display: none;">
+                        <input type="number" min="0" max="25" placeholder="score" id="editThrowScore">
+                        <select id="editThrowMultiplier">
+                            <option value="SINGLE">SINGLE</option>
+                            <option value="DOUBLE">DOUBLE</option>
+                            <option value="TRIPLE">TRIPLE</option>
+                            <option value="BULL">BULL</option>
+                            <option value="DBLBULL">DBLBULL</option>
+                        </select>
+                        <div class="edit-throw-actions">
+                            <button class="btn-secondary btn-small" id="editThrowNewButton" type="button">
+                                Register as new
+                            </button>
+                            <button class="btn-primary btn-small" id="editThrowReplaceButton" type="button">
+                                Replace last
+                            </button>
+                        </div>
+                        <p class="edit-throw-status" id="editThrowStatus"></p>
+                    </div>
                 </div>
 
                 <!-- Throw-out Advice -->
@@ -102,7 +128,11 @@
     </div>
 
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="/static/js/board_picker.js"></script>
     <script src="/static/js/mobile_gameplay.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => window.BoardPicker.init('board-picker'));
+    </script>
     <script>
         // Menu Toggle Functionality
         const menuToggle = document.getElementById('menuToggle');

@@ -41,6 +41,11 @@ class GameManager:
         self.is_training_mode = False  # Track if in training mode
         self.training_session_id = None  # Training session ID for recording
 
+        # Set by MultiGameManager.create_game so a finishing game can release
+        # the physical boards its players had locked.
+        self.game_id = None
+        self.multi_game_manager = None
+
         # Turn tracking for undo on bust
         self.turn_throws = []  # List of throws in current turn
         self.turn_start_state = None  # Game state at start of turn
@@ -228,8 +233,25 @@ class GameManager:
             players (double-out: {double_out})",
         )
 
+    def _release_board_locks(self, player_id=None):
+        """Release the physical boards this game had locked.
+
+        Args:
+            player_id: Database Player.id whose board to free; None frees every
+                board locked by this game.
+        """
+        if not self.multi_game_manager or not self.game_id:
+            return
+        try:
+            self.multi_game_manager.unlock_board_for_player(self.game_id, player_id)
+        except Exception as e:
+            print(f"Warning: Could not release board locks: {e}")
+
     def reset_game(self):
         """Reset the game state to initial state"""
+        # Ending the game frees its boards for other players
+        self._release_board_locks()
+
         self.players = []
         self.current_player = 0
         self.game_type = "301"
@@ -303,7 +325,11 @@ class GameManager:
 
                     for r in results:
                         mapping[r.player_order] = r.id
-                        cnt = db_session.query(Score).filter_by(game_result_id=r.id).count()
+                        cnt = (
+                            db_session.query(Score)
+                            .filter_by(game_result_id=r.id, is_current=True)
+                            .count()
+                        )
                         throw_counters[r.player_order] = cnt
 
                     self.db_service.current_game_results = mapping
@@ -528,7 +554,14 @@ class GameManager:
             self._emit_sound("removePlayer", f"Player {removed_player['name']} removed")
             print(f"Player removed: {removed_player['name']}")
 
-    def process_score(self, score_data):
+    def process_score(self, score_data, board_id=None):
+        """Process a throw.
+
+        Args:
+            score_data: Dict with 'score' and 'multiplier'
+            board_id: Board.id of the physical board that produced the throw,
+                or None for manual entry
+        """
         if not self.is_started or self.is_paused:
             print("Game not active, ignoring score")
             return
@@ -543,14 +576,7 @@ class GameManager:
             return
 
         # Convert multiplier string to numeric value
-        multiplier_map = {
-            "SINGLE": 1,
-            "DOUBLE": 2,
-            "TRIPLE": 3,
-            "BULL": 1,
-            "DBLBULL": 2,
-        }
-        multiplier_value = multiplier_map.get(multiplier, 1)
+        multiplier_value = self.MULTIPLIER_VALUES.get(multiplier, 1)
 
         # Calculate actual score for display
         actual_score = base_score * multiplier_value
@@ -566,6 +592,7 @@ class GameManager:
             "actual_score": actual_score,
             "throw_number": self.current_throw,
             "score_before": score_before,
+            "board_id": board_id,
         }
         self.turn_throws.append(throw_data)
 
@@ -602,6 +629,7 @@ class GameManager:
                     score_after,
                     is_bust=False,
                     is_finish=False,
+                    board_id=board_id,
                 )
 
                 # Increment throw counter
@@ -611,6 +639,145 @@ class GameManager:
 
         self._emit_game_state()
         print(f"Score processed: {base_score} {multiplier}")
+
+    # Multiplier string -> numeric value. Shared by process_score and
+    # correct_last_throw so a corrected throw is scored exactly like a fresh one.
+    MULTIPLIER_VALUES = {
+        "SINGLE": 1,
+        "DOUBLE": 2,
+        "TRIPLE": 3,
+        "BULL": 1,
+        "DBLBULL": 2,
+    }
+
+    def correct_last_throw(self, score, multiplier):
+        """
+        Replace the game's most recently recorded throw with a corrected value.
+
+        Only the single most recent throw can be corrected, and only while it is
+        still part of the current turn. Correcting an older throw would mean
+        replaying every throw after it and re-evaluating busts and finishes
+        along the way, which this deliberately does not attempt.
+
+        The corrected value goes through the same game logic a fresh throw does,
+        by rewinding to the start of the turn, replaying the turn's earlier
+        throws, and then applying the correction.
+
+        Args:
+            score: Corrected base score
+            multiplier: Corrected multiplier type string
+
+        Returns:
+            Dict describing the correction.
+
+        Raises:
+            ValueError: If the throw is no longer correctable, or the corrected
+                value would bust or finish the leg.
+        """
+        if not self.is_started or self.is_finished:
+            msg = "Game is not active"
+            raise ValueError(msg)
+
+        if not self.turn_throws:
+            msg = "The last throw is no longer correctable: the turn has already moved on"
+            raise ValueError(msg)
+
+        last_db = self.db_service.get_last_score()
+        if last_db is None:
+            msg = "No throw has been recorded yet"
+            raise ValueError(msg)
+
+        # get_last_score() is global, so if the most recent throw anywhere is not
+        # one of ours, some other game has thrown since and this is not the
+        # single most recent throw any more.
+        own_result_ids = set((self.db_service.current_game_results or {}).values())
+        if last_db["game_result_id"] not in own_result_ids:
+            msg = (
+                "Another throw has been recorded since; "
+                "only the most recent throw can be corrected"
+            )
+            raise ValueError(msg)
+
+        if last_db["is_bust"]:
+            msg = "The last throw was a bust and its turn has already been undone"
+            raise ValueError(msg)
+        if last_db["is_finish"]:
+            msg = "The last throw ended the leg and cannot be corrected"
+            raise ValueError(msg)
+
+        multiplier = self._get_valid_multiplier(str(multiplier))
+        try:
+            base_score = int(score)
+        except (TypeError, ValueError):
+            msg = f"Invalid score value '{score}'"
+            raise ValueError(msg) from None
+        if not self._is_valid_score(base_score):
+            msg = f"Invalid score value '{score}'"
+            raise ValueError(msg)
+
+        multiplier_value = self.MULTIPLIER_VALUES.get(multiplier, 1)
+        actual_score = base_score * multiplier_value
+
+        original_throws = list(self.turn_throws)
+        earlier_throws = original_throws[:-1]
+        corrected_throw = dict(original_throws[-1])
+
+        # Rewind to the start of the turn and replay it with the corrected throw
+        self._restore_turn_start_state()
+        for throw in earlier_throws:
+            self.game.process_score(throw["base_score"], throw["multiplier"])
+        result = self.game.process_score(base_score, multiplier) or {}
+
+        if result.get("bust") or result.get("winner"):
+            # Applying these needs the bust/finish handling a fresh throw gets,
+            # which would re-record the turn. Put the game back as it was.
+            self._restore_turn_start_state()
+            for throw in original_throws:
+                self.game.process_score(throw["base_score"], throw["multiplier"])
+            self.turn_throws = original_throws
+            msg = (
+                "A correction that busts or finishes the leg is not supported; "
+                "enter it as a new throw instead"
+            )
+            raise ValueError(msg)
+
+        score_after = self._get_player_current_score(self.current_player)
+
+        corrected_throw.update(
+            {
+                "base_score": base_score,
+                "multiplier": multiplier,
+                "multiplier_value": multiplier_value,
+                "actual_score": actual_score,
+            },
+        )
+        self.turn_throws = [*earlier_throws, corrected_throw]
+
+        persisted = self.db_service.correct_score(
+            last_db["id"],
+            base_score,
+            multiplier,
+            multiplier_value,
+            actual_score,
+            score_after,
+        )
+        if persisted is None:
+            msg = "Could not persist the correction"
+            raise ValueError(msg)
+
+        self._emit_throw_effects(multiplier, base_score, actual_score)
+        self._emit_message(f"Last throw corrected to {multiplier} {base_score}")
+        self._emit_game_state()
+
+        return {
+            "score_id": persisted["id"],
+            "replaces_score_id": persisted["replaces_score_id"],
+            "version": persisted["version"],
+            "base_score": base_score,
+            "multiplier": multiplier,
+            "actual_score": actual_score,
+            "score_after": score_after,
+        }
 
     def _parse_score_data(self, score_data):
         base_score_raw = score_data.get("score")
@@ -981,6 +1148,7 @@ class GameManager:
                 last_throw["score_before"],  # Score stays the same on bust
                 is_bust=True,
                 is_finish=False,
+                board_id=last_throw.get("board_id"),
             )
 
         # Undo throws in database (except the bust throw which we just recorded)
@@ -1019,6 +1187,7 @@ class GameManager:
                 0,  # Final score is 0 for 301/401/501 games
                 is_bust=False,
                 is_finish=True,
+                board_id=last_throw.get("board_id"),
             )
 
         # Mark winner in database
@@ -1032,6 +1201,9 @@ class GameManager:
             self.db_service.finish_game()
         except Exception as e:
             print(f"Warning: Could not mark game as finished in database: {e}")
+
+        # The game is over, so free every physical board its players had locked
+        self._release_board_locks()
 
         self.is_winner = True
         self.is_finished = True
@@ -1237,6 +1409,7 @@ class GameManager:
         score_after,
         is_bust=False,
         is_finish=False,
+        board_id=None,
     ):
         """
         Record a throw in the database
@@ -1250,6 +1423,8 @@ class GameManager:
             score_after: Score after this throw
             is_bust: Whether this throw resulted in a bust
             is_finish: Whether this throw won the game
+            board_id: Board.id of the physical board that produced the throw,
+                or None for manual entry
         """
         try:
             # Get dartboard configuration
@@ -1314,6 +1489,7 @@ class GameManager:
                     dartboard_sends_actual_score=dartboard_sends_actual_score,
                     is_bust=is_bust,
                     is_finish=is_finish,
+                    board_id=board_id,
                 )
         except Exception as e:
             print(f"Warning: Could not record throw in database: {e}")

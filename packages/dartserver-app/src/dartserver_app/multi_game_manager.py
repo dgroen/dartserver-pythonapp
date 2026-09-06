@@ -1,6 +1,6 @@
 """Multi-Game Manager for handling multiple concurrent games."""
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from dartserver_app.game_manager import GameManager
 
@@ -18,6 +18,12 @@ class MultiGameManager:
         self.socketio = socketio
         self.games: Dict[str, GameManager] = {}
         self.active_game_id: Optional[str] = None
+        # Which (game, player) currently owns each physical board.
+        # A board is a single physical device, so it can only be locked by one
+        # player at a time system-wide -- but one game may hold several boards
+        # concurrently, one per participating player. In-memory only, matching
+        # `self.games`.
+        self.board_locks: Dict[int, Tuple[str, int]] = {}
 
     def create_game(self, game_id: str) -> GameManager:
         """
@@ -33,6 +39,9 @@ class MultiGameManager:
             raise ValueError(f"Game with id '{game_id}' already exists")
 
         game_manager = GameManager(self.socketio)
+        # Let the game reach back to release its board locks when it finishes
+        game_manager.game_id = game_id
+        game_manager.multi_game_manager = self
 
         # If running inside a Flask request/app context, prefer the app's
         # game_manager.db_service so tests and request-scoped DB overrides
@@ -100,6 +109,7 @@ class MultiGameManager:
             return False
 
         del self.games[game_id]
+        self.unlock_board_for_player(game_id)
 
         # If we deleted the active game, set a new active game
         if self.active_game_id == game_id:
@@ -176,6 +186,67 @@ class MultiGameManager:
 
             games_list.append(game_info)
         return games_list
+
+    def lock_board(self, board_id: int, game_id: str, player_id: int) -> None:
+        """
+        Lock a physical board to a (game, player) pair.
+
+        Re-locking a board to the same (game, player) is a no-op, so confirming
+        the same board twice is harmless.
+
+        Args:
+            board_id: Board.id of the physical board
+            game_id: Game session the board is used in
+            player_id: Database Player.id using the board
+
+        Raises:
+            ValueError: If the board is already locked by a different (game, player)
+        """
+        existing = self.board_locks.get(board_id)
+        if existing is not None and existing != (game_id, player_id):
+            raise ValueError(
+                f"Board {board_id} is already in use by player {existing[1]} "
+                f"in game '{existing[0]}'",
+            )
+
+        self.board_locks[board_id] = (game_id, player_id)
+
+    def unlock_board_for_player(self, game_id: str, player_id: Optional[int] = None) -> int:
+        """
+        Release board locks held in a game.
+
+        Args:
+            game_id: Game whose locks should be released
+            player_id: Only release this player's board; None releases every
+                board locked by the game (used when the whole game ends)
+
+        Returns:
+            Number of locks released
+        """
+        to_release = [
+            board_id
+            for board_id, (locked_game, locked_player) in self.board_locks.items()
+            if locked_game == game_id and (player_id is None or locked_player == player_id)
+        ]
+        for board_id in to_release:
+            del self.board_locks[board_id]
+        return len(to_release)
+
+    def get_lock_for_board(self, board_id: int) -> Optional[Tuple[str, int]]:
+        """
+        Get the (game_id, player_id) currently holding a board.
+
+        Returns:
+            The lock tuple, or None if the board is not locked
+        """
+        return self.board_locks.get(board_id)
+
+    def get_board_for_player(self, game_id: str, player_id: int) -> Optional[int]:
+        """Get the Board.id a player has locked in a game, or None."""
+        for board_id, lock in self.board_locks.items():
+            if lock == (game_id, player_id):
+                return board_id
+        return None
 
     def get_active_game_id(self) -> Optional[str]:
         """

@@ -6,7 +6,17 @@ import secrets
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, create_engine
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    create_engine,
+)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
@@ -31,7 +41,11 @@ class Player(Base):
     username = Column(String(100), unique=True, nullable=True)  # For user accounts
     email = Column(String(255), unique=True, nullable=True)
 
+    # Last physical board this player used (remembered across logins)
+    last_board_id = Column(Integer, ForeignKey("board.id"), nullable=True)
+
     # Relationships
+    last_board = relationship("Board", foreign_keys=[last_board_id])
     game_results = relationship("GameResult", back_populates="player")
     scores = relationship("Score", back_populates="player")
     api_keys = relationship("ApiKey", back_populates="player", cascade="all, delete-orphan")
@@ -39,6 +53,29 @@ class Player(Base):
 
     def __repr__(self):
         return f"<Player(id={self.id}, name='{self.name}')>"
+
+
+class Board(Base):
+    """Board table - registry of physical boards that can produce throws
+
+    A board is either a camera ("vision") board, identified by the operator-chosen
+    board_id string used for its calibration, or an electronic dartboard
+    ("electronic"), identified by the OAuth client_id it authenticates with.
+    """
+
+    __tablename__ = "board"
+    __table_args__ = (UniqueConstraint("kind", "external_id", name="uq_board_kind_external_id"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    external_id = Column(String(255), nullable=False)  # vision board_id or OAuth client_id
+    kind = Column(String(20), nullable=False)  # "vision" | "electronic"
+    display_name = Column(String(100), nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=utc_now)
+    last_used_at = Column(DateTime, nullable=True)
+
+    def __repr__(self):
+        return f"<Board(id={self.id}, kind='{self.kind}', external_id='{self.external_id}')>"
 
 
 class GameType(Base):
@@ -75,8 +112,11 @@ class GameResult(Base):
     started_at = Column(DateTime, default=utc_now)
     finished_at = Column(DateTime)
     game_session_id = Column(String(100), nullable=False)  # UUID to group players in same game
+    # Physical board this player used for this game (one GameResult row per player)
+    board_id = Column(Integer, ForeignKey("board.id"), nullable=True)
 
     # Relationships
+    board = relationship("Board")
     game_type = relationship("GameType", back_populates="game_results")
     player = relationship("Player", back_populates="game_results")
     scores = relationship("Score", back_populates="game_result", cascade="all, delete-orphan")
@@ -120,10 +160,24 @@ class Score(Base):
     is_bust = Column(Boolean, default=False)
     is_finish = Column(Boolean, default=False)  # Winning throw
 
+    # Physical board that produced this throw (None for manual entry)
+    board_id = Column(Integer, ForeignKey("board.id"), nullable=True)
+
+    # SCD2 versioning - a corrected throw invalidates its old row rather than
+    # deleting it, so the throw's history stays auditable. Every ordinary read
+    # of a throw must filter on is_current.
+    is_current = Column(Boolean, default=True, nullable=False, index=True)
+    version = Column(Integer, default=1, nullable=False)
+    valid_from = Column(DateTime, default=utc_now)
+    valid_to = Column(DateTime, nullable=True)
+    replaces_score_id = Column(Integer, ForeignKey("scores.id"), nullable=True)
+
     # Timestamp
     thrown_at = Column(DateTime, default=utc_now)
 
     # Relationships
+    board = relationship("Board")
+    replaces = relationship("Score", remote_side=[id])
     game_result = relationship("GameResult", back_populates="scores")
     player = relationship("Player", back_populates="scores")
 

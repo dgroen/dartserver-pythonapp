@@ -6,7 +6,14 @@ import os
 import uuid
 from datetime import datetime, timezone
 
-from dartserver_core.database_models import DatabaseManager, GameResult, GameType, Player, Score
+from dartserver_core.database_models import (
+    Board,
+    DatabaseManager,
+    GameResult,
+    GameType,
+    Player,
+    Score,
+)
 from dotenv import load_dotenv
 from sqlalchemy import desc, func
 
@@ -20,6 +27,11 @@ def set_database_service(db_service):
     """Set the global database service instance"""
     global _db_service_instance
     _db_service_instance = db_service
+
+
+def get_database_service():
+    """Get the global database service instance, or None if not initialized"""
+    return _db_service_instance
 
 
 def get_session():
@@ -207,6 +219,7 @@ class DatabaseService:
         dartboard_sends_actual_score,
         is_bust=False,
         is_finish=False,
+        board_id=None,
     ):
         """
         Record a single throw in the database
@@ -224,6 +237,8 @@ class DatabaseService:
             dartboard_sends_actual_score: Config setting
             is_bust: Whether this throw resulted in a bust
             is_finish: Whether this throw won the game
+            board_id: Board.id of the physical board that produced this throw
+                (None for manual entry)
         """
         if self.current_game_session_id is None:
             print("No active game session")
@@ -263,6 +278,10 @@ class DatabaseService:
                 dartboard_sends_actual_score=dartboard_sends_actual_score,
                 is_bust=is_bust,
                 is_finish=is_finish,
+                board_id=board_id,
+                is_current=True,
+                version=1,
+                valid_from=datetime.now(tz=timezone.utc),
                 thrown_at=datetime.now(tz=timezone.utc),
             )
 
@@ -394,7 +413,7 @@ class DatabaseService:
             # Get the last N throws for this player
             throws = (
                 session.query(Score)
-                .filter_by(game_result_id=game_result_id)
+                .filter_by(game_result_id=game_result_id, is_current=True)
                 .order_by(Score.throw_sequence.desc())
                 .limit(throw_count)
                 .all()
@@ -459,7 +478,7 @@ class DatabaseService:
             for gr in game_results:
                 throws = (
                     session.query(Score)
-                    .filter_by(game_result_id=gr.id)
+                    .filter_by(game_result_id=gr.id, is_current=True)
                     .order_by(Score.thrown_at)
                     .all()
                 )
@@ -844,13 +863,17 @@ class DatabaseService:
                 .filter(
                     Score.game_result_id.in_(game_result_ids),
                     Score.is_bust.is_(False),
+                    Score.is_current.is_(True),
                 )
                 .scalar()
             ) or 0
 
             total_turns_subq = (
                 session.query(Score.game_result_id, Score.turn_number)
-                .filter(Score.game_result_id.in_(game_result_ids))
+                .filter(
+                    Score.game_result_id.in_(game_result_ids),
+                    Score.is_current.is_(True),
+                )
                 .distinct()
                 .subquery()
             )
@@ -887,13 +910,17 @@ class DatabaseService:
                         .filter(
                             Score.game_result_id.in_(result_ids),
                             Score.is_bust.is_(False),
+                            Score.is_current.is_(True),
                         )
                         .scalar()
                     ) or 0
 
                     gt_turns_subq = (
                         session.query(Score.game_result_id, Score.turn_number)
-                        .filter(Score.game_result_id.in_(result_ids))
+                        .filter(
+                            Score.game_result_id.in_(result_ids),
+                            Score.is_current.is_(True),
+                        )
                         .distinct()
                         .subquery()
                     )
@@ -1027,5 +1054,304 @@ class DatabaseService:
 
             traceback.print_exc()
             return False
+        finally:
+            session.close()
+
+    # ------------------------------------------------------------------
+    # Board registry
+    # ------------------------------------------------------------------
+
+    def get_or_create_board(self, external_id, kind, display_name=None):
+        """
+        Look up a physical board by its identity, registering it on first sight.
+
+        Args:
+            external_id: Vision board_id string, or the electronic board's OAuth client_id
+            kind: "vision" or "electronic"
+            display_name: Optional friendly name, only used when creating
+
+        Returns:
+            Dict with the board's id/external_id/kind/display_name, or None on failure.
+        """
+        if not external_id or not kind:
+            return None
+
+        session = self.db_manager.get_session()
+        try:
+            board = session.query(Board).filter_by(external_id=str(external_id), kind=kind).first()
+            if board is None:
+                board = Board(
+                    external_id=str(external_id),
+                    kind=kind,
+                    display_name=display_name or str(external_id),
+                    is_active=True,
+                )
+                session.add(board)
+
+            board.last_used_at = datetime.now(tz=timezone.utc)
+            session.commit()
+            return {
+                "id": board.id,
+                "external_id": board.external_id,
+                "kind": board.kind,
+                "display_name": board.display_name,
+                "is_active": bool(board.is_active),
+            }
+        except Exception as e:
+            session.rollback()
+            print(f"Error registering board {kind}/{external_id}: {e}")
+            return None
+        finally:
+            session.close()
+
+    def get_board(self, board_id):
+        """Get a single board by primary key, as a dict, or None if not found."""
+        session = self.db_manager.get_session()
+        try:
+            board = session.query(Board).filter_by(id=board_id).first()
+            if board is None:
+                return None
+            return {
+                "id": board.id,
+                "external_id": board.external_id,
+                "kind": board.kind,
+                "display_name": board.display_name,
+                "is_active": bool(board.is_active),
+            }
+        except Exception as e:
+            print(f"Error getting board {board_id}: {e}")
+            return None
+        finally:
+            session.close()
+
+    def list_active_boards(self):
+        """List all active registered boards, most recently used first."""
+        session = self.db_manager.get_session()
+        try:
+            boards = (
+                session.query(Board)
+                .filter(Board.is_active.is_(True))
+                .order_by(desc(Board.last_used_at))
+                .all()
+            )
+            return [
+                {
+                    "id": b.id,
+                    "external_id": b.external_id,
+                    "kind": b.kind,
+                    "display_name": b.display_name,
+                    "last_used_at": b.last_used_at.isoformat() if b.last_used_at else None,
+                }
+                for b in boards
+            ]
+        except Exception as e:
+            print(f"Error listing boards: {e}")
+            return []
+        finally:
+            session.close()
+
+    def set_game_result_board(self, game_session_id, player_db_id, board_id):
+        """
+        Record which board a player is using for a given game.
+
+        Args:
+            game_session_id: Game session UUID
+            player_db_id: Database Player.id
+            board_id: Board.id, or None to clear
+
+        Returns:
+            True if a GameResult row was updated, False otherwise.
+        """
+        session = self.db_manager.get_session()
+        try:
+            game_result = (
+                session.query(GameResult)
+                .filter_by(game_session_id=game_session_id, player_id=player_db_id)
+                .first()
+            )
+            if game_result is None:
+                return False
+            game_result.board_id = board_id
+            session.commit()
+            return True
+        except Exception as e:
+            session.rollback()
+            print(f"Error setting board on game result: {e}")
+            return False
+        finally:
+            session.close()
+
+    def set_player_last_board(self, player_db_id, board_id):
+        """Remember the board a player last used, so it can pre-fill next time."""
+        session = self.db_manager.get_session()
+        try:
+            player = session.query(Player).filter_by(id=player_db_id).first()
+            if player is None:
+                return False
+            player.last_board_id = board_id
+            session.commit()
+            return True
+        except Exception as e:
+            session.rollback()
+            print(f"Error setting last board for player {player_db_id}: {e}")
+            return False
+        finally:
+            session.close()
+
+    def get_player_last_board_id(self, player_db_id):
+        """Get the Board.id a player last used, or None."""
+        session = self.db_manager.get_session()
+        try:
+            player = session.query(Player).filter_by(id=player_db_id).first()
+            return player.last_board_id if player else None
+        except Exception as e:
+            print(f"Error getting last board for player {player_db_id}: {e}")
+            return None
+        finally:
+            session.close()
+
+    # ------------------------------------------------------------------
+    # Throw correction (SCD2)
+    # ------------------------------------------------------------------
+
+    def get_last_score(self, game_session_id=None):
+        """
+        Get the most recently recorded current throw.
+
+        Args:
+            game_session_id: Restrict to one game session; None searches every game
+
+        Returns:
+            Dict describing the throw, or None if there is no recorded throw.
+        """
+        session = self.db_manager.get_session()
+        try:
+            query = session.query(Score).filter(Score.is_current.is_(True))
+            if game_session_id:
+                query = query.join(
+                    GameResult,
+                    Score.game_result_id == GameResult.id,
+                ).filter(GameResult.game_session_id == game_session_id)
+
+            score = query.order_by(desc(Score.thrown_at), desc(Score.id)).first()
+            if score is None:
+                return None
+
+            return {
+                "id": score.id,
+                "game_result_id": score.game_result_id,
+                "player_id": score.player_id,
+                "throw_sequence": score.throw_sequence,
+                "turn_number": score.turn_number,
+                "throw_in_turn": score.throw_in_turn,
+                "base_score": score.base_score,
+                "multiplier": score.multiplier,
+                "multiplier_value": score.multiplier_value,
+                "actual_score": score.actual_score,
+                "score_before": score.score_before,
+                "score_after": score.score_after,
+                "is_bust": bool(score.is_bust),
+                "is_finish": bool(score.is_finish),
+                "board_id": score.board_id,
+                "version": score.version,
+                "thrown_at": score.thrown_at.isoformat() if score.thrown_at else None,
+            }
+        except Exception as e:
+            print(f"Error getting last score: {e}")
+            return None
+        finally:
+            session.close()
+
+    def correct_score(
+        self,
+        score_id,
+        new_base_score,
+        new_multiplier,
+        new_multiplier_value,
+        new_actual_score,
+        new_score_after,
+        is_bust=False,
+        is_finish=False,
+    ):
+        """
+        Replace a recorded throw with a corrected version, SCD2 style.
+
+        The existing row is invalidated (is_current=False, valid_to=now) rather
+        than deleted, and a new row is inserted as the current version. The new
+        row keeps the throw's position in the game -- same game result, player,
+        throw sequence, turn and position in turn -- so score chains and replays
+        see exactly one throw in that slot.
+
+        Args:
+            score_id: Score.id of the throw to correct (must still be current)
+            new_base_score: Corrected base score
+            new_multiplier: Corrected multiplier type string
+            new_multiplier_value: Corrected numeric multiplier
+            new_actual_score: Corrected actual score
+            new_score_after: Player's score after the corrected throw
+            is_bust: Whether the corrected throw busts
+            is_finish: Whether the corrected throw wins the leg
+
+        Returns:
+            Dict describing the new current row, or None if the correction failed.
+        """
+        session = self.db_manager.get_session()
+        try:
+            old = (
+                session.query(Score)
+                .filter(Score.id == score_id, Score.is_current.is_(True))
+                .first()
+            )
+            if old is None:
+                print(f"Cannot correct score {score_id}: not found or already superseded")
+                return None
+
+            now = datetime.now(tz=timezone.utc)
+
+            old.is_current = False
+            old.valid_to = now
+
+            corrected = Score(
+                game_result_id=old.game_result_id,
+                player_id=old.player_id,
+                throw_sequence=old.throw_sequence,
+                turn_number=old.turn_number,
+                throw_in_turn=old.throw_in_turn,
+                base_score=new_base_score,
+                multiplier=new_multiplier,
+                multiplier_value=new_multiplier_value,
+                actual_score=new_actual_score,
+                score_before=old.score_before,
+                score_after=new_score_after,
+                dartboard_sends_actual_score=old.dartboard_sends_actual_score,
+                is_bust=is_bust,
+                is_finish=is_finish,
+                board_id=old.board_id,
+                is_current=True,
+                version=(old.version or 1) + 1,
+                valid_from=now,
+                replaces_score_id=old.id,
+                thrown_at=old.thrown_at,
+            )
+            session.add(corrected)
+            session.commit()
+
+            print(
+                f"Throw corrected: score_id={old.id} -> {corrected.id}, "
+                f"version={corrected.version}, score={new_actual_score}",
+            )
+            return {
+                "id": corrected.id,
+                "replaces_score_id": old.id,
+                "version": corrected.version,
+                "base_score": corrected.base_score,
+                "multiplier": corrected.multiplier,
+                "actual_score": corrected.actual_score,
+                "score_after": corrected.score_after,
+            }
+        except Exception as e:
+            session.rollback()
+            print(f"Error correcting score {score_id}: {e}")
+            return None
         finally:
             session.close()

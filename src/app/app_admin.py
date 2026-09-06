@@ -1052,7 +1052,10 @@ def get_user_statistics():
                     func.count(Score.id).label("total_throws"),
                 )
                 .join(GameResult, Player.id == GameResult.player_id)
-                .outerjoin(Score, GameResult.id == Score.game_result_id)
+                .outerjoin(
+                    Score,
+                    (GameResult.id == Score.game_result_id) & Score.is_current.is_(True),
+                )
             )
 
             # Apply date filters if provided
