@@ -235,6 +235,15 @@ def create_app(config: VisionScoringConfig | None = None) -> Flask:
     return app
 
 
+# Plain WSGI entrypoint for gunicorn (`vision_scoring.server:app`) -- avoids
+# depending on gunicorn's --factory flag, which isn't available in every
+# pinned gunicorn version. Only built when this module is actually imported
+# as a WSGI target (not on `python -m vision_scoring.server` for local dev,
+# where __name__ == "__main__" below takes over instead).
+if __name__ != "__main__":
+    app = create_app()
+
+
 if __name__ == "__main__":
     _config = VisionScoringConfig.from_env()
     create_app(_config).run(host=_config.host, port=_config.port)

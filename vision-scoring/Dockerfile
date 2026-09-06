@@ -23,4 +23,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 # memory, per board_id -- multiple worker processes would each have their own
 # inconsistent copy of that state. Revisit if this ever needs to scale out
 # (e.g. move session state to Redis).
-CMD ["gunicorn", "--bind", "0.0.0.0:5901", "--workers", "1", "--factory", "vision_scoring.server:create_app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5901", "--workers", "1", "vision_scoring.server:app"]
