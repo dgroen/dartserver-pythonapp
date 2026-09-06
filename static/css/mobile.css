@@ -1031,3 +1031,35 @@ body {
     background-color: rgba(0, 0, 0, 0.2);
     border-radius: 0.5rem;
 }
+
+/* Inline "edit last throw" form on the gameplay page - see
+   static/js/mobile_gameplay.js (initEditLastThrow). */
+.edit-throw-form {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.edit-throw-form input,
+.edit-throw-form select {
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #444;
+}
+
+.edit-throw-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.edit-throw-status {
+    margin: 0;
+    font-size: 13px;
+    color: #8bc34a;
+}
+
+.edit-throw-status.is-error {
+    color: #ff8080;
+}

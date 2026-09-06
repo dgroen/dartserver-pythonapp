@@ -1201,3 +1201,301 @@ def get_active_games():
     except Exception as e:
         _app().logger.exception("Error fetching active games")
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@games_bp.route("/api/boards", methods=["GET"])
+@login_required
+def list_boards():
+    """List registered physical boards - for the board picker
+    ---
+    tags:
+      - Game
+    summary: List registered boards
+    description: >
+      Returns every active registered board (vision cameras and electronic
+      dartboards), each flagged with whether it is currently locked by another
+      player, plus this player's remembered board and current session choice.
+    responses:
+      200:
+        description: Boards listed successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            boards:
+              type: array
+              items:
+                type: object
+            last_board_id:
+              type: integer
+              description: Board this player used last, for pre-filling the picker
+            confirmed_board_id:
+              type: integer
+              description: Board already confirmed in this login session, if any
+    """
+    try:
+        db_service = _app().game_manager.db_service
+        player_db_id = session.get("player_id")
+        multi_game_manager = _app().multi_game_manager
+
+        boards = db_service.list_active_boards()
+        for board in boards:
+            lock = multi_game_manager.get_lock_for_board(board["id"])
+            board["in_use"] = lock is not None
+            board["in_use_by_me"] = lock is not None and lock[1] == player_db_id
+
+        last_board_id = db_service.get_player_last_board_id(player_db_id) if player_db_id else None
+
+        return jsonify(
+            {
+                "status": "success",
+                "boards": boards,
+                "last_board_id": last_board_id,
+                "confirmed_board_id": session.get("confirmed_board_id"),
+            },
+        )
+    except Exception:
+        _app().logger.exception("Error listing boards")
+        return jsonify({"status": "error", "message": "Failed to list boards"}), 500
+
+
+def _resolve_board_confirmation(data):
+    """Validate a board-confirm request.
+
+    Returns:
+        Tuple of (resolved, error). On success `resolved` is
+        (board_id, player_db_id, game_id, game, board) and `error` is None;
+        on failure `resolved` is None and `error` is a Flask response tuple.
+    """
+    board_id = data.get("board_id")
+    if board_id is None:
+        return None, (jsonify({"status": "error", "message": "board_id is required"}), 400)
+
+    player_db_id = session.get("player_id")
+    if not player_db_id:
+        return None, (
+            jsonify({"status": "error", "message": "No player identity in session"}),
+            400,
+        )
+
+    multi_game_manager = _app().multi_game_manager
+    game_id = data.get("game_id") or multi_game_manager.get_active_game_id()
+    game = multi_game_manager.get_game(game_id)
+    if game is None:
+        return None, (
+            jsonify({"status": "error", "message": f"Game '{game_id}' not found"}),
+            404,
+        )
+
+    board = game.db_service.get_board(board_id)
+    if board is None:
+        return None, (
+            jsonify({"status": "error", "message": f"Board {board_id} not found"}),
+            404,
+        )
+
+    return (board_id, player_db_id, game_id, game, board), None
+
+
+@games_bp.route("/api/game/board-confirm", methods=["POST"])
+@login_required
+def confirm_board():
+    """Confirm which physical board this player throws from in a game
+    ---
+    tags:
+      - Game
+    summary: Confirm board for the current player
+    description: >
+      Locks a board to this (game, player) so its throws are attributed
+      correctly, records it on the player's game result, and remembers it for
+      next time. A board is exclusive system-wide, but a game may have several
+      boards confirmed at once - one per participating player.
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            board_id:
+              type: integer
+              description: Board.id from /api/boards
+            game_id:
+              type: string
+              description: Game to confirm the board for (defaults to the active game)
+    responses:
+      200:
+        description: Board confirmed
+      400:
+        description: Missing board_id, or the player is not identified
+      404:
+        description: Game or board not found
+      409:
+        description: Board already in use by another player, or a board change \
+          requires ending the current game first
+    """
+    data = request.json or {}
+    resolved, error = _resolve_board_confirmation(data)
+    if error is not None:
+        return error
+
+    board_id, player_db_id, game_id, game, board = resolved
+    multi_game_manager = _app().multi_game_manager
+    db_service = game.db_service
+
+    # Switching boards mid-game would leave earlier throws attributed to the old
+    # board with no way to tell where the game continued, so make it explicit.
+    existing_board_id = multi_game_manager.get_board_for_player(game_id, player_db_id)
+    if existing_board_id is not None and existing_board_id != board_id and game.is_started:
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": (
+                        "This player is already using another board in an active game. "
+                        "End that game before changing board."
+                    ),
+                },
+            ),
+            409,
+        )
+
+    try:
+        multi_game_manager.lock_board(board_id, game_id, player_db_id)
+    except ValueError as e:
+        return jsonify({"status": "error", "message": str(e)}), 409
+
+    # A board changed within the same (not yet started) game leaves a stale lock
+    if existing_board_id is not None and existing_board_id != board_id:
+        multi_game_manager.board_locks.pop(existing_board_id, None)
+
+    game_session_id = getattr(db_service, "current_game_session_id", None)
+    if game_session_id:
+        db_service.set_game_result_board(game_session_id, player_db_id, board_id)
+    db_service.set_player_last_board(player_db_id, board_id)
+
+    # Remembered for the rest of this login session, so later games in the same
+    # session reuse the board without prompting again.
+    session["board_confirmed"] = True
+    session["confirmed_board_id"] = board_id
+
+    return jsonify(
+        {
+            "status": "success",
+            "message": "Board confirmed",
+            "board": board,
+            "game_id": game_id,
+        },
+    )
+
+
+def _resolve_throw_correction(data):
+    """Validate a throw-correction request.
+
+    Returns:
+        Tuple of (resolved, error). On success `resolved` is
+        (score, multiplier, mode, game) and `error` is None; on failure
+        `resolved` is None and `error` is a Flask response tuple.
+    """
+    mode = data.get("mode", "replace")
+    if mode not in ("replace", "new"):
+        return None, (
+            jsonify({"status": "error", "message": "mode must be 'replace' or 'new'"}),
+            400,
+        )
+
+    score = data.get("score")
+    if score is None:
+        return None, (jsonify({"status": "error", "message": "score is required"}), 400)
+
+    multi_game_manager = _app().multi_game_manager
+    game_id = data.get("game_id") or multi_game_manager.get_active_game_id()
+    game = multi_game_manager.get_game(game_id)
+    if game is None:
+        return None, (
+            jsonify({"status": "error", "message": f"Game '{game_id}' not found"}),
+            404,
+        )
+
+    return (score, data.get("multiplier", "SINGLE"), mode, game), None
+
+
+@games_bp.route("/api/game/throw/correct", methods=["POST"])
+@login_required
+@permission_required("score:submit")
+def correct_throw():
+    """Correct the last throw, or register the entry as a new throw
+    ---
+    tags:
+      - Game
+    summary: Correct or re-enter the last throw
+    description: >
+      Camera and electronic-board detections can be wrong. With `mode="replace"`
+      the game's most recently recorded throw is replaced: the old row is
+      invalidated (SCD2-versioned, not deleted) and a new current version is
+      recorded. With `mode="new"` the entry is simply scored as the next throw,
+      exactly as manual entry does today.
+
+      Only the single most recent throw can be replaced, and only while its turn
+      is still in progress. A throw that busted or ended the leg cannot be
+      replaced.
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            score:
+              type: integer
+              description: Base score value (0-20, or 25 for bull)
+            multiplier:
+              type: string
+              enum: [SINGLE, DOUBLE, TRIPLE, BULL, DBLBULL]
+            mode:
+              type: string
+              enum: [replace, new]
+              default: replace
+            game_id:
+              type: string
+              description: Game to act on (defaults to the active game)
+    responses:
+      200:
+        description: Throw corrected or registered
+      400:
+        description: Invalid score, multiplier or mode
+      404:
+        description: Game not found
+      409:
+        description: The last throw is no longer correctable
+    """
+    data = request.json or {}
+    resolved, error = _resolve_throw_correction(data)
+    if error is not None:
+        return error
+
+    score, multiplier, mode, game = resolved
+
+    if mode == "new":
+        # Unchanged manual-entry path - no versioning involved
+        game.process_score({"score": score, "multiplier": multiplier})
+        return jsonify({"status": "success", "mode": "new", "message": "Throw registered"})
+
+    try:
+        correction = game.correct_last_throw(score, multiplier)
+    except ValueError as e:
+        return jsonify({"status": "error", "message": str(e)}), 409
+    except Exception:
+        _app().logger.exception("Error correcting last throw")
+        return jsonify({"status": "error", "message": "Failed to correct the last throw"}), 500
+
+    return jsonify(
+        {
+            "status": "success",
+            "mode": "replace",
+            "message": "Last throw corrected",
+            "correction": correction,
+        },
+    )

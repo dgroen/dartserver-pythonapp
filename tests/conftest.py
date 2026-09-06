@@ -8,11 +8,13 @@ import os
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import dartserver_core.auth as core_auth
 import pytest
 from dartserver_app import create_app
 from dartserver_core.database_service import DatabaseService
+from sqlalchemy import create_engine, text
 
 # Expose frequently used auth helpers as builtins for tests that reference
 # them directly without importing. These reference the implementation
@@ -254,3 +256,40 @@ def player_ids_with_db():
         return [{"db_id": i + 1, "name": name} for i, name in enumerate(names)]
 
     return _create_players
+
+
+@pytest.fixture
+def throwaway_postgres_url():
+    """A freshly created, disposable PostgreSQL database.
+
+    Migration round-trips need a real PostgreSQL server: earlier revisions in
+    the chain contain raw PostgreSQL that SQLite cannot execute. Skips when no
+    server is reachable.
+    """
+    admin_url = os.getenv(
+        "TEST_POSTGRES_ADMIN_URL",
+        "postgresql://postgres:postgres@localhost:5432/postgres",
+    )
+    db_name = f"test_migration_{uuid4().hex[:12]}"
+
+    admin_engine = create_engine(admin_url, isolation_level="AUTOCOMMIT")
+    try:
+        connection = admin_engine.connect()
+    except Exception as exc:  # pragma: no cover - environment dependent
+        pytest.skip(f"No PostgreSQL server available for migration test: {exc}")
+
+    with connection:
+        connection.execute(text(f'CREATE DATABASE "{db_name}"'))
+    try:
+        yield admin_url.rsplit("/", 1)[0] + f"/{db_name}"
+    finally:
+        with admin_engine.connect() as connection:
+            connection.execute(
+                text(
+                    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                    "WHERE datname = :name",
+                ),
+                {"name": db_name},
+            )
+            connection.execute(text(f'DROP DATABASE IF EXISTS "{db_name}"'))
+        admin_engine.dispose()
