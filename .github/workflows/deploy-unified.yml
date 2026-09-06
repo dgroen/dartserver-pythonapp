@@ -381,7 +381,7 @@ jobs:
           # the very first deploy after this file was added -- only once this
           # commit has been checked out will the file be present for later steps.
           if [ -f docker-compose-vision-test.yml ]; then
-            docker-compose -f docker-compose-wso2.yml -f docker-compose-vision-test.yml build --no-cache vision-scoring
+            docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml -f docker-compose-vision-test.yml build --no-cache vision-scoring
           fi
 
           # Start infrastructure first so bootstrap can create or repair WSO2 state
@@ -452,7 +452,14 @@ jobs:
           docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml up -d darts-app api-gateway nginx
           if [ -f docker-compose-vision-test.yml ]; then
             echo "▶️  Starting vision-scoring (test-only)..."
-            docker-compose -f docker-compose-wso2.yml -f docker-compose-vision-test.yml up -d vision-scoring
+            # Must include docker-compose-test.yml here too: omitting it makes
+            # compose compute a different (base-only) config for wso2is/rabbitmq
+            # than what's actually running, which makes it try to "recreate"
+            # them even though only vision-scoring was requested -- and this
+            # docker-compose (v1) install fails recreating existing containers
+            # with a spurious `KeyError: 'ContainerConfig'`, taking them down
+            # (a real incident this caused once already).
+            docker-compose -f docker-compose-wso2.yml -f docker-compose-test.yml -f docker-compose-vision-test.yml up -d vision-scoring
           fi
 
           # Check container status
